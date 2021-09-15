@@ -1,9 +1,11 @@
-use pancurses::{endwin, initscr, noecho, Attributes, Input, Window};
+use pancurses::{endwin, initscr, noecho, Input, Window};
 use std::fs;
 use std::io;
+use std::process;
 
+#[derive(Clone)]
 struct EntryInfo {
-    line_number: u32,
+    line_number: usize,
     file_path: std::path::PathBuf,
     file_name: String,
 }
@@ -16,7 +18,7 @@ fn make_parent_dir(p: std::path::PathBuf) -> EntryInfo {
     };
 }
 
-fn make_entry(i: u32, dir: std::fs::DirEntry) -> EntryInfo {
+fn make_entry(i: usize, dir: std::fs::DirEntry) -> EntryInfo {
     return EntryInfo {
         line_number: i,
         file_path: dir.path(),
@@ -47,6 +49,16 @@ fn cursor_up(w: &Window) {
     w.mv(y - 1, x);
 }
 
+fn choose(i: usize, v: Vec<EntryInfo>) {
+    let entry = &v[i];
+    let path = &entry.file_path;
+    if path.is_file() {
+        process::Command::new("nvim").arg(path);
+    } else if path.is_dir() {
+        process::Command::new("cd").arg(path);
+    }
+}
+
 fn main() {
     let w = initscr();
     w.keypad(true);
@@ -59,6 +71,8 @@ fn main() {
     let mut entry_v = vec![];
 
     if let Ok(p) = current_directory {
+        w.addstr(p.clone().into_os_string().into_string().unwrap());
+        w.addstr("\n\n");
         match p.parent() {
             Some(parent_p) => {
                 let parent_dir = make_parent_dir(parent_p.to_path_buf());
@@ -67,13 +81,13 @@ fn main() {
             None => {}
         }
 
-        if let Ok(v) = push_entries(&p, entry_v) {
+        if let Ok(v) = push_entries(&p, entry_v.clone()) {
             for entry in v {
                 w.addstr(entry.file_name);
                 w.addstr("\n");
             }
         }
-        w.mv(1, 0);
+        w.mv(2, 0);
         w.refresh();
 
         loop {
@@ -86,6 +100,12 @@ fn main() {
                 }
                 Input::Character('k') => {
                     cursor_up(&w);
+                    w.refresh();
+                }
+                Input::Character('l') => {
+                    let i = w.get_cur_y() - 2;
+                    endwin();
+                    choose(i as usize, v.clone());
                     w.refresh();
                 }
                 _ => break,
