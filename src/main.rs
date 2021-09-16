@@ -26,11 +26,17 @@ fn make_entry(i: usize, dir: std::fs::DirEntry) -> EntryInfo {
     };
 }
 
-fn push_entries(
-    p: &std::path::PathBuf,
-    mut v: Vec<EntryInfo>,
-) -> Result<Vec<EntryInfo>, io::Error> {
+fn push_entries(p: &std::path::PathBuf) -> Result<Vec<EntryInfo>, io::Error> {
+    let mut v = vec![];
     let mut i = 1;
+
+    match p.parent() {
+        Some(parent_p) => {
+            let parent_dir = make_parent_dir(parent_p.to_path_buf());
+            v.push(parent_dir);
+        }
+        None => {}
+    }
     for entry in fs::read_dir(p)? {
         let entry = entry?;
         v.push(make_entry(i, entry));
@@ -49,7 +55,7 @@ fn cursor_up(w: &Window) {
     w.mv(y - 1, x);
 }
 
-fn choose(i: usize, v: Vec<EntryInfo>) {
+fn choose(i: usize, v: &Vec<EntryInfo>) {
     let entry = &v[i];
     let path = &entry.file_path;
     if path.is_file() {
@@ -68,24 +74,14 @@ fn main() {
 
     let current_directory = std::env::current_dir();
 
-    let mut entry_v = vec![];
-
     if let Ok(p) = current_directory {
         w.addstr(p.clone().into_os_string().into_string().unwrap());
         w.addstr("\n\n");
-        match p.parent() {
-            Some(parent_p) => {
-                let parent_dir = make_parent_dir(parent_p.to_path_buf());
-                entry_v.push(parent_dir);
-            }
-            None => {}
-        }
 
-        if let Ok(v) = push_entries(&p, entry_v.clone()) {
-            for entry in v {
-                w.addstr(entry.file_name);
-                w.addstr("\n");
-            }
+        let entry_v = push_entries(&p).unwrap_or(vec![]);
+        for entry in &entry_v {
+            w.addstr(&entry.file_name);
+            w.addstr("\n");
         }
         w.mv(2, 0);
         w.refresh();
@@ -105,7 +101,7 @@ fn main() {
                 Input::Character('l') => {
                     let i = w.get_cur_y() - 2;
                     endwin();
-                    choose(i as usize, v.clone());
+                    choose(i as usize, &entry_v);
                     w.refresh();
                 }
                 _ => break,
