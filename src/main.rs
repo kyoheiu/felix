@@ -1,11 +1,9 @@
+use std::convert::TryInto;
 use std::env::current_dir;
 use std::fs;
-use std::io::{stdin, stdout, Error, Write};
-use std::process;
-use termion::cursor::DetectCursorPos;
-use termion::{clear, color, cursor, event::Key, input::TermRead, raw::IntoRawMode};
+use std::io::{stdout, Error, Read, Write};
+use termion::{async_stdin, clear, color, cursor, event::Key, raw::IntoRawMode, AsyncReader};
 
-#[derive(Clone)]
 struct EntryInfo {
     line_number: usize,
     file_path: std::path::PathBuf,
@@ -47,14 +45,34 @@ fn push_entries(p: &std::path::PathBuf) -> Result<Vec<EntryInfo>, Error> {
     Ok(v)
 }
 
+fn down(mut s: termion::raw::RawTerminal<std::io::StdoutLock>) {
+    write!(s, " {}\n>{}", cursor::Left(1), cursor::Left(1)).unwrap();
+    s.flush().unwrap();
+}
+
+fn up(mut s: termion::raw::RawTerminal<std::io::StdoutLock>) {
+    write!(
+        s,
+        " {}{}>{}",
+        cursor::Up(1),
+        cursor::Left(1),
+        cursor::Left(2)
+    )
+    .unwrap();
+    s.flush().unwrap();
+}
 fn main() {
+    let stdout = stdout();
+    let mut stdout = stdout.lock().into_raw_mode().unwrap();
+    let mut stdin = async_stdin().bytes();
+
     println!("{}", clear::All);
     println!("{}", cursor::Goto(1, 1));
 
     let path_buf = current_dir().unwrap();
 
     println!(
-        "{red}{}{reset}",
+        " {red}{}{reset}",
         path_buf.display(),
         red = color::Bg(color::Magenta),
         reset = color::Bg(color::Reset)
@@ -63,26 +81,48 @@ fn main() {
     println!("{}", cursor::Goto(1, 3));
 
     let entry_v = push_entries(&path_buf).unwrap();
+    for (i, entry) in entry_v.iter().enumerate() {
+        print!("{}", cursor::Goto(3, (i + 3).try_into().unwrap()));
+        println!("{}", entry.file_name);
+    }
 
-    entry_v
-        .iter()
-        .for_each(|entry| println!("{}", entry.file_name));
+    write!(
+        stdout,
+        "{}{}>{}",
+        cursor::Hide,
+        cursor::Goto(1, 4),
+        cursor::Left(1)
+    );
+    stdout.flush().unwrap();
 
-    println!("{}", cursor::Goto(1, 4));
-
-    let mut stdout = stdout().into_raw_mode().unwrap();
-    let stdin = stdin();
+    let discard = stdin.next();
 
     loop {
-        let (x, y) = stdout.cursor_pos().unwrap();
+        let input = stdin.next();
 
-        let ch = stdin.keys();
-        match ch {
-            Key::Char('j') => print!("{}", cursor::Goto(x, y + 1)),
-            Key::Char('k') => print!("{}", cursor::Goto(x, y - 1)),
-            _ => {
-                println!("{}{}", cursor::Goto(1, 1), clear::All);
-                break;
+        if let Some(Ok(key)) = input {
+            match key as char {
+                'j' => {
+                    write!(stdout, " {}\n>{}", cursor::Left(1), cursor::Left(1)).unwrap();
+                    stdout.flush().unwrap();
+                }
+
+                'k' => {
+                    write!(
+                        stdout,
+                        " {}{}>{}",
+                        cursor::Up(1),
+                        cursor::Left(1),
+                        cursor::Left(2)
+                    )
+                    .unwrap();
+                    stdout.flush().unwrap();
+                }
+                _ => {
+                    println!("{}{}", cursor::Goto(1, 1), clear::All);
+                    println!("{}", cursor::Show);
+                    break;
+                }
             }
         }
     }
