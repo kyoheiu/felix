@@ -1,7 +1,9 @@
-use pancurses::{endwin, initscr, noecho, Input, Window};
+use std::env::current_dir;
 use std::fs;
-use std::io;
+use std::io::{stdin, stdout, Error, Write};
 use std::process;
+use termion::cursor::DetectCursorPos;
+use termion::{clear, color, cursor, event::Key, input::TermRead, raw::IntoRawMode};
 
 #[derive(Clone)]
 struct EntryInfo {
@@ -26,7 +28,7 @@ fn make_entry(i: usize, dir: std::fs::DirEntry) -> EntryInfo {
     };
 }
 
-fn push_entries(p: &std::path::PathBuf) -> Result<Vec<EntryInfo>, io::Error> {
+fn push_entries(p: &std::path::PathBuf) -> Result<Vec<EntryInfo>, Error> {
     let mut v = vec![];
     let mut i = 1;
 
@@ -45,69 +47,43 @@ fn push_entries(p: &std::path::PathBuf) -> Result<Vec<EntryInfo>, io::Error> {
     Ok(v)
 }
 
-fn cursor_down(w: &Window) {
-    let (y, x) = w.get_cur_yx();
-    w.mv(y + 1, x);
-}
-
-fn cursor_up(w: &Window) {
-    let (y, x) = w.get_cur_yx();
-    w.mv(y - 1, x);
-}
-
-fn choose(i: usize, v: &Vec<EntryInfo>) {
-    let entry = &v[i];
-    let path = &entry.file_path;
-    if path.is_file() {
-        process::Command::new("nvim").arg(path);
-    } else if path.is_dir() {
-        process::Command::new("cd").arg(path);
-    }
-}
-
 fn main() {
-    let w = initscr();
-    w.keypad(true);
-    noecho();
+    println!("{}", clear::All);
+    println!("{}", cursor::Goto(1, 1));
 
-    w.refresh();
+    let path_buf = current_dir().unwrap();
 
-    let current_directory = std::env::current_dir();
+    println!(
+        "{red}{}{reset}",
+        path_buf.display(),
+        red = color::Bg(color::Magenta),
+        reset = color::Bg(color::Reset)
+    );
 
-    if let Ok(p) = current_directory {
-        w.addstr(p.clone().into_os_string().into_string().unwrap());
-        w.addstr("\n\n");
+    println!("{}", cursor::Goto(1, 3));
 
-        let entry_v = push_entries(&p).unwrap_or(vec![]);
-        for entry in &entry_v {
-            w.addstr(&entry.file_name);
-            w.addstr("\n");
-        }
-        w.mv(2, 0);
-        w.refresh();
+    let entry_v = push_entries(&path_buf).unwrap();
 
-        loop {
-            let ch = w.getch().unwrap_or_else(|| panic!("Invalid input."));
+    entry_v
+        .iter()
+        .for_each(|entry| println!("{}", entry.file_name));
 
-            match ch {
-                Input::Character('j') => {
-                    cursor_down(&w);
-                    w.refresh();
-                }
-                Input::Character('k') => {
-                    cursor_up(&w);
-                    w.refresh();
-                }
-                Input::Character('l') => {
-                    let i = w.get_cur_y() - 2;
-                    endwin();
-                    choose(i as usize, &entry_v);
-                    w.refresh();
-                }
-                _ => break,
+    println!("{}", cursor::Goto(1, 4));
+
+    let mut stdout = stdout().into_raw_mode().unwrap();
+    let stdin = stdin();
+
+    loop {
+        let (x, y) = stdout.cursor_pos().unwrap();
+
+        let ch = stdin.keys();
+        match ch {
+            Key::Char('j') => print!("{}", cursor::Goto(x, y + 1)),
+            Key::Char('k') => print!("{}", cursor::Goto(x, y - 1)),
+            _ => {
+                println!("{}{}", cursor::Goto(1, 1), clear::All);
+                break;
             }
         }
-
-        endwin();
     }
 }
