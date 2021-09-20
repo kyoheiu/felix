@@ -1,9 +1,13 @@
 use std::convert::TryInto;
 use std::env::current_dir;
 use std::fs;
-use std::io::{stdin, stdout, Error, Read, Write};
+use std::io::{stdin, stdout, Error, Write};
+use std::process::Command;
 use termion::cursor::DetectCursorPos;
-use termion::{async_stdin, clear, color, cursor, raw::IntoRawMode, AsyncReader};
+use termion::event::Key;
+use termion::input::TermRead;
+use termion::screen;
+use termion::{clear, color, cursor, input, raw::IntoRawMode};
 
 struct EntryInfo {
     line_number: usize,
@@ -46,9 +50,15 @@ fn push_entries(p: &std::path::PathBuf) -> Result<Vec<EntryInfo>, Error> {
     Ok(v)
 }
 
+fn open(entry: &EntryInfo) {
+    let mut exec = Command::new("nvim");
+    let path = &entry.file_name;
+    exec.arg(path).status().expect("failed");
+}
+
 pub fn start() {
-    let mut stdout = stdout().into_raw_mode().unwrap();
-    let mut stdin = stdin().bytes();
+    let mut stdout = screen::AlternateScreen::from(std::io::stdout().into_raw_mode().unwrap());
+    let mut stdin = stdin().keys();
 
     println!("{}", clear::All);
     println!("{}", cursor::Goto(1, 1));
@@ -78,43 +88,69 @@ pub fn start() {
         cursor::Hide,
         cursor::Goto(1, 4),
         cursor::Left(1)
-    );
+    )
+    .unwrap();
     stdout.flush().unwrap();
 
     loop {
-        let (x, y) = stdout.cursor_pos().unwrap();
+        let (_, y) = stdout.cursor_pos().unwrap();
         let input = stdin.next();
 
         if let Some(Ok(key)) = input {
-            match key as char {
-                'j' => {
+            match key {
+                Key::Char('j') | Key::Char('\n') => {
                     if y > *len as u16 + 1 {
                         continue;
                     };
                     write!(stdout, " {}\n>{}", cursor::Left(1), cursor::Left(1)).unwrap();
-                    stdout.flush().unwrap();
                 }
 
-                'k' => {
-                    if y <= 2 {
+                Key::Char('k') => {
+                    if y == 3 {
                         continue;
-                    }
+                    };
                     write!(
                         stdout,
                         " {}{}>{}",
                         cursor::Up(1),
                         cursor::Left(1),
-                        cursor::Left(2)
+                        cursor::Left(1)
                     )
                     .unwrap();
-                    stdout.flush().unwrap();
                 }
+
+                Key::Char('g') => {
+                    write!(stdout, " {}>{}", cursor::Goto(1, 3), cursor::Left(1)).unwrap();
+                }
+
+                Key::Char('G') => {
+                    write!(
+                        stdout,
+                        " {}>{}",
+                        cursor::Goto(1, *len as u16 + 2),
+                        cursor::Left(1)
+                    )
+                    .unwrap();
+                }
+
+                Key::Char('l') => {
+                    write!(stdout, "{}", screen::ToAlternateScreen).unwrap();
+
+                    let target = &entry_v.get((y - 2) as usize);
+                    if let Some(entry) = target {
+                        open(entry);
+                    }
+
+                    write!(stdout, "{}", screen::ToMainScreen).unwrap();
+                    write!(stdout, "{}", cursor::Hide).unwrap();
+                }
+
                 _ => {
-                    print!("{}{}", cursor::Goto(1, 1), clear::All);
                     print!("{}", cursor::Show);
                     break;
                 }
             }
         }
+        stdout.flush().unwrap();
     }
 }
