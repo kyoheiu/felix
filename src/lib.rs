@@ -50,6 +50,20 @@ fn push_entries(p: &std::path::PathBuf) -> Result<Vec<EntryInfo>, Error> {
     Ok(v)
 }
 
+fn list_up(p: &std::path::PathBuf, v: &std::vec::Vec<EntryInfo>) {
+    println!(
+        " {red}{}{reset}",
+        p.display(),
+        red = color::Bg(color::Magenta),
+        reset = color::Bg(color::Reset)
+    );
+
+    for (i, entry) in v.iter().enumerate() {
+        print!("{}", cursor::Goto(3, (i + 3).try_into().unwrap()));
+        println!("{}", entry.file_name);
+    }
+}
+
 fn open(entry: &EntryInfo) {
     let mut exec = Command::new("nvim");
     let path = &entry.file_name;
@@ -60,25 +74,14 @@ pub fn start() {
     let mut stdout = screen::AlternateScreen::from(std::io::stdout().into_raw_mode().unwrap());
     let mut stdin = stdin().keys();
 
-    println!("{}", clear::All);
-    println!("{}", cursor::Goto(1, 1));
+    print!("{}", clear::All);
+    print!("{}", cursor::Goto(1, 1));
 
     let path_buf = current_dir().unwrap();
 
-    println!(
-        " {red}{}{reset}",
-        path_buf.display(),
-        red = color::Bg(color::Magenta),
-        reset = color::Bg(color::Reset)
-    );
+    let mut entry_v = push_entries(&path_buf).unwrap();
 
-    println!("{}", cursor::Goto(1, 3));
-
-    let entry_v = push_entries(&path_buf).unwrap();
-    for (i, entry) in entry_v.iter().enumerate() {
-        print!("{}", cursor::Goto(3, (i + 3).try_into().unwrap()));
-        println!("{}", entry.file_name);
-    }
+    list_up(&path_buf, &entry_v);
 
     let len = &entry_v.len();
 
@@ -142,7 +145,16 @@ pub fn start() {
                     }
 
                     write!(stdout, "{}", screen::ToMainScreen).unwrap();
-                    write!(stdout, "{}", cursor::Hide).unwrap();
+                    write!(stdout, "{}{}", clear::All, cursor::Goto(1, 1)).unwrap();
+                    list_up(&path_buf, &entry_v);
+                    write!(
+                        stdout,
+                        "{}{}>{}",
+                        cursor::Hide,
+                        cursor::Goto(1, 3),
+                        cursor::Left(1)
+                    )
+                    .unwrap();
                 }
 
                 _ => {
