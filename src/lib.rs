@@ -1,4 +1,3 @@
-use std::convert::TryInto;
 use std::env::current_dir;
 use std::fs;
 use std::io::{stdin, stdout, Error, Write};
@@ -7,15 +6,18 @@ use termion::cursor::DetectCursorPos;
 use termion::event::Key;
 use termion::input::TermRead;
 use termion::screen;
-use termion::{clear, color, cursor, input, raw::IntoRawMode};
+use termion::scroll;
+use termion::{clear, color, cursor, raw::IntoRawMode};
 
+const STARTING_POINT: u16 = 4;
+
+#[derive(PartialEq, PartialOrd, Eq, Ord, Copy, Clone)]
 enum FileType {
-    File,
     Directory,
+    File,
 }
 
 struct EntryInfo {
-    line_number: usize,
     file_path: std::path::PathBuf,
     file_name: String,
     file_type: FileType,
@@ -24,30 +26,29 @@ struct EntryInfo {
 impl EntryInfo {
     fn open_file(&self) {
         let mut exec = Command::new("nvim");
-        let path = &self.file_name;
-        exec.arg(path).status().expect("failed");
-    }
-
-    fn open_directory(&self) {
         let path = &self.file_path;
-        Command::new("cd").arg(path).status().expect("failed");
+        exec.arg(path).status().expect("failed");
     }
 }
 
 fn make_parent_dir(p: std::path::PathBuf) -> EntryInfo {
     return EntryInfo {
-        line_number: 0,
         file_path: p.to_path_buf(),
-        file_name: "../".to_string(),
+        file_name: String::from("../"),
         file_type: FileType::Directory,
     };
 }
 
-fn make_entry(i: usize, dir: std::fs::DirEntry) -> EntryInfo {
+fn make_entry(dir: std::fs::DirEntry) -> EntryInfo {
     return EntryInfo {
-        line_number: i,
         file_path: dir.path(),
-        file_name: dir.file_name().into_string().unwrap(),
+        file_name: dir
+            .path()
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string(),
         file_type: if dir.path().is_file() {
             FileType::File
         } else {
@@ -57,22 +58,29 @@ fn make_entry(i: usize, dir: std::fs::DirEntry) -> EntryInfo {
 }
 
 fn push_entries(p: &std::path::PathBuf) -> Result<Vec<EntryInfo>, Error> {
-    let mut v = vec![];
-    let mut i = 1;
+    let mut dir_v = vec![];
+    let mut file_v = vec![];
 
     match p.parent() {
         Some(parent_p) => {
             let parent_dir = make_parent_dir(parent_p.to_path_buf());
-            v.push(parent_dir);
+            dir_v.push(parent_dir);
         }
         None => {}
     }
     for entry in fs::read_dir(p)? {
-        let entry = entry?;
-        v.push(make_entry(i, entry));
-        i = i + 1;
+        let e = entry?;
+        let entry = make_entry(e);
+        if entry.file_type == FileType::File {
+            file_v.push(entry);
+        } else {
+            dir_v.push(entry);
+        }
     }
-    Ok(v)
+    dir_v.sort_by_key(|entry| entry.file_name.clone());
+    file_v.sort_by_key(|entry| entry.file_name.clone());
+    dir_v.append(&mut file_v);
+    Ok(dir_v)
 }
 
 fn list_up(p: &std::path::PathBuf, v: &std::vec::Vec<EntryInfo>) {
@@ -83,9 +91,27 @@ fn list_up(p: &std::path::PathBuf, v: &std::vec::Vec<EntryInfo>) {
         reset = color::Bg(color::Reset)
     );
 
+    println!("{}__________", cursor::Goto(2, 2));
+
     for (i, entry) in v.iter().enumerate() {
-        print!("{}", cursor::Goto(3, (i + 3).try_into().unwrap()));
-        println!("{}", entry.file_name);
+        let i = i as u16;
+        print!("{}", cursor::Goto(3, i + STARTING_POINT));
+
+        if entry.file_type == FileType::File {
+            println!(
+                "{}{}{}",
+                color::Fg(color::LightWhite),
+                entry.file_name,
+                color::Fg(color::Reset)
+            );
+        } else {
+            println!(
+                "{}{}{}",
+                color::Fg(color::Green),
+                entry.file_name,
+                color::Fg(color::Reset)
+            );
+        }
     }
 }
 
@@ -99,43 +125,56 @@ pub fn start() {
     let mut path_buf = current_dir().unwrap();
 
     let mut entry_v = push_entries(&path_buf).unwrap();
-
     list_up(&path_buf, &entry_v);
 
-    print!("{}{}>{}", cursor::Hide, cursor::Goto(1, 4), cursor::Left(1));
+    print!(
+        "{}{}>{}",
+        cursor::Hide,
+        cursor::Goto(1, STARTING_POINT + 1),
+        cursor::Left(1)
+    );
+
+    let mut i = 1;
+
     screen.flush().unwrap();
 
     loop {
         let (_, y) = screen.cursor_pos().unwrap();
         let input = stdin.next();
-        let mut len = &entry_v.len();
+        let len = &entry_v.len();
 
         if let Some(Ok(key)) = input {
             match key {
                 Key::Char('j') | Key::Char('\n') => {
-                    if y > *len as u16 + 1 {
+                    if i == len - 1 {
                         continue;
                     };
                     print!(" {}\n>{}", cursor::Left(1), cursor::Left(1));
+                    i += 1;
                 }
 
                 Key::Char('k') => {
-                    if y == 3 {
+                    if y == STARTING_POINT {
                         continue;
                     };
                     print!(" {}{}>{}", cursor::Up(1), cursor::Left(1), cursor::Left(1));
+                    i -= 1;
                 }
 
                 Key::Char('g') => {
-                    print!(" {}>{}", cursor::Goto(1, 3), cursor::Left(1));
+                    print!(" {}>{}", cursor::Goto(1, STARTING_POINT), cursor::Left(1));
                 }
 
                 Key::Char('G') => {
-                    print!(" {}>{}", cursor::Goto(1, *len as u16 + 2), cursor::Left(1));
+                    print!(
+                        " {}>{}",
+                        cursor::Goto(1, *len as u16 + STARTING_POINT - 1),
+                        cursor::Left(1)
+                    );
                 }
 
                 Key::Char('l') => {
-                    let target = &entry_v.get((y - 3) as usize);
+                    let target = &entry_v.get((y - STARTING_POINT) as usize);
 
                     if let Some(entry) = target {
                         match entry.file_type {
@@ -160,9 +199,10 @@ pub fn start() {
                                 print!(
                                     "{}{}>{}",
                                     cursor::Hide,
-                                    cursor::Goto(1, 4),
+                                    cursor::Goto(1, STARTING_POINT + 1),
                                     cursor::Left(1)
                                 );
+                                i = 1;
                             }
                         }
                     }
