@@ -6,7 +6,6 @@ use termion::cursor::DetectCursorPos;
 use termion::event::Key;
 use termion::input::TermRead;
 use termion::screen;
-use termion::scroll;
 use termion::{clear, color, cursor, raw::IntoRawMode};
 
 const STARTING_POINT: u16 = 3;
@@ -319,12 +318,14 @@ pub fn start() {
                     print!(" ");
                     print!("{}>{}", cursor::Goto(1, 2), cursor::Right(2));
                     screen.flush().unwrap();
+                    let mut prefix = String::from("");
                     loop {
                         let input = stdin.next();
                         if let Some(Ok(key)) = input {
                             match key {
                                 Key::Char(c) => {
                                     print!("{}", c);
+                                    prefix.push(c);
                                     screen.flush().unwrap();
                                 }
                                 Key::Esc => {
