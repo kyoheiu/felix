@@ -10,6 +10,7 @@ use termion::scroll;
 use termion::{clear, color, cursor, raw::IntoRawMode};
 
 const STARTING_POINT: u16 = 3;
+const SEARCH_EMOJI: char = '\u{1F50D}';
 
 #[derive(PartialEq, PartialOrd, Eq, Ord, Copy, Clone)]
 enum FileType {
@@ -91,7 +92,7 @@ fn list_up(p: &std::path::PathBuf, v: &std::vec::Vec<EntryInfo>, skip_number: u1
         reset = color::Bg(color::Reset)
     );
 
-    print!("{}__________", cursor::Goto(2, 2));
+    print!("{}{}", cursor::Goto(2, 2), SEARCH_EMOJI);
 
     let (_, row) = termion::terminal_size().unwrap();
 
@@ -314,6 +315,32 @@ pub fn start() {
                     }
                 },
 
+                Key::Char('/') => {
+                    print!(" ");
+                    print!("{}>{}", cursor::Goto(1, 2), cursor::Right(2));
+                    screen.flush().unwrap();
+                    loop {
+                        let input = stdin.next();
+                        if let Some(Ok(key)) = input {
+                            match key {
+                                Key::Char(c) => {
+                                    print!("{}", c);
+                                    screen.flush().unwrap();
+                                }
+                                Key::Esc => {
+                                    print!("{}", clear::CurrentLine);
+                                    print!("{}{}", cursor::Goto(2, 2), SEARCH_EMOJI);
+                                    screen.flush().unwrap();
+                                    print!("{}>{}", cursor::Goto(1, 4), cursor::Left(1));
+                                    i = 1;
+                                    break;
+                                }
+                                _ => continue,
+                            }
+                        }
+                    }
+                }
+
                 Key::Esc => break,
 
                 _ => {
@@ -323,4 +350,5 @@ pub fn start() {
         }
         screen.flush().unwrap();
     }
+    print!("{}", cursor::Show);
 }
