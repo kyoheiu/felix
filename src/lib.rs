@@ -9,7 +9,7 @@ use termion::screen;
 use termion::scroll;
 use termion::{clear, color, cursor, raw::IntoRawMode};
 
-const STARTING_POINT: u16 = 4;
+const STARTING_POINT: u16 = 3;
 
 #[derive(PartialEq, PartialOrd, Eq, Ord, Copy, Clone)]
 enum FileType {
@@ -83,7 +83,7 @@ fn push_entries(p: &std::path::PathBuf) -> Result<Vec<EntryInfo>, Error> {
     Ok(dir_v)
 }
 
-fn list_up(p: &std::path::PathBuf, v: &std::vec::Vec<EntryInfo>) {
+fn list_up(p: &std::path::PathBuf, v: &std::vec::Vec<EntryInfo>, skip_number: u16) {
     println!(
         " {red}{}{reset}",
         p.display(),
@@ -91,26 +91,74 @@ fn list_up(p: &std::path::PathBuf, v: &std::vec::Vec<EntryInfo>) {
         reset = color::Bg(color::Reset)
     );
 
-    println!("{}__________", cursor::Goto(2, 2));
+    print!("{}__________", cursor::Goto(2, 2));
 
-    for (i, entry) in v.iter().enumerate() {
-        let i = i as u16;
-        print!("{}", cursor::Goto(3, i + STARTING_POINT));
+    let (_, row) = termion::terminal_size().unwrap();
 
-        if entry.file_type == FileType::File {
-            println!(
-                "{}{}{}",
-                color::Fg(color::LightWhite),
-                entry.file_name,
-                color::Fg(color::Reset)
-            );
-        } else {
-            println!(
-                "{}{}{}",
-                color::Fg(color::Green),
-                entry.file_name,
-                color::Fg(color::Reset)
-            );
+    let mut row_count = 0;
+
+    if row > STARTING_POINT - 1 && v.len() > (row - STARTING_POINT) as usize - 1 {
+        for (i, entry) in v.iter().enumerate() {
+            let i = i as u16;
+
+            if i < skip_number {
+                continue;
+            }
+
+            print!("{}", cursor::Goto(3, i + STARTING_POINT - skip_number));
+
+            if row_count == row - STARTING_POINT {
+                print!(
+                    "{}{}{}lines {}-{}{}{}",
+                    cursor::Left(2),
+                    color::Bg(color::LightWhite),
+                    color::Fg(color::Black),
+                    skip_number,
+                    row - STARTING_POINT + skip_number,
+                    color::Bg(color::Reset),
+                    color::Fg(color::Reset)
+                );
+                break;
+            }
+
+            if entry.file_type == FileType::File {
+                print!(
+                    "{}{}{}",
+                    color::Fg(color::LightWhite),
+                    entry.file_name,
+                    color::Fg(color::Reset)
+                );
+            } else {
+                print!(
+                    "{}{}{}",
+                    color::Fg(color::Green),
+                    entry.file_name,
+                    color::Fg(color::Reset)
+                );
+            }
+
+            row_count += 1;
+        }
+    } else {
+        for (i, entry) in v.iter().enumerate() {
+            let i = i as u16;
+            print!("{}", cursor::Goto(3, i + STARTING_POINT));
+
+            if entry.file_type == FileType::File {
+                println!(
+                    "{}{}{}",
+                    color::Fg(color::LightWhite),
+                    entry.file_name,
+                    color::Fg(color::Reset)
+                );
+            } else {
+                println!(
+                    "{}{}{}",
+                    color::Fg(color::Green),
+                    entry.file_name,
+                    color::Fg(color::Reset)
+                );
+            }
         }
     }
 }
@@ -125,7 +173,7 @@ pub fn start() {
     let mut path_buf = current_dir().unwrap();
 
     let mut entry_v = push_entries(&path_buf).unwrap();
-    list_up(&path_buf, &entry_v);
+    list_up(&path_buf, &entry_v, 0);
 
     print!(
         "{}{}>{}",
@@ -135,6 +183,8 @@ pub fn start() {
     );
 
     let mut i = 1;
+    let mut skip_number = 0;
+    let (_, row) = termion::terminal_size().unwrap();
 
     screen.flush().unwrap();
 
@@ -145,36 +195,73 @@ pub fn start() {
 
         if let Some(Ok(key)) = input {
             match key {
-                Key::Char('j') | Key::Char('\n') => {
+                Key::Char('j') | Key::Down => {
                     if i == len - 1 {
                         continue;
                     };
+
+                    if y == row - 1 && *len > (row - STARTING_POINT) as usize - 1 {
+                        skip_number += 1;
+                        print!("{}{}", clear::All, cursor::Goto(1, 1));
+                        list_up(&path_buf, &entry_v, skip_number);
+                        print!("{}>{}", cursor::Goto(1, row - 1), cursor::Left(1));
+                        i += 1;
+                        continue;
+                    }
+
                     print!(" {}\n>{}", cursor::Left(1), cursor::Left(1));
                     i += 1;
                 }
 
-                Key::Char('k') => {
+                Key::Char('k') | Key::Up => {
                     if y == STARTING_POINT {
-                        continue;
+                        if skip_number == 0 {
+                            continue;
+                        } else {
+                            skip_number -= 1;
+                            print!("{}{}", clear::All, cursor::Goto(1, 1));
+                            list_up(&path_buf, &entry_v, skip_number);
+                            print!("{}>{}", cursor::Goto(1, STARTING_POINT), cursor::Left(1));
+                            i -= 1;
+                            continue;
+                        }
                     };
                     print!(" {}{}>{}", cursor::Up(1), cursor::Left(1), cursor::Left(1));
                     i -= 1;
                 }
 
                 Key::Char('g') => {
-                    print!(" {}>{}", cursor::Goto(1, STARTING_POINT), cursor::Left(1));
+                    if i == 0 {
+                        continue;
+                    }
+                    if skip_number != 0 {
+                        skip_number = 0;
+                        print!("{}{}", clear::All, cursor::Goto(1, 1));
+                        list_up(&path_buf, &entry_v, skip_number);
+                    }
+                    print!("{}>{}", cursor::Goto(1, STARTING_POINT), cursor::Left(1));
+                    i = 0;
                 }
 
                 Key::Char('G') => {
+                    if *len > (row - STARTING_POINT) as usize {
+                        skip_number = (*len as u16) - row + STARTING_POINT;
+                        print!("{}{}", clear::All, cursor::Goto(1, 1));
+                        list_up(&path_buf, &entry_v, skip_number);
+                        print!("{}>{}", cursor::Goto(1, row - 1), cursor::Left(1));
+                        i = len - 1;
+                        continue;
+                    }
                     print!(
                         " {}>{}",
                         cursor::Goto(1, *len as u16 + STARTING_POINT - 1),
                         cursor::Left(1)
                     );
+                    i = len - 1;
                 }
 
-                Key::Char('l') => {
-                    let target = &entry_v.get((y - STARTING_POINT) as usize);
+                Key::Char('l') | Key::Char('\n') | Key::Right => {
+                    let target = &entry_v.get(i);
 
                     if let Some(entry) = target {
                         match entry.file_type {
@@ -183,7 +270,7 @@ pub fn start() {
                                 entry.open_file();
                                 print!("{}", screen::ToAlternateScreen);
                                 print!("{}{}", clear::All, cursor::Goto(1, 1));
-                                list_up(&path_buf, &entry_v);
+                                list_up(&path_buf, &entry_v, 0);
                                 print!(
                                     "{}{}>{}",
                                     cursor::Hide,
@@ -195,22 +282,42 @@ pub fn start() {
                                 path_buf = entry.file_path.to_path_buf();
                                 entry_v = push_entries(&path_buf).unwrap();
                                 print!("{}{}", clear::All, cursor::Goto(1, 1));
-                                list_up(&path_buf, &entry_v);
+                                list_up(&path_buf, &entry_v, 0);
                                 print!(
-                                    "{}{}>{}",
-                                    cursor::Hide,
+                                    "{}>{}",
                                     cursor::Goto(1, STARTING_POINT + 1),
                                     cursor::Left(1)
                                 );
+                                skip_number = 0;
                                 i = 1;
                             }
                         }
                     }
                 }
 
+                Key::Char('h') | Key::Left => match path_buf.parent() {
+                    Some(parent_p) => {
+                        path_buf = parent_p.to_path_buf();
+                        entry_v = push_entries(&path_buf).unwrap();
+                        print!("{}{}", clear::All, cursor::Goto(1, 1));
+                        list_up(&path_buf, &entry_v, 0);
+                        print!(
+                            "{}>{}",
+                            cursor::Goto(1, STARTING_POINT + 1),
+                            cursor::Left(1)
+                        );
+                        skip_number = 0;
+                        i = 1;
+                    }
+                    None => {
+                        continue;
+                    }
+                },
+
+                Key::Esc => break,
+
                 _ => {
-                    print!("{}", cursor::Show);
-                    break;
+                    continue;
                 }
             }
         }
