@@ -324,9 +324,10 @@ pub fn start() {
                     }
                 },
 
+                //Enter the filter mode
                 Key::Char('/') => {
                     print!(" ");
-                    print!("{}>{}", cursor::Goto(1, 2), cursor::Right(2));
+                    print!("{}>{}", cursor::Goto(1, 2), cursor::Right(4));
                     screen.flush().unwrap();
                     let mut word = String::from("");
                     loop {
@@ -365,7 +366,7 @@ pub fn start() {
                                     break;
                                 }
 
-                                //case-sensitive filter
+                                //Enter word for case-sensitive filter
                                 Key::Char(c) => {
                                     print!("{}", c);
                                     word.push(c);
