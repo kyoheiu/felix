@@ -42,13 +42,14 @@ fn make_parent_dir(p: std::path::PathBuf) -> EntryInfo {
 fn make_entry(dir: std::fs::DirEntry) -> EntryInfo {
     return EntryInfo {
         file_path: dir.path(),
+        //todo: I have no idea what I'm doing
         file_name: dir
             .path()
             .file_name()
             .unwrap()
-            .to_str()
-            .unwrap()
-            .to_string(),
+            .to_os_string()
+            .into_string()
+            .unwrap(),
         file_type: if dir.path().is_file() {
             FileType::File
         } else {
@@ -84,6 +85,7 @@ fn push_entries(p: &std::path::PathBuf) -> Result<Vec<EntryInfo>, Error> {
 }
 
 fn list_up(p: &std::path::PathBuf, v: &std::vec::Vec<EntryInfo>, skip_number: u16) {
+    //Show current directory path
     println!(
         " {red}{}{reset}",
         p.display(),
@@ -91,12 +93,14 @@ fn list_up(p: &std::path::PathBuf, v: &std::vec::Vec<EntryInfo>, skip_number: u1
         reset = color::Bg(color::Reset)
     );
 
+    //Show filter emoji and space
     print!("{}{}", cursor::Goto(2, 2), SEARCH_EMOJI);
 
     let (_, row) = termion::terminal_size().unwrap();
 
     let mut row_count = 0;
 
+    //if lists exceeds the max-row of terminal
     if row > STARTING_POINT - 1 && v.len() > (row - STARTING_POINT) as usize - 1 {
         for (i, entry) in v.iter().enumerate() {
             let i = i as u16;
@@ -164,8 +168,9 @@ fn list_up(p: &std::path::PathBuf, v: &std::vec::Vec<EntryInfo>, skip_number: u1
 }
 
 pub fn start() {
+    let (_, row) = termion::terminal_size().unwrap();
+
     let mut screen = screen::AlternateScreen::from(std::io::stdout().into_raw_mode().unwrap());
-    let mut stdin = stdin().keys();
 
     print!("{}", clear::All);
     print!("{}", cursor::Goto(1, 1));
@@ -181,12 +186,11 @@ pub fn start() {
         cursor::Goto(1, STARTING_POINT + 1),
         cursor::Left(1)
     );
+    screen.flush().unwrap();
 
     let mut i = 1;
     let mut skip_number = 0;
-    let (_, row) = termion::terminal_size().unwrap();
-
-    screen.flush().unwrap();
+    let mut stdin = stdin().keys();
 
     loop {
         let (_, y) = screen.cursor_pos().unwrap();
@@ -195,6 +199,7 @@ pub fn start() {
 
         if let Some(Ok(key)) = input {
             match key {
+                //Go up
                 Key::Char('j') | Key::Down => {
                     if i == len - 1 {
                         continue;
@@ -213,6 +218,7 @@ pub fn start() {
                     i += 1;
                 }
 
+                //Go down
                 Key::Char('k') | Key::Up => {
                     if y == STARTING_POINT {
                         if skip_number == 0 {
@@ -230,6 +236,7 @@ pub fn start() {
                     i -= 1;
                 }
 
+                //Go to first line of lists
                 Key::Char('g') => {
                     if i == 0 {
                         continue;
@@ -243,6 +250,7 @@ pub fn start() {
                     i = 0;
                 }
 
+                //Go to end line of lists
                 Key::Char('G') => {
                     if *len > (row - STARTING_POINT) as usize {
                         skip_number = (*len as u16) - row + STARTING_POINT;
@@ -260,6 +268,7 @@ pub fn start() {
                     i = len - 1;
                 }
 
+                //Choose file(exec in any way fo now) or directory(change lists as if `cd`)
                 Key::Char('l') | Key::Char('\n') | Key::Right => {
                     let target = &entry_v.get(i);
 
@@ -295,6 +304,7 @@ pub fn start() {
                     }
                 }
 
+                //Go to parent directory if exists
                 Key::Char('h') | Key::Left => match path_buf.parent() {
                     Some(parent_p) => {
                         path_buf = parent_p.to_path_buf();
@@ -318,23 +328,60 @@ pub fn start() {
                     print!(" ");
                     print!("{}>{}", cursor::Goto(1, 2), cursor::Right(2));
                     screen.flush().unwrap();
-                    let mut prefix = String::from("");
+                    let mut word = String::from("");
                     loop {
                         let input = stdin.next();
                         if let Some(Ok(key)) = input {
                             match key {
-                                Key::Char(c) => {
-                                    print!("{}", c);
-                                    prefix.push(c);
-                                    screen.flush().unwrap();
-                                }
-                                Key::Esc => {
+                                //Go to filtered lists
+                                Key::Char('\n') => {
                                     print!("{}", clear::CurrentLine);
                                     print!("{}{}", cursor::Goto(2, 2), SEARCH_EMOJI);
                                     screen.flush().unwrap();
-                                    print!("{}>{}", cursor::Goto(1, 4), cursor::Left(1));
-                                    i = 1;
+
+                                    print!("{}>{}", cursor::Goto(1, 3), cursor::Left(1));
+                                    i = 0;
                                     break;
+                                }
+
+                                //Quit filter mode and return to original lists
+                                Key::Esc => {
+                                    print!("{}", clear::All);
+                                    print!("{}", cursor::Goto(1, 1));
+
+                                    entry_v = push_entries(&path_buf).unwrap();
+                                    list_up(&path_buf, &entry_v, 0);
+
+                                    print!(
+                                        "{}{}>{}",
+                                        cursor::Hide,
+                                        cursor::Goto(1, STARTING_POINT + 1),
+                                        cursor::Left(1)
+                                    );
+
+                                    i = 1;
+                                    skip_number = 0;
+
+                                    break;
+                                }
+
+                                //case-sensitive filter
+                                Key::Char(c) => {
+                                    print!("{}", c);
+                                    word.push(c);
+
+                                    entry_v = entry_v
+                                        .into_iter()
+                                        .filter(|entry| entry.file_name.contains(&word))
+                                        .collect();
+
+                                    skip_number = 0;
+                                    print!("{}{}", clear::All, cursor::Goto(1, 1));
+                                    list_up(&path_buf, &entry_v, skip_number);
+
+                                    print!("{}>{}{}", cursor::Goto(1, 2), word, cursor::Right(2));
+
+                                    screen.flush().unwrap();
                                 }
                                 _ => continue,
                             }
