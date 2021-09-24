@@ -11,7 +11,7 @@ use termion::{clear, color, cursor, raw::IntoRawMode};
 const STARTING_POINT: u16 = 3;
 const SEARCH_EMOJI: char = '\u{1F50D}';
 
-#[derive(PartialEq, PartialOrd, Eq, Ord, Copy, Clone)]
+#[derive(PartialEq, PartialOrd, Eq, Ord, Copy, Clone, Debug)]
 enum FileType {
     Directory,
     File,
@@ -100,7 +100,7 @@ fn list_up(p: &std::path::PathBuf, v: &std::vec::Vec<EntryInfo>, skip_number: u1
 
     let mut row_count = 0;
 
-    //if lists exceeds the max-row of terminal
+    //if lists exceeds max-row
     if row > STARTING_POINT - 1 && v.len() > (row - STARTING_POINT) as usize - 1 {
         for (i, entry) in v.iter().enumerate() {
             let i = i as u16;
@@ -176,7 +176,6 @@ pub fn start() {
     print!("{}", cursor::Goto(1, 1));
 
     let mut path_buf = current_dir().unwrap();
-
     let mut entry_v = push_entries(&path_buf).unwrap();
     list_up(&path_buf, &entry_v, 0);
 
@@ -199,17 +198,17 @@ pub fn start() {
 
         if let Some(Ok(key)) = input {
             match key {
-                //Go up
+                //Go up. If lists exceeds max-row, lists "scrolls" before the top of the list.
                 Key::Char('j') | Key::Down => {
                     if i == len - 1 {
                         continue;
                     };
 
-                    if y == row - 1 && *len > (row - STARTING_POINT) as usize - 1 {
+                    if y == row - 4 && *len > (row - STARTING_POINT) as usize - 1 {
                         skip_number += 1;
                         print!("{}{}", clear::All, cursor::Goto(1, 1));
                         list_up(&path_buf, &entry_v, skip_number);
-                        print!("{}>{}", cursor::Goto(1, row - 1), cursor::Left(1));
+                        print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                         i += 1;
                         continue;
                     }
@@ -218,20 +217,25 @@ pub fn start() {
                     i += 1;
                 }
 
-                //Go down
+                //Go down. If lists exceeds max-row, lists "scrolls" before the bottom of the list.
                 Key::Char('k') | Key::Up => {
                     if y == STARTING_POINT {
-                        if skip_number == 0 {
-                            continue;
-                        } else {
-                            skip_number -= 1;
-                            print!("{}{}", clear::All, cursor::Goto(1, 1));
-                            list_up(&path_buf, &entry_v, skip_number);
-                            print!("{}>{}", cursor::Goto(1, STARTING_POINT), cursor::Left(1));
-                            i -= 1;
-                            continue;
-                        }
+                        continue;
+                    }
+
+                    if y == STARTING_POINT + 3 && skip_number != 0 {
+                        skip_number -= 1;
+                        print!("{}{}", clear::All, cursor::Goto(1, 1));
+                        list_up(&path_buf, &entry_v, skip_number);
+                        print!(
+                            "{}>{}",
+                            cursor::Goto(1, STARTING_POINT + 3),
+                            cursor::Left(1)
+                        );
+                        i -= 1;
+                        continue;
                     };
+
                     print!(" {}{}>{}", cursor::Up(1), cursor::Left(1), cursor::Left(1));
                     i -= 1;
                 }
@@ -246,7 +250,7 @@ pub fn start() {
                         print!("{}{}", clear::All, cursor::Goto(1, 1));
                         list_up(&path_buf, &entry_v, skip_number);
                     }
-                    print!("{}>{}", cursor::Goto(1, STARTING_POINT), cursor::Left(1));
+                    print!(" {}>{}", cursor::Goto(1, STARTING_POINT), cursor::Left(1));
                     i = 0;
                 }
 
@@ -279,7 +283,7 @@ pub fn start() {
                                 entry.open_file();
                                 print!("{}", screen::ToAlternateScreen);
                                 print!("{}{}", clear::All, cursor::Goto(1, 1));
-                                list_up(&path_buf, &entry_v, 0);
+                                list_up(&path_buf, &entry_v, skip_number);
                                 print!(
                                     "{}{}>{}",
                                     cursor::Hide,
