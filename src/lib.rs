@@ -7,12 +7,12 @@ use std::process::Command;
 use termion::cursor::DetectCursorPos;
 use termion::event::Key;
 use termion::input::TermRead;
-use termion::screen;
-use termion::{clear, color, cursor, raw::IntoRawMode, style};
+use termion::raw::IntoRawMode;
+use termion::{clear, color, cursor, screen, style};
 
 const STARTING_POINT: u16 = 3;
 const SEARCH_EMOJI: char = '\u{1F50D}';
-const CONFIG_FILE: &str = "fm/fm.toml";
+const CONFIG_FILE: &str = "fm/config.toml";
 const TRUSH: &str = "fm/trash";
 
 #[derive(PartialEq, PartialOrd, Eq, Ord, Copy, Clone, Debug)]
