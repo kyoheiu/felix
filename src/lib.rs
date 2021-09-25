@@ -11,8 +11,8 @@ use termion::{clear, color, cursor, raw::IntoRawMode, style};
 
 const STARTING_POINT: u16 = 3;
 const SEARCH_EMOJI: char = '\u{1F50D}';
-const CONFIG_FILE: &str = "~/.config/fm/fm.toml";
-const TRUSH: &str = "~/config/fm/trash";
+//const CONFIG_FILE: &str = "~/.config/fm/fm.toml";
+//const TRUSH: &str = "~/config/fm/trash";
 
 #[derive(PartialEq, PartialOrd, Eq, Ord, Copy, Clone, Debug)]
 enum FileType {
@@ -198,7 +198,7 @@ pub fn start() {
     );
     screen.flush().unwrap();
 
-    let mut i = 1;
+    let mut index = 1;
     let mut skip_number = 0;
     let mut stdin = stdin().keys();
 
@@ -211,7 +211,7 @@ pub fn start() {
             match key {
                 //Go up. If lists exceeds max-row, lists "scrolls" before the top of the list.
                 Key::Char('j') | Key::Down => {
-                    if i == len - 1 {
+                    if index == len - 1 {
                         continue;
                     };
 
@@ -220,12 +220,12 @@ pub fn start() {
                         print!("{}{}", clear::All, cursor::Goto(1, 1));
                         list_up(&path_buf, &entry_v, skip_number);
                         print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
-                        i += 1;
+                        index += 1;
                         continue;
                     }
 
                     print!(" {}\n>{}", cursor::Left(1), cursor::Left(1));
-                    i += 1;
+                    index += 1;
                 }
 
                 //Go down. If lists exceeds max-row, lists "scrolls" before the bottom of the list.
@@ -243,17 +243,17 @@ pub fn start() {
                             cursor::Goto(1, STARTING_POINT + 3),
                             cursor::Left(1)
                         );
-                        i -= 1;
+                        index -= 1;
                         continue;
                     };
 
                     print!(" {}{}>{}", cursor::Up(1), cursor::Left(1), cursor::Left(1));
-                    i -= 1;
+                    index -= 1;
                 }
 
                 //Go to first line of lists
                 Key::Char('g') => {
-                    if i == 0 {
+                    if index == 0 {
                         continue;
                     }
                     if skip_number != 0 {
@@ -262,7 +262,7 @@ pub fn start() {
                         list_up(&path_buf, &entry_v, skip_number);
                     }
                     print!(" {}>{}", cursor::Goto(1, STARTING_POINT), cursor::Left(1));
-                    i = 0;
+                    index = 0;
                 }
 
                 //Go to end line of lists
@@ -272,7 +272,7 @@ pub fn start() {
                         print!("{}{}", clear::All, cursor::Goto(1, 1));
                         list_up(&path_buf, &entry_v, skip_number);
                         print!("{}>{}", cursor::Goto(1, row - 1), cursor::Left(1));
-                        i = len - 1;
+                        index = len - 1;
                         continue;
                     }
                     print!(
@@ -280,12 +280,12 @@ pub fn start() {
                         cursor::Goto(1, *len as u16 + STARTING_POINT - 1),
                         cursor::Left(1)
                     );
-                    i = len - 1;
+                    index = len - 1;
                 }
 
                 //Choose file(exec in any way fo now) or directory(change lists as if `cd`)
                 Key::Char('l') | Key::Char('\n') | Key::Right => {
-                    let target = &entry_v.get(i);
+                    let target = &entry_v.get(index);
 
                     if let Some(entry) = target {
                         match entry.file_type {
@@ -313,7 +313,7 @@ pub fn start() {
                                     cursor::Left(1)
                                 );
                                 skip_number = 0;
-                                i = 1;
+                                index = 1;
                             }
                         }
                     }
@@ -332,7 +332,7 @@ pub fn start() {
                             cursor::Left(1)
                         );
                         skip_number = 0;
-                        i = 1;
+                        index = 1;
                     }
                     None => {
                         continue;
@@ -356,7 +356,7 @@ pub fn start() {
                                     screen.flush().unwrap();
 
                                     print!("{}>{}", cursor::Goto(1, 3), cursor::Left(1));
-                                    i = 0;
+                                    index = 0;
                                     break;
                                 }
 
@@ -375,7 +375,7 @@ pub fn start() {
                                         cursor::Left(1)
                                     );
 
-                                    i = 1;
+                                    index = 1;
                                     skip_number = 0;
 
                                     break;
