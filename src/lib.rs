@@ -213,28 +213,23 @@ pub fn start() {
                 Key::Char('j') | Key::Down => {
                     if index == len - 1 {
                         continue;
-                    };
-
-                    if y == row - 4 && *len > (row - STARTING_POINT) as usize - 1 {
+                    } else if y == row - 4 && *len > (row - STARTING_POINT) as usize - 1 {
                         skip_number += 1;
                         print!("{}{}", clear::All, cursor::Goto(1, 1));
                         list_up(&path_buf, &entry_v, skip_number);
                         print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                         index += 1;
                         continue;
+                    } else {
+                        print!(" {}\n>{}", cursor::Left(1), cursor::Left(1));
+                        index += 1;
                     }
-
-                    print!(" {}\n>{}", cursor::Left(1), cursor::Left(1));
-                    index += 1;
                 }
 
                 //Go down. If lists exceeds max-row, lists "scrolls" before the bottom of the list.
                 Key::Char('k') | Key::Up => {
                     if y == STARTING_POINT {
-                        continue;
-                    }
-
-                    if y == STARTING_POINT + 3 && skip_number != 0 {
+                    } else if y == STARTING_POINT + 3 && skip_number != 0 {
                         skip_number -= 1;
                         print!("{}{}", clear::All, cursor::Goto(1, 1));
                         list_up(&path_buf, &entry_v, skip_number);
@@ -244,25 +239,24 @@ pub fn start() {
                             cursor::Left(1)
                         );
                         index -= 1;
-                        continue;
-                    };
-
-                    print!(" {}{}>{}", cursor::Up(1), cursor::Left(1), cursor::Left(1));
-                    index -= 1;
+                    } else {
+                        print!(" {}{}>{}", cursor::Up(1), cursor::Left(1), cursor::Left(1));
+                        index -= 1;
+                    }
                 }
 
                 //Go to first line of lists
                 Key::Char('g') => {
                     if index == 0 {
                         continue;
-                    }
-                    if skip_number != 0 {
+                    } else if skip_number != 0 {
                         skip_number = 0;
                         print!("{}{}", clear::All, cursor::Goto(1, 1));
                         list_up(&path_buf, &entry_v, skip_number);
+                    } else {
+                        print!(" {}>{}", cursor::Goto(1, STARTING_POINT), cursor::Left(1));
+                        index = 0;
                     }
-                    print!(" {}>{}", cursor::Goto(1, STARTING_POINT), cursor::Left(1));
-                    index = 0;
                 }
 
                 //Go to end line of lists
@@ -273,14 +267,14 @@ pub fn start() {
                         list_up(&path_buf, &entry_v, skip_number);
                         print!("{}>{}", cursor::Goto(1, row - 1), cursor::Left(1));
                         index = len - 1;
-                        continue;
+                    } else {
+                        print!(
+                            " {}>{}",
+                            cursor::Goto(1, *len as u16 + STARTING_POINT - 1),
+                            cursor::Left(1)
+                        );
+                        index = len - 1;
                     }
-                    print!(
-                        " {}>{}",
-                        cursor::Goto(1, *len as u16 + STARTING_POINT - 1),
-                        cursor::Left(1)
-                    );
-                    index = len - 1;
                 }
 
                 //Choose file(exec in any way fo now) or directory(change lists as if `cd`)
