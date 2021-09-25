@@ -1,15 +1,18 @@
 use std::env::current_dir;
 use std::fs;
 use std::io::{stdin, stdout, Error, Write};
+use std::path;
 use std::process::Command;
 use termion::cursor::DetectCursorPos;
 use termion::event::Key;
 use termion::input::TermRead;
 use termion::screen;
-use termion::{clear, color, cursor, raw::IntoRawMode};
+use termion::{clear, color, cursor, raw::IntoRawMode, style};
 
 const STARTING_POINT: u16 = 3;
 const SEARCH_EMOJI: char = '\u{1F50D}';
+const CONFIG_FILE: &str = "~/.config/fm/fm.toml";
+const TRUSH: &str = "~/config/fm/trash";
 
 #[derive(PartialEq, PartialOrd, Eq, Ord, Copy, Clone, Debug)]
 enum FileType {
@@ -28,6 +31,24 @@ impl EntryInfo {
         let mut exec = Command::new("nvim");
         let path = &self.file_path;
         exec.arg(path).status().expect("failed");
+    }
+
+    fn print(&self) {
+        if self.file_type == FileType::File {
+            print!(
+                "{}{}{}",
+                color::Fg(color::LightWhite),
+                &self.file_name,
+                color::Fg(color::Reset)
+            );
+        } else {
+            print!(
+                "{}{}{}",
+                color::Fg(color::Cyan),
+                &self.file_name,
+                color::Fg(color::Reset)
+            );
+        }
     }
 }
 
@@ -84,24 +105,43 @@ fn push_entries(p: &std::path::PathBuf) -> Result<Vec<EntryInfo>, Error> {
     Ok(dir_v)
 }
 
+//fn make_config() -> std::io::Result<()> {
+//let config_file = path::Path::new(CONFIG_FILE);
+//let trush = path::Path::new(TRUSH);
+
+//if !trush.exists() {
+//fs::create_dir_all(trush)?;
+//}
+
+//if !config_file.exists() {
+//fs::File::create(config_file)?;
+//}
+
+//Ok(())
+//}
+
 fn list_up(p: &std::path::PathBuf, v: &std::vec::Vec<EntryInfo>, skip_number: u16) {
     //Show current directory path
     println!(
-        " {red}{}{reset}",
+        " {}{}{}{}{}{}{}",
+        style::Bold,
+        color::Bg(color::Cyan),
+        color::Fg(color::Black),
         p.display(),
-        red = color::Bg(color::Magenta),
-        reset = color::Bg(color::Reset)
+        style::Reset,
+        color::Bg(color::Reset),
+        color::Fg(color::Reset)
     );
 
     //Show filter emoji and space
     print!("{}{}", cursor::Goto(2, 2), SEARCH_EMOJI);
 
     let (_, row) = termion::terminal_size().unwrap();
-
-    let mut row_count = 0;
+    let len = v.len();
 
     //if lists exceeds max-row
     if row > STARTING_POINT - 1 && v.len() > (row - STARTING_POINT) as usize - 1 {
+        let mut row_count = 0;
         for (i, entry) in v.iter().enumerate() {
             let i = i as u16;
 
@@ -113,56 +153,27 @@ fn list_up(p: &std::path::PathBuf, v: &std::vec::Vec<EntryInfo>, skip_number: u1
 
             if row_count == row - STARTING_POINT {
                 print!(
-                    "{}{}{}lines {}-{}{}{}",
+                    "  {}{}{}lines {}-{}({}){}{}",
                     cursor::Left(2),
                     color::Bg(color::LightWhite),
                     color::Fg(color::Black),
                     skip_number,
                     row - STARTING_POINT + skip_number,
+                    len,
                     color::Bg(color::Reset),
                     color::Fg(color::Reset)
                 );
                 break;
-            }
-
-            if entry.file_type == FileType::File {
-                print!(
-                    "{}{}{}",
-                    color::Fg(color::LightWhite),
-                    entry.file_name,
-                    color::Fg(color::Reset)
-                );
             } else {
-                print!(
-                    "{}{}{}",
-                    color::Fg(color::Green),
-                    entry.file_name,
-                    color::Fg(color::Reset)
-                );
+                entry.print();
+                row_count += 1;
             }
-
-            row_count += 1;
         }
     } else {
         for (i, entry) in v.iter().enumerate() {
             let i = i as u16;
             print!("{}", cursor::Goto(3, i + STARTING_POINT));
-
-            if entry.file_type == FileType::File {
-                println!(
-                    "{}{}{}",
-                    color::Fg(color::LightWhite),
-                    entry.file_name,
-                    color::Fg(color::Reset)
-                );
-            } else {
-                println!(
-                    "{}{}{}",
-                    color::Fg(color::Green),
-                    entry.file_name,
-                    color::Fg(color::Reset)
-                );
-            }
+            entry.print();
         }
     }
 }
@@ -372,7 +383,6 @@ pub fn start() {
 
                                 //Enter word for case-sensitive filter
                                 Key::Char(c) => {
-                                    print!("{}", c);
                                     word.push(c);
 
                                     entry_v = entry_v
@@ -388,6 +398,25 @@ pub fn start() {
 
                                     screen.flush().unwrap();
                                 }
+
+                                Key::Backspace => {
+                                    word.pop();
+
+                                    entry_v = push_entries(&path_buf).unwrap();
+                                    entry_v = entry_v
+                                        .into_iter()
+                                        .filter(|entry| entry.file_name.contains(&word))
+                                        .collect();
+
+                                    skip_number = 0;
+                                    print!("{}{}", clear::All, cursor::Goto(1, 1));
+                                    list_up(&path_buf, &entry_v, skip_number);
+
+                                    print!("{}>{}{}", cursor::Goto(1, 2), word, cursor::Right(2));
+
+                                    screen.flush().unwrap();
+                                }
+
                                 _ => continue,
                             }
                         }
