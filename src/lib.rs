@@ -1,7 +1,8 @@
+use dirs;
 use std::env::current_dir;
 use std::fs;
 use std::io::{stdin, stdout, Error, Write};
-use std::path;
+use std::path::PathBuf;
 use std::process::Command;
 use termion::cursor::DetectCursorPos;
 use termion::event::Key;
@@ -11,8 +12,8 @@ use termion::{clear, color, cursor, raw::IntoRawMode, style};
 
 const STARTING_POINT: u16 = 3;
 const SEARCH_EMOJI: char = '\u{1F50D}';
-//const CONFIG_FILE: &str = "~/.config/fm/fm.toml";
-//const TRUSH: &str = "~/config/fm/trash";
+const CONFIG_FILE: &str = "fm/fm.toml";
+const TRUSH: &str = "fm/trash";
 
 #[derive(PartialEq, PartialOrd, Eq, Ord, Copy, Clone, Debug)]
 enum FileType {
@@ -105,20 +106,21 @@ fn push_entries(p: &std::path::PathBuf) -> Result<Vec<EntryInfo>, Error> {
     Ok(dir_v)
 }
 
-//fn make_config() -> std::io::Result<()> {
-//let config_file = path::Path::new(CONFIG_FILE);
-//let trush = path::Path::new(TRUSH);
+fn make_config() -> std::io::Result<()> {
+    let config_dir = dirs::config_dir().unwrap();
+    let config_file = config_dir.join(PathBuf::from(CONFIG_FILE));
+    let trush_dir = config_dir.join(PathBuf::from(TRUSH));
 
-//if !trush.exists() {
-//fs::create_dir_all(trush)?;
-//}
+    if !trush_dir.exists() {
+        fs::create_dir_all(trush_dir)?;
+    }
 
-//if !config_file.exists() {
-//fs::File::create(config_file)?;
-//}
+    if !config_file.exists() {
+        fs::File::create(config_file)?;
+    }
 
-//Ok(())
-//}
+    Ok(())
+}
 
 fn list_up(p: &std::path::PathBuf, v: &std::vec::Vec<EntryInfo>, skip_number: u16) {
     //Show current directory path
@@ -179,6 +181,8 @@ fn list_up(p: &std::path::PathBuf, v: &std::vec::Vec<EntryInfo>, skip_number: u1
 }
 
 pub fn start() {
+    let _ = make_config();
+
     let (_, row) = termion::terminal_size().unwrap();
 
     let mut screen = screen::AlternateScreen::from(std::io::stdout().into_raw_mode().unwrap());
