@@ -1,0 +1,30 @@
+# Pick one of the following:
+#   AnsiValue
+#   Black
+#   Blue
+#   Cyan
+#   Green
+#   LightBlack
+#   LightBlue
+#   LightCyan
+#   LightGreen
+#   LightMagenta
+#   LightRed
+#   LightWhite
+#   LightYellow
+#   Magenta
+#   Red
+#   Rgb(u8, u8, u8)
+#   White
+#   Yellow
+[color]
+current_dir_bg = "Cyan"
+current_dir_fg = "Black"
+
+dir_fg = "Cyan"
+file_fg = "LightWhite"
+
+# key(extention) = value(shell command)
+[exec]
+default = "nvim"
+jpg = "feh"
