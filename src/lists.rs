@@ -3,7 +3,7 @@ use super::entry::*;
 use dirs;
 use std::env::current_dir;
 use std::fs;
-use std::io::{stdin, Error, Write};
+use std::io::{stdin, stdout, Error, Write};
 use std::path::PathBuf;
 use termion::cursor::DetectCursorPos;
 use termion::event::Key;
@@ -16,7 +16,7 @@ const SEARCH_EMOJI: char = '\u{1F50D}';
 const CONFIG_FILE: &str = "fm/config.toml";
 const TRUSH: &str = "fm/trash";
 
-fn make_parent_dir(p: std::path::PathBuf) -> EntryInfo {
+fn make_parent_dir(p: PathBuf) -> EntryInfo {
     return EntryInfo {
         file_path: p.to_path_buf(),
         file_name: String::from("../"),
@@ -24,7 +24,7 @@ fn make_parent_dir(p: std::path::PathBuf) -> EntryInfo {
     };
 }
 
-fn make_entry(dir: std::fs::DirEntry) -> EntryInfo {
+fn make_entry(dir: fs::DirEntry) -> EntryInfo {
     return EntryInfo {
         file_path: dir.path(),
         //todo: I have no idea what I'm doing
@@ -43,7 +43,7 @@ fn make_entry(dir: std::fs::DirEntry) -> EntryInfo {
     };
 }
 
-fn push_entries(p: &std::path::PathBuf) -> Result<Vec<EntryInfo>, Error> {
+fn push_entries(p: &PathBuf) -> Result<Vec<EntryInfo>, Error> {
     let mut dir_v = vec![];
     let mut file_v = vec![];
 
@@ -84,12 +84,7 @@ fn make_config() -> std::io::Result<()> {
     Ok(())
 }
 
-fn list_up(
-    config: &Config,
-    p: &std::path::PathBuf,
-    v: &std::vec::Vec<EntryInfo>,
-    skip_number: u16,
-) {
+fn list_up(config: &Config, p: &PathBuf, v: &std::vec::Vec<EntryInfo>, skip_number: u16) {
     //Show current directory path
     println!(
         " {}{}{}{}{}{}{}",
@@ -153,7 +148,7 @@ pub fn start() {
 
     let (_, row) = termion::terminal_size().unwrap();
 
-    let mut screen = screen::AlternateScreen::from(std::io::stdout().into_raw_mode().unwrap());
+    let mut screen = screen::AlternateScreen::from(stdout().into_raw_mode().unwrap());
 
     print!("{}", clear::All);
     print!("{}", cursor::Goto(1, 1));
