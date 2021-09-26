@@ -29,10 +29,27 @@ struct EntryInfo {
 }
 
 impl EntryInfo {
-    fn open_file(&self) {
-        let mut exec = Command::new("nvim");
+    fn open_file(&self, config: &Config) {
         let path = &self.file_path;
-        exec.arg(path).status().expect("failed");
+        let extention = path
+            .extension()
+            .unwrap()
+            .to_os_string()
+            .into_string()
+            .unwrap();
+        let ext_map = &config.exec;
+
+        match ext_map.get(&extention) {
+            Some(exec) => {
+                let mut ex = Command::new(exec);
+                ex.arg(path).status().expect("failed");
+            }
+            None => {
+                let default = ext_map.get("default").unwrap();
+                let mut ex = Command::new(default);
+                ex.arg(path).status().expect("failed");
+            }
+        }
     }
 
     fn print(&self, config: &Config) {
@@ -576,7 +593,7 @@ pub fn start() {
                         match entry.file_type {
                             FileType::File => {
                                 print!("{}", screen::ToAlternateScreen);
-                                entry.open_file();
+                                entry.open_file(&config);
                                 print!("{}", screen::ToAlternateScreen);
                                 print!("{}{}", clear::All, cursor::Goto(1, 1));
                                 list_up(&config, &path_buf, &entry_v, skip_number);
