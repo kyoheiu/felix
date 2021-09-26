@@ -1,5 +1,6 @@
-mod lib;
+mod config;
+mod lists;
 
 fn main() {
-    lib::start();
+    lists::start();
 }
