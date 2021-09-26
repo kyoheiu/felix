@@ -2,7 +2,7 @@ use super::config::{Colorname, Config};
 use std::process::Command;
 use termion::color;
 
-#[derive(PartialEq, PartialOrd, Eq, Ord, Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum FileType {
     Directory,
     File,
@@ -17,21 +17,26 @@ pub struct EntryInfo {
 impl EntryInfo {
     pub fn open_file(&self, config: &Config) {
         let path = &self.file_path;
-        let extention = path
-            .extension()
-            .unwrap()
-            .to_os_string()
-            .into_string()
-            .unwrap();
+        //todo: have to deal with files like `.gitignore`
         let ext_map = &config.exec;
-
-        match ext_map.get(&extention) {
-            Some(exec) => {
-                let mut ex = Command::new(exec);
-                ex.arg(path).status().expect("failed");
+        let extention = path.extension();
+        let default = ext_map.get("default").unwrap();
+        match extention {
+            Some(extention) => {
+                let ext = extention.to_os_string().into_string().unwrap();
+                match ext_map.get(&ext) {
+                    Some(exec) => {
+                        let mut ex = Command::new(exec);
+                        ex.arg(path).status().expect("failed");
+                    }
+                    None => {
+                        let mut ex = Command::new(default);
+                        ex.arg(path).status().expect("failed");
+                    }
+                }
             }
+
             None => {
-                let default = ext_map.get("default").unwrap();
                 let mut ex = Command::new(default);
                 ex.arg(path).status().expect("failed");
             }
@@ -39,8 +44,8 @@ impl EntryInfo {
     }
 
     pub fn print(&self, config: &Config) {
-        if self.file_type == FileType::File {
-            match config.color.file_fg {
+        match self.file_type {
+            FileType::File => match config.color.file_fg {
                 Colorname::AnsiValue(n) => {
                     print!(
                         "{}{}{}",
@@ -185,9 +190,8 @@ impl EntryInfo {
                         color::Fg(color::Reset)
                     );
                 }
-            }
-        } else {
-            match config.color.dir_fg {
+            },
+            FileType::Directory => match config.color.dir_fg {
                 Colorname::AnsiValue(n) => {
                     print!(
                         "{}{}{}",
@@ -332,7 +336,7 @@ impl EntryInfo {
                         color::Fg(color::Reset)
                     );
                 }
-            }
+            },
         }
     }
 }

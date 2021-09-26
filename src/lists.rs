@@ -57,10 +57,9 @@ fn push_entries(p: &std::path::PathBuf) -> Result<Vec<EntryInfo>, Error> {
     for entry in fs::read_dir(p)? {
         let e = entry?;
         let entry = make_entry(e);
-        if entry.file_type == FileType::File {
-            file_v.push(entry);
-        } else {
-            dir_v.push(entry);
+        match entry.file_type {
+            FileType::File => file_v.push(entry),
+            FileType::Directory => dir_v.push(entry),
         }
     }
     dir_v.sort_by_key(|entry| entry.file_name.clone());
