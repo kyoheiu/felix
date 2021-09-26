@@ -9,21 +9,21 @@ const CONFIG_FILE: &str = "config.toml";
 
 #[derive(Deserialize, Debug)]
 pub struct Config {
-    color: Color,
-    exec: HashMap<String, String>,
+    pub color: Color,
+    pub exec: HashMap<String, String>,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct Color {
-    current_dir_bg: Colorname,
-    current_dir_fg: Colorname,
-    dir_fg: Colorname,
-    file_fg: Colorname,
+    pub current_dir_bg: Colorname,
+    pub current_dir_fg: Colorname,
+    pub dir_fg: Colorname,
+    pub file_fg: Colorname,
 }
 
 #[derive(Deserialize, Debug)]
-enum Colorname {
-    AnsiValue,
+pub enum Colorname {
+    AnsiValue(u8),
     Black,
     Blue,
     Cyan,

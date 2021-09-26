@@ -1,4 +1,4 @@
-use super::config;
+use super::config::{read_config, Colorname, Config};
 use dirs;
 use std::env::current_dir;
 use std::fs;
@@ -35,21 +35,301 @@ impl EntryInfo {
         exec.arg(path).status().expect("failed");
     }
 
-    fn print(&self) {
+    fn print(&self, config: &Config) {
         if self.file_type == FileType::File {
-            print!(
-                "{}{}{}",
-                color::Fg(color::LightWhite),
-                &self.file_name,
-                color::Fg(color::Reset)
-            );
+            match config.color.file_fg {
+                Colorname::AnsiValue(n) => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::AnsiValue(n)),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::Black => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::Black),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::Blue => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::Blue),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::Cyan => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::Cyan),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::Green => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::Green),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::LightBlack => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::LightBlack),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::LightBlue => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::LightBlue),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::LightCyan => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::LightCyan),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::LightGreen => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::LightGreen),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::LightMagenta => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::LightMagenta),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::LightRed => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::LightRed),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::LightWhite => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::LightWhite),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::LightYellow => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::LightYellow),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::Magenta => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::Magenta),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::Red => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::Red),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::Rgb(x, y, z) => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::Rgb(x, y, z)),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::White => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::White),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::Yellow => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::Yellow),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+            }
         } else {
-            print!(
-                "{}{}{}",
-                color::Fg(color::Cyan),
-                &self.file_name,
-                color::Fg(color::Reset)
-            );
+            match config.color.dir_fg {
+                Colorname::AnsiValue(n) => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::AnsiValue(n)),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::Black => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::Black),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::Blue => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::Blue),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::Cyan => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::Cyan),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::Green => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::Green),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::LightBlack => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::LightBlack),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::LightBlue => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::LightBlue),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::LightCyan => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::LightCyan),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::LightGreen => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::LightGreen),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::LightMagenta => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::LightMagenta),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::LightRed => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::LightRed),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::LightWhite => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::LightWhite),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::LightYellow => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::LightYellow),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::Magenta => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::Magenta),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::Red => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::Red),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::Rgb(x, y, z) => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::Rgb(x, y, z)),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::White => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::White),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+                Colorname::Yellow => {
+                    print!(
+                        "{}{}{}",
+                        color::Fg(color::Yellow),
+                        &self.file_name,
+                        color::Fg(color::Reset)
+                    );
+                }
+            }
         }
     }
 }
@@ -123,7 +403,12 @@ fn make_config() -> std::io::Result<()> {
     Ok(())
 }
 
-fn list_up(p: &std::path::PathBuf, v: &std::vec::Vec<EntryInfo>, skip_number: u16) {
+fn list_up(
+    config: &Config,
+    p: &std::path::PathBuf,
+    v: &std::vec::Vec<EntryInfo>,
+    skip_number: u16,
+) {
     //Show current directory path
     println!(
         " {}{}{}{}{}{}{}",
@@ -168,7 +453,7 @@ fn list_up(p: &std::path::PathBuf, v: &std::vec::Vec<EntryInfo>, skip_number: u1
                 );
                 break;
             } else {
-                entry.print();
+                entry.print(config);
                 row_count += 1;
             }
         }
@@ -176,13 +461,14 @@ fn list_up(p: &std::path::PathBuf, v: &std::vec::Vec<EntryInfo>, skip_number: u1
         for (i, entry) in v.iter().enumerate() {
             let i = i as u16;
             print!("{}", cursor::Goto(3, i + STARTING_POINT));
-            entry.print();
+            entry.print(config);
         }
     }
 }
 
 pub fn start() {
     let _ = make_config();
+    let config = read_config().unwrap();
 
     let (_, row) = termion::terminal_size().unwrap();
 
@@ -193,7 +479,7 @@ pub fn start() {
 
     let mut path_buf = current_dir().unwrap();
     let mut entry_v = push_entries(&path_buf).unwrap();
-    list_up(&path_buf, &entry_v, 0);
+    list_up(&config, &path_buf, &entry_v, 0);
 
     print!(
         "{}{}>{}",
@@ -221,7 +507,7 @@ pub fn start() {
                     } else if y == row - 4 && *len > (row - STARTING_POINT) as usize - 1 {
                         skip_number += 1;
                         print!("{}{}", clear::All, cursor::Goto(1, 1));
-                        list_up(&path_buf, &entry_v, skip_number);
+                        list_up(&config, &path_buf, &entry_v, skip_number);
                         print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                         index += 1;
                         continue;
@@ -237,7 +523,7 @@ pub fn start() {
                     } else if y == STARTING_POINT + 3 && skip_number != 0 {
                         skip_number -= 1;
                         print!("{}{}", clear::All, cursor::Goto(1, 1));
-                        list_up(&path_buf, &entry_v, skip_number);
+                        list_up(&config, &path_buf, &entry_v, skip_number);
                         print!(
                             "{}>{}",
                             cursor::Goto(1, STARTING_POINT + 3),
@@ -257,7 +543,7 @@ pub fn start() {
                     } else if skip_number != 0 {
                         skip_number = 0;
                         print!("{}{}", clear::All, cursor::Goto(1, 1));
-                        list_up(&path_buf, &entry_v, skip_number);
+                        list_up(&config, &path_buf, &entry_v, skip_number);
                     } else {
                         print!(" {}>{}", cursor::Goto(1, STARTING_POINT), cursor::Left(1));
                         index = 0;
@@ -269,7 +555,7 @@ pub fn start() {
                     if *len > (row - STARTING_POINT) as usize {
                         skip_number = (*len as u16) - row + STARTING_POINT;
                         print!("{}{}", clear::All, cursor::Goto(1, 1));
-                        list_up(&path_buf, &entry_v, skip_number);
+                        list_up(&config, &path_buf, &entry_v, skip_number);
                         print!("{}>{}", cursor::Goto(1, row - 1), cursor::Left(1));
                         index = len - 1;
                     } else {
@@ -293,7 +579,7 @@ pub fn start() {
                                 entry.open_file();
                                 print!("{}", screen::ToAlternateScreen);
                                 print!("{}{}", clear::All, cursor::Goto(1, 1));
-                                list_up(&path_buf, &entry_v, skip_number);
+                                list_up(&config, &path_buf, &entry_v, skip_number);
                                 print!(
                                     "{}{}>{}",
                                     cursor::Hide,
@@ -305,7 +591,7 @@ pub fn start() {
                                 path_buf = entry.file_path.to_path_buf();
                                 entry_v = push_entries(&path_buf).unwrap();
                                 print!("{}{}", clear::All, cursor::Goto(1, 1));
-                                list_up(&path_buf, &entry_v, 0);
+                                list_up(&config, &path_buf, &entry_v, 0);
                                 print!(
                                     "{}>{}",
                                     cursor::Goto(1, STARTING_POINT + 1),
@@ -324,7 +610,7 @@ pub fn start() {
                         path_buf = parent_p.to_path_buf();
                         entry_v = push_entries(&path_buf).unwrap();
                         print!("{}{}", clear::All, cursor::Goto(1, 1));
-                        list_up(&path_buf, &entry_v, 0);
+                        list_up(&config, &path_buf, &entry_v, 0);
                         print!(
                             "{}>{}",
                             cursor::Goto(1, STARTING_POINT + 1),
@@ -365,7 +651,7 @@ pub fn start() {
                                     print!("{}", cursor::Goto(1, 1));
 
                                     entry_v = push_entries(&path_buf).unwrap();
-                                    list_up(&path_buf, &entry_v, 0);
+                                    list_up(&config, &path_buf, &entry_v, 0);
 
                                     print!(
                                         "{}{}>{}",
@@ -391,7 +677,7 @@ pub fn start() {
 
                                     skip_number = 0;
                                     print!("{}{}", clear::All, cursor::Goto(1, 1));
-                                    list_up(&path_buf, &entry_v, skip_number);
+                                    list_up(&config, &path_buf, &entry_v, skip_number);
 
                                     print!("{}>{}{}", cursor::Goto(1, 2), word, cursor::Right(2));
 
@@ -409,7 +695,7 @@ pub fn start() {
 
                                     skip_number = 0;
                                     print!("{}{}", clear::All, cursor::Goto(1, 1));
-                                    list_up(&path_buf, &entry_v, skip_number);
+                                    list_up(&config, &path_buf, &entry_v, skip_number);
 
                                     print!("{}>{}{}", cursor::Goto(1, 2), word, cursor::Right(2));
 
