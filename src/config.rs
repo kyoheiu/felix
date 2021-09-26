@@ -1,9 +1,7 @@
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::read_to_string;
-use std::io::BufReader;
 use std::path::Path;
-use toml::*;
 
 const CONFIG_FILE: &str = "config.toml";
 
