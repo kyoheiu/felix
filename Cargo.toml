@@ -1,9 +1,11 @@
 [package]
-name = "ncu"
-version = "0.1.0"
 authors = ["Kyohei Uto <kyoheiu@outlook.com>"]
 edition = "2018"
+name = "ncu"
+version = "0.1.0"
 
 [dependencies]
 dirs = "4.0.0"
+serde = {version = "1.0.130", features = ["derive"]}
 termion = "1.5.6"
+toml = "0.5.8"
