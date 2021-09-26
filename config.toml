@@ -28,3 +28,4 @@ file_fg = "LightWhite"
 [exec]
 default = "nvim"
 jpg = "feh"
+png = "feh"
