@@ -1,3 +1,4 @@
+# Choose the foreground color of file and directory in the list.
 # Pick one of the following:
 #   AnsiValue
 #   Black
@@ -21,7 +22,8 @@
 dir_fg = "Cyan"
 file_fg = "LightWhite"
 
-# key(extention) = value(shell command)
+# key(extention) = value(shell command you want to use)
+# key `default` is mandatory (if it does not exist, program will panic.)
 [exec]
 default = "nvim"
 jpg = "feh"
