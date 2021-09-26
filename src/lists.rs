@@ -2,7 +2,7 @@ use super::config::{read_config, Colorname, Config};
 use dirs;
 use std::env::current_dir;
 use std::fs;
-use std::io::{stdin, stdout, Error, Write};
+use std::io::{stdin, Error, Write};
 use std::path::PathBuf;
 use std::process::Command;
 use termion::cursor::DetectCursorPos;
