@@ -13,8 +13,6 @@ pub struct Config {
 
 #[derive(Deserialize, Debug)]
 pub struct Color {
-    pub current_dir_bg: Colorname,
-    pub current_dir_fg: Colorname,
     pub dir_fg: Colorname,
     pub file_fg: Colorname,
 }

@@ -18,9 +18,6 @@
 #   White
 #   Yellow
 [color]
-current_dir_bg = "Cyan"
-current_dir_fg = "Black"
-
 dir_fg = "Cyan"
 file_fg = "LightWhite"
 
