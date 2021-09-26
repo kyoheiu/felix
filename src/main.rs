@@ -1,7 +1,7 @@
 mod config;
 mod entry;
-mod lists;
+mod start;
 
 fn main() {
-    lists::start();
+    start::start();
 }
