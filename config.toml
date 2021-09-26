@@ -25,4 +25,5 @@ file_fg = "LightWhite"
 [exec]
 default = "nvim"
 jpg = "feh"
+pdf = "zathura"
 png = "feh"
