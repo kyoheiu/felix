@@ -11,7 +11,6 @@ use termion::{clear, cursor, screen};
 pub fn start() {
     let _ = make_config();
     let config = read_config().unwrap();
-
     let (_, row) = termion::terminal_size().unwrap();
 
     let mut screen = screen::AlternateScreen::from(stdout().into_raw_mode().unwrap());
@@ -42,7 +41,7 @@ pub fn start() {
 
         if let Some(Ok(key)) = input {
             match key {
-                //Go up. If lists exceeds max-row, lists "scrolls" before the top of the list.
+                //Go up. If lists exceeds max-row, lists "scrolls" before the top of the list
                 Key::Char('j') | Key::Down => {
                     if index == len - 1 {
                         continue;
@@ -59,7 +58,7 @@ pub fn start() {
                     }
                 }
 
-                //Go down. If lists exceeds max-row, lists "scrolls" before the bottom of the list.
+                //Go down. If lists exceeds max-row, lists "scrolls" before the bottom of the list
                 Key::Char('k') | Key::Up => {
                     if y == STARTING_POINT {
                     } else if y == STARTING_POINT + 3 && skip_number != 0 {
@@ -78,7 +77,7 @@ pub fn start() {
                     }
                 }
 
-                //Go to first line of lists
+                //Go to first line of the list
                 Key::Char('g') => {
                     if index == 0 {
                         continue;
@@ -92,7 +91,7 @@ pub fn start() {
                     }
                 }
 
-                //Go to end line of lists
+                //Go to end line of the list
                 Key::Char('G') => {
                     if *len > (row - STARTING_POINT) as usize {
                         skip_number = (*len as u16) - row + STARTING_POINT;
@@ -169,7 +168,7 @@ pub fn start() {
                 //Enter the filter mode
                 Key::Char('/') => {
                     print!(" ");
-                    print!("{}>{}", cursor::Goto(1, 2), cursor::Right(4));
+                    print!("{}{}{}", cursor::Goto(2, 2), RIGHT_ARROW, cursor::Right(4));
                     screen.flush().unwrap();
                     let mut word = String::from("");
                     loop {
@@ -179,7 +178,7 @@ pub fn start() {
                                 //Go to filtered lists
                                 Key::Char('\n') => {
                                     print!("{}", clear::CurrentLine);
-                                    print!("{}{}", cursor::Goto(2, 2), SEARCH_EMOJI);
+                                    print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
                                     screen.flush().unwrap();
 
                                     print!("{}>{}", cursor::Goto(1, 3), cursor::Left(1));
@@ -208,7 +207,7 @@ pub fn start() {
                                     break;
                                 }
 
-                                //Enter word for case-sensitive filter
+                                //Input char(case-sensitive)
                                 Key::Char(c) => {
                                     word.push(c);
 
@@ -221,7 +220,13 @@ pub fn start() {
                                     print!("{}{}", clear::All, cursor::Goto(1, 1));
                                     list_up(&config, &path_buf, &entry_v, skip_number);
 
-                                    print!("{}>{}{}", cursor::Goto(1, 2), word, cursor::Right(2));
+                                    print!(
+                                        "{}{} {}{}",
+                                        cursor::Goto(2, 2),
+                                        RIGHT_ARROW,
+                                        word,
+                                        cursor::Right(2)
+                                    );
 
                                     screen.flush().unwrap();
                                 }
@@ -239,7 +244,13 @@ pub fn start() {
                                     print!("{}{}", clear::All, cursor::Goto(1, 1));
                                     list_up(&config, &path_buf, &entry_v, skip_number);
 
-                                    print!("{}>{}{}", cursor::Goto(1, 2), word, cursor::Right(2));
+                                    print!(
+                                        "{}{} {}{}",
+                                        cursor::Goto(2, 2),
+                                        RIGHT_ARROW,
+                                        word,
+                                        cursor::Right(2)
+                                    );
 
                                     screen.flush().unwrap();
                                 }
@@ -259,5 +270,6 @@ pub fn start() {
         }
         screen.flush().unwrap();
     }
+    //When finishes, restore the cursor
     print!("{}", cursor::Show);
 }

@@ -8,7 +8,8 @@ use std::process::Command;
 use termion::{color, cursor, style};
 
 pub const STARTING_POINT: u16 = 3;
-pub const SEARCH_EMOJI: char = '\u{1F50D}';
+pub const DOWN_ARROW: char = '\u{21D3}';
+pub const RIGHT_ARROW: char = '\u{21D2}';
 pub const CONFIG_FILE: &str = "fm/config.toml";
 pub const TRUSH: &str = "fm/trash";
 
@@ -27,7 +28,6 @@ pub struct EntryInfo {
 impl EntryInfo {
     pub fn open_file(&self, config: &Config) {
         let path = &self.file_path;
-        //todo: have to deal with files like `.gitignore`
         let ext_map = &config.exec;
         let extention = path.extension();
         let default = ext_map.get("default").unwrap();
@@ -362,7 +362,7 @@ fn make_parent_dir(p: PathBuf) -> EntryInfo {
 fn make_entry(dir: fs::DirEntry) -> EntryInfo {
     return EntryInfo {
         file_path: dir.path(),
-        //todo: I have no idea what I'm doing
+        //todo: Is this chain even necessary?
         file_name: dir
             .path()
             .file_name()
@@ -432,8 +432,8 @@ pub fn list_up(config: &Config, p: &PathBuf, v: &std::vec::Vec<EntryInfo>, skip_
         color::Fg(color::Reset)
     );
 
-    //Show filter emoji and space
-    print!("{}{}", cursor::Goto(2, 2), SEARCH_EMOJI);
+    //Show arrow
+    print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
 
     let (_, row) = termion::terminal_size().unwrap();
     let len = v.len();
