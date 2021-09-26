@@ -35,6 +35,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "fm"
+version = "0.1.0"
+dependencies = [
+ "dirs",
+ "serde",
+ "termion",
+ "toml",
+]
+
+[[package]]
 name = "getrandom"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -50,16 +60,6 @@ name = "libc"
 version = "0.2.102"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2a5ac8f984bfcf3a823267e5fde638acc3325f6496633a5da6bb6eb2171e103"
-
-[[package]]
-name = "ncu"
-version = "0.1.0"
-dependencies = [
- "dirs",
- "serde",
- "termion",
- "toml",
-]
 
 [[package]]
 name = "numtoa"
