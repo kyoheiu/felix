@@ -109,7 +109,7 @@ pub fn start() {
                     }
                 }
 
-                //Choose file(exec in any way fo now) or directory(change lists as if `cd`)
+                //Open file(exec in any way fo now) or change directory(change lists as if `cd`)
                 Key::Char('l') | Key::Char('\n') | Key::Right => {
                     let target = &entry_v.get(index);
 
