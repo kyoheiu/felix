@@ -54,7 +54,7 @@ impl EntryInfo {
     }
 
     //Move selected file or directory recursively to trash_dir(by default ~/.config/fm/trash).
-    pub fn remove(&self, trash_dir: PathBuf) -> fs_extra::error::Result<()> {
+    pub fn remove(&self, trash_dir: &PathBuf) -> fs_extra::error::Result<()> {
         let options = fs_extra::dir::CopyOptions::new();
         let arr = [&self.file_path.as_path()];
         match fs_extra::move_items(&arr, trash_dir, &options) {
@@ -414,7 +414,7 @@ pub fn push_entries(p: &PathBuf) -> Result<Vec<EntryInfo>, Error> {
     Ok(dir_v)
 }
 
-pub fn make_config(config_file: PathBuf, trash_dir: PathBuf) -> std::io::Result<()> {
+pub fn make_config(config_file: &PathBuf, trash_dir: &PathBuf) -> std::io::Result<()> {
     if !config_file.exists() {
         fs::File::create(config_file)?;
     }

@@ -14,9 +14,9 @@ pub fn start() {
     let config_file = config_dir.join(PathBuf::from(CONFIG_FILE));
     let trash_dir = config_dir.join(PathBuf::from(TRASH));
 
-    let _ = make_config(config_file, trash_dir);
-
+    let _ = make_config(&config_file, &trash_dir);
     let config = read_config().unwrap();
+
     let (_, row) = termion::terminal_size().unwrap();
 
     let mut screen = screen::AlternateScreen::from(stdout().into_raw_mode().unwrap());
@@ -41,9 +41,9 @@ pub fn start() {
     let mut stdin = stdin().keys();
 
     loop {
+        let len = &entry_v.len();
         let (_, y) = screen.cursor_pos().unwrap();
         let input = stdin.next();
-        let len = &entry_v.len();
 
         if let Some(Ok(key)) = input {
             match key {
@@ -171,7 +171,24 @@ pub fn start() {
                     }
                 },
 
-                Key::Char('D') => {}
+                Key::Char('D') => {
+                    let target = &entry_v.get(index);
+
+                    if let Some(entry) = target {
+                        let _ = entry.remove(&trash_dir);
+
+                        entry_v = push_entries(&path_buf).unwrap();
+                        print!("{}{}", clear::All, cursor::Goto(1, 1));
+                        list_up(&config, &path_buf, &entry_v, skip_number);
+                        if index == len - 1 {
+                            print!("{}>{}", cursor::Goto(1, y - 1), cursor::Left(1));
+                            index -= 1;
+                        } else {
+                            print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+                        }
+                        screen.flush().unwrap();
+                    }
+                }
 
                 //Enter the filter mode
                 Key::Char('/') => {
