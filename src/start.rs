@@ -12,9 +12,9 @@ use termion::{clear, cursor, screen};
 pub fn start() {
     let config_dir = dirs::config_dir().unwrap();
     let config_file = config_dir.join(PathBuf::from(CONFIG_FILE));
-    let trush_dir = config_dir.join(PathBuf::from(TRUSH));
+    let trash_dir = config_dir.join(PathBuf::from(TRASH));
 
-    let _ = make_config(config_file, trush_dir);
+    let _ = make_config(config_file, trash_dir);
 
     let config = read_config().unwrap();
     let (_, row) = termion::terminal_size().unwrap();

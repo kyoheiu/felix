@@ -10,7 +10,7 @@ pub const STARTING_POINT: u16 = 3;
 pub const DOWN_ARROW: char = '\u{21D3}';
 pub const RIGHT_ARROW: char = '\u{21D2}';
 pub const CONFIG_FILE: &str = "fm/config.toml";
-pub const TRUSH: &str = "fm/trash";
+pub const TRASH: &str = "fm/trash";
 
 #[derive(Copy, Clone, Debug)]
 pub enum FileType {
@@ -53,11 +53,11 @@ impl EntryInfo {
         }
     }
 
-    //Move selected file or directory recursively to trush_dir(by default ~/.config/fm/trush).
-    pub fn remove(&self, trush_dir: PathBuf) -> fs_extra::error::Result<()> {
+    //Move selected file or directory recursively to trash_dir(by default ~/.config/fm/trash).
+    pub fn remove(&self, trash_dir: PathBuf) -> fs_extra::error::Result<()> {
         let options = fs_extra::dir::CopyOptions::new();
         let arr = [&self.file_path.as_path()];
-        match fs_extra::move_items(&arr, trush_dir, &options) {
+        match fs_extra::move_items(&arr, trash_dir, &options) {
             Ok(_) => Ok(()),
             Err(_) => panic!("cannot remove item."),
         }
@@ -414,13 +414,13 @@ pub fn push_entries(p: &PathBuf) -> Result<Vec<EntryInfo>, Error> {
     Ok(dir_v)
 }
 
-pub fn make_config(config_file: PathBuf, trush_dir: PathBuf) -> std::io::Result<()> {
+pub fn make_config(config_file: PathBuf, trash_dir: PathBuf) -> std::io::Result<()> {
     if !config_file.exists() {
         fs::File::create(config_file)?;
     }
 
-    if !trush_dir.exists() {
-        fs::create_dir_all(trush_dir)?;
+    if !trash_dir.exists() {
+        fs::create_dir_all(trash_dir)?;
     }
 
     Ok(())
