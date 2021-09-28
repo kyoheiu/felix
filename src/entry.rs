@@ -1,6 +1,5 @@
 use super::config::Colorname;
 use super::config::Config;
-use dirs;
 use std::fs;
 use std::io::Error;
 use std::path::PathBuf;
@@ -26,6 +25,7 @@ pub struct EntryInfo {
 }
 
 impl EntryInfo {
+    //Open file according to config.toml.
     pub fn open_file(&self, config: &Config) {
         let path = &self.file_path;
         let ext_map = &config.exec;
@@ -53,6 +53,17 @@ impl EntryInfo {
         }
     }
 
+    //Move selected file or directory recursively to trush_dir(by default ~/.config/fm/trush).
+    pub fn remove(&self, trush_dir: PathBuf) -> fs_extra::error::Result<()> {
+        let options = fs_extra::dir::CopyOptions::new();
+        let arr = [&self.file_path.as_path()];
+        match fs_extra::move_items(&arr, trush_dir, &options) {
+            Ok(_) => Ok(()),
+            Err(_) => panic!("cannot remove item."),
+        }
+    }
+
+    //Print name of file or directory.
     fn print(&self, config: &Config) {
         match self.file_type {
             FileType::File => match config.color.file_fg {
@@ -403,17 +414,13 @@ pub fn push_entries(p: &PathBuf) -> Result<Vec<EntryInfo>, Error> {
     Ok(dir_v)
 }
 
-pub fn make_config() -> std::io::Result<()> {
-    let config_dir = dirs::config_dir().unwrap();
-    let config_file = config_dir.join(PathBuf::from(CONFIG_FILE));
-    let trush_dir = config_dir.join(PathBuf::from(TRUSH));
+pub fn make_config(config_file: PathBuf, trush_dir: PathBuf) -> std::io::Result<()> {
+    if !config_file.exists() {
+        fs::File::create(config_file)?;
+    }
 
     if !trush_dir.exists() {
         fs::create_dir_all(trush_dir)?;
-    }
-
-    if !config_file.exists() {
-        fs::File::create(config_file)?;
     }
 
     Ok(())
