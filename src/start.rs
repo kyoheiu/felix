@@ -7,7 +7,9 @@ use termion::cursor::DetectCursorPos;
 use termion::event::Key;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
-use termion::{clear, cursor, screen};
+use termion::{clear, color, cursor, screen};
+
+const CONFIRMATION: &str = "Are you sure to empty the trash directory? (if yes: y)";
 
 pub fn start() {
     let config_dir = dirs::config_dir().unwrap();
@@ -187,6 +189,61 @@ pub fn start() {
                             print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                         }
                         screen.flush().unwrap();
+                    }
+                }
+
+                Key::Char('E') => {
+                    print!(" ");
+                    print!(
+                        "{}{}{}{}{}{}",
+                        cursor::Goto(2, 2),
+                        color::Fg(color::LightWhite),
+                        color::Bg(color::Red),
+                        CONFIRMATION,
+                        color::Fg(color::Reset),
+                        color::Bg(color::Reset),
+                    );
+                    screen.flush().unwrap();
+
+                    loop {
+                        let input = stdin.next();
+                        if let Some(Ok(key)) = input {
+                            match key {
+                                Key::Char('y') | Key::Char('Y') => {
+                                    let _ = fs_extra::dir::create(&trash_dir, true);
+                                    print!(
+                                        "{}{}{}",
+                                        clear::CurrentLine,
+                                        cursor::Goto(2, 2),
+                                        DOWN_ARROW
+                                    );
+                                    print!(
+                                        "{}{}>{}",
+                                        cursor::Hide,
+                                        cursor::Goto(1, STARTING_POINT + 1),
+                                        cursor::Left(1)
+                                    );
+                                    index = 1;
+                                    break;
+                                }
+                                _ => {
+                                    print!(
+                                        "{}{}{}",
+                                        clear::CurrentLine,
+                                        cursor::Goto(2, 2),
+                                        DOWN_ARROW
+                                    );
+                                    print!(
+                                        "{}{}>{}",
+                                        cursor::Hide,
+                                        cursor::Goto(1, STARTING_POINT + 1),
+                                        cursor::Left(1)
+                                    );
+                                    index = 1;
+                                    break;
+                                }
+                            }
+                        }
                     }
                 }
 
