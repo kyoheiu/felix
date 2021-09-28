@@ -2,6 +2,7 @@ use super::config::read_config;
 use super::entry::*;
 use std::env::current_dir;
 use std::io::{stdin, stdout, Write};
+use std::path::PathBuf;
 use termion::cursor::DetectCursorPos;
 use termion::event::Key;
 use termion::input::TermRead;
@@ -9,7 +10,12 @@ use termion::raw::IntoRawMode;
 use termion::{clear, cursor, screen};
 
 pub fn start() {
-    let _ = make_config();
+    let config_dir = dirs::config_dir().unwrap();
+    let config_file = config_dir.join(PathBuf::from(CONFIG_FILE));
+    let trush_dir = config_dir.join(PathBuf::from(TRUSH));
+
+    let _ = make_config(config_file, trush_dir);
+
     let config = read_config().unwrap();
     let (_, row) = termion::terminal_size().unwrap();
 
@@ -164,6 +170,8 @@ pub fn start() {
                         continue;
                     }
                 },
+
+                Key::Char('D') => {}
 
                 //Enter the filter mode
                 Key::Char('/') => {
