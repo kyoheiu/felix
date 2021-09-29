@@ -68,6 +68,12 @@ impl EntryInfo {
 
     //Print name of file or directory.
     fn print(&self, config: &Config) {
+        let name = &self.file_name;
+        let time = if self.modified.is_some() {
+            &self.modified.as_ref().unwrap().get(0..19).unwrap()
+        } else {
+            ""
+        };
         match self.file_type {
             FileType::File => match config.color.file_fg {
                 Colorname::AnsiValue(n) => {
@@ -160,9 +166,10 @@ impl EntryInfo {
                 }
                 Colorname::LightWhite => {
                     print!(
-                        "{}{}{}",
+                        "{}{}{}{}",
                         color::Fg(color::LightWhite),
-                        &self.modified.as_ref().unwrap(),
+                        name,
+                        time,
                         color::Fg(color::Reset)
                     );
                 }
