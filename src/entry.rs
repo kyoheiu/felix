@@ -1,5 +1,6 @@
 use super::config::Colorname;
 use super::config::Config;
+use chrono::prelude::*;
 use std::fs;
 use std::io::Error;
 use std::path::PathBuf;
@@ -23,7 +24,7 @@ pub struct EntryInfo {
     pub file_path: std::path::PathBuf,
     pub file_name: String,
     pub file_type: FileType,
-    pub modified: Option<std::time::SystemTime>,
+    pub modified: Option<String>,
 }
 
 impl EntryInfo {
@@ -159,9 +160,9 @@ impl EntryInfo {
                 }
                 Colorname::LightWhite => {
                     print!(
-                        "{}{:?}{}",
+                        "{}{}{}",
                         color::Fg(color::LightWhite),
-                        &self.modified.unwrap(),
+                        &self.modified.as_ref().unwrap(),
                         color::Fg(color::Reset)
                     );
                 }
@@ -376,43 +377,30 @@ fn make_parent_dir(p: PathBuf) -> EntryInfo {
 fn make_entry(dir: fs::DirEntry) -> EntryInfo {
     let path = dir.path();
     let metadata = fs::metadata(&path).unwrap();
-    if let Ok(time) = metadata.modified() {
-        return EntryInfo {
-            file_path: path,
-            //todo: Is this chain even necessary?
-            file_name: dir
-                .path()
-                .file_name()
-                .unwrap()
-                .to_os_string()
-                .into_string()
-                .unwrap(),
-            file_type: if dir.path().is_file() {
-                FileType::File
-            } else {
-                FileType::Directory
-            },
-            modified: Some(time),
-        };
+    let sometime = metadata.modified();
+    let time = if sometime.is_ok() {
+        let chrono_time: DateTime<Local> = DateTime::from(sometime.unwrap());
+        Some(chrono_time.to_string())
     } else {
-        return EntryInfo {
-            file_path: path,
-            //todo: Is this chain even necessary?
-            file_name: dir
-                .path()
-                .file_name()
-                .unwrap()
-                .to_os_string()
-                .into_string()
-                .unwrap(),
-            file_type: if dir.path().is_file() {
-                FileType::File
-            } else {
-                FileType::Directory
-            },
-            modified: None,
-        };
-    }
+        None
+    };
+    return EntryInfo {
+        file_path: path,
+        //todo: Is this chain even necessary?
+        file_name: dir
+            .path()
+            .file_name()
+            .unwrap()
+            .to_os_string()
+            .into_string()
+            .unwrap(),
+        file_type: if dir.path().is_file() {
+            FileType::File
+        } else {
+            FileType::Directory
+        },
+        modified: time,
+    };
 }
 
 pub fn push_entries(p: &PathBuf) -> Result<Vec<EntryInfo>, Error> {
