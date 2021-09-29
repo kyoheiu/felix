@@ -3,10 +3,13 @@ authors = ["Kyohei Uto <kyoheiu@outlook.com>"]
 edition = "2018"
 name = "fm"
 version = "0.1.0"
-
 [dependencies]
+chrono = "*"
 dirs = "4.0.0"
 fs_extra = "1.2.0"
-serde = {version = "1.0.130", features = ["derive"]}
 termion = "1.5.6"
 toml = "0.5.8"
+
+[dependencies.serde]
+features = ["derive"]
+version = "1.0.130"
