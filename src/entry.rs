@@ -13,16 +13,16 @@ pub const RIGHT_ARROW: char = '\u{21D2}';
 pub const CONFIG_FILE: &str = "fm/config.toml";
 pub const TRASH: &str = "fm/trash";
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum FileType {
     Directory,
     File,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct EntryInfo {
-    pub file_path: std::path::PathBuf,
     pub file_name: String,
+    pub file_path: std::path::PathBuf,
     pub file_type: FileType,
     pub modified: Option<String>,
 }
@@ -374,8 +374,8 @@ impl EntryInfo {
 
 fn make_parent_dir(p: PathBuf) -> EntryInfo {
     return EntryInfo {
-        file_path: p.to_path_buf(),
         file_name: String::from("../"),
+        file_path: p.to_path_buf(),
         file_type: FileType::Directory,
         modified: None,
     };
@@ -392,7 +392,6 @@ fn make_entry(dir: fs::DirEntry) -> EntryInfo {
         None
     };
     return EntryInfo {
-        file_path: path,
         //todo: Is this chain even necessary?
         file_name: dir
             .path()
@@ -401,6 +400,7 @@ fn make_entry(dir: fs::DirEntry) -> EntryInfo {
             .to_os_string()
             .into_string()
             .unwrap(),
+        file_path: path,
         file_type: if dir.path().is_file() {
             FileType::File
         } else {
@@ -429,8 +429,8 @@ pub fn push_entries(p: &PathBuf) -> Result<Vec<EntryInfo>, Error> {
             FileType::Directory => dir_v.push(entry),
         }
     }
-    dir_v.sort_by_key(|entry| entry.file_name.clone());
-    file_v.sort_by_key(|entry| entry.file_name.clone());
+    dir_v.sort();
+    file_v.sort();
     dir_v.append(&mut file_v);
     Ok(dir_v)
 }
