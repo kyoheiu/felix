@@ -5,7 +5,7 @@ use std::fs;
 use std::io::Error;
 use std::path::PathBuf;
 use std::process::Command;
-use termion::{color, cursor, style};
+use termion::{clear, color, cursor, style};
 
 pub const STARTING_POINT: u16 = 3;
 pub const DOWN_ARROW: char = '\u{21D3}';
@@ -231,6 +231,10 @@ fn format_time(time: &Option<String>) -> String {
         Some(datetime) => format!("{} {}", &datetime[0..10], &datetime[11..16]),
         None => "".to_string(),
     }
+}
+
+pub fn clear_all_for_list_up() {
+    print!("{}{}", clear::All, cursor::Goto(1, 1));
 }
 
 pub fn list_up(config: &Config, p: &PathBuf, v: &std::vec::Vec<EntryInfo>, skip_number: u16) {
