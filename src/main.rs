@@ -1,7 +1,7 @@
 mod config;
 mod entry;
-mod start;
+mod run;
 
 fn main() {
-    start::start();
+    run::run();
 }
