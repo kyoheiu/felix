@@ -11,7 +11,7 @@ use termion::{clear, color, cursor, screen};
 
 const CONFIRMATION: &str = "Are you sure to empty the trash directory? (if yes: y)";
 
-pub fn start() {
+pub fn run() {
     let config_dir = dirs::config_dir().unwrap();
     let config_file = config_dir.join(PathBuf::from(CONFIG_FILE));
     let trash_dir = config_dir.join(PathBuf::from(TRASH));
