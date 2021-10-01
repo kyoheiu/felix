@@ -14,6 +14,7 @@ pub const CONFIG_FILE: &str = "fm/config.toml";
 pub const TRASH: &str = "fm/trash";
 pub const NAME_MAX_LEN: usize = 30;
 pub const TIME_START_POS: u16 = 32;
+pub const CONFIRMATION: &str = "Are you sure to empty the trash directory? (if yes: y)";
 
 macro_rules! print_entry {
     ($color: expr, $name: expr, $time: expr) => {
