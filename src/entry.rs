@@ -69,11 +69,7 @@ impl EntryInfo {
     //Print name of file or directory.
     fn print(&self, config: &Config) {
         let name = &self.file_name;
-        let time = if self.modified.is_some() {
-            &self.modified.as_ref().unwrap().get(0..19).unwrap()
-        } else {
-            ""
-        };
+        let time = &self.modified;
         match self.file_type {
             FileType::File => match config.color.file_fg {
                 Colorname::AnsiValue(n) => {
@@ -166,7 +162,7 @@ impl EntryInfo {
                 }
                 Colorname::LightWhite => {
                     print!(
-                        "{}{}{}{}",
+                        "{}{}{:?}{}",
                         color::Fg(color::LightWhite),
                         name,
                         time,
@@ -375,7 +371,7 @@ impl EntryInfo {
 fn make_parent_dir(p: PathBuf) -> EntryInfo {
     return EntryInfo {
         file_name: String::from("../"),
-        file_path: p.to_path_buf(),
+        file_path: p,
         file_type: FileType::Directory,
         modified: None,
     };
@@ -387,14 +383,13 @@ fn make_entry(dir: fs::DirEntry) -> EntryInfo {
     let sometime = metadata.modified();
     let time = if sometime.is_ok() {
         let chrono_time: DateTime<Local> = DateTime::from(sometime.unwrap());
-        Some(chrono_time.to_string())
+        Some(chrono_time.to_rfc3339_opts(SecondsFormat::Secs, false))
     } else {
         None
     };
     return EntryInfo {
         //todo: Is this chain even necessary?
-        file_name: dir
-            .path()
+        file_name: path
             .file_name()
             .unwrap()
             .to_os_string()
