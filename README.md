@@ -14,7 +14,7 @@ cargo install
 
 | Key                   | Explanation                                                                       |
 | --------------------- | --------------------------------------------------------------------------------- |
-| j / Key UP            | Go up. If lists exceeds max-row, lists "scrolls" before the top of the list.      |
+| j / Key Up            | Go up. If lists exceeds max-row, lists "scrolls" before the top of the list.      |
 | k / Key Down          | Go down. If lists exceeds max-row, lists "scrolls" before the bottom of the list. |
 | h / Key Left          | Go to parent directory if exists.                                                 |
 | l / Key Right / Enter | Open file(exec in any way fo now) or change directory(change lists as if `cd`).   |
