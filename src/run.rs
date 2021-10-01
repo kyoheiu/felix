@@ -13,6 +13,7 @@ pub fn run() {
     let config_dir = dirs::config_dir().unwrap();
     let config_file = config_dir.join(PathBuf::from(CONFIG_FILE));
     let trash_dir = config_dir.join(PathBuf::from(TRASH));
+    let mut path_buffer: Option<PathBuf> = None;
 
     let _ = make_config(&config_file, &trash_dir);
     let config = read_config().unwrap();
@@ -193,7 +194,11 @@ pub fn run() {
                     }
                 }
 
-                Key::Char('y') => {}
+                Key::Char('y') => {
+                    let target = entry_v.get(index).unwrap();
+                    let path = target.file_path.clone();
+                    path_buffer = Some(path);
+                }
 
                 Key::Char('E') => {
                     print!(" ");
