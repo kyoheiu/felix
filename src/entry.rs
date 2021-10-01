@@ -13,6 +13,12 @@ pub const RIGHT_ARROW: char = '\u{21D2}';
 pub const CONFIG_FILE: &str = "fm/config.toml";
 pub const TRASH: &str = "fm/trash";
 
+macro_rules! print_entry {
+    ($color: expr, $name: expr, $time: expr) => {
+        print!("{}{}{}{}", $color, $name, $time, color::Fg(color::Reset));
+    };
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum FileType {
     Directory,
@@ -70,300 +76,65 @@ impl EntryInfo {
     fn print(&self, config: &Config) {
         let name = &self.file_name;
         let time = format_time(&self.modified);
-        match self.file_type {
-            FileType::File => match config.color.file_fg {
-                Colorname::AnsiValue(n) => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::AnsiValue(n)),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::Black => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::Black),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::Blue => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::Blue),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::Cyan => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::Cyan),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::Green => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::Green),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::LightBlack => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::LightBlack),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::LightBlue => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::LightBlue),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::LightCyan => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::LightCyan),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::LightGreen => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::LightGreen),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::LightMagenta => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::LightMagenta),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::LightRed => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::LightRed),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::LightWhite => {
-                    print!(
-                        "{}{}{}{}",
-                        color::Fg(color::LightWhite),
-                        name,
-                        time,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::LightYellow => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::LightYellow),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::Magenta => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::Magenta),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::Red => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::Red),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::Rgb(x, y, z) => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::Rgb(x, y, z)),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::White => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::White),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::Yellow => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::Yellow),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-            },
-            FileType::Directory => match config.color.dir_fg {
-                Colorname::AnsiValue(n) => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::AnsiValue(n)),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::Black => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::Black),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::Blue => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::Blue),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::Cyan => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::Cyan),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::Green => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::Green),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::LightBlack => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::LightBlack),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::LightBlue => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::LightBlue),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::LightCyan => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::LightCyan),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::LightGreen => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::LightGreen),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::LightMagenta => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::LightMagenta),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::LightRed => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::LightRed),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::LightWhite => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::LightWhite),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::LightYellow => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::LightYellow),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::Magenta => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::Magenta),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::Red => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::Red),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::Rgb(x, y, z) => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::Rgb(x, y, z)),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::White => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::White),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-                Colorname::Yellow => {
-                    print!(
-                        "{}{}{}",
-                        color::Fg(color::Yellow),
-                        &self.file_name,
-                        color::Fg(color::Reset)
-                    );
-                }
-            },
+        let color = match &self.file_type {
+            &FileType::File => &config.color.file_fg,
+            &FileType::Directory => &config.color.dir_fg,
+        };
+        match color {
+            Colorname::AnsiValue(n) => {
+                print_entry!(color::Fg(color::AnsiValue(*n)), name, time);
+            }
+            Colorname::Black => {
+                print_entry!(color::Fg(color::Black), name, time);
+            }
+            Colorname::Blue => {
+                print_entry!(color::Fg(color::Blue), name, time);
+            }
+            Colorname::Cyan => {
+                print_entry!(color::Fg(color::Cyan), name, time);
+            }
+            Colorname::Green => {
+                print_entry!(color::Fg(color::Green), name, time);
+            }
+            Colorname::LightBlack => {
+                print_entry!(color::Fg(color::LightBlack), name, time);
+            }
+            Colorname::LightBlue => {
+                print_entry!(color::Fg(color::LightBlue), name, time);
+            }
+            Colorname::LightCyan => {
+                print_entry!(color::Fg(color::LightCyan), name, time);
+            }
+            Colorname::LightGreen => {
+                print_entry!(color::Fg(color::LightGreen), name, time);
+            }
+            Colorname::LightMagenta => {
+                print_entry!(color::Fg(color::LightMagenta), name, time);
+            }
+            Colorname::LightRed => {
+                print_entry!(color::Fg(color::LightRed), name, time);
+            }
+            Colorname::LightWhite => {
+                print_entry!(color::Fg(color::LightWhite), name, time);
+            }
+            Colorname::LightYellow => {
+                print_entry!(color::Fg(color::LightYellow), name, time);
+            }
+            Colorname::Magenta => {
+                print_entry!(color::Fg(color::Magenta), name, time);
+            }
+            Colorname::Red => {
+                print_entry!(color::Fg(color::Red), name, time);
+            }
+            Colorname::Rgb(x, y, z) => {
+                print_entry!(color::Fg(color::Rgb(*x, *y, *z)), name, time);
+            }
+            Colorname::White => {
+                print_entry!(color::Fg(color::White), name, time);
+            }
+            Colorname::Yellow => {
+                print_entry!(color::Fg(color::Yellow), name, time);
+            }
         }
     }
 }
