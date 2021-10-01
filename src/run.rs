@@ -1,5 +1,6 @@
 use super::config::read_config;
 use super::entry::*;
+use super::state::Num;
 use std::env::current_dir;
 use std::io::{stdin, stdout, Write};
 use std::path::PathBuf;
@@ -40,8 +41,8 @@ pub fn run() {
     );
     screen.flush().unwrap();
 
-    let mut index = 1;
     let mut skip_number = 0;
+    let mut nums = Num::new();
     let mut stdin = stdin().keys();
 
     loop {
@@ -53,75 +54,76 @@ pub fn run() {
             match key {
                 //Go up. If lists exceeds max-row, lists "scrolls" before the top of the list
                 Key::Char('j') | Key::Down => {
-                    if index == len - 1 {
+                    if nums.index == len - 1 {
                         continue;
                     } else if y == row - 4 && *len > (row - STARTING_POINT) as usize - 1 {
-                        skip_number += 1;
+                        nums.inc_skip();
                         print!("{}{}", clear::All, cursor::Goto(1, 1));
-                        list_up(&config, &current_dir, &entry_v, skip_number);
+                        list_up(&config, &current_dir, &entry_v, nums.skip);
                         print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
-                        index += 1;
-                        continue;
+                        nums.go_down();
                     } else {
                         print!(" {}\n>{}", cursor::Left(1), cursor::Left(1));
-                        index += 1;
+                        nums.go_down();
                     }
                 }
 
                 //Go down. If lists exceeds max-row, lists "scrolls" before the bottom of the list
                 Key::Char('k') | Key::Up => {
                     if y == STARTING_POINT {
-                    } else if y == STARTING_POINT + 3 && skip_number != 0 {
-                        skip_number -= 1;
+                    } else if y == STARTING_POINT + 3 && nums.skip != 0 {
+                        nums.dec_skip();
                         print!("{}{}", clear::All, cursor::Goto(1, 1));
-                        list_up(&config, &current_dir, &entry_v, skip_number);
+                        list_up(&config, &current_dir, &entry_v, nums.skip);
                         print!(
                             "{}>{}",
                             cursor::Goto(1, STARTING_POINT + 3),
                             cursor::Left(1)
                         );
-                        index -= 1;
+                        nums.go_up();
                     } else {
                         print!(" {}{}>{}", cursor::Up(1), cursor::Left(1), cursor::Left(1));
-                        index -= 1;
+                        nums.go_up();
                     }
                 }
 
                 //Go to first line of the list
                 Key::Char('g') => {
-                    if index == 0 {
+                    if nums.index == 0 {
                         continue;
-                    } else if skip_number != 0 {
-                        skip_number = 0;
+                    } else if nums.skip != 0 {
+                        nums.reset();
                         print!("{}{}", clear::All, cursor::Goto(1, 1));
-                        list_up(&config, &current_dir, &entry_v, skip_number);
+                        list_up(&config, &current_dir, &entry_v, nums.skip);
+                        print!(" {}>{}", cursor::Goto(1, STARTING_POINT), cursor::Left(1));
+                        nums.go_top();
                     } else {
                         print!(" {}>{}", cursor::Goto(1, STARTING_POINT), cursor::Left(1));
-                        index = 0;
+                        nums.go_top();
                     }
                 }
 
                 //Go to end line of the list
                 Key::Char('G') => {
                     if *len > (row - STARTING_POINT) as usize {
-                        skip_number = (*len as u16) - row + STARTING_POINT;
+                        nums.skip = (*len as u16) - row + STARTING_POINT;
                         print!("{}{}", clear::All, cursor::Goto(1, 1));
-                        list_up(&config, &current_dir, &entry_v, skip_number);
+                        list_up(&config, &current_dir, &entry_v, nums.skip);
                         print!("{}>{}", cursor::Goto(1, row - 1), cursor::Left(1));
-                        index = len - 1;
+                        nums.go_bottom(len - 1);
                     } else {
                         print!(
                             " {}>{}",
                             cursor::Goto(1, *len as u16 + STARTING_POINT - 1),
                             cursor::Left(1)
                         );
-                        index = len - 1;
+                        nums.go_bottom(len - 1);
                     }
                 }
 
                 //Open file(exec in any way fo now) or change directory(change lists as if `cd`)
                 Key::Char('l') | Key::Char('\n') | Key::Right => {
-                    let target = &entry_v.get(index);
+                    let target = &entry_v.get(nums.index);
 
                     if let Some(entry) = target {
                         match entry.file_type {
@@ -130,7 +132,7 @@ pub fn run() {
                                 entry.open_file(&config);
                                 print!("{}", screen::ToAlternateScreen);
                                 print!("{}{}", clear::All, cursor::Goto(1, 1));
-                                list_up(&config, &current_dir, &entry_v, skip_number);
+                                list_up(&config, &current_dir, &entry_v, nums.skip);
                                 print!(
                                     "{}{}>{}",
                                     cursor::Hide,
@@ -148,8 +150,7 @@ pub fn run() {
                                     cursor::Goto(1, STARTING_POINT + 1),
                                     cursor::Left(1)
                                 );
-                                skip_number = 0;
-                                index = 1;
+                                nums.reset();
                             }
                         }
                     }
@@ -167,8 +168,7 @@ pub fn run() {
                             cursor::Goto(1, STARTING_POINT + 1),
                             cursor::Left(1)
                         );
-                        skip_number = 0;
-                        index = 1;
+                        nums.reset();
                     }
                     None => {
                         continue;
@@ -176,17 +176,17 @@ pub fn run() {
                 },
 
                 Key::Char('D') => {
-                    let target = &entry_v.get(index);
+                    let target = &entry_v.get(nums.index);
 
                     if let Some(entry) = target {
                         let _ = entry.remove(&trash_dir);
 
                         entry_v = push_entries(&current_dir).unwrap();
                         print!("{}{}", clear::All, cursor::Goto(1, 1));
-                        list_up(&config, &current_dir, &entry_v, skip_number);
-                        if index == len - 1 {
+                        list_up(&config, &current_dir, &entry_v, nums.skip);
+                        if nums.index == len - 1 {
                             print!("{}>{}", cursor::Goto(1, y - 1), cursor::Left(1));
-                            index -= 1;
+                            nums.go_up();
                         } else {
                             print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                         }
@@ -195,7 +195,7 @@ pub fn run() {
                 }
 
                 Key::Char('y') => {
-                    let target = entry_v.get(index).unwrap();
+                    let target = entry_v.get(nums.index).unwrap();
                     let path = target.file_path.clone();
                     path_buffer = Some(path);
                 }
@@ -231,7 +231,7 @@ pub fn run() {
                                         cursor::Goto(1, STARTING_POINT + 1),
                                         cursor::Left(1)
                                     );
-                                    index = 1;
+                                    nums.starting_point();
                                     break;
                                 }
                                 _ => {
@@ -247,7 +247,7 @@ pub fn run() {
                                         cursor::Goto(1, STARTING_POINT + 1),
                                         cursor::Left(1)
                                     );
-                                    index = 1;
+                                    nums.starting_point();
                                     break;
                                 }
                             }
@@ -272,7 +272,7 @@ pub fn run() {
                                     screen.flush().unwrap();
 
                                     print!("{}>{}", cursor::Goto(1, 3), cursor::Left(1));
-                                    index = 0;
+                                    nums.go_top();
                                     break;
                                 }
 
@@ -291,8 +291,7 @@ pub fn run() {
                                         cursor::Left(1)
                                     );
 
-                                    index = 1;
-                                    skip_number = 0;
+                                    nums.reset();
 
                                     break;
                                 }
@@ -306,9 +305,9 @@ pub fn run() {
                                         .filter(|entry| entry.file_name.contains(&word))
                                         .collect();
 
-                                    skip_number = 0;
+                                    nums.reset_skip();
                                     print!("{}{}", clear::All, cursor::Goto(1, 1));
-                                    list_up(&config, &current_dir, &entry_v, skip_number);
+                                    list_up(&config, &current_dir, &entry_v, nums.skip);
 
                                     print!(
                                         "{}{} {}{}",
@@ -330,9 +329,9 @@ pub fn run() {
                                         .filter(|entry| entry.file_name.contains(&word))
                                         .collect();
 
-                                    skip_number = 0;
+                                    nums.reset_skip();
                                     print!("{}{}", clear::All, cursor::Goto(1, 1));
-                                    list_up(&config, &current_dir, &entry_v, skip_number);
+                                    list_up(&config, &current_dir, &entry_v, nums.skip);
 
                                     print!(
                                         "{}{} {}{}",
