@@ -19,7 +19,7 @@
 #   White
 #   Yellow
 [color]
-dir_fg = "Cyan"
+dir_fg = "LightGreen"
 file_fg = "LightWhite"
 
 # key(extention) = value(shell command you want to use)

@@ -12,10 +12,20 @@ pub const DOWN_ARROW: char = '\u{21D3}';
 pub const RIGHT_ARROW: char = '\u{21D2}';
 pub const CONFIG_FILE: &str = "fm/config.toml";
 pub const TRASH: &str = "fm/trash";
+pub const NAME_MAX_LEN: usize = 30;
+pub const TIME_START_POS: u16 = 32;
 
 macro_rules! print_entry {
     ($color: expr, $name: expr, $time: expr) => {
-        print!("{}{}{}{}", $color, $name, $time, color::Fg(color::Reset));
+        let len = TIME_START_POS - $name.len() as u16;
+        print!(
+            "{}{}{}{}{}",
+            $color,
+            $name,
+            cursor::Right(len),
+            $time,
+            color::Fg(color::Reset)
+        );
     };
 }
 
@@ -158,6 +168,14 @@ fn make_entry(dir: fs::DirEntry) -> EntryInfo {
     } else {
         None
     };
+
+    let name = path
+        .file_name()
+        .unwrap()
+        .to_os_string()
+        .into_string()
+        .unwrap();
+
     return EntryInfo {
         //todo: Is this chain even necessary?
         file_type: if dir.path().is_file() {
@@ -165,12 +183,12 @@ fn make_entry(dir: fs::DirEntry) -> EntryInfo {
         } else {
             FileType::Directory
         },
-        file_name: path
-            .file_name()
-            .unwrap()
-            .to_os_string()
-            .into_string()
-            .unwrap(),
+        file_name: if name.len() > NAME_MAX_LEN {
+            let name = format!("{}..", &name[0..=NAME_MAX_LEN - 2]);
+            name
+        } else {
+            name
+        },
         file_path: path,
         modified: time,
     };

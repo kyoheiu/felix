@@ -19,7 +19,10 @@ pub fn run() {
     let _ = make_config(&config_file, &trash_dir);
     let config = read_config().unwrap();
 
-    let (_, row) = termion::terminal_size().unwrap();
+    let (column, row) = termion::terminal_size().unwrap();
+    if column < NAME_MAX_LEN as u16 + TIME_START_POS - 3 {
+        panic!("Too small terminal size.")
+    };
 
     let mut screen = screen::AlternateScreen::from(stdout().into_raw_mode().unwrap());
 
