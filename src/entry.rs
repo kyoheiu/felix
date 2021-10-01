@@ -21,9 +21,9 @@ pub enum FileType {
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct EntryInfo {
+    pub file_type: FileType,
     pub file_name: String,
     pub file_path: std::path::PathBuf,
-    pub file_type: FileType,
     pub modified: Option<String>,
 }
 
@@ -370,9 +370,9 @@ impl EntryInfo {
 
 fn make_parent_dir(p: PathBuf) -> EntryInfo {
     return EntryInfo {
+        file_type: FileType::Directory,
         file_name: String::from("../"),
         file_path: p,
-        file_type: FileType::Directory,
         modified: None,
     };
 }
@@ -389,6 +389,11 @@ fn make_entry(dir: fs::DirEntry) -> EntryInfo {
     };
     return EntryInfo {
         //todo: Is this chain even necessary?
+        file_type: if dir.path().is_file() {
+            FileType::File
+        } else {
+            FileType::Directory
+        },
         file_name: path
             .file_name()
             .unwrap()
@@ -396,38 +401,27 @@ fn make_entry(dir: fs::DirEntry) -> EntryInfo {
             .into_string()
             .unwrap(),
         file_path: path,
-        file_type: if dir.path().is_file() {
-            FileType::File
-        } else {
-            FileType::Directory
-        },
         modified: time,
     };
 }
 
 pub fn push_entries(p: &PathBuf) -> Result<Vec<EntryInfo>, Error> {
-    let mut dir_v = vec![];
-    let mut file_v = vec![];
+    let mut entry_v = vec![];
 
     match p.parent() {
         Some(parent_p) => {
             let parent_dir = make_parent_dir(parent_p.to_path_buf());
-            dir_v.push(parent_dir);
+            entry_v.push(parent_dir);
         }
         None => {}
     }
     for entry in fs::read_dir(p)? {
         let e = entry?;
         let entry = make_entry(e);
-        match entry.file_type {
-            FileType::File => file_v.push(entry),
-            FileType::Directory => dir_v.push(entry),
-        }
+        entry_v.push(entry);
     }
-    dir_v.sort();
-    file_v.sort();
-    dir_v.append(&mut file_v);
-    Ok(dir_v)
+    entry_v.sort();
+    Ok(entry_v)
 }
 
 pub fn make_config(config_file: &PathBuf, trash_dir: &PathBuf) -> std::io::Result<()> {
