@@ -1,3 +1,9 @@
+pub struct CursorMemo {
+    pub num: Num,
+    pub cursor_pos: u16,
+}
+
+#[derive(Clone)]
 pub struct Num {
     pub index: usize,
     pub skip: u16,

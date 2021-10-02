@@ -1,3 +1,5 @@
+use crate::state::CursorMemo;
+
 use super::config::read_config;
 use super::entry::*;
 use super::state::Num;
@@ -41,6 +43,7 @@ pub fn run() {
     screen.flush().unwrap();
 
     let mut nums = Num::new();
+    let mut memo_v: Vec<CursorMemo> = Vec::new();
     let mut stdin = stdin().keys();
 
     loop {
@@ -139,6 +142,12 @@ pub fn run() {
                                 );
                             }
                             FileType::Directory => {
+                                let cursor_memo = CursorMemo {
+                                    num: nums.clone(),
+                                    cursor_pos: y,
+                                };
+                                memo_v.push(cursor_memo);
+
                                 current_dir = entry.file_path.to_path_buf();
                                 entry_v = push_entries(&current_dir).unwrap();
                                 clear_all_for_list_up();
@@ -161,12 +170,21 @@ pub fn run() {
                         entry_v = push_entries(&current_dir).unwrap();
                         clear_all_for_list_up();
                         list_up(&config, &current_dir, &entry_v, 0);
-                        print!(
-                            "{}>{}",
-                            cursor::Goto(1, STARTING_POINT + 1),
-                            cursor::Left(1)
-                        );
-                        nums.reset();
+
+                        match memo_v.pop() {
+                            Some(memo) => {
+                                nums = memo.num;
+                                print!("{}>{}", cursor::Goto(1, memo.cursor_pos), cursor::Left(1));
+                            }
+                            None => {
+                                nums.reset();
+                                print!(
+                                    "{}>{}",
+                                    cursor::Goto(1, STARTING_POINT + 1),
+                                    cursor::Left(1)
+                                );
+                            }
+                        }
                     }
                     None => {
                         continue;

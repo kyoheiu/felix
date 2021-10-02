@@ -18,12 +18,12 @@ pub const CONFIRMATION: &str = "Are you sure to empty the trash directory? (if y
 
 macro_rules! print_entry {
     ($color: expr, $name: expr, $time: expr) => {
-        let len = TIME_START_POS - $name.len() as u16;
         print!(
-            "{}{}{}{}{}",
+            "{}{}{}{}{}{}",
             $color,
             $name,
-            cursor::Right(len),
+            cursor::Left(34),
+            cursor::Right(34),
             $time,
             color::Fg(color::Reset)
         );
@@ -170,12 +170,10 @@ fn make_entry(dir: fs::DirEntry) -> EntryInfo {
         None
     };
 
-    let name = path
+    let name = dir
         .file_name()
-        .unwrap()
-        .to_os_string()
         .into_string()
-        .unwrap();
+        .unwrap_or("failed".to_string());
 
     return EntryInfo {
         //todo: Is this chain even necessary?
@@ -184,7 +182,7 @@ fn make_entry(dir: fs::DirEntry) -> EntryInfo {
         } else {
             FileType::Directory
         },
-        file_name: if name.len() > NAME_MAX_LEN {
+        file_name: if name.chars().count() > NAME_MAX_LEN {
             let name = format!("{}..", &name[0..=NAME_MAX_LEN - 2]);
             name
         } else {
