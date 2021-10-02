@@ -28,7 +28,7 @@ pub fn run() {
 
     let mut screen = screen::AlternateScreen::from(stdout().into_raw_mode().unwrap());
 
-    clear_all_for_list_up();
+    clear_all();
 
     let mut current_dir = current_dir().unwrap();
     let mut entry_v = push_entries(&current_dir).unwrap();
@@ -59,7 +59,7 @@ pub fn run() {
                         continue;
                     } else if y == row - 4 && *len > (row - STARTING_POINT) as usize - 1 {
                         nums.inc_skip();
-                        clear_all_for_list_up();
+                        clear_all();
                         list_up(&config, &current_dir, &entry_v, nums.skip);
                         print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                         nums.go_down();
@@ -74,7 +74,7 @@ pub fn run() {
                     if y == STARTING_POINT {
                     } else if y == STARTING_POINT + 3 && nums.skip != 0 {
                         nums.dec_skip();
-                        clear_all_for_list_up();
+                        clear_all();
                         list_up(&config, &current_dir, &entry_v, nums.skip);
                         print!(
                             "{}>{}",
@@ -94,7 +94,7 @@ pub fn run() {
                         continue;
                     } else if nums.skip != 0 {
                         nums.reset();
-                        clear_all_for_list_up();
+                        clear_all();
                         list_up(&config, &current_dir, &entry_v, nums.skip);
                         print!(" {}>{}", cursor::Goto(1, STARTING_POINT), cursor::Left(1));
                         nums.go_top();
@@ -108,7 +108,7 @@ pub fn run() {
                 Key::Char('G') => {
                     if *len > (row - STARTING_POINT) as usize {
                         nums.skip = (*len as u16) - row + STARTING_POINT;
-                        clear_all_for_list_up();
+                        clear_all();
                         list_up(&config, &current_dir, &entry_v, nums.skip);
                         print!("{}>{}", cursor::Goto(1, row - 1), cursor::Left(1));
                         nums.go_bottom(len - 1);
@@ -132,7 +132,7 @@ pub fn run() {
                                 print!("{}", screen::ToAlternateScreen);
                                 entry.open_file(&config);
                                 print!("{}", screen::ToAlternateScreen);
-                                clear_all_for_list_up();
+                                clear_all();
                                 list_up(&config, &current_dir, &entry_v, nums.skip);
                                 print!(
                                     "{}{}>{}",
@@ -150,7 +150,7 @@ pub fn run() {
 
                                 current_dir = entry.file_path.to_path_buf();
                                 entry_v = push_entries(&current_dir).unwrap();
-                                clear_all_for_list_up();
+                                clear_all();
                                 list_up(&config, &current_dir, &entry_v, 0);
                                 print!(
                                     "{}>{}",
@@ -168,7 +168,7 @@ pub fn run() {
                     Some(parent_p) => {
                         current_dir = parent_p.to_path_buf();
                         entry_v = push_entries(&current_dir).unwrap();
-                        clear_all_for_list_up();
+                        clear_all();
                         list_up(&config, &current_dir, &entry_v, 0);
 
                         match memo_v.pop() {
@@ -198,7 +198,7 @@ pub fn run() {
                         let _ = entry.remove(&trash_dir);
 
                         entry_v = push_entries(&current_dir).unwrap();
-                        clear_all_for_list_up();
+                        clear_all();
                         list_up(&config, &current_dir, &entry_v, nums.skip);
                         if nums.index == len - 1 {
                             print!("{}>{}", cursor::Goto(1, y - 1), cursor::Left(1));
@@ -294,7 +294,7 @@ pub fn run() {
 
                                 //Quit filter mode and return to original lists
                                 Key::Esc => {
-                                    clear_all_for_list_up();
+                                    clear_all();
 
                                     entry_v = push_entries(&current_dir).unwrap();
                                     list_up(&config, &current_dir, &entry_v, 0);
@@ -321,7 +321,7 @@ pub fn run() {
                                         .collect();
 
                                     nums.reset_skip();
-                                    clear_all_for_list_up();
+                                    clear_all();
                                     list_up(&config, &current_dir, &entry_v, nums.skip);
 
                                     print!(
@@ -345,7 +345,7 @@ pub fn run() {
                                         .collect();
 
                                     nums.reset_skip();
-                                    clear_all_for_list_up();
+                                    clear_all();
                                     list_up(&config, &current_dir, &entry_v, nums.skip);
 
                                     print!(

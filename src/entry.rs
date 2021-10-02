@@ -231,7 +231,7 @@ fn format_time(time: &Option<String>) -> String {
     }
 }
 
-pub fn clear_all_for_list_up() {
+pub fn clear_all() {
     print!("{}{}", clear::All, cursor::Goto(1, 1));
 }
 
