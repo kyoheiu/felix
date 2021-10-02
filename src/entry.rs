@@ -1,11 +1,12 @@
 use super::config::Colorname;
 use super::config::Config;
+use super::functions::*;
 use chrono::prelude::*;
 use std::fs;
 use std::io::Error;
 use std::path::PathBuf;
 use std::process::Command;
-use termion::{clear, color, cursor, style};
+use termion::{color, cursor, style};
 
 pub const STARTING_POINT: u16 = 3;
 pub const DOWN_ARROW: char = '\u{21D3}';
@@ -210,29 +211,6 @@ pub fn push_entries(p: &PathBuf) -> Result<Vec<EntryInfo>, Error> {
     }
     entry_v.sort();
     Ok(entry_v)
-}
-
-pub fn make_config(config_file: &PathBuf, trash_dir: &PathBuf) -> std::io::Result<()> {
-    if !config_file.exists() {
-        fs::File::create(config_file)?;
-    }
-
-    if !trash_dir.exists() {
-        fs::create_dir_all(trash_dir)?;
-    }
-
-    Ok(())
-}
-
-fn format_time(time: &Option<String>) -> String {
-    match time {
-        Some(datetime) => format!("{} {}", &datetime[0..10], &datetime[11..16]),
-        None => "".to_string(),
-    }
-}
-
-pub fn clear_all() {
-    print!("{}{}", clear::All, cursor::Goto(1, 1));
 }
 
 pub fn list_up(config: &Config, p: &PathBuf, v: &std::vec::Vec<EntryInfo>, skip_number: u16) {

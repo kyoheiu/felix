@@ -1,8 +1,7 @@
-use crate::state::CursorMemo;
-
 use super::config::read_config;
 use super::entry::*;
-use super::state::Num;
+use super::functions::*;
+use super::state::*;
 use std::env::current_dir;
 use std::io::{stdin, stdout, Write};
 use std::path::PathBuf;
@@ -195,6 +194,10 @@ pub fn run() {
                     let target = &entry_v.get(nums.index);
 
                     if let Some(entry) = target {
+                        let name = entry.file_path.file_name().unwrap();
+                        let path = &trash_dir.join(name);
+                        path_buffer = Some(path.clone());
+
                         let _ = entry.remove(&trash_dir);
 
                         entry_v = push_entries(&current_dir).unwrap();
@@ -215,6 +218,8 @@ pub fn run() {
                     let path = target.file_path.clone();
                     path_buffer = Some(path);
                 }
+
+                Key::Char('p') => {}
 
                 Key::Char('E') => {
                     print!(" ");
