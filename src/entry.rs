@@ -19,10 +19,20 @@ pub const CONFIRMATION: &str = "Are you sure to empty the trash directory? (if y
 
 macro_rules! print_entry {
     ($color: expr, $name: expr, $time: expr) => {
+        let mut result: String;
+        let chars: Vec<char> = $name.chars().collect();
+        let name = if chars.len() > NAME_MAX_LEN {
+            result = chars.iter().take(NAME_MAX_LEN - 2).collect::<String>();
+            result.push_str("..");
+            &result
+            //format!("{}..", $name[0..=NAME_MAX_LEN - 2])
+        } else {
+            $name
+        };
         print!(
             "{}{}{}{}{}{}",
             $color,
-            $name,
+            name,
             cursor::Left(34),
             cursor::Right(34),
             $time,
@@ -174,7 +184,7 @@ fn make_entry(dir: fs::DirEntry) -> EntryInfo {
     let name = dir
         .file_name()
         .into_string()
-        .unwrap_or("failed".to_string());
+        .unwrap_or_else(|_| panic!("failed to get file name."));
 
     return EntryInfo {
         //todo: Is this chain even necessary?
@@ -183,12 +193,7 @@ fn make_entry(dir: fs::DirEntry) -> EntryInfo {
         } else {
             FileType::Directory
         },
-        file_name: if name.chars().count() > NAME_MAX_LEN {
-            let name = format!("{}..", &name[0..=NAME_MAX_LEN - 2]);
-            name
-        } else {
-            name
-        },
+        file_name: name,
         file_path: path,
         modified: time,
     };
