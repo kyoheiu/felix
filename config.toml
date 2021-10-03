@@ -22,8 +22,8 @@
 dir_fg = "LightGreen"
 file_fg = "LightWhite"
 
-# key(extention) = value(shell command you want to use)
-# key `default` is mandatory (if it does not exist, program will panic.)
+# key(extention) = value(command you want to use)
+# `default` is mandatory
 [exec]
 default = "nvim"
 jpg = "feh"
