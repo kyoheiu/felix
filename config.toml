@@ -1,6 +1,6 @@
 # Choose the foreground color of file and directory in the list.
 # Pick one of the following:
-#   AnsiValue
+#   AnsiValue(u8)
 #   Black
 #   Blue
 #   Cyan
