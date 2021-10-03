@@ -213,6 +213,24 @@ pub fn push_entries(p: &PathBuf) -> Result<Vec<EntryInfo>, Error> {
     Ok(entry_v)
 }
 
+pub fn put_entry(path: Option<PathBuf>, trash_dir: &PathBuf) {
+    match path {
+        Some(p) => {
+            match p.parent() {
+                Some(dir) => {
+                    if dir == trash_dir {
+                        //move item to current_dir
+                    } else {
+                        //copy item to current_dir. with which name?
+                    }
+                }
+                None => {}
+            }
+        }
+        None => {}
+    }
+}
+
 pub fn list_up(config: &Config, p: &PathBuf, v: &std::vec::Vec<EntryInfo>, skip_number: u16) {
     //Show current directory path
     println!(
