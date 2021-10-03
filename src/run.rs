@@ -4,7 +4,7 @@ use super::functions::*;
 use super::state::*;
 use std::env::current_dir;
 use std::io::{stdin, stdout, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use termion::cursor::DetectCursorPos;
 use termion::event::Key;
 use termion::input::TermRead;
@@ -220,6 +220,116 @@ pub fn run() {
                 }
 
                 Key::Char('p') => {}
+
+                Key::Char('c') => {
+                    print!("{}{}", cursor::Show, cursor::SteadyBlock);
+                    let target = entry_v.get(nums.index).unwrap();
+                    let mut rename = target.file_name.clone().chars().collect::<Vec<char>>();
+                    print!(
+                        "{}{} {}",
+                        cursor::Goto(2, 2),
+                        RIGHT_ARROW,
+                        &rename.iter().collect::<String>(),
+                    );
+                    screen.flush().unwrap();
+
+                    loop {
+                        let eow = rename.len() + 3;
+                        let (x, _) = screen.cursor_pos().unwrap();
+                        let input = stdin.next();
+                        if let Some(Ok(key)) = input {
+                            match key {
+                                //rename item
+                                Key::Char('\n') => {
+                                    let rename = rename.iter().collect::<String>();
+                                    let mut to = current_dir.clone();
+                                    to.push(rename);
+                                    std::fs::rename(Path::new(&target.file_path), Path::new(&to))
+                                        .unwrap_or_else(|_| panic!("rename failed"));
+                                    clear_all();
+
+                                    entry_v = push_entries(&current_dir).unwrap();
+                                    list_up(&config, &current_dir, &entry_v, 0);
+
+                                    print!(
+                                        "{}{}>{}",
+                                        cursor::Hide,
+                                        cursor::Goto(1, STARTING_POINT + 1),
+                                        cursor::Left(1)
+                                    );
+
+                                    nums.reset();
+                                    break;
+                                }
+
+                                //Quit rename mode and return to original lists
+                                Key::Esc => {
+                                    print!("{}", clear::CurrentLine);
+                                    print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
+                                    screen.flush().unwrap();
+
+                                    print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+                                    print!("{}", cursor::Hide);
+                                    break;
+                                }
+
+                                Key::Left => {
+                                    if x == 4 {
+                                        continue;
+                                    };
+                                    print!("{}", cursor::Left(1));
+                                    screen.flush().unwrap();
+                                }
+
+                                Key::Right => {
+                                    if x as usize == eow + 1 {
+                                        continue;
+                                    };
+                                    print!("{}", cursor::Right(1));
+                                    screen.flush().unwrap();
+                                }
+
+                                //Input char(case-sensitive)
+                                Key::Char(c) => {
+                                    let memo_x = x;
+                                    rename.insert((x - 4).into(), c);
+
+                                    print!(
+                                        "{}{}{} {}{}",
+                                        clear::CurrentLine,
+                                        cursor::Goto(2, 2),
+                                        RIGHT_ARROW,
+                                        &rename.iter().collect::<String>(),
+                                        cursor::Goto(memo_x + 1, 2)
+                                    );
+
+                                    screen.flush().unwrap();
+                                }
+
+                                Key::Backspace => {
+                                    let memo_x = x;
+                                    if x == 4 {
+                                        continue;
+                                    };
+                                    rename.remove((x - 5).into());
+
+                                    print!(
+                                        "{}{}{} {}{}",
+                                        clear::CurrentLine,
+                                        cursor::Goto(2, 2),
+                                        RIGHT_ARROW,
+                                        &rename.iter().collect::<String>(),
+                                        cursor::Goto(memo_x - 1, 2)
+                                    );
+
+                                    screen.flush().unwrap();
+                                }
+
+                                _ => continue,
+                            }
+                        }
+                    }
+                }
 
                 Key::Char('E') => {
                     print!(" ");
