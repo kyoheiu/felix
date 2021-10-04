@@ -15,7 +15,7 @@ pub fn run() {
     let config_dir = dirs::config_dir().unwrap_or_else(|| panic!("cannot read config dir."));
     let config_file = config_dir.join(PathBuf::from(CONFIG_FILE));
     let trash_dir = config_dir.join(PathBuf::from(TRASH));
-    let mut path_buffer: Option<PathBuf> = None;
+    let mut path_buffer: Option<(PathBuf, String)> = None;
 
     make_config(&config_file, &trash_dir)
         .unwrap_or_else(|_| panic!("cannot make config file or trash dir."));
@@ -197,7 +197,7 @@ pub fn run() {
                     if let Some(entry) = target {
                         let name = entry.file_path.file_name().unwrap();
                         let path = &trash_dir.join(name);
-                        path_buffer = Some(path.clone());
+                        path_buffer = Some((path.clone(), entry.file_name.clone()));
 
                         if let Err(_) = entry.remove(&trash_dir) {
                             continue;
@@ -222,7 +222,7 @@ pub fn run() {
                     let target = entry_v.get(nums.index);
                     if let Some(entry) = target {
                         let path = entry.file_path.clone();
-                        path_buffer = Some(path);
+                        path_buffer = Some((path, entry.file_name.clone()));
                     } else {
                         continue;
                     }
