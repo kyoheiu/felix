@@ -26,14 +26,19 @@ pub fn clear_all() {
     print!("{}{}", clear::All, cursor::Goto(1, 1));
 }
 
-pub fn rename_file(mut name: String, entry_v: &Vec<EntryInfo>) -> String {
-    name.push_str("_copied");
-    if entry_v
-        .iter()
-        .any(|entry| entry.file_path.to_str().unwrap() == &name)
-    {
-        return rename_file(name, entry_v);
+pub fn rename_file(
+    path_buffer: Option<(PathBuf, String)>,
+    entry_v: &Vec<EntryInfo>,
+) -> Option<PathBuf> {
+    if let Some((mut path, mut name)) = path_buffer {
+        if entry_v.iter().any(|entry| entry.file_name == name) {
+            name.push_str("_copied");
+            path.set_file_name(name);
+            return Some(path);
+        } else {
+            return None;
+        }
     } else {
-        return name;
+        None
     }
 }
