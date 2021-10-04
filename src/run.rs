@@ -386,11 +386,15 @@ pub fn run() {
 
                 //Enter the filter mode
                 Key::Char('/') => {
-                    print!(" ");
-                    print!("{}{}{}", cursor::Goto(2, 2), RIGHT_ARROW, cursor::Right(4));
+                    print!(" {}{} ", cursor::Goto(2, 2), RIGHT_ARROW);
+                    print!("{}{}", cursor::Show, cursor::BlinkingBlock);
                     screen.flush().unwrap();
-                    let mut word = String::from("");
+
+                    let mut keyword: Vec<char> = Vec::new();
                     loop {
+                        let (x, _) = screen.cursor_pos().unwrap();
+                        let keyword_len = keyword.len();
+
                         let input = stdin.next();
                         if let Some(Ok(key)) = input {
                             match key {
@@ -420,17 +424,38 @@ pub fn run() {
                                     );
 
                                     nums.reset();
-
                                     break;
+                                }
+
+                                Key::Left => {
+                                    if x == 4 {
+                                        continue;
+                                    }
+                                    print!("{}", cursor::Left(1));
+                                    screen.flush().unwrap();
+                                }
+
+                                Key::Right => {
+                                    if x as usize == keyword_len + 4 {
+                                        continue;
+                                    }
+                                    print!("{}", cursor::Right(1));
+                                    screen.flush().unwrap();
                                 }
 
                                 //Input char(case-sensitive)
                                 Key::Char(c) => {
-                                    word.push(c);
+                                    let memo_x = x;
+                                    keyword.insert((x - 4).into(), c);
 
+                                    entry_v = push_entries(&current_dir).unwrap();
                                     entry_v = entry_v
                                         .into_iter()
-                                        .filter(|entry| entry.file_name.contains(&word))
+                                        .filter(|entry| {
+                                            entry
+                                                .file_name
+                                                .contains(&keyword.iter().collect::<String>())
+                                        })
                                         .collect();
 
                                     nums.reset_skip();
@@ -441,20 +466,28 @@ pub fn run() {
                                         "{}{} {}{}",
                                         cursor::Goto(2, 2),
                                         RIGHT_ARROW,
-                                        word,
-                                        cursor::Right(2)
+                                        &keyword.iter().collect::<String>(),
+                                        cursor::Goto(memo_x + 1, 2)
                                     );
 
                                     screen.flush().unwrap();
                                 }
 
                                 Key::Backspace => {
-                                    word.pop();
+                                    let memo_x = x;
+                                    if x == 4 {
+                                        continue;
+                                    };
+                                    keyword.remove((x - 5).into());
 
                                     entry_v = push_entries(&current_dir).unwrap();
                                     entry_v = entry_v
                                         .into_iter()
-                                        .filter(|entry| entry.file_name.contains(&word))
+                                        .filter(|entry| {
+                                            entry
+                                                .file_name
+                                                .contains(&keyword.iter().collect::<String>())
+                                        })
                                         .collect();
 
                                     nums.reset_skip();
@@ -465,8 +498,8 @@ pub fn run() {
                                         "{}{} {}{}",
                                         cursor::Goto(2, 2),
                                         RIGHT_ARROW,
-                                        word,
-                                        cursor::Right(2)
+                                        &keyword.iter().collect::<String>(),
+                                        cursor::Goto(memo_x - 1, 2)
                                     );
 
                                     screen.flush().unwrap();
@@ -476,6 +509,7 @@ pub fn run() {
                             }
                         }
                     }
+                    print!("{}", cursor::Hide);
                 }
 
                 Key::Esc => break,
