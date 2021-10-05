@@ -1,12 +1,11 @@
-use super::config::Colorname;
-use super::config::Config;
+use super::config::*;
 use super::functions::*;
 use chrono::prelude::*;
 use std::fs;
 use std::io::Error;
 use std::path::PathBuf;
 use std::process::Command;
-use termion::{color, cursor, style};
+use termion::{color, cursor};
 
 pub const STARTING_POINT: u16 = 3;
 pub const DOWN_ARROW: char = '\u{21D3}';
@@ -25,7 +24,6 @@ macro_rules! print_entry {
             result = chars.iter().take(NAME_MAX_LEN - 2).collect::<String>();
             result.push_str("..");
             &result
-            //format!("{}..", $name[0..=NAME_MAX_LEN - 2])
         } else {
             $name
         };
@@ -40,6 +38,21 @@ macro_rules! print_entry {
         );
     };
 }
+#[derive(Clone)]
+pub struct Items {
+    pub list: Vec<ItemInfo>,
+    pub item_buf: Option<ItemInfo>,
+    pub trash_dir: PathBuf,
+    pub config: Config,
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+pub struct ItemInfo {
+    pub file_type: FileType,
+    pub file_name: String,
+    pub file_path: std::path::PathBuf,
+    pub modified: Option<String>,
+}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum FileType {
@@ -47,21 +60,35 @@ pub enum FileType {
     File,
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct EntryInfo {
-    pub file_type: FileType,
-    pub file_name: String,
-    pub file_path: std::path::PathBuf,
-    pub modified: Option<String>,
+impl Default for Items {
+    fn default() -> Self {
+        Items {
+            list: Vec::new(),
+            item_buf: None,
+            trash_dir: PathBuf::new(),
+            config: read_config().unwrap_or_else(|| panic!("cannot read config file.")),
+        }
+    }
 }
 
-impl EntryInfo {
-    //Open file according to config.toml.
-    pub fn open_file(&self, config: &Config) {
-        let path = &self.file_path;
-        let ext_map = &config.exec;
+impl Items {
+    pub fn new() -> Self {
+        Default::default()
+    }
+    pub fn get_item(&self, index: usize) -> &ItemInfo {
+        &self
+            .list
+            .get(index)
+            .unwrap_or_else(|| panic!("cannot choose item."))
+    }
+
+    pub fn open_file(&self, index: usize) {
+        let item = self.get_item(index);
+        let path = &item.file_path;
+        let ext_map = &self.config.exec;
         let extention = path.extension();
         let default = ext_map.get("default").unwrap();
+
         match extention {
             Some(extention) => {
                 let ext = extention.to_os_string().into_string().unwrap();
@@ -83,24 +110,20 @@ impl EntryInfo {
             }
         }
     }
-
-    //Move selected file or directory recursively to trash_dir(by default ~/.config/fm/trash).
-    pub fn remove(&self, trash_dir: &PathBuf) -> fs_extra::error::Result<()> {
+    pub fn remove(&self, index: usize) {
         let options = fs_extra::dir::CopyOptions::new();
-        let arr = [&self.file_path.as_path()];
-        match fs_extra::move_items(&arr, trash_dir, &options) {
-            Ok(_) => Ok(()),
-            Err(_) => panic!("cannot remove item."),
-        }
+        let arr = [&self.get_item(index).file_path.as_path()];
+        fs_extra::move_items(&arr, &self.trash_dir, &options)
+            .unwrap_or_else(|_| panic!("cannot remove item."));
     }
 
-    //Print name of file or directory.
-    fn print(&self, config: &Config) {
-        let name = &self.file_name;
-        let time = format_time(&self.modified);
-        let color = match &self.file_type {
-            &FileType::File => &config.color.file_fg,
-            &FileType::Directory => &config.color.dir_fg,
+    pub fn print(&self, index: usize) {
+        let item = &self.get_item(index);
+        let name = &item.file_name;
+        let time = format_time(&item.modified);
+        let color = match &item.file_type {
+            &FileType::File => &self.config.color.file_fg,
+            &FileType::Directory => &self.config.color.dir_fg,
         };
         match color {
             Colorname::AnsiValue(n) => {
@@ -159,10 +182,60 @@ impl EntryInfo {
             }
         }
     }
+
+    pub fn list_up(&self, skip_number: u16) {
+        //Show arrow
+        print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
+
+        let (_, row) = termion::terminal_size().unwrap();
+        let len = self.list.len();
+
+        //if lists exceeds max-row
+        if row > STARTING_POINT - 1 && len > (row - STARTING_POINT) as usize - 1 {
+            let mut row_count = 0;
+            for (i, _) in self.list.iter().enumerate() {
+                if i < skip_number as usize {
+                    continue;
+                }
+
+                print!(
+                    "{}",
+                    cursor::Goto(3, i as u16 + STARTING_POINT - skip_number)
+                );
+
+                if row_count == row - STARTING_POINT {
+                    print!(
+                        "  {}{}{}lines {}-{}({}){}{}",
+                        cursor::Left(2),
+                        color::Bg(color::LightWhite),
+                        color::Fg(color::Black),
+                        skip_number,
+                        row - STARTING_POINT + skip_number,
+                        len,
+                        color::Bg(color::Reset),
+                        color::Fg(color::Reset)
+                    );
+                    break;
+                } else {
+                    self.print(i);
+                    row_count += 1;
+                }
+            }
+        } else {
+            for (i, _) in self.list.iter().enumerate() {
+                print!("{}", cursor::Goto(3, i as u16 + STARTING_POINT));
+                self.print(i);
+            }
+        }
+    }
+
+    pub fn update_list(&mut self, path: &PathBuf) {
+        self.list = push_entries(path).unwrap();
+    }
 }
 
-fn make_parent_dir(p: PathBuf) -> EntryInfo {
-    return EntryInfo {
+fn make_parent_dir(p: PathBuf) -> ItemInfo {
+    return ItemInfo {
         file_type: FileType::Directory,
         file_name: String::from("../"),
         file_path: p,
@@ -170,12 +243,13 @@ fn make_parent_dir(p: PathBuf) -> EntryInfo {
     };
 }
 
-fn make_entry(dir: fs::DirEntry) -> EntryInfo {
+fn make_entry(dir: fs::DirEntry) -> ItemInfo {
     let path = dir.path();
-    let metadata = fs::metadata(&path).unwrap();
+    let metadata =
+        fs::metadata(&path).unwrap_or_else(|_| panic!("cannot read metadata of directory."));
     let sometime = metadata.modified();
-    let time = if sometime.is_ok() {
-        let chrono_time: DateTime<Local> = DateTime::from(sometime.unwrap());
+    let time = if let Ok(time) = sometime {
+        let chrono_time: DateTime<Local> = DateTime::from(time);
         Some(chrono_time.to_rfc3339_opts(SecondsFormat::Secs, false))
     } else {
         None
@@ -186,7 +260,7 @@ fn make_entry(dir: fs::DirEntry) -> EntryInfo {
         .into_string()
         .unwrap_or_else(|_| panic!("failed to get file name."));
 
-    return EntryInfo {
+    return ItemInfo {
         //todo: Is this chain even necessary?
         file_type: if dir.path().is_file() {
             FileType::File
@@ -199,7 +273,7 @@ fn make_entry(dir: fs::DirEntry) -> EntryInfo {
     };
 }
 
-pub fn push_entries(p: &PathBuf) -> Result<Vec<EntryInfo>, Error> {
+pub fn push_entries(p: &PathBuf) -> Result<Vec<ItemInfo>, Error> {
     let mut entry_v = vec![];
 
     match p.parent() {
@@ -216,80 +290,4 @@ pub fn push_entries(p: &PathBuf) -> Result<Vec<EntryInfo>, Error> {
     }
     entry_v.sort();
     Ok(entry_v)
-}
-
-pub fn put_entry(path: Option<PathBuf>, trash_dir: &PathBuf) {
-    match path {
-        Some(p) => {
-            match p.parent() {
-                Some(dir) => {
-                    if dir == trash_dir {
-                        //move item to current_dir
-                    } else {
-                        //copy item to current_dir. with which name?
-                    }
-                }
-                None => {}
-            }
-        }
-        None => {}
-    }
-}
-
-pub fn list_up(config: &Config, p: &PathBuf, v: &std::vec::Vec<EntryInfo>, skip_number: u16) {
-    //Show current directory path
-    println!(
-        " {}{}{}{}{}{}{}",
-        style::Bold,
-        color::Bg(color::Cyan),
-        color::Fg(color::Black),
-        p.display(),
-        style::Reset,
-        color::Bg(color::Reset),
-        color::Fg(color::Reset)
-    );
-
-    //Show arrow
-    print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
-
-    let (_, row) = termion::terminal_size().unwrap();
-    let len = v.len();
-
-    //if lists exceeds max-row
-    if row > STARTING_POINT - 1 && v.len() > (row - STARTING_POINT) as usize - 1 {
-        let mut row_count = 0;
-        for (i, entry) in v.iter().enumerate() {
-            let i = i as u16;
-
-            if i < skip_number {
-                continue;
-            }
-
-            print!("{}", cursor::Goto(3, i + STARTING_POINT - skip_number));
-
-            if row_count == row - STARTING_POINT {
-                print!(
-                    "  {}{}{}lines {}-{}({}){}{}",
-                    cursor::Left(2),
-                    color::Bg(color::LightWhite),
-                    color::Fg(color::Black),
-                    skip_number,
-                    row - STARTING_POINT + skip_number,
-                    len,
-                    color::Bg(color::Reset),
-                    color::Fg(color::Reset)
-                );
-                break;
-            } else {
-                entry.print(config);
-                row_count += 1;
-            }
-        }
-    } else {
-        for (i, entry) in v.iter().enumerate() {
-            let i = i as u16;
-            print!("{}", cursor::Goto(3, i + STARTING_POINT));
-            entry.print(config);
-        }
-    }
 }

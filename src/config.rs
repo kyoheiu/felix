@@ -5,19 +5,19 @@ use std::path::Path;
 
 const CONFIG_FILE: &str = "config.toml";
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Config {
     pub color: Color,
     pub exec: HashMap<String, String>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Color {
     pub dir_fg: Colorname,
     pub file_fg: Colorname,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub enum Colorname {
     AnsiValue(u8),
     Black,

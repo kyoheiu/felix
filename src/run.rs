@@ -1,4 +1,3 @@
-use super::config::read_config;
 use super::entry::*;
 use super::functions::*;
 use super::state::*;
@@ -15,11 +14,16 @@ pub fn run() {
     let config_dir = dirs::config_dir().unwrap_or_else(|| panic!("cannot read config dir."));
     let config_file = config_dir.join(PathBuf::from(CONFIG_FILE));
     let trash_dir = config_dir.join(PathBuf::from(TRASH));
-    let mut path_buffer: Option<(PathBuf, String)> = None;
 
     make_config(&config_file, &trash_dir)
         .unwrap_or_else(|_| panic!("cannot make config file or trash dir."));
-    let config = read_config().unwrap_or_else(|| panic!("cannot read config file."));
+
+    let mut items = Items::new();
+    let mut current_dir = current_dir().unwrap_or_else(|_| panic!("cannot read current dir."));
+    items.update_list(&current_dir);
+    items.trash_dir = trash_dir.to_path_buf();
+
+    let mut nums = Num::new();
 
     let (column, row) = termion::terminal_size().unwrap();
     if column < NAME_MAX_LEN as u16 + TIME_START_POS - 3 {
@@ -28,12 +32,10 @@ pub fn run() {
 
     let mut screen = screen::AlternateScreen::from(stdout().into_raw_mode().unwrap());
 
-    clear_all();
+    clear_and_show(&current_dir);
     print!("{}", cursor::Hide);
 
-    let mut current_dir = current_dir().unwrap_or_else(|_| panic!("cannot get current dir."));
-    let mut entry_v = push_entries(&current_dir).unwrap();
-    list_up(&config, &current_dir, &entry_v, 0);
+    items.list_up(nums.skip);
 
     print!(
         "{}>{}",
@@ -42,12 +44,11 @@ pub fn run() {
     );
     screen.flush().unwrap();
 
-    let mut nums = Num::new();
     let mut memo_v: Vec<CursorMemo> = Vec::new();
     let mut stdin = stdin().keys();
 
     loop {
-        let len = &entry_v.len();
+        let len = items.list.len();
         let (_, y) = screen.cursor_pos().unwrap();
         let input = stdin.next();
 
@@ -57,10 +58,10 @@ pub fn run() {
                 Key::Char('j') | Key::Down => {
                     if nums.index == len - 1 {
                         continue;
-                    } else if y == row - 4 && *len > (row - STARTING_POINT) as usize - 1 {
+                    } else if y == row - 4 && len > (row - STARTING_POINT) as usize - 1 {
                         nums.inc_skip();
-                        clear_all();
-                        list_up(&config, &current_dir, &entry_v, nums.skip);
+                        clear_and_show(&current_dir);
+                        items.list_up(nums.skip);
                         print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                         nums.go_down();
                     } else {
@@ -74,8 +75,8 @@ pub fn run() {
                     if y == STARTING_POINT {
                     } else if y == STARTING_POINT + 3 && nums.skip != 0 {
                         nums.dec_skip();
-                        clear_all();
-                        list_up(&config, &current_dir, &entry_v, nums.skip);
+                        clear_and_show(&current_dir);
+                        items.list_up(nums.skip);
                         print!(
                             "{}>{}",
                             cursor::Goto(1, STARTING_POINT + 3),
@@ -94,8 +95,8 @@ pub fn run() {
                         continue;
                     } else if nums.skip != 0 {
                         nums.reset();
-                        clear_all();
-                        list_up(&config, &current_dir, &entry_v, nums.skip);
+                        clear_and_show(&current_dir);
+                        items.list_up(nums.skip);
                         print!(" {}>{}", cursor::Goto(1, STARTING_POINT), cursor::Left(1));
                         nums.go_top();
                     } else {
@@ -106,16 +107,16 @@ pub fn run() {
 
                 //Go to end line of the list
                 Key::Char('G') => {
-                    if *len > (row - STARTING_POINT) as usize {
-                        nums.skip = (*len as u16) - row + STARTING_POINT;
-                        clear_all();
-                        list_up(&config, &current_dir, &entry_v, nums.skip);
+                    if len > (row - STARTING_POINT) as usize {
+                        nums.skip = (len as u16) - row + STARTING_POINT;
+                        clear_and_show(&current_dir);
+                        items.list_up(nums.skip);
                         print!("{}>{}", cursor::Goto(1, row - 1), cursor::Left(1));
                         nums.go_bottom(len - 1);
                     } else {
                         print!(
                             " {}>{}",
-                            cursor::Goto(1, *len as u16 + STARTING_POINT - 1),
+                            cursor::Goto(1, len as u16 + STARTING_POINT - 1),
                             cursor::Left(1)
                         );
                         nums.go_bottom(len - 1);
@@ -124,42 +125,35 @@ pub fn run() {
 
                 //Open file(exec in any way fo now) or change directory(change lists as if `cd`)
                 Key::Char('l') | Key::Char('\n') | Key::Right => {
-                    let target = &entry_v.get(nums.index);
+                    //todo: avoid .clone()
+                    let item = items.get_item(nums.index).clone();
+                    match item.file_type {
+                        FileType::File => {
+                            print!("{}", screen::ToAlternateScreen);
+                            items.open_file(nums.index);
+                            print!("{}", screen::ToAlternateScreen);
+                            clear_and_show(&current_dir);
+                            items.list_up(nums.skip);
+                            print!("{}{}>{}", cursor::Hide, cursor::Goto(1, y), cursor::Left(1));
+                        }
+                        FileType::Directory => {
+                            //store the last cursor position and skip number.
+                            let cursor_memo = CursorMemo {
+                                num: nums.clone(),
+                                cursor_pos: y,
+                            };
+                            memo_v.push(cursor_memo);
 
-                    if let Some(entry) = target {
-                        match entry.file_type {
-                            FileType::File => {
-                                print!("{}", screen::ToAlternateScreen);
-                                entry.open_file(&config);
-                                print!("{}", screen::ToAlternateScreen);
-                                clear_all();
-                                list_up(&config, &current_dir, &entry_v, nums.skip);
-                                print!(
-                                    "{}{}>{}",
-                                    cursor::Hide,
-                                    cursor::Goto(1, y),
-                                    cursor::Left(1)
-                                );
-                            }
-                            FileType::Directory => {
-                                //store the last cursor position and skip number.
-                                let cursor_memo = CursorMemo {
-                                    num: nums.clone(),
-                                    cursor_pos: y,
-                                };
-                                memo_v.push(cursor_memo);
-
-                                current_dir = entry.file_path.to_path_buf();
-                                entry_v = push_entries(&current_dir).unwrap();
-                                clear_all();
-                                list_up(&config, &current_dir, &entry_v, 0);
-                                print!(
-                                    "{}>{}",
-                                    cursor::Goto(1, STARTING_POINT + 1),
-                                    cursor::Left(1)
-                                );
-                                nums.reset();
-                            }
+                            current_dir = item.file_path;
+                            items.update_list(&current_dir);
+                            clear_and_show(&current_dir);
+                            items.list_up(0);
+                            print!(
+                                "{}>{}",
+                                cursor::Goto(1, STARTING_POINT + 1),
+                                cursor::Left(1)
+                            );
+                            nums.reset();
                         }
                     }
                 }
@@ -168,9 +162,9 @@ pub fn run() {
                 Key::Char('h') | Key::Left => match current_dir.parent() {
                     Some(parent_p) => {
                         current_dir = parent_p.to_path_buf();
-                        entry_v = push_entries(&current_dir).unwrap();
-                        clear_all();
-                        list_up(&config, &current_dir, &entry_v, 0);
+                        items.update_list(&current_dir);
+                        clear_and_show(&current_dir);
+                        items.list_up(0);
 
                         match memo_v.pop() {
                             Some(memo) => {
@@ -193,39 +187,27 @@ pub fn run() {
                 },
 
                 Key::Char('D') => {
-                    let target = &entry_v.get(nums.index);
-                    if let Some(entry) = target {
-                        let name = entry.file_path.file_name().unwrap();
-                        let path = &trash_dir.join(name);
-                        path_buffer = Some((path.clone(), entry.file_name.clone()));
+                    let mut item = items.get_item(nums.index).clone();
+                    item.file_path = items.trash_dir.join(item.file_name.clone());
+                    items.item_buf = Some(item);
 
-                        if let Err(_) = entry.remove(&trash_dir) {
-                            continue;
-                        }
+                    let _ = items.remove(nums.index);
 
-                        entry_v = push_entries(&current_dir).unwrap();
-                        clear_all();
-                        list_up(&config, &current_dir, &entry_v, nums.skip);
-                        if nums.index == len - 1 {
-                            print!("{}>{}", cursor::Goto(1, y - 1), cursor::Left(1));
-                            nums.go_up();
-                        } else {
-                            print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
-                        }
-                        screen.flush().unwrap();
+                    clear_and_show(&current_dir);
+                    items.update_list(&current_dir);
+                    items.list_up(nums.skip);
+                    if nums.index == len - 1 {
+                        print!("{}>{}", cursor::Goto(1, y - 1), cursor::Left(1));
+                        nums.go_up();
                     } else {
-                        continue;
+                        print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                     }
+                    screen.flush().unwrap();
                 }
 
                 Key::Char('y') => {
-                    let target = entry_v.get(nums.index);
-                    if let Some(entry) = target {
-                        let path = entry.file_path.clone();
-                        path_buffer = Some((path, entry.file_name.clone()));
-                    } else {
-                        continue;
-                    }
+                    let item = items.get_item(nums.index);
+                    items.item_buf = Some(item.clone());
                 }
 
                 //todo: paste item of path_buffer
@@ -233,118 +215,112 @@ pub fn run() {
 
                 Key::Char('c') => {
                     print!("{}{}", cursor::Show, cursor::BlinkingBlock);
-                    let target = entry_v.get(nums.index);
-                    if let Some(entry) = target {
-                        let mut rename = entry.file_name.clone().chars().collect::<Vec<char>>();
-                        print!(
-                            "{}{} {}",
-                            cursor::Goto(2, 2),
-                            RIGHT_ARROW,
-                            &rename.iter().collect::<String>(),
-                        );
-                        screen.flush().unwrap();
+                    let item = items.get_item(nums.index);
 
-                        loop {
-                            let eow = rename.len() + 3;
-                            let (x, _) = screen.cursor_pos().unwrap();
-                            let input = stdin.next();
-                            if let Some(Ok(key)) = input {
-                                match key {
-                                    //rename item
-                                    Key::Char('\n') => {
-                                        let rename = rename.iter().collect::<String>();
-                                        let mut to = current_dir.clone();
-                                        to.push(rename);
-                                        std::fs::rename(
-                                            Path::new(&entry.file_path),
-                                            Path::new(&to),
-                                        )
+                    let mut rename = item.file_name.clone().chars().collect::<Vec<char>>();
+                    print!(
+                        "{}{} {}",
+                        cursor::Goto(2, 2),
+                        RIGHT_ARROW,
+                        &rename.iter().collect::<String>(),
+                    );
+                    screen.flush().unwrap();
+
+                    loop {
+                        let eow = rename.len() + 3;
+                        let (x, _) = screen.cursor_pos().unwrap();
+                        let input = stdin.next();
+                        if let Some(Ok(key)) = input {
+                            match key {
+                                //rename item
+                                Key::Char('\n') => {
+                                    let rename = rename.iter().collect::<String>();
+                                    let mut to = current_dir.clone();
+                                    to.push(rename);
+                                    std::fs::rename(Path::new(&item.file_path), Path::new(&to))
                                         .unwrap_or_else(|_| panic!("rename failed"));
-                                        clear_all();
 
-                                        entry_v = push_entries(&current_dir).unwrap();
-                                        list_up(&config, &current_dir, &entry_v, 0);
+                                    clear_and_show(&current_dir);
+                                    items.update_list(&current_dir);
+                                    items.list_up(0);
 
-                                        print!(
-                                            "{}{}>{}",
-                                            cursor::Hide,
-                                            cursor::Goto(1, STARTING_POINT + 1),
-                                            cursor::Left(1)
-                                        );
+                                    print!(
+                                        "{}{}>{}",
+                                        cursor::Hide,
+                                        cursor::Goto(1, STARTING_POINT + 1),
+                                        cursor::Left(1)
+                                    );
 
-                                        nums.reset();
-                                        break;
-                                    }
-
-                                    //Quit rename mode and return to original lists
-                                    Key::Esc => {
-                                        print!("{}", clear::CurrentLine);
-                                        print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
-                                        screen.flush().unwrap();
-
-                                        print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
-                                        print!("{}", cursor::Hide);
-                                        break;
-                                    }
-
-                                    Key::Left => {
-                                        if x == 4 {
-                                            continue;
-                                        };
-                                        print!("{}", cursor::Left(1));
-                                        screen.flush().unwrap();
-                                    }
-
-                                    Key::Right => {
-                                        if x as usize == eow + 1 {
-                                            continue;
-                                        };
-                                        print!("{}", cursor::Right(1));
-                                        screen.flush().unwrap();
-                                    }
-
-                                    //Input char(case-sensitive)
-                                    Key::Char(c) => {
-                                        let memo_x = x;
-                                        rename.insert((x - 4).into(), c);
-
-                                        print!(
-                                            "{}{}{} {}{}",
-                                            clear::CurrentLine,
-                                            cursor::Goto(2, 2),
-                                            RIGHT_ARROW,
-                                            &rename.iter().collect::<String>(),
-                                            cursor::Goto(memo_x + 1, 2)
-                                        );
-
-                                        screen.flush().unwrap();
-                                    }
-
-                                    Key::Backspace => {
-                                        let memo_x = x;
-                                        if x == 4 {
-                                            continue;
-                                        };
-                                        rename.remove((x - 5).into());
-
-                                        print!(
-                                            "{}{}{} {}{}",
-                                            clear::CurrentLine,
-                                            cursor::Goto(2, 2),
-                                            RIGHT_ARROW,
-                                            &rename.iter().collect::<String>(),
-                                            cursor::Goto(memo_x - 1, 2)
-                                        );
-
-                                        screen.flush().unwrap();
-                                    }
-
-                                    _ => continue,
+                                    nums.reset();
+                                    break;
                                 }
+
+                                //Quit rename mode and return to original lists
+                                Key::Esc => {
+                                    print!("{}", clear::CurrentLine);
+                                    print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
+                                    screen.flush().unwrap();
+
+                                    print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+                                    print!("{}", cursor::Hide);
+                                    break;
+                                }
+
+                                Key::Left => {
+                                    if x == 4 {
+                                        continue;
+                                    };
+                                    print!("{}", cursor::Left(1));
+                                    screen.flush().unwrap();
+                                }
+
+                                Key::Right => {
+                                    if x as usize == eow + 1 {
+                                        continue;
+                                    };
+                                    print!("{}", cursor::Right(1));
+                                    screen.flush().unwrap();
+                                }
+
+                                //Input char(case-sensitive)
+                                Key::Char(c) => {
+                                    let memo_x = x;
+                                    rename.insert((x - 4).into(), c);
+
+                                    print!(
+                                        "{}{}{} {}{}",
+                                        clear::CurrentLine,
+                                        cursor::Goto(2, 2),
+                                        RIGHT_ARROW,
+                                        &rename.iter().collect::<String>(),
+                                        cursor::Goto(memo_x + 1, 2)
+                                    );
+
+                                    screen.flush().unwrap();
+                                }
+
+                                Key::Backspace => {
+                                    let memo_x = x;
+                                    if x == 4 {
+                                        continue;
+                                    };
+                                    rename.remove((x - 5).into());
+
+                                    print!(
+                                        "{}{}{} {}{}",
+                                        clear::CurrentLine,
+                                        cursor::Goto(2, 2),
+                                        RIGHT_ARROW,
+                                        &rename.iter().collect::<String>(),
+                                        cursor::Goto(memo_x - 1, 2)
+                                    );
+
+                                    screen.flush().unwrap();
+                                }
+
+                                _ => continue,
                             }
                         }
-                    } else {
-                        continue;
                     }
                 }
 
@@ -411,10 +387,10 @@ pub fn run() {
 
                                 //Quit filter mode and return to original lists
                                 Key::Esc => {
-                                    clear_all();
+                                    clear_and_show(&current_dir);
 
-                                    entry_v = push_entries(&current_dir).unwrap();
-                                    list_up(&config, &current_dir, &entry_v, 0);
+                                    items.update_list(&current_dir);
+                                    items.list_up(0);
 
                                     print!(
                                         "{}{}>{}",
@@ -448,8 +424,9 @@ pub fn run() {
                                     let memo_x = x;
                                     keyword.insert((x - 4).into(), c);
 
-                                    entry_v = push_entries(&current_dir).unwrap();
-                                    entry_v = entry_v
+                                    items.update_list(&current_dir);
+                                    items.list = items
+                                        .list
                                         .into_iter()
                                         .filter(|entry| {
                                             entry
@@ -459,8 +436,8 @@ pub fn run() {
                                         .collect();
 
                                     nums.reset_skip();
-                                    clear_all();
-                                    list_up(&config, &current_dir, &entry_v, nums.skip);
+                                    clear_and_show(&current_dir);
+                                    items.list_up(nums.skip);
 
                                     print!(
                                         "{}{} {}{}",
@@ -480,8 +457,9 @@ pub fn run() {
                                     };
                                     keyword.remove((x - 5).into());
 
-                                    entry_v = push_entries(&current_dir).unwrap();
-                                    entry_v = entry_v
+                                    items.update_list(&current_dir);
+                                    items.list = items
+                                        .list
                                         .into_iter()
                                         .filter(|entry| {
                                             entry
@@ -491,8 +469,8 @@ pub fn run() {
                                         .collect();
 
                                     nums.reset_skip();
-                                    clear_all();
-                                    list_up(&config, &current_dir, &entry_v, nums.skip);
+                                    clear_and_show(&current_dir);
+                                    items.list_up(nums.skip);
 
                                     print!(
                                         "{}{} {}{}",
