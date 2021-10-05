@@ -12,10 +12,10 @@ use termion::raw::IntoRawMode;
 use termion::{clear, color, cursor, screen};
 
 pub fn run() {
-    let config_dir = dirs::config_dir().unwrap_or_else(|| panic!("cannot read config dir."));
+    let mut config_dir = dirs::config_dir().unwrap_or_else(|| panic!("cannot read config dir."));
+    config_dir.push(CONFIG_DIR);
     let config_file = config_dir.join(PathBuf::from(CONFIG_FILE));
     let trash_dir = config_dir.join(PathBuf::from(TRASH));
-
     make_config(&config_file, &trash_dir)
         .unwrap_or_else(|_| panic!("cannot make config file or trash dir."));
 
