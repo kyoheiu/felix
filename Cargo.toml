@@ -3,6 +3,9 @@ authors = ["Kyohei Uto <kyoheiu@outlook.com>"]
 edition = "2018"
 name = "fm"
 version = "0.1.0"
+license = "MIT"
+description = "vifm-like tiny file manager"
+repository = "https://github.com/kyoheiu/fm"
 [dependencies]
 chrono = "*"
 dirs = "4.0.0"

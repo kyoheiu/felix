@@ -193,9 +193,9 @@ pub fn run() {
                     items.item_buf = Some(item);
 
                     let _ = items.remove(nums.index);
+                    let _ = items.list.remove(nums.index);
 
                     clear_and_show(&current_dir);
-                    items.update_list(&current_dir);
                     items.list_up(nums.skip);
                     if nums.index == len - 1 {
                         print!("{}>{}", cursor::Goto(1, y - 1), cursor::Left(1));
@@ -203,7 +203,6 @@ pub fn run() {
                     } else {
                         print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                     }
-                    screen.flush().unwrap();
                 }
 
                 Key::Char('y') => {
@@ -220,14 +219,19 @@ pub fn run() {
                         }
                         Some(item) => {
                             let mut to = current_dir.clone();
-                            to.push(rename_file(item.file_name, &items));
-                            let _ = copy(item.file_path, to)
+                            let rename = rename_file(&item.file_name, &items);
+                            to.push(&rename);
+                            let _ = copy(&item.file_path, &to)
                                 .unwrap_or_else(|_| panic!("cannot paste item."));
-                            items.item_buf = None;
+
+                            let mut new_item = item.clone();
+                            new_item.file_name = rename.clone();
+                            new_item.file_path = to;
+                            items.list.push(new_item);
+                            items.list.sort();
 
                             clear_and_show(&current_dir);
-                            items.update_list(&current_dir);
-                            items.list_up(0);
+                            items.list_up(nums.skip);
 
                             print!("{}{}>{}", cursor::Hide, cursor::Goto(1, y), cursor::Left(1));
                         }
@@ -263,16 +267,14 @@ pub fn run() {
 
                                     clear_and_show(&current_dir);
                                     items.update_list(&current_dir);
-                                    items.list_up(0);
+                                    items.list_up(nums.skip);
 
                                     print!(
                                         "{}{}>{}",
                                         cursor::Hide,
-                                        cursor::Goto(1, STARTING_POINT + 1),
+                                        cursor::Goto(1, y),
                                         cursor::Left(1)
                                     );
-
-                                    nums.reset();
                                     break;
                                 }
 
@@ -282,8 +284,12 @@ pub fn run() {
                                     print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
                                     screen.flush().unwrap();
 
-                                    print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
-                                    print!("{}", cursor::Hide);
+                                    print!(
+                                        "{}{}>{}",
+                                        cursor::Hide,
+                                        cursor::Goto(1, y),
+                                        cursor::Left(1)
+                                    );
                                     break;
                                 }
 
@@ -387,6 +393,8 @@ pub fn run() {
                     print!("{}{}", cursor::Show, cursor::BlinkingBlock);
                     screen.flush().unwrap();
 
+                    let original_list = items.list.clone();
+
                     let mut keyword: Vec<char> = Vec::new();
                     loop {
                         let (x, _) = screen.cursor_pos().unwrap();
@@ -410,7 +418,7 @@ pub fn run() {
                                 Key::Esc => {
                                     clear_and_show(&current_dir);
 
-                                    items.update_list(&current_dir);
+                                    items.list = original_list;
                                     items.list_up(0);
 
                                     print!(
@@ -445,9 +453,8 @@ pub fn run() {
                                     let memo_x = x;
                                     keyword.insert((x - 4).into(), c);
 
-                                    items.update_list(&current_dir);
-                                    items.list = items
-                                        .list
+                                    items.list = original_list
+                                        .clone()
                                         .into_iter()
                                         .filter(|entry| {
                                             entry
@@ -478,9 +485,8 @@ pub fn run() {
                                     };
                                     keyword.remove((x - 5).into());
 
-                                    items.update_list(&current_dir);
-                                    items.list = items
-                                        .list
+                                    items.list = original_list
+                                        .clone()
                                         .into_iter()
                                         .filter(|entry| {
                                             entry

@@ -37,8 +37,12 @@ pub fn clear_and_show(dir: &PathBuf) {
     );
 }
 
-pub fn rename_file(file_name: String, items: &Items) -> String {
-    if items.list.iter().any(|x| x.file_name == file_name) {
+pub fn rename_file(file_name: &String, items: &Items) -> String {
+    if items
+        .list
+        .iter()
+        .any(|x| x.file_name == file_name.to_string())
+    {
         let rename = PathBuf::from(file_name);
         let extension = rename.extension();
         let mut rename = rename.file_stem().unwrap().to_os_string();
@@ -49,8 +53,8 @@ pub fn rename_file(file_name: String, items: &Items) -> String {
         let rename = rename
             .into_string()
             .unwrap_or_else(|_| panic!("cannot paste item."));
-        return rename_file(rename, items);
+        return rename_file(&rename, items);
     } else {
-        file_name
+        file_name.to_string()
     }
 }
