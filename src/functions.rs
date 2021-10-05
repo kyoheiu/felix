@@ -37,19 +37,20 @@ pub fn clear_and_show(dir: &PathBuf) {
     );
 }
 
-pub fn rename_file(
-    path_buffer: Option<(PathBuf, String)>,
-    entry_v: &Vec<ItemInfo>,
-) -> Option<PathBuf> {
-    if let Some((mut path, mut name)) = path_buffer {
-        if entry_v.iter().any(|entry| entry.file_name == name) {
-            name.push_str("_copied");
-            path.set_file_name(name);
-            return Some(path);
-        } else {
-            return None;
+pub fn rename_file(file_name: String, items: &Items) -> String {
+    if items.list.iter().any(|x| x.file_name == file_name) {
+        let rename = PathBuf::from(file_name);
+        let extension = rename.extension();
+        let mut rename = rename.file_stem().unwrap().to_os_string();
+        rename.push("_copied.");
+        if let Some(ext) = extension {
+            rename.push(ext);
         }
+        let rename = rename
+            .into_string()
+            .unwrap_or_else(|_| panic!("cannot paste item."));
+        return rename_file(rename, items);
     } else {
-        None
+        file_name
     }
 }

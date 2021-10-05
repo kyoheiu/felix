@@ -2,6 +2,7 @@ use super::entry::*;
 use super::functions::*;
 use super::state::*;
 use std::env::current_dir;
+use std::fs::copy;
 use std::io::{stdin, stdout, Write};
 use std::path::{Path, PathBuf};
 use termion::cursor::DetectCursorPos;
@@ -211,7 +212,27 @@ pub fn run() {
                 }
 
                 //todo: paste item of path_buffer
-                Key::Char('p') => {}
+                Key::Char('p') => {
+                    let item = items.item_buf.clone();
+                    match item {
+                        None => {
+                            continue;
+                        }
+                        Some(item) => {
+                            let mut to = current_dir.clone();
+                            to.push(rename_file(item.file_name, &items));
+                            let _ = copy(item.file_path, to)
+                                .unwrap_or_else(|_| panic!("cannot paste item."));
+                            items.item_buf = None;
+
+                            clear_and_show(&current_dir);
+                            items.update_list(&current_dir);
+                            items.list_up(0);
+
+                            print!("{}{}>{}", cursor::Hide, cursor::Goto(1, y), cursor::Left(1));
+                        }
+                    }
+                }
 
                 Key::Char('c') => {
                     print!("{}{}", cursor::Show, cursor::BlinkingBlock);
