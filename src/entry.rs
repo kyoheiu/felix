@@ -113,12 +113,18 @@ impl Items {
     }
     pub fn remove_type_file(&mut self, index: usize) {
         let item = &self.get_item(index);
-        let path = &item.file_path;
-        let to = &self.trash_dir.join(path);
-        let _ = std::fs::copy(path, to)
+        let from = &item.file_path;
+        let name = &item.file_name;
+        let mut rename = Local::now().timestamp().to_string();
+        rename.push('_');
+        rename.push_str(name);
+
+        let to = &self.trash_dir.join(&rename);
+
+        let _ = std::fs::copy(from, to)
             .unwrap_or_else(|_| panic!("cannot copy item to trash directory."));
 
-        std::fs::remove_file(path).unwrap_or_else(|_| panic!("cannot remove item."));
+        std::fs::remove_file(from).unwrap_or_else(|_| panic!("cannot remove item."));
 
         let _ = self.list.remove(index);
     }
