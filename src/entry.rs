@@ -111,11 +111,14 @@ impl Items {
             }
         }
     }
-    pub fn remove(&mut self, index: usize) {
-        let options = fs_extra::dir::CopyOptions::new();
-        let arr = [&self.get_item(index).file_path];
-        fs_extra::move_items(&arr, &self.trash_dir, &options)
-            .unwrap_or_else(|_| panic!("cannot remove item."));
+    pub fn remove_type_file(&mut self, index: usize) {
+        let item = &self.get_item(index);
+        let path = &item.file_path;
+        let to = &self.trash_dir.join(path);
+        let _ = std::fs::copy(path, to)
+            .unwrap_or_else(|_| panic!("cannot copy item to trash directory."));
+
+        std::fs::remove_file(path).unwrap_or_else(|_| panic!("cannot remove item."));
 
         let _ = self.list.remove(index);
     }

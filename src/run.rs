@@ -22,7 +22,7 @@ pub fn run() {
     let mut items = Items::new();
     let mut current_dir = current_dir().unwrap_or_else(|_| panic!("cannot read current dir."));
     items.update_list(&current_dir);
-    items.trash_dir = trash_dir.to_path_buf();
+    items.trash_dir = trash_dir;
 
     let mut nums = Num::new();
 
@@ -192,7 +192,7 @@ pub fn run() {
                     item.file_path = items.trash_dir.join(item.file_name.clone());
                     items.item_buf = Some(item);
 
-                    let _ = items.remove(nums.index);
+                    items.remove_type_file(nums.index);
 
                     clear_and_show(&current_dir);
                     items.list_up(nums.skip);
@@ -212,6 +212,7 @@ pub fn run() {
                 //todo: paste item of path_buffer
                 Key::Char('p') => {
                     let item = items.item_buf.clone();
+                    print!("{:?}", item);
                     match item {
                         None => {
                             continue;
@@ -377,7 +378,7 @@ pub fn run() {
                         if let Some(Ok(key)) = input {
                             match key {
                                 Key::Char('y') | Key::Char('Y') => {
-                                    fs_extra::dir::create(&trash_dir, true)
+                                    fs_extra::dir::create(&items.trash_dir, true)
                                         .unwrap_or_else(|_| panic!("cannot empty the trash dir."));
                                     break;
                                 }
