@@ -193,7 +193,6 @@ pub fn run() {
                     items.item_buf = Some(item);
 
                     let _ = items.remove(nums.index);
-                    let _ = items.list.remove(nums.index);
 
                     clear_and_show(&current_dir);
                     items.list_up(nums.skip);

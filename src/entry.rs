@@ -111,11 +111,13 @@ impl Items {
             }
         }
     }
-    pub fn remove(&self, index: usize) {
+    pub fn remove(&mut self, index: usize) {
         let options = fs_extra::dir::CopyOptions::new();
-        let arr = [&self.get_item(index).file_path.as_path()];
+        let arr = [self.get_item(index).file_path.clone()];
         fs_extra::move_items(&arr, &self.trash_dir, &options)
             .unwrap_or_else(|_| panic!("cannot remove item."));
+
+        let _ = self.list.remove(index);
     }
 
     pub fn print(&self, index: usize) {
