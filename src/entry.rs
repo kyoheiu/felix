@@ -113,7 +113,7 @@ impl Items {
     }
     pub fn remove(&mut self, index: usize) {
         let options = fs_extra::dir::CopyOptions::new();
-        let arr = [self.get_item(index).file_path.clone()];
+        let arr = [&self.get_item(index).file_path];
         fs_extra::move_items(&arr, &self.trash_dir, &options)
             .unwrap_or_else(|_| panic!("cannot remove item."));
 

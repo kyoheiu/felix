@@ -216,24 +216,34 @@ pub fn run() {
                         None => {
                             continue;
                         }
-                        Some(item) => {
-                            let mut to = current_dir.clone();
-                            let rename = rename_file(&item.file_name, &items);
-                            to.push(&rename);
-                            let _ = copy(&item.file_path, &to)
-                                .unwrap_or_else(|_| panic!("cannot paste item."));
+                        Some(item) => match item.file_type {
+                            FileType::File => {
+                                let mut to = current_dir.clone();
+                                let rename = rename_file(&item.file_name, &items);
+                                to.push(&rename);
+                                let _ = copy(&item.file_path, &to)
+                                    .unwrap_or_else(|_| panic!("cannot paste item."));
 
-                            let mut new_item = item.clone();
-                            new_item.file_name = rename.clone();
-                            new_item.file_path = to;
-                            items.list.push(new_item);
-                            items.list.sort();
+                                let mut new_item = item.clone();
+                                new_item.file_name = rename.clone();
+                                new_item.file_path = to;
+                                items.list.push(new_item);
+                                items.list.sort();
 
-                            clear_and_show(&current_dir);
-                            items.list_up(nums.skip);
+                                clear_and_show(&current_dir);
+                                items.list_up(nums.skip);
 
-                            print!("{}{}>{}", cursor::Hide, cursor::Goto(1, y), cursor::Left(1));
-                        }
+                                print!(
+                                    "{}{}>{}",
+                                    cursor::Hide,
+                                    cursor::Goto(1, y),
+                                    cursor::Left(1)
+                                );
+                            }
+                            FileType::Directory => {
+                                continue;
+                            }
+                        },
                     }
                 }
 
