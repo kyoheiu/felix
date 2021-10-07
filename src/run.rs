@@ -194,12 +194,7 @@ pub fn run() {
                     }
                     match items.get_item(nums.index).file_type {
                         FileType::Directory => items.remove_type_dir(nums.index),
-                        FileType::File => match items.remove_type_file(nums.index) {
-                            Ok(_) => {}
-                            _ => {
-                                panic!("cannot remove file.")
-                            }
-                        },
+                        FileType::File => items.remove_type_file(nums.index),
                     }
 
                     clear_and_show(&current_dir);

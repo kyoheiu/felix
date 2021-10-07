@@ -111,7 +111,7 @@ impl Items {
             }
         }
     }
-    pub fn remove_type_file(&mut self, index: usize) -> fs_extra::error::Result<()> {
+    pub fn remove_type_file(&mut self, index: usize) {
         //prepare from and to for copy
         let item = &self.get_item(index).clone();
         let from = &item.file_path;
@@ -124,7 +124,7 @@ impl Items {
         let to = &self.trash_dir.join(&rename);
 
         //copy
-        std::fs::copy(from, to)?;
+        std::fs::copy(from, to).unwrap_or_else(|_| panic!("cannot copy item."));
 
         //copy original information to item_buf
         let mut buf = item.clone();
@@ -136,15 +136,14 @@ impl Items {
         std::fs::remove_file(from).unwrap_or_else(|_| panic!("cannot remove file."));
 
         let _ = self.list.remove(index);
-
-        Ok(())
     }
 
     pub fn remove_type_dir(&mut self, index: usize) {
         let mut trash_name: String;
         let mut base: usize = 0;
         let mut trash_path: std::path::PathBuf = PathBuf::new();
-        let item = &self.get_item(index);
+        let mut target: PathBuf = PathBuf::new();
+        let item = &self.get_item(index).clone();
 
         let mut i = 0;
         for entry in walkdir::WalkDir::new(&item.file_path).sort_by_key(|x| x.path().to_path_buf())
@@ -162,10 +161,10 @@ impl Items {
                 i += 1;
                 continue;
             } else {
-                let target: PathBuf = entry.path().iter().skip(base).collect();
-                let target: PathBuf = trash_path.join(target);
+                target = entry.path().iter().skip(base).collect();
+                target = trash_path.join(target);
                 if entry.file_type().is_dir() {
-                    std::fs::create_dir(target)
+                    std::fs::create_dir(&target)
                         .unwrap_or_else(|_| panic!("cannot create dir recursively."));
                     continue;
                 }
@@ -182,11 +181,17 @@ impl Items {
                     }
                 }
 
-                std::fs::copy(entry.path(), target).unwrap_or_else(|_| panic!("cannot copy item."));
+                std::fs::copy(entry.path(), &target)
+                    .unwrap_or_else(|_| panic!("cannot copy item."));
 
                 i += 1;
             }
         }
+
+        //copy original information to item_buf
+        let mut buf = item.clone();
+        buf.file_path = target.to_path_buf();
+        self.item_buf = Some(buf.clone());
 
         //remove original
         std::fs::remove_dir_all(&item.file_path)
