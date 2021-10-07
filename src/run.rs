@@ -213,6 +213,9 @@ pub fn run() {
                 }
 
                 Key::Char('y') => {
+                    if nums.index == 0 {
+                        continue;
+                    }
                     let item = items.get_item(nums.index);
                     items.item_buf = Some(item.clone());
                 }
