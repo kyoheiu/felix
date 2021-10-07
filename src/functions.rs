@@ -37,24 +37,25 @@ pub fn clear_and_show(dir: &PathBuf) {
     );
 }
 
-pub fn rename_file(file_name: &String, items: &Items) -> String {
-    if items
-        .list
-        .iter()
-        .any(|x| x.file_name == file_name.to_string())
-    {
-        let rename = PathBuf::from(file_name);
+pub fn rename_name(item: &ItemInfo, items: &Items) -> String {
+    if items.list.iter().any(|x| x.file_name == item.file_name) {
+        let rename = PathBuf::from(item.file_name.clone());
         let extension = rename.extension();
+
         let mut rename = rename.file_stem().unwrap().to_os_string();
         rename.push("_copied.");
         if let Some(ext) = extension {
             rename.push(ext);
         }
+
         let rename = rename
             .into_string()
             .unwrap_or_else(|_| panic!("cannot paste item."));
-        return rename_file(&rename, items);
+
+        let mut renamed_item = item.clone();
+        renamed_item.file_name = rename;
+        return rename_name(&renamed_item, items);
     } else {
-        file_name.to_string()
+        item.file_name.clone()
     }
 }

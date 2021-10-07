@@ -2,7 +2,6 @@ use super::entry::*;
 use super::functions::*;
 use super::state::*;
 use std::env::current_dir;
-use std::fs::copy;
 use std::io::{stdin, stdout, Write};
 use std::path::{Path, PathBuf};
 use termion::cursor::DetectCursorPos;
@@ -218,39 +217,30 @@ pub fn run() {
                 //todo: paste item of path_buffer
                 Key::Char('p') => {
                     let item = items.item_buf.clone();
-                    print!("{:?}", item);
                     match item {
                         None => {
                             continue;
                         }
-                        Some(item) => match item.file_type {
-                            FileType::File => {
-                                let mut to = current_dir.clone();
-                                let rename = rename_file(&item.file_name, &items);
-                                to.push(&rename);
-                                let _ = copy(&item.file_path, &to)
-                                    .unwrap_or_else(|_| panic!("cannot paste item."));
-
-                                let mut new_item = item.clone();
-                                new_item.file_name = rename.clone();
-                                new_item.file_path = to;
-                                items.list.push(new_item);
-                                items.list.sort();
-
-                                clear_and_show(&current_dir);
-                                items.list_up(nums.skip);
-
-                                print!(
-                                    "{}{}>{}",
-                                    cursor::Hide,
-                                    cursor::Goto(1, y),
-                                    cursor::Left(1)
-                                );
+                        Some(item) => {
+                            let parent = item.file_path.parent().unwrap();
+                            let mut rename = String::new();
+                            if parent == items.trash_dir {
+                            } else {
+                                rename = rename_name(&item, &items);
+                                std::fs::copy(&item.file_path, current_dir.join(&rename))
+                                    .unwrap_or_else(|_| panic!("cannot copy item from buf."));
                             }
-                            FileType::Directory => {
-                                continue;
-                            }
-                        },
+
+                            let mut new_item = item.clone();
+                            new_item.file_name = rename.clone();
+                            new_item.file_path = current_dir.join(rename);
+                            items.list.push(new_item);
+                            items.update_list(&current_dir);
+
+                            clear_and_show(&current_dir);
+                            items.list_up(nums.skip);
+                            print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+                        }
                     }
                 }
 
