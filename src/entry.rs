@@ -111,9 +111,11 @@ impl Items {
             }
         }
     }
-    pub fn remove_type_file(&mut self, index: usize) {
-        let item = &self.get_item(index);
+    pub fn remove_type_file(&mut self, index: usize) -> fs_extra::error::Result<()> {
+        //prepare from and to for copy
+        let item = &self.get_item(index).clone();
         let from = &item.file_path;
+
         let name = &item.file_name;
         let mut rename = Local::now().timestamp().to_string();
         rename.push('_');
@@ -121,10 +123,74 @@ impl Items {
 
         let to = &self.trash_dir.join(&rename);
 
-        let _ = std::fs::copy(from, to)
-            .unwrap_or_else(|_| panic!("cannot copy item to trash directory."));
+        //copy
+        std::fs::copy(from, to)?;
 
-        std::fs::remove_file(from).unwrap_or_else(|_| panic!("cannot remove item."));
+        //copy original information to item_buf
+        let mut buf = item.clone();
+        buf.file_path = to.to_path_buf();
+        buf.file_name = rename;
+        self.item_buf = Some(buf);
+
+        //remove original
+        std::fs::remove_file(from).unwrap_or_else(|_| panic!("cannot remove file."));
+
+        let _ = self.list.remove(index);
+
+        Ok(())
+    }
+
+    pub fn remove_type_dir(&mut self, index: usize) {
+        let mut trash_name: String;
+        let mut base: usize = 0;
+        let mut trash_path: std::path::PathBuf = PathBuf::new();
+        let item = &self.get_item(index);
+
+        let mut i = 0;
+        for entry in walkdir::WalkDir::new(&item.file_path).sort_by_key(|x| x.path().to_path_buf())
+        {
+            let entry = entry.unwrap();
+            if i == 0 {
+                base = entry.path().iter().count();
+
+                trash_name = chrono::Local::now().timestamp().to_string();
+                trash_name.push('_');
+                trash_name.push_str(entry.file_name().to_str().unwrap());
+                trash_path = self.trash_dir.join(trash_name);
+                std::fs::create_dir(&self.trash_dir.join(&trash_path)).unwrap();
+
+                i += 1;
+                continue;
+            } else {
+                let target: PathBuf = entry.path().iter().skip(base).collect();
+                let target: PathBuf = trash_path.join(target);
+                if entry.file_type().is_dir() {
+                    std::fs::create_dir(target)
+                        .unwrap_or_else(|_| panic!("cannot create dir recursively."));
+                    continue;
+                }
+
+                match entry.path().parent() {
+                    Some(parent) => {
+                        if !parent.exists() {
+                            std::fs::create_dir(parent)
+                                .unwrap_or_else(|_| panic!("cannot create parent dir in loop."));
+                        }
+                    }
+                    None => {
+                        panic!("cannot move item due to parent() error.")
+                    }
+                }
+
+                std::fs::copy(entry.path(), target).unwrap_or_else(|_| panic!("cannot copy item."));
+
+                i += 1;
+            }
+        }
+
+        //remove original
+        std::fs::remove_dir_all(&item.file_path)
+            .unwrap_or_else(|_| panic!("cannot remove directory."));
 
         let _ = self.list.remove(index);
     }
@@ -257,6 +323,7 @@ fn make_parent_dir(p: PathBuf) -> ItemInfo {
 
 fn make_entry(dir: fs::DirEntry) -> ItemInfo {
     let path = dir.path();
+
     let metadata =
         fs::metadata(&path).unwrap_or_else(|_| panic!("cannot read metadata of directory."));
     let sometime = metadata.modified();
