@@ -188,11 +188,19 @@ pub fn run() {
                 },
 
                 Key::Char('D') => {
-                    let mut item = items.get_item(nums.index).clone();
-                    item.file_path = items.trash_dir.join(item.file_name.clone());
-                    items.item_buf = Some(item);
-
-                    items.remove_type_file(nums.index);
+                    dbg!("start");
+                    if nums.index == 0 {
+                        continue;
+                    }
+                    match items.get_item(nums.index).file_type {
+                        FileType::Directory => items.remove_type_dir(nums.index),
+                        FileType::File => match items.remove_type_file(nums.index) {
+                            Ok(_) => {}
+                            _ => {
+                                panic!("cannot remove file.")
+                            }
+                        },
+                    }
 
                     clear_and_show(&current_dir);
                     items.list_up(nums.skip);
