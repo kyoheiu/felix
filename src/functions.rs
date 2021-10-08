@@ -37,7 +37,7 @@ pub fn clear_and_show(dir: &PathBuf) {
     );
 }
 
-pub fn rename_name(item: &ItemInfo, items: &Items) -> String {
+pub fn rename_file(item: &ItemInfo, items: &Items) -> String {
     if items.list.iter().any(|x| x.file_name == item.file_name) {
         let rename = PathBuf::from(item.file_name.clone());
         let extension = rename.extension();
@@ -54,7 +54,7 @@ pub fn rename_name(item: &ItemInfo, items: &Items) -> String {
 
         let mut renamed_item = item.clone();
         renamed_item.file_name = rename;
-        return rename_name(&renamed_item, items);
+        return rename_file(&renamed_item, items);
     } else {
         item.file_name.clone()
     }

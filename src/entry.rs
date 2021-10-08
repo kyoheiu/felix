@@ -112,7 +112,7 @@ impl Items {
             }
         }
     }
-    pub fn remove_type_file(&mut self, index: usize) {
+    pub fn remove_file(&mut self, index: usize) {
         //prepare from and to for copy
         let item = &self.get_item(index).clone();
         let from = &item.file_path;
@@ -139,7 +139,7 @@ impl Items {
         let _ = self.list.remove(index);
     }
 
-    pub fn remove_type_dir(&mut self, index: usize) {
+    pub fn remove_dir(&mut self, index: usize) {
         let mut trash_name: String;
         let mut base: usize = 0;
         let mut trash_path: std::path::PathBuf = PathBuf::new();
@@ -201,28 +201,91 @@ impl Items {
         let _ = self.list.remove(index);
     }
 
-    pub fn paste(&mut self, current_dir: &PathBuf) {
+    pub fn paste_file(&mut self, current_dir: &PathBuf) {
         let item = &self.item_buf.clone();
         match item {
             None => {}
             Some(item) => {
                 let parent = item.file_path.parent().unwrap();
-                let mut rename = String::new();
                 if parent == &self.trash_dir {
+                    let mut item = item.clone();
+                    let mut rename = item.file_name.clone();
+                    rename = rename.chars().skip(11).collect();
+                    item.file_name = rename;
+                    let rename = rename_file(&item, &self);
+                    std::fs::copy(&item.file_path, current_dir.join(&rename))
+                        .unwrap_or_else(|_| panic!("cannot copy item from buf."));
                 } else {
-                    rename = rename_name(&item, &self);
+                    let rename = rename_file(&item, &self);
                     std::fs::copy(&item.file_path, current_dir.join(&rename))
                         .unwrap_or_else(|_| panic!("cannot copy item from buf."));
                 }
 
-                let mut new_item = item.clone();
-                new_item.file_name = rename.clone();
-                new_item.file_path = current_dir.join(rename);
-                self.list.push(new_item);
-                self.update_list(&current_dir);
+                self.update_list(current_dir);
             }
         }
     }
+
+    // pub fn paste_dir(&mut self, index: usize) {
+    //     let mut trash_name: String;
+    //     let mut base: usize = 0;
+    //     let mut trash_path: std::path::PathBuf = PathBuf::new();
+    //     let mut target: PathBuf = PathBuf::new();
+    //     let buf = &self.item_buf.unwrap();
+
+    //     let mut i = 0;
+    //     for entry in walkdir::WalkDir::new(buf.file_path).sort_by_key(|x| x.path().to_path_buf()) {
+    //         let entry = entry.unwrap();
+    //         if i == 0 {
+    //             base = entry.path().iter().count();
+
+    //             trash_name = chrono::Local::now().timestamp().to_string();
+    //             trash_name.push('_');
+    //             trash_name.push_str(entry.file_name().to_str().unwrap());
+    //             trash_path = self.trash_dir.join(trash_name);
+    //             std::fs::create_dir(&self.trash_dir.join(&trash_path)).unwrap();
+
+    //             i += 1;
+    //             continue;
+    //         } else {
+    //             target = entry.path().iter().skip(base).collect();
+    //             target = trash_path.join(target);
+    //             if entry.file_type().is_dir() {
+    //                 std::fs::create_dir(&target)
+    //                     .unwrap_or_else(|_| panic!("cannot create dir recursively."));
+    //                 continue;
+    //             }
+
+    //             match entry.path().parent() {
+    //                 Some(parent) => {
+    //                     if !parent.exists() {
+    //                         std::fs::create_dir(parent)
+    //                             .unwrap_or_else(|_| panic!("cannot create parent dir in loop."));
+    //                     }
+    //                 }
+    //                 None => {
+    //                     panic!("cannot move item due to parent() error.")
+    //                 }
+    //             }
+
+    //             std::fs::copy(entry.path(), &target)
+    //                 .unwrap_or_else(|_| panic!("cannot copy item."));
+
+    //             i += 1;
+    //         }
+    //     }
+
+    //     //copy original information to item_buf
+    //     let mut buf = item.clone();
+    //     buf.file_path = target.to_path_buf();
+    //     self.item_buf = Some(buf.clone());
+
+    //     //remove original
+    //     std::fs::remove_dir_all(&item.file_path)
+    //         .unwrap_or_else(|_| panic!("cannot remove directory."));
+
+    //     let _ = self.list.remove(index);
+    // }
 
     pub fn print(&self, index: usize) {
         let item = &self.get_item(index);

@@ -187,13 +187,12 @@ pub fn run() {
                 },
 
                 Key::Char('D') => {
-                    dbg!("start");
                     if nums.index == 0 {
                         continue;
                     }
                     match items.get_item(nums.index).file_type {
-                        FileType::Directory => items.remove_type_dir(nums.index),
-                        FileType::File => items.remove_type_file(nums.index),
+                        FileType::Directory => items.remove_dir(nums.index),
+                        FileType::File => items.remove_file(nums.index),
                     }
 
                     clear_and_show(&current_dir);
@@ -216,13 +215,19 @@ pub fn run() {
 
                 //todo: paste item of path_buffer
                 Key::Char('p') => {
-                    if items.item_buf == None {
+                    let item = items.item_buf.clone();
+                    if item == None {
                         continue;
                     } else {
-                        items.paste(&current_dir);
-                        clear_and_show(&current_dir);
-                        items.list_up(nums.skip);
-                        print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+                        match item.unwrap().file_type {
+                            FileType::Directory => {}
+                            FileType::File => {
+                                items.paste_file(&current_dir);
+                                clear_and_show(&current_dir);
+                                items.list_up(nums.skip);
+                                print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+                            }
+                        }
                     }
                 }
 
