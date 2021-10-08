@@ -1,6 +1,7 @@
 use super::config::*;
 use super::functions::*;
 use chrono::prelude::*;
+use std::env::current_dir;
 use std::fs;
 use std::io::Error;
 use std::path::PathBuf;
@@ -198,6 +199,29 @@ impl Items {
             .unwrap_or_else(|_| panic!("cannot remove directory."));
 
         let _ = self.list.remove(index);
+    }
+
+    pub fn paste(&mut self, current_dir: &PathBuf) {
+        let item = &self.item_buf.clone();
+        match item {
+            None => {}
+            Some(item) => {
+                let parent = item.file_path.parent().unwrap();
+                let mut rename = String::new();
+                if parent == &self.trash_dir {
+                } else {
+                    rename = rename_name(&item, &self);
+                    std::fs::copy(&item.file_path, current_dir.join(&rename))
+                        .unwrap_or_else(|_| panic!("cannot copy item from buf."));
+                }
+
+                let mut new_item = item.clone();
+                new_item.file_name = rename.clone();
+                new_item.file_path = current_dir.join(rename);
+                self.list.push(new_item);
+                self.update_list(&current_dir);
+            }
+        }
     }
 
     pub fn print(&self, index: usize) {

@@ -216,31 +216,13 @@ pub fn run() {
 
                 //todo: paste item of path_buffer
                 Key::Char('p') => {
-                    let item = items.item_buf.clone();
-                    match item {
-                        None => {
-                            continue;
-                        }
-                        Some(item) => {
-                            let parent = item.file_path.parent().unwrap();
-                            let mut rename = String::new();
-                            if parent == items.trash_dir {
-                            } else {
-                                rename = rename_name(&item, &items);
-                                std::fs::copy(&item.file_path, current_dir.join(&rename))
-                                    .unwrap_or_else(|_| panic!("cannot copy item from buf."));
-                            }
-
-                            let mut new_item = item.clone();
-                            new_item.file_name = rename.clone();
-                            new_item.file_path = current_dir.join(rename);
-                            items.list.push(new_item);
-                            items.update_list(&current_dir);
-
-                            clear_and_show(&current_dir);
-                            items.list_up(nums.skip);
-                            print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
-                        }
+                    if items.item_buf == None {
+                        continue;
+                    } else {
+                        items.paste(&current_dir);
+                        clear_and_show(&current_dir);
+                        items.list_up(nums.skip);
+                        print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                     }
                 }
 
