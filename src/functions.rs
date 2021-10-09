@@ -66,7 +66,7 @@ pub fn rename_dir(item: &ItemInfo, items: &Items) -> String {
         rename.push_str("_copied");
         let mut renamed_item = item.clone();
         renamed_item.file_name = rename;
-        return rename_file(&renamed_item, items);
+        return rename_dir(&renamed_item, items);
     } else {
         item.file_name.clone()
     }

@@ -1,7 +1,6 @@
 use super::config::*;
 use super::functions::*;
 use chrono::prelude::*;
-use std::env::current_dir;
 use std::fs;
 use std::io::Error;
 use std::path::PathBuf;
@@ -140,10 +139,10 @@ impl Items {
     }
 
     pub fn remove_dir(&mut self, index: usize) {
-        let mut trash_name: String;
+        let mut trash_name = String::new();
         let mut base: usize = 0;
         let mut trash_path: std::path::PathBuf = PathBuf::new();
-        let mut target: PathBuf = PathBuf::new();
+        let mut target: PathBuf;
         let item = &self.get_item(index).clone();
 
         let mut i = 0;
@@ -156,7 +155,7 @@ impl Items {
                 trash_name = chrono::Local::now().timestamp().to_string();
                 trash_name.push('_');
                 trash_name.push_str(entry.file_name().to_str().unwrap());
-                trash_path = self.trash_dir.join(trash_name);
+                trash_path = self.trash_dir.join(&trash_name);
                 std::fs::create_dir(&self.trash_dir.join(&trash_path)).unwrap();
 
                 i += 1;
@@ -189,7 +188,8 @@ impl Items {
 
         //copy original information to item_buf
         let mut buf = item.clone();
-        buf.file_path = target.to_path_buf();
+        buf.file_path = trash_path;
+        buf.file_name = trash_name;
         self.item_buf = Some(buf.clone());
 
         //remove original
@@ -228,7 +228,7 @@ impl Items {
         let mut base: usize = 0;
         let mut target: PathBuf = PathBuf::new();
         let buf = self.item_buf.clone();
-        let buf = buf.unwrap();
+        let mut buf = buf.unwrap();
         let original_path = buf.file_path.clone();
 
         let mut i = 0;
@@ -239,6 +239,14 @@ impl Items {
 
                 let parent = &original_path.parent().unwrap();
                 if parent == &self.trash_dir {
+                    let rename = buf.file_name.clone();
+                    let rename = rename.chars().skip(11).collect();
+                    buf.file_name = rename;
+
+                    let rename = rename_dir(&buf, &self);
+                    target = current_dir.join(rename);
+                    std::fs::create_dir(&target)
+                        .unwrap_or_else(|_| panic!("cannot create dir for paste."));
                 } else {
                     let rename = rename_dir(&buf, &self);
                     target = current_dir.join(rename);
@@ -248,8 +256,8 @@ impl Items {
                 i += 1;
                 continue;
             } else {
-                let mut child = entry.path().iter().skip(base).collect();
-                child = target.join(child);
+                let child: PathBuf = entry.path().iter().skip(base).collect();
+                let child = target.join(child);
 
                 if entry.file_type().is_dir() {
                     std::fs::create_dir(child)
