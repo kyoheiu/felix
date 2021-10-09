@@ -29,3 +29,12 @@ cargo install --path .
 | /                     | Go to filter mode. (type keyword and Enter to go to filtered list)                                                                |
 | Esc                   | In normal mode, exits program. In filter or mkdir mode, return to normal mode.                                                    |
 | H                     | Show help.                                                                                                                        |
+
+## Configuration
+
+```
+config file    : $XDG_CONFIG_HOME/fm/config.toml
+trash directory: $XDG_CONFIG_HOME/fm/trash
+```
+
+Default config file will be created automatically when you launch the program.
