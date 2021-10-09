@@ -59,3 +59,15 @@ pub fn rename_file(item: &ItemInfo, items: &Items) -> String {
         item.file_name.clone()
     }
 }
+
+pub fn rename_dir(item: &ItemInfo, items: &Items) -> String {
+    if items.list.iter().any(|x| x.file_name == item.file_name) {
+        let mut rename = item.file_name.clone();
+        rename.push_str("_copied");
+        let mut renamed_item = item.clone();
+        renamed_item.file_name = rename;
+        return rename_file(&renamed_item, items);
+    } else {
+        item.file_name.clone()
+    }
+}

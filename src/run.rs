@@ -220,14 +220,12 @@ pub fn run() {
                         continue;
                     } else {
                         match item.unwrap().file_type {
-                            FileType::Directory => {}
-                            FileType::File => {
-                                items.paste_file(&current_dir);
-                                clear_and_show(&current_dir);
-                                items.list_up(nums.skip);
-                                print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
-                            }
+                            FileType::Directory => items.paste_dir(&current_dir),
+                            FileType::File => items.paste_file(&current_dir),
                         }
+                        clear_and_show(&current_dir);
+                        items.list_up(nums.skip);
+                        print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                     }
                 }
 
