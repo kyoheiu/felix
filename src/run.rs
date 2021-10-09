@@ -229,14 +229,6 @@ pub fn run() {
                     }
                 }
 
-                Key::Char('P') => {
-                    let item = items.item_buf.clone();
-                    if item == None {
-                        continue;
-                    } else {
-                        print!("{:?}", item);
-                    }
-                }
                 Key::Char('c') => {
                     print!("{}{}", cursor::Show, cursor::BlinkingBlock);
                     let item = items.get_item(nums.index);
