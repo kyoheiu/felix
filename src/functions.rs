@@ -1,3 +1,4 @@
+use super::config::CONFIG_EXAMPLE;
 use super::entry::*;
 use std::fs;
 use std::path::PathBuf;
@@ -5,7 +6,8 @@ use termion::{clear, color, cursor, style};
 
 pub fn make_config(config_file: &PathBuf, trash_dir: &PathBuf) -> std::io::Result<()> {
     if !config_file.exists() {
-        fs::File::create(config_file)?;
+        fs::write(&config_file, CONFIG_EXAMPLE)
+            .unwrap_or_else(|_| panic!("cannot write new confi file."));
     }
 
     if !trash_dir.exists() {
