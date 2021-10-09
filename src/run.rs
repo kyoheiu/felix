@@ -350,6 +350,109 @@ pub fn run() {
                     }
                 }
 
+                Key::Char('m') => {
+                    print!("{}{}", cursor::Show, cursor::BlinkingBlock);
+
+                    let mut new_dir_name: Vec<char> = Vec::new();
+                    print!("{}{} ", cursor::Goto(2, 2), RIGHT_ARROW);
+                    screen.flush().unwrap();
+
+                    loop {
+                        let eow = new_dir_name.len() + 3;
+                        let (x, _) = screen.cursor_pos().unwrap();
+                        let input = stdin.next();
+                        if let Some(Ok(key)) = input {
+                            match key {
+                                //rename item
+                                Key::Char('\n') => {
+                                    let new_name = new_dir_name.iter().collect::<String>();
+                                    let new_name = &current_dir.join(new_name);
+                                    std::fs::create_dir(&new_name)
+                                        .unwrap_or_else(|_| panic!("rename failed"));
+
+                                    clear_and_show(&current_dir);
+                                    items.update_list(&current_dir);
+                                    items.list_up(nums.skip);
+
+                                    print!(
+                                        "{}{}>{}",
+                                        cursor::Hide,
+                                        cursor::Goto(1, y),
+                                        cursor::Left(1)
+                                    );
+                                    break;
+                                }
+
+                                //Quit rename mode and return to original lists
+                                Key::Esc => {
+                                    print!("{}", clear::CurrentLine);
+                                    print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
+                                    print!(
+                                        "{}{}>{}",
+                                        cursor::Hide,
+                                        cursor::Goto(1, y),
+                                        cursor::Left(1)
+                                    );
+                                    break;
+                                }
+
+                                Key::Left => {
+                                    if x == 4 {
+                                        continue;
+                                    };
+                                    print!("{}", cursor::Left(1));
+                                    screen.flush().unwrap();
+                                }
+
+                                Key::Right => {
+                                    if x as usize == eow + 1 {
+                                        continue;
+                                    };
+                                    print!("{}", cursor::Right(1));
+                                    screen.flush().unwrap();
+                                }
+
+                                //Input char(case-sensitive)
+                                Key::Char(c) => {
+                                    let memo_x = x;
+                                    new_dir_name.insert((x - 4).into(), c);
+
+                                    print!(
+                                        "{}{}{} {}{}",
+                                        clear::CurrentLine,
+                                        cursor::Goto(2, 2),
+                                        RIGHT_ARROW,
+                                        &new_dir_name.iter().collect::<String>(),
+                                        cursor::Goto(memo_x + 1, 2)
+                                    );
+
+                                    screen.flush().unwrap();
+                                }
+
+                                Key::Backspace => {
+                                    let memo_x = x;
+                                    if x == 4 {
+                                        continue;
+                                    };
+                                    new_dir_name.remove((x - 5).into());
+
+                                    print!(
+                                        "{}{}{} {}{}",
+                                        clear::CurrentLine,
+                                        cursor::Goto(2, 2),
+                                        RIGHT_ARROW,
+                                        &new_dir_name.iter().collect::<String>(),
+                                        cursor::Goto(memo_x - 1, 2)
+                                    );
+
+                                    screen.flush().unwrap();
+                                }
+
+                                _ => continue,
+                            }
+                        }
+                    }
+                }
                 Key::Char('E') => {
                     print!(
                         " {}{}{}{}{}{}",
