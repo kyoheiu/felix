@@ -26,7 +26,7 @@ pub fn clear_and_show(dir: &PathBuf) {
     print!("{}{}", clear::All, cursor::Goto(1, 1));
     //Show current directory path
     println!(
-        " {}{}{}{}{}{}{}",
+        " {}{}{}{}{}{}{} show help: H",
         style::Bold,
         color::Bg(color::Cyan),
         color::Fg(color::Black),
