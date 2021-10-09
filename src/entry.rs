@@ -452,9 +452,9 @@ pub fn push_entries(p: &PathBuf) -> Result<Vec<ItemInfo>, Error> {
         }
         None => {}
     }
-    for entry in fs::read_dir(p)
-        .unwrap_or_else(|_| panic!("cannot read the directory (maybe due to permission)"))
-    {
+    let read_dir = fs::read_dir(p)
+        .unwrap_or_else(|_| panic!("cannot read the directory (maybe due to permission)"));
+    for entry in read_dir {
         let e = entry?;
         let entry = make_entry(e);
         entry_v.push(entry);
