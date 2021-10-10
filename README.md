@@ -2,6 +2,8 @@
 
 A tiny file manager with vim-like keybind.
 
+[!sample](screenshots/sample.gif)
+
 ## Installation
 
 ```
@@ -11,6 +13,19 @@ cargo install --path .
 ```
 
 ## Usage
+
+When `fm` starts, it shows items in _the current working directory_. For example,
+
+```
+$ echo $PWD
+/home/kyohei/rust/fm
+
+$ fm
+```
+
+...shows this list.
+
+[!ss1](screenshots/1.jpg)
 
 | Key                   | Explanation                                                                                                                       |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------- |

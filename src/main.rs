@@ -1,8 +1,8 @@
 mod config;
 mod entry;
 mod functions;
+mod nums;
 mod run;
-mod state;
 
 fn main() {
     run::run();
