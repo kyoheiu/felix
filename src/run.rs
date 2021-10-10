@@ -130,7 +130,7 @@ pub fn run() {
                     let item = items.get_item(nums.index).clone();
                     match item.file_type {
                         FileType::File => {
-                            print!("{}{}", clear::All, screen::ToAlternateScreen);
+                            print!("{}", screen::ToAlternateScreen);
                             items.open_file(nums.index);
                             print!("{}", screen::ToAlternateScreen);
                             clear_and_show(&current_dir);
