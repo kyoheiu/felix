@@ -14,7 +14,7 @@ cargo install --path .
 
 ## Usage
 
-When `fm` starts, it shows items in _the current working directory_. For example,
+`fm` shows items in _the current working directory_. For example,
 
 ```
 $ echo $PWD
@@ -26,6 +26,8 @@ $ fm
 ...shows this list.
 
 ![ss1](https://github.com/kyoheiu/fm/blob/main/screenshots/1.jpg)
+
+`fm <whatever>` shows simple help text.
 
 | Key                   | Explanation                                                                                                                       |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
@@ -43,7 +45,6 @@ $ fm
 | E                     | Empty the trash directory. Please think twice before using this command.                                                          |
 | /                     | Go to filter mode. (type keyword and Enter to go to filtered list)                                                                |
 | Esc                   | In normal mode, exits program. In filter or mkdir mode, return to normal mode.                                                    |
-| H                     | Show help.                                                                                                                        |
 
 ## Configuration
 
