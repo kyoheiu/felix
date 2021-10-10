@@ -17,7 +17,7 @@ g                     :Go to the top.
 G                     :Go to the bottom.
 D                     :Cut and yank item.
 y                     :Yank item.
-p                     :Copy yanked item to the current directory.
+p                     :Paste yanked item to the current directory.
 c                     :Rename item.
 m                     :Go to `mkdir` mode.
 E                     :Empty the trash directory.

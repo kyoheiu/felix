@@ -32,22 +32,22 @@ $ fm
 
 ## Key manual
 
-| Key                   | Explanation                                                                                                                       |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| j / Key Up            | Go up. If lists exceeds max-row, lists "scrolls" before the top of the list.                                                      |
-| k / Key Down          | Go down. If lists exceeds max-row, lists "scrolls" before the bottom of the list.                                                 |
-| h / Key Left          | Go to parent directory if exists.                                                                                                 |
-| l / Key Right / Enter | Open file or change directory(change lists as if `cd`). The execution commands can be managed in config.                          |
-| g                     | Go to the top.                                                                                                                    |
-| G                     | Go to the bottom.                                                                                                                 |
-| D                     | Cut and yank item. (item will go to the trash directory)                                                                          |
-| y                     | Yank item. If you yanked other item before, its information will be replaced by this one.                                         |
-| p                     | Copy yanked item to the current directory. If item with same name exists, copied item will be renamed with the suffix "\_copied". |
-| c                     | Rename item.                                                                                                                      |
-| m                     | Go to `mkdir` mode. (type name and Enter to make new one in the current directory.)                                               |
-| E                     | Empty the trash directory. Please think twice before using this command.                                                          |
-| /                     | Go to filter mode. (type keyword and Enter to go to filtered list)                                                                |
-| Esc                   | In normal mode, exits program. In filter or mkdir mode, return to normal mode.                                                    |
+| Key                   | Explanation                                                                                                                        |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| j / Key Up            | Go up. If lists exceeds max-row, lists "scrolls" before the top of the list.                                                       |
+| k / Key Down          | Go down. If lists exceeds max-row, lists "scrolls" before the bottom of the list.                                                  |
+| h / Key Left          | Go to parent directory if exists.                                                                                                  |
+| l / Key Right / Enter | Open file or change directory(change lists as if `cd`). The execution commands can be managed in config.                           |
+| g                     | Go to the top.                                                                                                                     |
+| G                     | Go to the bottom.                                                                                                                  |
+| D                     | Cut and yank item. (item will go to the trash directory)                                                                           |
+| y                     | Yank item. If you yanked other item before, its information will be replaced by this one.                                          |
+| p                     | Paste yanked item to the current directory. If item with same name exists, copied item will be renamed with the suffix "\_copied". |
+| c                     | Rename item.                                                                                                                       |
+| m                     | Go to `mkdir` mode. (type name and Enter to make new one in the current directory.)                                                |
+| E                     | Empty the trash directory. Please think twice before using this command.                                                           |
+| /                     | Go to filter mode. (type keyword and Enter to go to filtered list)                                                                 |
+| Esc                   | In normal mode, exits program. In filter or mkdir mode, return to normal mode.                                                     |
 
 Note that items moved to the trash directory will be prefixed with Unix time (like `1633843993`) to avoid name conflict. This prefix will be removed when paste.
 
