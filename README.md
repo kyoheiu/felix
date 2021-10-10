@@ -2,7 +2,7 @@
 
 A tiny file manager with vim-like keybind.
 
-[!sample](screenshots/sample.gif)
+[!sample](https://github.com/kyoheiu/fm/blob/main/screenshots/sample.gif)
 
 ## Installation
 
@@ -25,7 +25,7 @@ $ fm
 
 ...shows this list.
 
-[!ss1](screenshots/1.jpg)
+[!ss1](https://github.com/kyoheiu/fm/blob/main/screenshots/1.jpg)
 
 | Key                   | Explanation                                                                                                                       |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
