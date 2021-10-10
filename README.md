@@ -29,6 +29,8 @@ $ fm
 
 `fm <whatever>` shows simple help text.
 
+## Key manual
+
 | Key                   | Explanation                                                                                                                       |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | j / Key Up            | Go up. If lists exceeds max-row, lists "scrolls" before the top of the list.                                                      |
