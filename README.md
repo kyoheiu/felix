@@ -1,6 +1,7 @@
 # fm
 
 A tiny file manager with vim-like keybind.
+(_Currently works on Linux_)
 
 ![sample](https://github.com/kyoheiu/fm/blob/main/screenshots/sample.gif)
 
