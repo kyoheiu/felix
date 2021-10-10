@@ -1,5 +1,5 @@
 use super::config::CONFIG_EXAMPLE;
-use super::entry::*;
+use super::items::*;
 use std::fs;
 use std::path::PathBuf;
 use termion::{clear, color, cursor, style};

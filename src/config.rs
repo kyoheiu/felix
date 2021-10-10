@@ -2,7 +2,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::read_to_string;
 
-use crate::entry::CONFIG_DIR;
+use crate::items::CONFIG_DIR;
 
 const CONFIG_FILE: &str = "config.toml";
 pub const CONFIG_EXAMPLE: &str = "

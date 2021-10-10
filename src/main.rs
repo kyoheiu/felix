@@ -1,7 +1,7 @@
 mod config;
-mod entry;
 mod functions;
 mod help;
+mod items;
 mod nums;
 mod run;
 
