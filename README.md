@@ -49,6 +49,8 @@ $ fm
 | /                     | Go to filter mode. (type keyword and Enter to go to filtered list)                                                                |
 | Esc                   | In normal mode, exits program. In filter or mkdir mode, return to normal mode.                                                    |
 
+Note that items moved to the trash directory will be prefixed with Unix time (like `1633843993`) to avoid name conflict. This prefix will be removed when paste.
+
 ## Configuration
 
 ```
