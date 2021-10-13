@@ -75,3 +75,16 @@ pub fn rename_dir(item: &ItemInfo, items: &Items) -> String {
         item.file_name.clone()
     }
 }
+
+pub fn print_warning<T: std::fmt::Display>(message: T) {
+    print!(
+        " {}{}{}{}{}{}{}",
+        cursor::Goto(2, 2),
+        clear::CurrentLine,
+        color::Fg(color::LightWhite),
+        color::Bg(color::Red),
+        message,
+        color::Fg(color::Reset),
+        color::Bg(color::Reset),
+    );
+}

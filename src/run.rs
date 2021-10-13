@@ -9,7 +9,7 @@ use termion::cursor::DetectCursorPos;
 use termion::event::Key;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
-use termion::{clear, color, cursor, screen};
+use termion::{clear, cursor, screen};
 
 pub fn run() {
     let mut config_dir = dirs::config_dir().unwrap_or_else(|| panic!("cannot read config dir."));
@@ -140,7 +140,7 @@ pub fn run() {
                         FileType::Directory => {
                             match std::fs::File::open(&item.file_path) {
                                 Err(e) => {
-                                    print!("{}{}", cursor::Goto(2, 2), e);
+                                    print_warning(e);
                                     print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                                     continue;
                                 }
@@ -462,16 +462,7 @@ pub fn run() {
                     }
                 }
                 Key::Char('E') => {
-                    print!(
-                        " {}{}{}{}{}{}{}",
-                        cursor::Goto(2, 2),
-                        clear::CurrentLine,
-                        color::Fg(color::LightWhite),
-                        color::Bg(color::Red),
-                        CONFIRMATION,
-                        color::Fg(color::Reset),
-                        color::Bg(color::Reset),
-                    );
+                    print_warning(CONFIRMATION);
                     screen.flush().unwrap();
 
                     loop {
