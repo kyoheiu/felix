@@ -131,7 +131,9 @@ pub fn run() {
                     match item.file_type {
                         FileType::File => {
                             print!("{}", screen::ToAlternateScreen);
-                            items.open_file(nums.index);
+                            if let Err(e) = items.open_file(nums.index) {
+                                print_warning(e, y);
+                            }
                             print!("{}", screen::ToAlternateScreen);
                             clear_and_show(&current_dir);
                             items.list_up(nums.skip);
@@ -140,8 +142,7 @@ pub fn run() {
                         FileType::Directory => {
                             match std::fs::File::open(&item.file_path) {
                                 Err(e) => {
-                                    print_warning(e);
-                                    print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+                                    print_warning(e, y);
                                     continue;
                                 }
                                 Ok(_) => {
@@ -201,8 +202,16 @@ pub fn run() {
                         continue;
                     }
                     match items.get_item(nums.index).file_type {
-                        FileType::Directory => items.remove_dir(nums.index),
-                        FileType::File => items.remove_file(nums.index),
+                        FileType::Directory => {
+                            if let Err(e) = items.remove_dir(nums.index) {
+                                print_warning(e, y);
+                            }
+                        }
+                        FileType::File => {
+                            if let Err(e) = items.remove_file(nums.index) {
+                                print_warning(e, y);
+                            }
+                        }
                     }
 
                     clear_and_show(&current_dir);
@@ -230,8 +239,16 @@ pub fn run() {
                         continue;
                     } else {
                         match item.unwrap().file_type {
-                            FileType::Directory => items.paste_dir(&current_dir),
-                            FileType::File => items.paste_file(&current_dir),
+                            FileType::Directory => {
+                                if let Err(e) = items.paste_dir(&current_dir) {
+                                    print_warning(e, y);
+                                }
+                            }
+                            FileType::File => {
+                                if let Err(e) = items.paste_file(&current_dir) {
+                                    print_warning(e, y);
+                                }
+                            }
                         }
                         clear_and_show(&current_dir);
                         items.list_up(nums.skip);
@@ -267,13 +284,7 @@ pub fn run() {
                                     if let Err(e) =
                                         std::fs::rename(Path::new(&item.file_path), Path::new(&to))
                                     {
-                                        print_warning(e);
-                                        print!(
-                                            "{}{}>{}",
-                                            cursor::Hide,
-                                            cursor::Goto(1, y),
-                                            cursor::Left(1)
-                                        );
+                                        print_warning(e, y);
                                         break;
                                     }
 
@@ -386,13 +397,7 @@ pub fn run() {
                                     let new_name = new_dir_name.iter().collect::<String>();
                                     let new_name = &current_dir.join(new_name);
                                     if let Err(e) = std::fs::create_dir(&new_name) {
-                                        print_warning(e);
-                                        print!(
-                                            "{}{}>{}",
-                                            cursor::Hide,
-                                            cursor::Goto(1, y),
-                                            cursor::Left(1)
-                                        );
+                                        print_warning(e, y);
                                         break;
                                     }
 
@@ -480,7 +485,7 @@ pub fn run() {
                     }
                 }
                 Key::Char('E') => {
-                    print_warning(CONFIRMATION);
+                    print_warning(CONFIRMATION, y);
                     screen.flush().unwrap();
 
                     loop {
