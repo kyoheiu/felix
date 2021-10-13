@@ -10,7 +10,7 @@ use termion::{color, cursor};
 pub const STARTING_POINT: u16 = 3;
 pub const DOWN_ARROW: char = '\u{21D3}';
 pub const RIGHT_ARROW: char = '\u{21D2}';
-pub const CONFIG_DIR: &str = "fm";
+pub const FM_CONFIG_DIR: &str = "fm";
 pub const CONFIG_FILE: &str = "config.toml";
 pub const TRASH: &str = "trash";
 pub const NAME_MAX_LEN: usize = 30;
@@ -352,9 +352,6 @@ impl Items {
     }
 
     pub fn list_up(&self, skip_number: u16) {
-        //Show arrow
-        print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
-
         let (_, row) = termion::terminal_size().unwrap();
         let len = self.list.len();
 
@@ -452,9 +449,7 @@ pub fn push_entries(p: &PathBuf) -> Result<Vec<ItemInfo>, Error> {
         }
         None => {}
     }
-    let read_dir = fs::read_dir(p)
-        .unwrap_or_else(|_| panic!("cannot read the directory (maybe due to permission)"));
-    for entry in read_dir {
+    for entry in fs::read_dir(p)? {
         let e = entry?;
         let entry = make_entry(e);
         entry_v.push(entry);

@@ -13,7 +13,7 @@ use termion::{clear, color, cursor, screen};
 
 pub fn run() {
     let mut config_dir = dirs::config_dir().unwrap_or_else(|| panic!("cannot read config dir."));
-    config_dir.push(CONFIG_DIR);
+    config_dir.push(FM_CONFIG_DIR);
     let config_file = config_dir.join(PathBuf::from(CONFIG_FILE));
     let trash_dir = config_dir.join(PathBuf::from(TRASH));
     make_config(&config_file, &trash_dir)
@@ -33,9 +33,9 @@ pub fn run() {
 
     let mut screen = screen::AlternateScreen::from(stdout().into_raw_mode().unwrap());
 
-    clear_and_show(&current_dir);
     print!("{}", cursor::Hide);
 
+    clear_and_show(&current_dir);
     items.list_up(nums.skip);
 
     print!(
@@ -138,23 +138,32 @@ pub fn run() {
                             print!("{}{}>{}", cursor::Hide, cursor::Goto(1, y), cursor::Left(1));
                         }
                         FileType::Directory => {
-                            //store the last cursor position and skip number.
-                            let cursor_memo = CursorMemo {
-                                num: nums.clone(),
-                                cursor_pos: y,
-                            };
-                            memo_v.push(cursor_memo);
+                            match std::fs::File::open(&item.file_path) {
+                                Err(e) => {
+                                    print!("{}{}", cursor::Goto(2, 2), e);
+                                    print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+                                    continue;
+                                }
+                                Ok(_) => {
+                                    //store the last cursor position and skip number.
+                                    let cursor_memo = CursorMemo {
+                                        num: nums.clone(),
+                                        cursor_pos: y,
+                                    };
+                                    memo_v.push(cursor_memo);
 
-                            current_dir = item.file_path;
-                            items.update_list(&current_dir);
-                            clear_and_show(&current_dir);
-                            items.list_up(0);
-                            print!(
-                                "{}>{}",
-                                cursor::Goto(1, STARTING_POINT + 1),
-                                cursor::Left(1)
-                            );
-                            nums.reset();
+                                    current_dir = item.file_path.clone();
+                                    items.update_list(&current_dir);
+                                    clear_and_show(&current_dir);
+                                    items.list_up(0);
+                                    print!(
+                                        "{}>{}",
+                                        cursor::Goto(1, STARTING_POINT + 1),
+                                        cursor::Left(1)
+                                    );
+                                    nums.reset();
+                                }
+                            }
                         }
                     }
                 }
@@ -236,8 +245,9 @@ pub fn run() {
 
                     let mut rename = item.file_name.clone().chars().collect::<Vec<char>>();
                     print!(
-                        "{}{} {}",
+                        "{}{}{} {}",
                         cursor::Goto(2, 2),
+                        clear::CurrentLine,
                         RIGHT_ARROW,
                         &rename.iter().collect::<String>(),
                     );
@@ -347,7 +357,12 @@ pub fn run() {
                     print!("{}{}", cursor::Show, cursor::BlinkingBlock);
 
                     let mut new_dir_name: Vec<char> = Vec::new();
-                    print!("{}{} ", cursor::Goto(2, 2), RIGHT_ARROW);
+                    print!(
+                        "{}{}{} ",
+                        cursor::Goto(2, 2),
+                        clear::CurrentLine,
+                        RIGHT_ARROW
+                    );
                     screen.flush().unwrap();
 
                     loop {
@@ -448,8 +463,9 @@ pub fn run() {
                 }
                 Key::Char('E') => {
                     print!(
-                        " {}{}{}{}{}{}",
+                        " {}{}{}{}{}{}{}",
                         cursor::Goto(2, 2),
+                        clear::CurrentLine,
                         color::Fg(color::LightWhite),
                         color::Bg(color::Red),
                         CONFIRMATION,
@@ -484,7 +500,12 @@ pub fn run() {
 
                 //Enter the filter mode
                 Key::Char('/') => {
-                    print!(" {}{} ", cursor::Goto(2, 2), RIGHT_ARROW);
+                    print!(
+                        " {}{}{} ",
+                        cursor::Goto(2, 2),
+                        clear::CurrentLine,
+                        RIGHT_ARROW
+                    );
                     print!("{}{}", cursor::Show, cursor::BlinkingBlock);
                     screen.flush().unwrap();
 
@@ -512,7 +533,6 @@ pub fn run() {
                                 //Quit filter mode and return to original lists
                                 Key::Esc => {
                                     clear_and_show(&current_dir);
-
                                     items.list = original_list;
                                     items.list_up(0);
 

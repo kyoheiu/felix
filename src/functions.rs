@@ -37,6 +37,8 @@ pub fn clear_and_show(dir: &PathBuf) {
         color::Bg(color::Reset),
         color::Fg(color::Reset)
     );
+    //Show arrow
+    print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
 }
 
 pub fn rename_file(item: &ItemInfo, items: &Items) -> String {

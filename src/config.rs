@@ -2,7 +2,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::read_to_string;
 
-use crate::items::CONFIG_DIR;
+use crate::items::FM_CONFIG_DIR;
 
 const CONFIG_FILE: &str = "config.toml";
 pub const CONFIG_EXAMPLE: &str = "
@@ -75,7 +75,7 @@ pub enum Colorname {
 
 pub fn read_config() -> Option<Config> {
     let mut config = dirs::config_dir().unwrap_or_else(|| panic!("cannot read config dir."));
-    config.push(CONFIG_DIR);
+    config.push(FM_CONFIG_DIR);
     config.push(CONFIG_FILE);
     let config = read_to_string(config.as_path());
     if let Ok(config) = config {
