@@ -96,18 +96,24 @@ impl Items {
                 match ext_map.get(&ext) {
                     Some(exec) => {
                         let mut ex = Command::new(exec);
-                        ex.arg(path).status().expect("failed");
+                        if let Err(e) = ex.arg(path).status() {
+                            print_warning(e);
+                        }
                     }
                     None => {
                         let mut ex = Command::new(default);
-                        ex.arg(path).status().expect("failed");
+                        if let Err(e) = ex.arg(path).status() {
+                            print_warning(e);
+                        }
                     }
                 }
             }
 
             None => {
                 let mut ex = Command::new(default);
-                ex.arg(path).status().expect("failed");
+                if let Err(e) = ex.arg(path).status() {
+                    print_warning(e);
+                }
             }
         }
     }
@@ -124,7 +130,10 @@ impl Items {
         let to = &self.trash_dir.join(&rename);
 
         //copy
-        std::fs::copy(from, to).unwrap_or_else(|_| panic!("cannot copy item."));
+        if let Err(e) = std::fs::copy(from, to) {
+            print_warning(e);
+            return;
+        }
 
         //copy original information to item_buf
         let mut buf = item.clone();
@@ -133,7 +142,9 @@ impl Items {
         self.item_buf = Some(buf);
 
         //remove original
-        std::fs::remove_file(from).unwrap_or_else(|_| panic!("cannot remove file."));
+        if let Err(e) = std::fs::remove_file(from) {
+            print_warning(e);
+        }
 
         let _ = self.list.remove(index);
     }
@@ -164,25 +175,29 @@ impl Items {
                 target = entry.path().iter().skip(base).collect();
                 target = trash_path.join(target);
                 if entry.file_type().is_dir() {
-                    std::fs::create_dir(&target)
-                        .unwrap_or_else(|_| panic!("cannot create dir recursively."));
+                    if let Err(e) = std::fs::create_dir(&target) {
+                        print_warning(e);
+                    }
                     continue;
                 }
 
                 match entry.path().parent() {
                     Some(parent) => {
                         if !parent.exists() {
-                            std::fs::create_dir(parent)
-                                .unwrap_or_else(|_| panic!("cannot create parent dir in loop."));
+                            if let Err(e) = std::fs::create_dir(parent) {
+                                print_warning(e);
+                            }
                         }
                     }
                     None => {
-                        panic!("cannot move item due to parent() error.")
+                        print_warning("Error occurs and copy process was suspended.");
+                        return;
                     }
                 }
 
-                std::fs::copy(entry.path(), &target)
-                    .unwrap_or_else(|_| panic!("cannot copy item."));
+                if let Err(e) = std::fs::copy(entry.path(), &target) {
+                    print_warning(e);
+                }
             }
         }
 
@@ -193,8 +208,10 @@ impl Items {
         self.item_buf = Some(buf.clone());
 
         //remove original
-        std::fs::remove_dir_all(&item.file_path)
-            .unwrap_or_else(|_| panic!("cannot remove directory."));
+        if let Err(e) = std::fs::remove_dir_all(&item.file_path) {
+            print_warning(e);
+            return;
+        }
 
         let _ = self.list.remove(index);
     }
@@ -204,19 +221,20 @@ impl Items {
         match item {
             None => {}
             Some(item) => {
-                let parent = item.file_path.parent().unwrap();
-                if parent == &self.trash_dir {
+                if item.file_path.parent() == Some(&self.trash_dir) {
                     let mut item = item.clone();
                     let mut rename = item.file_name.clone();
                     rename = rename.chars().skip(11).collect();
                     item.file_name = rename;
                     let rename = rename_file(&item, &self);
-                    std::fs::copy(&item.file_path, current_dir.join(&rename))
-                        .unwrap_or_else(|_| panic!("cannot copy item from buf."));
+                    if let Err(e) = std::fs::copy(&item.file_path, current_dir.join(&rename)) {
+                        print_warning(e);
+                    }
                 } else {
                     let rename = rename_file(&item, &self);
-                    std::fs::copy(&item.file_path, current_dir.join(&rename))
-                        .unwrap_or_else(|_| panic!("cannot copy item from buf."));
+                    if let Err(e) = std::fs::copy(&item.file_path, current_dir.join(&rename)) {
+                        print_warning(e);
+                    }
                 }
 
                 self.update_list(current_dir);
@@ -245,13 +263,17 @@ impl Items {
 
                     let rename = rename_dir(&buf, &self);
                     target = current_dir.join(rename);
-                    std::fs::create_dir(&target)
-                        .unwrap_or_else(|_| panic!("cannot create dir for paste."));
+                    if let Err(e) = std::fs::create_dir(&target) {
+                        print_warning(e);
+                        return;
+                    }
                 } else {
                     let rename = rename_dir(&buf, &self);
                     target = current_dir.join(rename);
-                    std::fs::create_dir(&target)
-                        .unwrap_or_else(|_| panic!("cannot create dir for paste."));
+                    if let Err(e) = std::fs::create_dir(&target) {
+                        print_warning(e);
+                        return;
+                    }
                 }
                 i += 1;
                 continue;
@@ -260,25 +282,31 @@ impl Items {
                 let child = target.join(child);
 
                 if entry.file_type().is_dir() {
-                    std::fs::create_dir(child)
-                        .unwrap_or_else(|_| panic!("cannot create dir recursively."));
+                    if let Err(e) = std::fs::create_dir(child) {
+                        print_warning(e);
+                        return;
+                    }
                     continue;
                 } else {
                     match entry.path().parent() {
                         Some(parent) => {
                             if !parent.exists() {
-                                std::fs::create_dir(parent).unwrap_or_else(|_| {
-                                    panic!("cannot create parent dir in loop.")
-                                });
+                                if let Err(e) = std::fs::create_dir(parent) {
+                                    print_warning(e);
+                                    return;
+                                }
                             }
                         }
                         None => {
-                            panic!("cannot move item due to parent() error.")
+                            print_warning("Error occurs and copy process was suspended.");
+                            return;
                         }
                     }
 
-                    std::fs::copy(entry.path(), &child)
-                        .unwrap_or_else(|_| panic!("cannot copy item."));
+                    if let Err(e) = std::fs::copy(entry.path(), &child) {
+                        print_warning(e);
+                        return;
+                    }
                 }
             }
         }

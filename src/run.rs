@@ -264,8 +264,18 @@ pub fn run() {
                                     let rename = rename.iter().collect::<String>();
                                     let mut to = current_dir.clone();
                                     to.push(rename);
-                                    std::fs::rename(Path::new(&item.file_path), Path::new(&to))
-                                        .unwrap_or_else(|_| panic!("rename failed"));
+                                    if let Err(e) =
+                                        std::fs::rename(Path::new(&item.file_path), Path::new(&to))
+                                    {
+                                        print_warning(e);
+                                        print!(
+                                            "{}{}>{}",
+                                            cursor::Hide,
+                                            cursor::Goto(1, y),
+                                            cursor::Left(1)
+                                        );
+                                        break;
+                                    }
 
                                     clear_and_show(&current_dir);
                                     items.update_list(&current_dir);
@@ -375,8 +385,16 @@ pub fn run() {
                                 Key::Char('\n') => {
                                     let new_name = new_dir_name.iter().collect::<String>();
                                     let new_name = &current_dir.join(new_name);
-                                    std::fs::create_dir(&new_name)
-                                        .unwrap_or_else(|_| panic!("rename failed"));
+                                    if let Err(e) = std::fs::create_dir(&new_name) {
+                                        print_warning(e);
+                                        print!(
+                                            "{}{}>{}",
+                                            cursor::Hide,
+                                            cursor::Goto(1, y),
+                                            cursor::Left(1)
+                                        );
+                                        break;
+                                    }
 
                                     clear_and_show(&current_dir);
                                     items.update_list(&current_dir);
