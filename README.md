@@ -62,4 +62,4 @@ Default config file will be created automatically when you launch the program fo
 
 ## todo
 
-[] Implement `v`(select mode)
+[ ] Implement `v`(select mode)
