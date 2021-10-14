@@ -40,7 +40,7 @@ pub fn run() {
 
     print!(
         "{}>{}",
-        cursor::Goto(1, STARTING_POINT + 1),
+        cursor::Goto(1, empty_or_not(items.list.len())),
         cursor::Left(1)
     );
     screen.flush().unwrap();
@@ -159,7 +159,7 @@ pub fn run() {
                                     items.list_up(0);
                                     print!(
                                         "{}>{}",
-                                        cursor::Goto(1, STARTING_POINT + 1),
+                                        cursor::Goto(1, empty_or_not(items.list.len())),
                                         cursor::Left(1)
                                     );
                                     nums.reset();
@@ -583,7 +583,7 @@ pub fn run() {
                                     print!(
                                         "{}{}>{}",
                                         cursor::Hide,
-                                        cursor::Goto(1, STARTING_POINT + 1),
+                                        cursor::Goto(1, empty_or_not(items.list.len())),
                                         cursor::Left(1)
                                     );
 

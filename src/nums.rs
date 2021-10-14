@@ -29,9 +29,6 @@ impl Num {
         self.index = 1;
         self.skip = 0;
     }
-    pub fn starting_point(&mut self) {
-        self.index = 1;
-    }
     pub fn inc_skip(&mut self) {
         self.skip += 1;
     }

@@ -95,3 +95,11 @@ pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
         cursor::Left(1)
     );
 }
+
+pub fn empty_or_not(len: usize) -> u16 {
+    if len == 1 {
+        STARTING_POINT
+    } else {
+        STARTING_POINT + 1
+    }
+}
