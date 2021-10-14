@@ -529,7 +529,7 @@ pub fn run() {
                             match key {
                                 Key::Char('y') | Key::Char('Y') => {
                                     fs_extra::dir::create(&items.trash_dir, true)
-                                        .unwrap_or_else(|_| panic!("cannot empty the trash dir."));
+                                        .unwrap_or_else(|e| print_warning(e, y));
                                     break;
                                 }
                                 _ => {
