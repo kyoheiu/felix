@@ -425,20 +425,28 @@ fn make_entry(dir: fs::DirEntry) -> ItemInfo {
 }
 
 pub fn push_entries(p: &PathBuf) -> Result<Vec<ItemInfo>, Error> {
-    let mut entry_v = vec![];
+    let mut dir_v = vec![];
+    let mut file_v = vec![];
 
     match p.parent() {
         Some(parent_p) => {
             let parent_dir = make_parent_dir(parent_p.to_path_buf());
-            entry_v.push(parent_dir);
+            dir_v.push(parent_dir);
         }
         None => {}
     }
     for entry in fs::read_dir(p)? {
         let e = entry?;
         let entry = make_entry(e);
-        entry_v.push(entry);
+        match entry.file_type {
+            FileType::Directory => dir_v.push(entry),
+            FileType::File => file_v.push(entry),
+        }
     }
-    entry_v.sort();
-    Ok(entry_v)
+
+    dir_v.sort_by(|a, b| natord::compare(&a.file_name, &b.file_name));
+    file_v.sort_by(|a, b| natord::compare(&a.file_name, &b.file_name));
+
+    dir_v.append(&mut file_v);
+    Ok(dir_v)
 }
