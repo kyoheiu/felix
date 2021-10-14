@@ -200,27 +200,62 @@ pub fn run() {
                 Key::Char('D') => {
                     if nums.index == 0 {
                         continue;
-                    }
-                    match items.get_item(nums.index).file_type {
-                        FileType::Directory => {
-                            if let Err(e) = items.remove_dir(nums.index) {
-                                print_warning(e, y);
-                            }
-                        }
-                        FileType::File => {
-                            if let Err(e) = items.remove_file(nums.index) {
-                                print_warning(e, y);
-                            }
-                        }
-                    }
-
-                    clear_and_show(&current_dir);
-                    items.list_up(nums.skip);
-                    if nums.index == len - 1 {
-                        print!("{}>{}", cursor::Goto(1, y - 1), cursor::Left(1));
-                        nums.go_up();
                     } else {
-                        print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+                        print_warning(WHEN_DELETE, y);
+                        screen.flush().unwrap();
+
+                        loop {
+                            let input = stdin.next();
+                            if let Some(Ok(key)) = input {
+                                match key {
+                                    Key::Char('y') | Key::Char('Y') => {
+                                        match items.get_item(nums.index).file_type {
+                                            FileType::Directory => {
+                                                if let Err(e) = items.remove_dir(nums.index) {
+                                                    print_warning(e, y);
+                                                }
+                                            }
+                                            FileType::File => {
+                                                if let Err(e) = items.remove_file(nums.index) {
+                                                    print_warning(e, y);
+                                                }
+                                            }
+                                        }
+
+                                        clear_and_show(&current_dir);
+                                        items.list_up(nums.skip);
+                                        if nums.index == len - 1 {
+                                            print!(
+                                                "{}>{}",
+                                                cursor::Goto(1, y - 1),
+                                                cursor::Left(1)
+                                            );
+                                            nums.go_up();
+                                        } else {
+                                            print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+                                        }
+                                        break;
+                                    }
+                                    _ => {
+                                        print!(
+                                            "{}{}{}",
+                                            cursor::Goto(2, 2),
+                                            clear::CurrentLine,
+                                            DOWN_ARROW
+                                        );
+                                        screen.flush().unwrap();
+
+                                        print!(
+                                            "{}{}>{}",
+                                            cursor::Hide,
+                                            cursor::Goto(1, y),
+                                            cursor::Left(1)
+                                        );
+                                        break;
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -485,7 +520,7 @@ pub fn run() {
                     }
                 }
                 Key::Char('E') => {
-                    print_warning(CONFIRMATION, y);
+                    print_warning(WHEN_EMPTY, y);
                     screen.flush().unwrap();
 
                     loop {
@@ -503,13 +538,8 @@ pub fn run() {
                             }
                         }
                     }
-                    print!("{}{}{}", clear::CurrentLine, cursor::Goto(2, 2), DOWN_ARROW);
-                    print!(
-                        "{}>{}",
-                        cursor::Goto(1, STARTING_POINT + 1),
-                        cursor::Left(1)
-                    );
-                    nums.starting_point();
+                    print!("{}{}{}", cursor::Goto(2, 2), clear::CurrentLine, DOWN_ARROW);
+                    print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                 }
 
                 //Enter the filter mode
