@@ -13,7 +13,7 @@ You can:
 - rename
 - make new directory
 - empty the trash directory
-- set your own command to execute file with `config.toml`, which is so handy!
+- set your own command to open file with `config.toml`, which is so handy!
 
 ## Installation
 
@@ -84,7 +84,7 @@ default = "nvim"
 jpg = "feh"
 ```
 
-...then you can open jpg file, say `01.jpg`, by `feh 01.jpg`, and the other items by `nvim <file-name>`.
+...then you can open jpg file, say `01.jpg`, by `feh 01.jpg`, and the other items by `nvim <file-name>`. The execution is of course inside `fm`, so you can return to the list after closing file.
 
 I tried to implement easy configuration on how you directly open files in `fm`, and I think toml is suitable for this usage.
 
