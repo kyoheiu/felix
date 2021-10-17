@@ -60,6 +60,6 @@ trash directory: $XDG_CONFIG_HOME/fm/trash
 
 Default config file will be created automatically when you launch the program for the first time.
 
-## todo
+## todo (or not todo)
 
 - [ ] Implement `v`(select mode)

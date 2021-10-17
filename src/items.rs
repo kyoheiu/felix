@@ -116,7 +116,7 @@ impl Items {
 
     pub fn remove_file(&mut self, index: usize) -> std::io::Result<()> {
         //prepare from and to for copy
-        let item = &self.get_item(index).clone();
+        let item = self.get_item(index).clone();
         let from = &item.file_path;
 
         let name = &item.file_name;
@@ -124,16 +124,13 @@ impl Items {
         rename.push('_');
         rename.push_str(name);
 
-        let to = &self.trash_dir.join(&rename);
+        let to = self.trash_dir.join(&rename);
 
         //copy
-        std::fs::copy(from, to)?;
+        std::fs::copy(from, &to)?;
 
         //copy original information to item_buf
-        let mut buf = item.clone();
-        buf.file_path = to.to_path_buf();
-        buf.file_name = rename;
-        self.item_buf = Some(buf);
+        self.to_item_buf(&item, to, rename);
 
         //remove original
         std::fs::remove_file(from)?;
@@ -147,12 +144,12 @@ impl Items {
         let mut base: usize = 0;
         let mut trash_path: std::path::PathBuf = PathBuf::new();
         let mut target: PathBuf;
-        let item = &self.get_item(index).clone();
+        let item = self.get_item(index).clone();
 
         let mut i = 0;
         for entry in walkdir::WalkDir::new(&item.file_path).sort_by_key(|x| x.path().to_path_buf())
         {
-            let entry = entry.unwrap();
+            let entry = entry?;
             if i == 0 {
                 base = entry.path().iter().count();
 
@@ -183,10 +180,7 @@ impl Items {
         }
 
         //copy original information to item_buf
-        let mut buf = item.clone();
-        buf.file_path = trash_path;
-        buf.file_name = trash_name;
-        self.item_buf = Some(buf.clone());
+        self.to_item_buf(&item, trash_path, trash_name);
 
         //remove original
         std::fs::remove_dir_all(&item.file_path)?;
@@ -194,6 +188,13 @@ impl Items {
         let _ = self.list.remove(index);
 
         Ok(())
+    }
+
+    fn to_item_buf(&mut self, item: &ItemInfo, file_path: PathBuf, file_name: String) {
+        let mut buf = item.clone();
+        buf.file_path = file_path;
+        buf.file_name = file_name;
+        self.item_buf = Some(buf);
     }
 
     pub fn paste_file(&mut self, current_dir: &PathBuf) -> std::io::Result<()> {
