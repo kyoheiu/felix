@@ -90,4 +90,5 @@ I tried to implement easy configuration on how you directly open files in `fm`, 
 
 ## todo (or not todo)
 
-- [ ] Implement `v`(select mode)
+- [ ] enable to choose whether the warning appears or not when delete
+- [ ] implement `v`(select mode)
