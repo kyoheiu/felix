@@ -31,7 +31,7 @@ pub const CONFIG_EXAMPLE: &str = "
 dir_fg = \"LightCyan\"
 file_fg = \"LightWhite\"
 
-# key(extention) = value(command you want to use)
+# key(extension) = value(command you want to use)
 # `default` is mandatory
 [exec]
 default = \"nvim\"
