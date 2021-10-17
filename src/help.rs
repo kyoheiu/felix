@@ -1,5 +1,5 @@
 pub const HELP: &str = "# fm
-A tiny file manager with vim-like keybind.
+A simple TUI file manager with vim-like keybind.
 
 ## Usage
 
@@ -15,14 +15,14 @@ h / Key Left          :Go to parent directory if exists.
 l / Key Right / Enter :Open file or change directory.
 g                     :Go to the top.
 G                     :Go to the bottom.
-D                     :Cut and yank item.
+D                     :Delete and yank item.
 y                     :Yank item.
-p                     :Paste yanked item to the current directory.
+p                     :Put yanked item to the current directory.
 c                     :Rename item.
 m                     :Go to `mkdir` mode.
 E                     :Empty the trash directory.
 /                     :Go to filter mode.
-Esc                   :Exits program or return to normal mode.
+Esc                   :Exit program or return to normal mode.
 `fm <whatever>`       :Show help.
 
 ## Configuration
@@ -30,6 +30,6 @@ Esc                   :Exits program or return to normal mode.
 config file    : $XDG_CONFIG_HOME/fm/config.toml
 trash directory: $XDG_CONFIG_HOME/fm/trash
 
-for more detail, visit
+for more detail, visit:
 https://github.com/kyoheiu/fm
 ";
