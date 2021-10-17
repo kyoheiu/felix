@@ -68,7 +68,7 @@ config file    : $XDG_CONFIG_HOME/fm/config.toml
 trash directory: $XDG_CONFIG_HOME/fm/trash
 ```
 
-Default config file will be created automatically when you launch the program for the first time.
+Default config file, which is [here](src/config.rs), will be created automatically when you launch the program for the first time.
 
 In config.toml, you can set:
 
