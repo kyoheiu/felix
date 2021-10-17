@@ -13,6 +13,7 @@ You can:
 - rename
 - make new directory
 - empty the trash directory
+- set your own command to execute file with `config.toml`, which is so handy!
 
 ## Installation
 
@@ -68,6 +69,24 @@ trash directory: $XDG_CONFIG_HOME/fm/trash
 ```
 
 Default config file will be created automatically when you launch the program for the first time.
+
+In config.toml, you can set:
+
+- color of directory name
+- color of file name
+- how to execute file
+
+For example, if you write
+
+```
+[exec]
+default = "nvim"
+jpg = "feh"
+```
+
+...then you can open jpg file, say `01.jpg`, by `feh 01.jpg`, and the other items by `nvim <file-name>`.
+
+I tried to implement easy configuration on how you directly open files in `fm`, and I think toml is suitable for this usage.
 
 ## todo (or not todo)
 
