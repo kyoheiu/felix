@@ -1,6 +1,6 @@
 # fm
 
-A simple TUI file manager with vim-like keybind.
+A simple TUI file manager with vim-like keybind, built with termion and written in Rust.
 (_Currently works on Linux_)
 
 ![sample](https://github.com/kyoheiu/fm/blob/main/screenshots/sample.gif)
