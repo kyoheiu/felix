@@ -1,9 +1,18 @@
 # fm
 
-A tiny file manager with vim-like keybind.
+A simple TUI file manager with vim-like keybind.
 (_Currently works on Linux_)
 
 ![sample](https://github.com/kyoheiu/fm/blob/main/screenshots/sample.gif)
+
+You can:
+
+- filter the list and easily choose item
+- cut
+- yank & paste
+- rename
+- make new directory
+- empty the trash directory
 
 ## Installation
 
