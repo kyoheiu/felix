@@ -86,12 +86,14 @@ In config.toml, you can set:
 For example, if you write
 
 ```
-[exec]
 default = "nvim"
-jpg = "feh"
+
+[exec]
+feh = ["jpg", "jpeg", "png", "gif", "svg"]
+zathura = ["pdf"]
 ```
 
-...then `fm` opens jpg file, say `01.jpg`, by `feh 01.jpg`, and the other items by `nvim <file-name>`. The execution is inside `fm`, so you can return to the list right after closing file.
+...then `fm` opens jpg file, say `01.jpg`, by `feh 01.jpg`, and the other items by `nvim <file-name>`. Commands are executed inside `fm`, so you can return to the list right after closing file.
 
 ## todo (or not todo)
 
