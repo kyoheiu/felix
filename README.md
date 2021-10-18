@@ -1,19 +1,26 @@
 # fm
 
-A simple TUI file manager with vim-like keybind, built with termion and written in Rust.
+A simple TUI file manager with vim-like keybind, written in Rust.
 (_Currently works on Linux_)
 
 ![sample](https://github.com/kyoheiu/fm/blob/main/screenshots/sample.gif)
 
-You can:
+My aim is to make a file manager that enables you to:
 
-- filter the list and easily choose item
+- open files in the current directory as fast as you can
+- configurate easily
+- do what you want to in daily use
+
+And with `fm`, you can:
+
+- see items in the current directory when launch
+- set your own commands to open file inside this program with `config.toml`, which is so handy!
+- filter the list and choose item easily
 - delete
 - yank & put
 - rename
-- make new directory
+- make a new directory
 - empty the trash directory
-- set your own command to open file with `config.toml`, which is so handy!
 
 ## Installation
 
@@ -47,7 +54,7 @@ $ fm
 | j / Key Up            | Go up. If the list exceeds max-row, list "scrolls" before the top of the list.                                                   |
 | k / Key Down          | Go down. If the list exceeds max-row, list "scrolls" before the bottom of the list.                                              |
 | h / Key Left          | Go to parent directory if exists.                                                                                                |
-| l / Key Right / Enter | Open file or change directory(change lists as if `cd`). The execution commands can be managed in config.                         |
+| l / Key Right / Enter | Open file or change directory(change lists as if `cd`). The exec commands can be managed in config.                              |
 | g                     | Go to the top.                                                                                                                   |
 | G                     | Go to the bottom.                                                                                                                |
 | D                     | Delete and yank item. (item will go to the trash directory)                                                                      |
@@ -74,7 +81,7 @@ In config.toml, you can set:
 
 - color of directory name
 - color of file name
-- how to execute file
+- how to open file
 
 For example, if you write
 
@@ -84,11 +91,11 @@ default = "nvim"
 jpg = "feh"
 ```
 
-...then you can open jpg file, say `01.jpg`, by `feh 01.jpg`, and the other items by `nvim <file-name>`. The execution is of course inside `fm`, so you can return to the list after closing file.
-
-I tried to implement easy configuration on how you directly open files in `fm`, and I think toml is suitable for this usage.
+...then `fm` opens jpg file, say `01.jpg`, by `feh 01.jpg`, and the other items by `nvim <file-name>`. The execution is inside `fm`, so you can return to the list right after closing file.
 
 ## todo (or not todo)
 
-- [ ] enable to choose whether the warning appears or not when delete
+- [ ] easier way to configurate exec commands
+- [ ] choose whether the warning appears or not when delete
+- [ ] change sort order (new to old / old to new)
 - [ ] implement `v`(select mode)
