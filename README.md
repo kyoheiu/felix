@@ -93,7 +93,7 @@ feh = ["jpg", "jpeg", "png", "gif", "svg"]
 zathura = ["pdf"]
 ```
 
-...then `fm` opens jpg file, say `01.jpg`, by `feh 01.jpg`, and the other items by `nvim <file-name>`. Commands are executed inside `fm`, so you can return to the list right after closing file.
+...then, for example jpg file, say `01.jpg`, is opened by `feh 01.jpg`, and toml file is opened by `nvim <file-name>` (because "toml" is not listed in exec). Commands are executed inside `fm`, so you can return to the list right after closing file.
 
 ## todo (or not todo)
 
