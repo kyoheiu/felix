@@ -1,5 +1,5 @@
 use super::config::CONFIG_EXAMPLE;
-use super::items::*;
+use super::state::*;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
@@ -42,9 +42,10 @@ pub fn clear_and_show(dir: &PathBuf) {
     print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
 }
 
-pub fn rename_file(item: &ItemInfo, items: &Items) -> String {
-    if items.list.iter().any(|x| x.file_name == item.file_name) {
-        let rename = PathBuf::from(item.file_name.clone());
+pub fn rename_file(item: &ItemInfo, state: &State) -> String {
+    let file_name = &item.file_name;
+    if state.list.iter().any(|x| &x.file_name == file_name) {
+        let rename = PathBuf::from(&(item).file_name);
         let extension = rename.extension();
 
         let mut rename = rename.file_stem().unwrap().to_os_string();
@@ -59,21 +60,22 @@ pub fn rename_file(item: &ItemInfo, items: &Items) -> String {
 
         let mut renamed_item = item.clone();
         renamed_item.file_name = rename;
-        return rename_file(&renamed_item, items);
+        return rename_file(&renamed_item, state);
     } else {
-        item.file_name.clone()
+        file_name.clone()
     }
 }
 
-pub fn rename_dir(item: &ItemInfo, items: &Items) -> String {
-    if items.list.iter().any(|x| x.file_name == item.file_name) {
-        let mut rename = item.file_name.clone();
+pub fn rename_dir(item: &ItemInfo, state: &State) -> String {
+    let file_name = &item.file_name;
+    if state.list.iter().any(|x| &x.file_name == file_name) {
+        let mut rename = file_name.clone();
         rename.push_str("_copied");
         let mut renamed_item = item.clone();
         renamed_item.file_name = rename;
-        return rename_dir(&renamed_item, items);
+        return rename_dir(&renamed_item, state);
     } else {
-        item.file_name.clone()
+        file_name.clone()
     }
 }
 
@@ -105,7 +107,7 @@ pub fn empty_or_not(len: usize) -> u16 {
     }
 }
 
-pub fn format_config(config: &HashMap<String, Vec<String>>) -> HashMap<String, String> {
+pub fn to_extension_map(config: &HashMap<String, Vec<String>>) -> HashMap<String, String> {
     let mut new_map = HashMap::new();
     for (command, extensions) in config.iter() {
         for ext in extensions.iter() {
