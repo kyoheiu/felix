@@ -528,8 +528,12 @@ pub fn run() {
                         if let Some(Ok(key)) = input {
                             match key {
                                 Key::Char('y') | Key::Char('Y') => {
-                                    fs_extra::dir::create(&items.trash_dir, true)
-                                        .unwrap_or_else(|e| print_warning(e, y));
+                                    if let Err(e) = std::fs::remove_dir_all(&items.trash_dir) {
+                                        print_warning(e, y);
+                                    }
+                                    if let Err(e) = std::fs::create_dir(&items.trash_dir) {
+                                        print_warning(e, y);
+                                    }
                                     break;
                                 }
                                 _ => {
