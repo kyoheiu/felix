@@ -2,11 +2,21 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::read_to_string;
 
-use crate::items::FM_CONFIG_DIR;
+use crate::state::FM_CONFIG_DIR;
 
 const CONFIG_FILE: &str = "config.toml";
-pub const CONFIG_EXAMPLE: &str = "
-# Choose the foreground color of file and directory in the list.
+pub const CONFIG_EXAMPLE: &str = "# Whether you see the warning message when try to delete item
+warning = true
+
+# default exec command when open files
+default = \"nvim\"
+
+# key(command you want to use) = values(extensions)
+[exec]
+feh = [\"jpg\", \"jpeg\", \"png\", \"gif\", \"svg\"]
+zathura = [\"pdf\"]
+
+# the foreground color of file and directory in the list
 # Pick one of the following:
 #   AnsiValue(u8)
 #   Black
@@ -30,20 +40,14 @@ pub const CONFIG_EXAMPLE: &str = "
 [color]
 dir_fg = \"LightCyan\"
 file_fg = \"LightWhite\"
-
-# key(extension) = value(command you want to use)
-# `default` is mandatory
-[exec]
-default = \"nvim\"
-jpg = \"feh\"
-pdf = \"zathura\"
-png = \"feh\"";
+";
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config {
-    pub color: Color,
-    pub default: HashMap<String, String>,
+    pub default: String,
+    pub warning: bool,
     pub exec: HashMap<String, Vec<String>>,
+    pub color: Color,
 }
 
 #[derive(Deserialize, Debug, Clone)]
