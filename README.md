@@ -9,7 +9,7 @@ My aim is to make a file manager that enables you to:
 
 - open files in the current directory as fast as you can
 - configurate easily
-- do what you want to in daily use
+- do what you want in daily use
 
 And with `fm`, you can:
 
@@ -32,7 +32,7 @@ cargo install --path .
 
 ## Usage
 
-`fm` shows items in _the current working directory_. For example,
+`fm` shows items in the current working directory. For example,
 
 ```
 $ echo $PWD
@@ -95,7 +95,7 @@ jpg = "feh"
 
 ## todo (or not todo)
 
-- [ ] easier way to configurate exec commands
-- [ ] choose whether the warning appears or not when delete
-- [ ] change sort order (new to old / old to new)
+- [x] easier way to configurate exec commands
+- [x] choose whether the warning appears or not when delete
+- [ ] change sort order (file name / new to old / old to new)
 - [ ] implement `v`(select mode)
