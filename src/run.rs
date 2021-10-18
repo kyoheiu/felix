@@ -23,6 +23,7 @@ pub fn run() {
     let mut current_dir = current_dir().unwrap_or_else(|_| panic!("cannot read current dir."));
     items.update_list(&current_dir);
     items.trash_dir = trash_dir;
+    items.exec = format_config(&items.config.exec);
 
     let mut nums = Num::new();
 

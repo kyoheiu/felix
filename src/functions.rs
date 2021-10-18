@@ -1,5 +1,6 @@
 use super::config::CONFIG_EXAMPLE;
 use super::items::*;
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use termion::{clear, color, cursor, style};
@@ -102,4 +103,14 @@ pub fn empty_or_not(len: usize) -> u16 {
     } else {
         STARTING_POINT + 1
     }
+}
+
+pub fn format_config(config: &HashMap<String, Vec<String>>) -> HashMap<String, String> {
+    let mut new_map = HashMap::new();
+    for (command, extensions) in config.iter() {
+        for ext in extensions.iter() {
+            new_map.insert(ext.clone(), command.clone());
+        }
+    }
+    new_map
 }

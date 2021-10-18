@@ -42,7 +42,8 @@ png = \"feh\"";
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config {
     pub color: Color,
-    pub exec: HashMap<String, String>,
+    pub default: HashMap<String, String>,
+    pub exec: HashMap<String, Vec<String>>,
 }
 
 #[derive(Deserialize, Debug, Clone)]

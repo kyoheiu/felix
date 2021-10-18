@@ -1,6 +1,7 @@
 use super::config::*;
 use super::functions::*;
 use chrono::prelude::*;
+use std::collections::HashMap;
 use std::fs;
 use std::io::Error;
 use std::path::PathBuf;
@@ -47,6 +48,7 @@ pub struct Items {
     pub item_buf: Option<ItemInfo>,
     pub trash_dir: PathBuf,
     pub config: Config,
+    pub exec: HashMap<String, String>,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -70,6 +72,7 @@ impl Default for Items {
             item_buf: None,
             trash_dir: PathBuf::new(),
             config: read_config().unwrap_or_else(|| panic!("cannot read config file.")),
+            exec: HashMap::new(),
         }
     }
 }
@@ -88,16 +91,16 @@ impl Items {
     pub fn open_file(&self, index: usize) -> std::io::Result<ExitStatus> {
         let item = self.get_item(index);
         let path = &item.file_path;
-        let ext_map = &self.config.exec;
+        let ext_map = &self.exec;
         let extention = path.extension();
-        let default = ext_map.get("default").unwrap();
+        let default = &self.config.default.get("default").unwrap();
 
         match extention {
             Some(extention) => {
                 let ext = extention.to_os_string().into_string().unwrap();
                 match ext_map.get(&ext) {
-                    Some(exec) => {
-                        let mut ex = Command::new(exec);
+                    Some(command) => {
+                        let mut ex = Command::new(command);
                         ex.arg(path).status()
                     }
                     None => {
