@@ -1,11 +1,11 @@
 [package]
 authors = ["Kyohei Uto <kyoheiu@outlook.com>"]
-description = "tiny file manager with vim-like keybind"
+description = "simple TUI file manager with vim-like keybind"
 edition = "2018"
 license = "MIT"
 name = "fm"
 repository = "https://github.com/kyoheiu/fm"
-version = "0.1.0"
+version = "0.1.1"
 [dependencies]
 chrono = "*"
 dirs = "4.0.0"
