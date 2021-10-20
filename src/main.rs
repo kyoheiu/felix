@@ -1,3 +1,4 @@
+#![feature(is_symlink)]
 mod config;
 mod functions;
 mod help;

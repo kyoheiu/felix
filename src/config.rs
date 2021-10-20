@@ -40,6 +40,7 @@ zathura = [\"pdf\"]
 [color]
 dir_fg = \"LightCyan\"
 file_fg = \"LightWhite\"
+symlink_fg = \"LightGreen\"
 ";
 
 #[derive(Deserialize, Debug, Clone)]
@@ -54,6 +55,7 @@ pub struct Config {
 pub struct Color {
     pub dir_fg: Colorname,
     pub file_fg: Colorname,
+    pub symlink_fg: Colorname,
 }
 
 #[derive(Deserialize, Debug, Clone)]

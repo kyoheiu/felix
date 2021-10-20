@@ -128,7 +128,7 @@ pub fn run() {
                 Key::Char('l') | Key::Char('\n') | Key::Right => {
                     let item = state.get_item(nums.index);
                     match item.file_type {
-                        FileType::File => {
+                        FileType::File | FileType::Symlink => {
                             print!("{}", screen::ToAlternateScreen);
                             if let Err(e) = state.open_file(nums.index) {
                                 print_warning(e, y);
@@ -217,7 +217,7 @@ pub fn run() {
                                                             print_warning(e, y);
                                                         }
                                                     }
-                                                    FileType::File => {
+                                                    FileType::File | FileType::Symlink => {
                                                         if let Err(e) =
                                                             state.remove_file(nums.index)
                                                         {
@@ -272,7 +272,7 @@ pub fn run() {
                                             print_warning(e, y);
                                         }
                                     }
-                                    FileType::File => {
+                                    FileType::File | FileType::Symlink => {
                                         if let Err(e) = state.remove_file(nums.index) {
                                             print_warning(e, y);
                                         }
@@ -312,7 +312,7 @@ pub fn run() {
                                     print_warning(e, y);
                                 }
                             }
-                            FileType::File => {
+                            FileType::File | FileType::Symlink => {
                                 if let Err(e) = state.paste_file(&current_dir) {
                                     print_warning(e, y);
                                 }

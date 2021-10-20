@@ -47,7 +47,7 @@ pub struct State {
     pub list: Vec<ItemInfo>,
     pub item_buf: Option<ItemInfo>,
     pub trash_dir: PathBuf,
-    pub colors: (Colorname, Colorname),
+    pub colors: (Colorname, Colorname, Colorname),
     pub default: String,
     pub commands: HashMap<String, String>,
     pub warning: bool,
@@ -65,6 +65,7 @@ pub struct ItemInfo {
 pub enum FileType {
     Directory,
     File,
+    Symlink,
 }
 
 impl Default for State {
@@ -74,7 +75,11 @@ impl Default for State {
             list: Vec::new(),
             item_buf: None,
             trash_dir: PathBuf::new(),
-            colors: (config.color.dir_fg, config.color.file_fg),
+            colors: (
+                config.color.dir_fg,
+                config.color.file_fg,
+                config.color.symlink_fg,
+            ),
             default: config.default,
             commands: to_extension_map(&config.exec),
             warning: config.warning,
@@ -283,6 +288,7 @@ impl State {
         let color = match &item.file_type {
             &FileType::Directory => &self.colors.0,
             &FileType::File => &self.colors.1,
+            &FileType::Symlink => &self.colors.2,
         };
         match color {
             Colorname::AnsiValue(n) => {
@@ -419,7 +425,9 @@ fn make_entry(dir: fs::DirEntry) -> ItemInfo {
 
     return ItemInfo {
         //todo: Is this chain even necessary?
-        file_type: if dir.path().is_file() {
+        file_type: if path.is_symlink() {
+            FileType::Symlink
+        } else if path.is_file() {
             FileType::File
         } else {
             FileType::Directory
@@ -446,7 +454,7 @@ pub fn push_entries(p: &PathBuf) -> Result<Vec<ItemInfo>, Error> {
         let entry = make_entry(e);
         match entry.file_type {
             FileType::Directory => dir_v.push(entry),
-            FileType::File => file_v.push(entry),
+            FileType::File | FileType::Symlink => file_v.push(entry),
         }
     }
 
