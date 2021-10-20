@@ -27,7 +27,7 @@ And with `fm`, you can:
 ```
 git clone https://github.com/kyoheiu/fm.git
 cd fm
-cargo install --path .
+cargo +nightly install --path .
 ```
 
 ## Usage
@@ -77,10 +77,9 @@ trash directory: $XDG_CONFIG_HOME/fm/trash
 
 Default config file, which is [here](src/config.rs), will be created automatically when you launch the program for the first time.
 
-In config.toml, you can set:
+In config.toml, you can configurate:
 
-- color of directory name
-- color of file name
+- color of directory, file, and symlink separatively
 - how to open file
 
 For example, if you write
@@ -93,7 +92,7 @@ feh = ["jpg", "jpeg", "png", "gif", "svg"]
 zathura = ["pdf"]
 ```
 
-...then, for example jpg file, say `01.jpg`, is opened by `feh 01.jpg`, and toml file is opened by `nvim <file-name>` (because "toml" is not listed in exec). Commands are executed inside `fm`, so you can return to the list right after closing file.
+...then, for example jpg file, say `01.jpg`, is opened by `feh 01.jpg`, and config.toml is opened by `nvim config.toml` (because "toml" is not listed in \[exec\]). Commands are executed inside `fm`, so you can return to the list right after closing file.
 
 ## todo (or not todo)
 
