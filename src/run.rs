@@ -56,7 +56,7 @@ pub fn run() {
 
         if let Some(Ok(key)) = input {
             match key {
-                //Go up. If lists exceeds max-row, lists "scrolls" before the top of the list
+                //Go up. If lists exceed max-row, lists "scrolls" before the top of the list
                 Key::Char('j') | Key::Down => {
                     if nums.index == len - 1 {
                         continue;
@@ -72,7 +72,7 @@ pub fn run() {
                     }
                 }
 
-                //Go down. If lists exceeds max-row, lists "scrolls" before the bottom of the list
+                //Go down. If lists exceed max-row, lists "scrolls" before the bottom of the list
                 Key::Char('k') | Key::Up => {
                     if y == STARTING_POINT {
                     } else if y == STARTING_POINT + 3 && nums.skip != 0 {
@@ -91,7 +91,7 @@ pub fn run() {
                     }
                 }
 
-                //Go to first line of the list
+                //Go to top
                 Key::Char('g') => {
                     if nums.index == 0 {
                         continue;
@@ -107,7 +107,7 @@ pub fn run() {
                     }
                 }
 
-                //Go to end line of the list
+                //Go to bottom
                 Key::Char('G') => {
                     if len > (row - STARTING_POINT) as usize {
                         nums.skip = (len as u16) - row + STARTING_POINT;
@@ -125,7 +125,7 @@ pub fn run() {
                     }
                 }
 
-                //Open file(exec in any way fo now) or change directory(change lists as if `cd`)
+                //Open file or change directory
                 Key::Char('l') | Key::Char('\n') | Key::Right => {
                     let item = if len == 1 {
                         state.get_item(0)
@@ -150,7 +150,7 @@ pub fn run() {
                                     continue;
                                 }
                                 Ok(_) => {
-                                    //store the last cursor position and skip number.
+                                    //store the last cursor position and skip number
                                     let cursor_memo = CursorMemo {
                                         num: nums.clone(),
                                         cursor_pos: y,
@@ -394,7 +394,7 @@ pub fn run() {
                                     break;
                                 }
 
-                                //Quit rename mode and return to original lists
+                                //Exit rename mode and return to original lists
                                 Key::Esc => {
                                     print!("{}", clear::CurrentLine);
                                     print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
@@ -485,7 +485,6 @@ pub fn run() {
                         let input = stdin.next();
                         if let Some(Ok(key)) = input {
                             match key {
-                                //rename item
                                 Key::Char('\n') => {
                                     let new_name = new_dir_name.iter().collect::<String>();
                                     let new_name = &current_dir.join(new_name);
@@ -507,7 +506,6 @@ pub fn run() {
                                     break;
                                 }
 
-                                //Quit rename mode and return to original lists
                                 Key::Esc => {
                                     print!("{}", clear::CurrentLine);
                                     print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
@@ -604,7 +602,6 @@ pub fn run() {
                     print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                 }
 
-                //Enter the filter mode
                 Key::Char('/') => {
                     print!(
                         " {}{}{} ",
@@ -625,7 +622,6 @@ pub fn run() {
                         let input = stdin.next();
                         if let Some(Ok(key)) = input {
                             match key {
-                                //Go to filtered lists
                                 Key::Char('\n') => {
                                     print!("{}", clear::CurrentLine);
                                     print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
@@ -636,7 +632,6 @@ pub fn run() {
                                     break;
                                 }
 
-                                //Quit filter mode and return to original lists
                                 Key::Esc => {
                                     clear_and_show(&current_dir);
                                     state.list = original_list;
