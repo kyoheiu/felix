@@ -1,3 +1,4 @@
+use super::config::SortKey;
 use super::functions::*;
 use super::help::*;
 use super::nums::*;
@@ -126,7 +127,11 @@ pub fn run() {
 
                 //Open file(exec in any way fo now) or change directory(change lists as if `cd`)
                 Key::Char('l') | Key::Char('\n') | Key::Right => {
-                    let item = state.get_item(nums.index);
+                    let item = if len == 1 {
+                        state.get_item(0)
+                    } else {
+                        state.get_item(nums.index)
+                    };
                     match item.file_type {
                         FileType::File | FileType::Symlink => {
                             print!("{}", screen::ToAlternateScreen);
@@ -195,6 +200,26 @@ pub fn run() {
                         continue;
                     }
                 },
+
+                Key::Char('t') => {
+                    match state.sort_by {
+                        SortKey::Name => {
+                            state.sort_by = SortKey::Time;
+                        }
+                        SortKey::Time => {
+                            state.sort_by = SortKey::Name;
+                        }
+                    }
+                    state.update_list(&current_dir);
+                    clear_and_show(&current_dir);
+                    state.list_up(0);
+                    print!(
+                        "{}>{}",
+                        cursor::Goto(1, empty_or_not(state.list.len())),
+                        cursor::Left(1)
+                    );
+                    nums.reset();
+                }
 
                 Key::Char('D') => {
                     if nums.index == 0 {

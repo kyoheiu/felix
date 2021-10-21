@@ -47,8 +47,15 @@ symlink_fg = \"LightGreen\"
 pub struct Config {
     pub default: String,
     pub warning: bool,
+    pub sort_by: SortKey,
     pub exec: HashMap<String, Vec<String>>,
     pub color: Color,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub enum SortKey {
+    Name,
+    Time,
 }
 
 #[derive(Deserialize, Debug, Clone)]

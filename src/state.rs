@@ -42,6 +42,7 @@ pub struct State {
     pub default: String,
     pub commands: HashMap<String, String>,
     pub warning: bool,
+    pub sort_by: SortKey,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -74,6 +75,7 @@ impl Default for State {
             default: config.default,
             commands: to_extension_map(&config.exec),
             warning: config.warning,
+            sort_by: config.sort_by,
         }
     }
 }
@@ -390,7 +392,7 @@ impl State {
     }
 
     pub fn update_list(&mut self, path: &PathBuf) {
-        self.list = push_entries(path).unwrap();
+        self.list = push_items(path, &self.sort_by).unwrap();
     }
 }
 
@@ -403,7 +405,7 @@ fn make_parent_dir(p: PathBuf) -> ItemInfo {
     };
 }
 
-fn make_entry(dir: fs::DirEntry) -> ItemInfo {
+fn make_item(dir: fs::DirEntry) -> ItemInfo {
     let path = dir.path();
 
     let metadata =
@@ -436,29 +438,39 @@ fn make_entry(dir: fs::DirEntry) -> ItemInfo {
     };
 }
 
-pub fn push_entries(p: &PathBuf) -> Result<Vec<ItemInfo>, Error> {
-    let mut dir_v = vec![];
-    let mut file_v = vec![];
+pub fn push_items(p: &PathBuf, key: &SortKey) -> Result<Vec<ItemInfo>, Error> {
+    let mut result = Vec::new();
+    let mut dir_v = Vec::new();
+    let mut file_v = Vec::new();
 
     match p.parent() {
         Some(parent_p) => {
             let parent_dir = make_parent_dir(parent_p.to_path_buf());
-            dir_v.push(parent_dir);
+            result.push(parent_dir);
         }
         None => {}
     }
     for entry in fs::read_dir(p)? {
         let e = entry?;
-        let entry = make_entry(e);
+        let entry = make_item(e);
         match entry.file_type {
             FileType::Directory => dir_v.push(entry),
             FileType::File | FileType::Symlink => file_v.push(entry),
         }
     }
 
-    dir_v.sort_by(|a, b| natord::compare(&a.file_name, &b.file_name));
-    file_v.sort_by(|a, b| natord::compare(&a.file_name, &b.file_name));
+    match key {
+        SortKey::Name => {
+            dir_v.sort_by(|a, b| natord::compare(&a.file_name, &b.file_name));
+            file_v.sort_by(|a, b| natord::compare(&a.file_name, &b.file_name));
+        }
+        SortKey::Time => {
+            dir_v.sort_by(|a, b| b.modified.partial_cmp(&a.modified).unwrap());
+            file_v.sort_by(|a, b| b.modified.partial_cmp(&a.modified).unwrap());
+        }
+    }
 
-    dir_v.append(&mut file_v);
-    Ok(dir_v)
+    result.append(&mut dir_v);
+    result.append(&mut file_v);
+    Ok(result)
 }
