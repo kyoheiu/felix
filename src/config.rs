@@ -5,43 +5,6 @@ use std::fs::read_to_string;
 use crate::state::FM_CONFIG_DIR;
 
 const CONFIG_FILE: &str = "config.toml";
-pub const CONFIG_EXAMPLE: &str = "# Whether you see the warning message when try to delete item
-warning = true
-
-# default exec command when open files
-default = \"nvim\"
-
-# key(command you want to use) = values(extensions)
-[exec]
-feh = [\"jpg\", \"jpeg\", \"png\", \"gif\", \"svg\"]
-zathura = [\"pdf\"]
-
-# the foreground color of file and directory in the list
-# Pick one of the following:
-#   AnsiValue(u8)
-#   Black
-#   Blue
-#   Cyan
-#   Green
-#   LightBlack
-#   LightBlue
-#   LightCyan
-#   LightGreen
-#   LightMagenta
-#   LightRed
-#   LightWhite
-#   LightYellow
-#   Magenta
-#   Red
-#   Rgb(u8, u8, u8)
-#   White
-#   Yellow
-# For more detail, read https://docs.rs/termion/1.5.6/termion/color/index.html
-[color]
-dir_fg = \"LightCyan\"
-file_fg = \"LightWhite\"
-symlink_fg = \"LightGreen\"
-";
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config {
