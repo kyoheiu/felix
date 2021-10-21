@@ -1,6 +1,5 @@
 use super::config::SortKey;
 use super::functions::*;
-use super::help::*;
 use super::nums::*;
 use super::state::*;
 use std::env::current_dir;
@@ -731,26 +730,6 @@ pub fn run() {
                         }
                     }
                     print!("{}", cursor::Hide);
-                }
-
-                Key::Char('H') => {
-                    print!(
-                        "{}{}{}",
-                        clear::All,
-                        screen::ToAlternateScreen,
-                        cursor::Goto(1, 2)
-                    );
-                    print!("{}", HELP);
-
-                    loop {
-                        let _ = stdin.next();
-                        break;
-                    }
-
-                    print!("{}", screen::ToAlternateScreen);
-                    clear_and_show(&current_dir);
-                    state.list_up(nums.skip);
-                    print!("{}{}>{}", cursor::Hide, cursor::Goto(1, y), cursor::Left(1));
                 }
 
                 Key::Esc => break,
