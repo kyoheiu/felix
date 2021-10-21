@@ -92,7 +92,7 @@ feh = ["jpg", "jpeg", "png", "gif", "svg"]
 zathura = ["pdf"]
 ```
 
-...then, for example jpg file, say `01.jpg`, is opened by `feh 01.jpg`, and config.toml is opened by `nvim config.toml` (because "toml" is not listed in \[exec\]). Commands are executed inside `fm`, so you can return to the list right after closing file.
+...then, .jpg, .jpeg, .png, .gif and .svg files are are opened by `feh <file-name>`, .pdf files by `zathura <file-name>` and others by `nvim <file-name>` .
 
 ## todo (or not todo)
 
