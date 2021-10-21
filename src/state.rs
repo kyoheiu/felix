@@ -352,7 +352,7 @@ impl State {
         let (_, row) = termion::terminal_size().unwrap();
         let len = self.list.len();
 
-        //if lists exceeds max-row
+        //if lists exceed max-row
         if row > STARTING_POINT - 1 && len > (row - STARTING_POINT) as usize - 1 {
             let mut row_count = 0;
             for (i, _) in self.list.iter().enumerate() {
@@ -424,7 +424,6 @@ fn make_item(dir: fs::DirEntry) -> ItemInfo {
         .unwrap_or_else(|_| panic!("failed to get file name."));
 
     return ItemInfo {
-        //todo: Is this chain even necessary?
         file_type: if path.is_symlink() {
             FileType::Symlink
         } else if path.is_file() {
