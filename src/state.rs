@@ -408,11 +408,9 @@ fn make_parent_dir(p: PathBuf) -> ItemInfo {
 fn make_item(dir: fs::DirEntry) -> ItemInfo {
     let path = dir.path();
 
-    let metadata =
-        fs::metadata(&path).unwrap_or_else(|_| panic!("cannot read metadata of directory."));
-    let sometime = metadata.modified();
-    let time = if let Ok(time) = sometime {
-        let chrono_time: DateTime<Local> = DateTime::from(time);
+    let time = if let Ok(metadata) = fs::metadata(&path) {
+        let sometime = metadata.modified().unwrap();
+        let chrono_time: DateTime<Local> = DateTime::from(sometime);
         Some(chrono_time.to_rfc3339_opts(SecondsFormat::Secs, false))
     } else {
         None
