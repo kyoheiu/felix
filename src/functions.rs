@@ -1,3 +1,4 @@
+use super::config::CONFIG_EXAMPLE;
 use super::state::*;
 use std::collections::HashMap;
 use std::fs;
@@ -6,8 +7,8 @@ use termion::{clear, color, cursor, style};
 
 pub fn make_config(config_file: &PathBuf, trash_dir: &PathBuf) -> std::io::Result<()> {
     if !config_file.exists() {
-        fs::copy("config.toml", &config_file)
-            .unwrap_or_else(|_| panic!("cannot write new config file."));
+        fs::write(&config_file, CONFIG_EXAMPLE)
+            .unwrap_or_else(|_| panic!("cannot write new confi file."));
     }
 
     if !trash_dir.exists() {
