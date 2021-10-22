@@ -8,7 +8,6 @@ it shows items in the current working directory.
 
 ### Manual
 
-`fm`                  :Just start the program.
 j / Key Up            :Go up.
 k / Key Down          :Go down.
 h / Key Left          :Go to parent directory if exists.
@@ -18,6 +17,7 @@ G                     :Go to the bottom.
 D                     :Delete and yank item.
 y                     :Yank item.
 p                     :Put yanked item to the current directory.
+t                     :Toggle sort order (name <-> modified time).
 c                     :Rename item.
 m                     :Go to `mkdir` mode.
 E                     :Empty the trash directory.
