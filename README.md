@@ -97,7 +97,7 @@ feh = ["jpg", "jpeg", "png", "gif", "svg"]
 zathura = ["pdf"]
 ```
 
-...then, .jpg, .jpeg, .png, .gif and .svg files are are opened by `feh <file-name>`, .pdf files by `zathura <file-name>` and others by `nvim <file-name>` .
+then, .jpg, .jpeg, .png, .gif and .svg files are opened by `feh <file-name>`, .pdf files by `zathura <file-name>` and others by `nvim <file-name>` .
 
 ## todo (or not todo)
 
