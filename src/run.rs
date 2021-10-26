@@ -11,7 +11,7 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::{clear, cursor, screen};
 
-pub fn run() {
+pub fn run(arg: PathBuf) {
     let mut config_dir = dirs::config_dir().unwrap_or_else(|| panic!("cannot read config dir."));
     config_dir.push(FM_CONFIG_DIR);
     let config_file = config_dir.join(PathBuf::from(CONFIG_FILE));
@@ -19,8 +19,13 @@ pub fn run() {
     make_config(&config_file, &trash_dir)
         .unwrap_or_else(|_| panic!("cannot make config file or trash dir."));
 
+    if !&arg.exists() {
+        println!("Invalid path: {}", &arg.display());
+        return;
+    }
+
     let mut state = State::new();
-    let mut current_dir = current_dir().unwrap_or_else(|_| panic!("cannot read current dir."));
+    let mut current_dir = arg.to_path_buf();
     state.update_list(&current_dir);
     state.trash_dir = trash_dir;
 

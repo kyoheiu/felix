@@ -8,9 +8,12 @@ mod state;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() == 1 {
-        run::run();
-    } else {
-        print!("{}", help::HELP);
+    let len = args.len();
+    match len {
+        1 => run::run(
+            std::env::current_dir().unwrap_or_else(|_| panic!("cannot access current directory.")),
+        ),
+        2 => run::run(std::path::PathBuf::from(&args[1])),
+        _ => print!("{}", help::HELP),
     }
 }
