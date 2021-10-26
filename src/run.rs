@@ -25,7 +25,7 @@ pub fn run(arg: PathBuf) {
     }
 
     let mut state = State::new();
-    let mut current_dir = arg.to_path_buf();
+    let mut current_dir = arg.canonicalize().unwrap().to_path_buf();
     state.update_list(&current_dir);
     state.trash_dir = trash_dir;
 

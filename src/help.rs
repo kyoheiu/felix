@@ -3,10 +3,9 @@ A simple TUI file manager with vim-like keybind.
 
 ## Usage
 
-`fm` => Show items in the current directory.
-`fm <directory path>` => Show items in the directory.
-If the path doesn't point at an existing entity,
-shows help instead.
+`fm` => Show items in current directory.
+`fm <directory path>` => Show items in the path.
+Both relative and absolute can be used.
 
 ### Manual
 
