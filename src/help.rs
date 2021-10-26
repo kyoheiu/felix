@@ -3,8 +3,10 @@ A simple TUI file manager with vim-like keybind.
 
 ## Usage
 
-When `fm` starts,
-it shows items in the current working directory.
+`fm` => Show items in the current directory.
+`fm <directory path>` => Show items in the directory.
+If the path doesn't point at an existing entity,
+shows help instead.
 
 ### Manual
 
@@ -23,7 +25,7 @@ m                     :Go to `mkdir` mode.
 E                     :Empty the trash directory.
 /                     :Go to filter mode.
 Esc                   :Exit program or return to normal mode.
-`fm <whatever>`       :Show help.
+H                     :Show help.
 
 ## Configuration
 
