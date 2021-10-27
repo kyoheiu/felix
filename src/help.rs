@@ -18,6 +18,7 @@ G                     :Go to the bottom.
 D                     :Delete and yank item.
 y                     :Yank item.
 p                     :Put yanked item in the current directory.
+Ctrl+c                :Copy file name to clipboard.
 t                     :Toggle sort order (name <-> modified time).
 :                     :Switch to shell mode.
 c                     :Switch to rename mode.
