@@ -5,7 +5,7 @@ A simple TUI file manager with vim-like keybind.
 
 `fm` => Show items in current directory.
 `fm <directory path>` => Show items in the path.
-Both relative and absolute can be used.
+Both relative and absolute available.
 
 ### Manual
 
@@ -17,12 +17,13 @@ g                     :Go to the top.
 G                     :Go to the bottom.
 D                     :Delete and yank item.
 y                     :Yank item.
-p                     :Put yanked item to the current directory.
+p                     :Put yanked item in the current directory.
 t                     :Toggle sort order (name <-> modified time).
-c                     :Rename item.
-m                     :Go to `mkdir` mode.
+:                     :Switch to shell mode.
+c                     :Switch to rename mode.
+m                     :Switch to `mkdir` mode.
+/                     :Switch to filter mode.
 E                     :Empty the trash directory.
-/                     :Go to filter mode.
 Esc                   :Exit program or return to normal mode.
 H                     :Show help.
 
