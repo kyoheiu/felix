@@ -164,6 +164,8 @@ pub fn run(arg: PathBuf) {
                                     memo_v.push(cursor_memo);
 
                                     current_dir = item.file_path.clone();
+                                    std::env::set_current_dir(&current_dir)
+                                        .unwrap_or_else(|e| print_warning(e, y));
                                     state.update_list(&current_dir);
                                     clear_and_show(&current_dir);
                                     state.list_up(0);
@@ -183,6 +185,8 @@ pub fn run(arg: PathBuf) {
                 Key::Char('h') | Key::Left => match current_dir.parent() {
                     Some(parent_p) => {
                         current_dir = parent_p.to_path_buf();
+                        std::env::set_current_dir(&current_dir)
+                            .unwrap_or_else(|e| print_warning(e, y));
                         state.update_list(&current_dir);
                         clear_and_show(&current_dir);
                         state.list_up(0);
@@ -228,7 +232,7 @@ pub fn run(arg: PathBuf) {
                 }
 
                 Key::Char('D') => {
-                    if nums.index == 0 {
+                    if nums.index == 0 && &state.get_item(0).file_name == "../" {
                         continue;
                     } else {
                         match &state.warning {
@@ -313,8 +317,15 @@ pub fn run(arg: PathBuf) {
                                 clear_and_show(&current_dir);
                                 state.list_up(nums.skip);
                                 if nums.index == len - 1 {
-                                    print!("{}>{}", cursor::Goto(1, y - 1), cursor::Left(1));
-                                    nums.go_up();
+                                    if len == 1 {
+                                        print!(
+                                            "{}List is empty. Press h/Key Left to go back.",
+                                            cursor::Goto(2, 3)
+                                        );
+                                    } else {
+                                        print!("{}>{}", cursor::Goto(1, y - 1), cursor::Left(1));
+                                        nums.go_up();
+                                    }
                                 } else {
                                     print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                                 }
@@ -552,7 +563,6 @@ pub fn run(arg: PathBuf) {
 
                                 //Input char(case-sensitive)
                                 Key::Char(c) => {
-                                    let memo_x = x;
                                     new_dir_name.insert((x - 4).into(), c);
 
                                     print!(
@@ -561,14 +571,13 @@ pub fn run(arg: PathBuf) {
                                         cursor::Goto(2, 2),
                                         RIGHT_ARROW,
                                         &new_dir_name.iter().collect::<String>(),
-                                        cursor::Goto(memo_x + 1, 2)
+                                        cursor::Goto(x + 1, 2)
                                     );
 
                                     screen.flush().unwrap();
                                 }
 
                                 Key::Backspace => {
-                                    let memo_x = x;
                                     if x == 4 {
                                         continue;
                                     };
@@ -580,7 +589,7 @@ pub fn run(arg: PathBuf) {
                                         cursor::Goto(2, 2),
                                         RIGHT_ARROW,
                                         &new_dir_name.iter().collect::<String>(),
-                                        cursor::Goto(memo_x - 1, 2)
+                                        cursor::Goto(x - 1, 2)
                                     );
 
                                     screen.flush().unwrap();
@@ -591,6 +600,7 @@ pub fn run(arg: PathBuf) {
                         }
                     }
                 }
+
                 Key::Char('E') => {
                     print_warning(WHEN_EMPTY, y);
                     screen.flush().unwrap();
@@ -747,6 +757,153 @@ pub fn run(arg: PathBuf) {
                         }
                     }
                     print!("{}", cursor::Hide);
+                }
+
+                Key::Char(':') => {
+                    print!(" {}{}:", cursor::Goto(2, 2), clear::CurrentLine,);
+                    print!("{}{}", cursor::Show, cursor::BlinkingBlock);
+
+                    let mut command: Vec<char> = Vec::new();
+                    screen.flush().unwrap();
+
+                    'outer: loop {
+                        let eow = command.len() + 2;
+                        let (x, _) = screen.cursor_pos().unwrap();
+                        let input = stdin.next();
+                        if let Some(Ok(key)) = input {
+                            match key {
+                                Key::Char('\n') => {
+                                    if command.is_empty() {
+                                        print!("{}", clear::CurrentLine);
+                                        print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
+                                        print!(
+                                            "{}{}>{}",
+                                            cursor::Hide,
+                                            cursor::Goto(1, y),
+                                            cursor::Left(1)
+                                        );
+                                        break;
+                                    }
+                                    let commands: String = command.iter().collect();
+                                    let commands = commands.split_ascii_whitespace();
+
+                                    let mut c = "";
+                                    let mut args = Vec::new();
+                                    let mut i = 0;
+                                    for s in commands {
+                                        if i == 0 {
+                                            c = s;
+                                            i += 1;
+                                        } else {
+                                            args.push(s);
+                                        }
+                                    }
+
+                                    if c == "cd" {
+                                        current_dir =
+                                            PathBuf::from(args[0]).canonicalize().unwrap();
+                                        std::env::set_current_dir(&current_dir)
+                                            .unwrap_or_else(|e| print_warning(e, y));
+                                        state.update_list(&current_dir);
+                                        clear_and_show(&current_dir);
+                                        state.list_up(0);
+                                        print!(
+                                            "{}>{}{}",
+                                            cursor::Goto(1, empty_or_not(state.list.len())),
+                                            cursor::Left(1),
+                                            cursor::Hide
+                                        );
+                                        nums.reset();
+                                        break 'outer;
+                                    }
+
+                                    print!("{}", screen::ToAlternateScreen);
+                                    std::env::set_current_dir(&current_dir)
+                                        .unwrap_or_else(|e| print_warning(e, y));
+                                    if let Err(e) =
+                                        std::process::Command::new(c).args(args).status()
+                                    {
+                                        print_warning(e, y);
+                                    }
+                                    print!("{}", screen::ToAlternateScreen);
+
+                                    clear_and_show(&current_dir);
+                                    state.update_list(&current_dir);
+                                    state.list_up(nums.skip);
+
+                                    print!(
+                                        "{}{}>{}",
+                                        cursor::Hide,
+                                        cursor::Goto(1, y),
+                                        cursor::Left(1)
+                                    );
+                                    break;
+                                }
+
+                                Key::Esc => {
+                                    print!("{}", clear::CurrentLine);
+                                    print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
+                                    print!(
+                                        "{}{}>{}",
+                                        cursor::Hide,
+                                        cursor::Goto(1, y),
+                                        cursor::Left(1)
+                                    );
+                                    break;
+                                }
+
+                                Key::Left => {
+                                    if x == 4 {
+                                        continue;
+                                    };
+                                    print!("{}", cursor::Left(1));
+                                    screen.flush().unwrap();
+                                }
+
+                                Key::Right => {
+                                    if x as usize == eow + 1 {
+                                        continue;
+                                    };
+                                    print!("{}", cursor::Right(1));
+                                    screen.flush().unwrap();
+                                }
+
+                                //Input char(case-sensitive)
+                                Key::Char(c) => {
+                                    command.insert((x - 3).into(), c);
+
+                                    print!(
+                                        "{}{}:{}{}",
+                                        clear::CurrentLine,
+                                        cursor::Goto(2, 2),
+                                        &command.iter().collect::<String>(),
+                                        cursor::Goto(x + 1, 2)
+                                    );
+
+                                    screen.flush().unwrap();
+                                }
+
+                                Key::Backspace => {
+                                    if x == 3 {
+                                        continue;
+                                    };
+                                    command.remove((x - 4).into());
+
+                                    print!(
+                                        "{}{}:{}{}",
+                                        clear::CurrentLine,
+                                        cursor::Goto(2, 2),
+                                        &command.iter().collect::<String>(),
+                                        cursor::Goto(x - 1, 2)
+                                    );
+
+                                    screen.flush().unwrap();
+                                }
+
+                                _ => continue,
+                            }
+                        }
+                    }
                 }
 
                 Key::Char('H') => {
