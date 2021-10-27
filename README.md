@@ -1,7 +1,10 @@
 # fm
 
-A simple TUI file manager with vim-like keybind, written in Rust.  
-Currently works on Linux and macOS.
+A simple TUI file manager with vim-like keybind, written in Rust.
+
+- Linux : works well
+- MacOS : _should_ work, though some unusual errors may occur, especially with M1 chips
+- Windows: almost unavailable due to file-name encoding
 
 ![sample](https://github.com/kyoheiu/fm/blob/main/screenshots/sample.gif)
 

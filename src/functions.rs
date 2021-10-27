@@ -99,6 +99,26 @@ pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
     );
 }
 
+pub fn print_result<T: std::fmt::Display>(message: T, then: u16) {
+    print!(
+        " {}{}{}{}{}{}{}",
+        cursor::Goto(2, 2),
+        clear::CurrentLine,
+        color::Fg(color::LightWhite),
+        color::Bg(color::Blue),
+        message,
+        color::Fg(color::Reset),
+        color::Bg(color::Reset),
+    );
+
+    print!(
+        "{}{}>{}",
+        cursor::Hide,
+        cursor::Goto(1, then),
+        cursor::Left(1)
+    );
+}
+
 pub fn empty_or_not(len: usize) -> u16 {
     if len == 1 {
         STARTING_POINT

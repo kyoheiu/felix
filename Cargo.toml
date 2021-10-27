@@ -8,6 +8,7 @@ repository = "https://github.com/kyoheiu/fm"
 version = "0.1.4"
 [dependencies]
 chrono = "*"
+clipboard = "*"
 dirs = "4.0.0"
 natord = "*"
 termion = "1.5.6"

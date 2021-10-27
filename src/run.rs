@@ -3,6 +3,8 @@ use super::functions::*;
 use super::help::HELP;
 use super::nums::*;
 use super::state::*;
+use clipboard::ClipboardContext;
+use clipboard::ClipboardProvider;
 use std::io::{stdin, stdout, Write};
 use std::path::{Path, PathBuf};
 use termion::cursor::DetectCursorPos;
@@ -468,6 +470,16 @@ pub fn run(arg: PathBuf) {
                                 _ => continue,
                             }
                         }
+                    }
+                }
+
+                Key::Ctrl('c') => {
+                    let item = state.get_item(nums.index);
+
+                    let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
+                    match ctx.set_contents(item.file_name.clone()) {
+                        Ok(()) => print_result("file name copied!", y),
+                        Err(e) => print_warning(e, y),
                     }
                 }
 
