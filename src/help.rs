@@ -25,7 +25,8 @@ c                     :Switch to rename mode.
 m                     :Switch to `mkdir` mode.
 /                     :Switch to filter mode.
 E                     :Empty the trash directory.
-Esc                   :Exit program or return to normal mode.
+:q / ZZ               :Exit the program.
+Esc                   :Return to normal mode.
 H                     :Show help.
 
 ## Configuration
