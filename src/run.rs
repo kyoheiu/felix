@@ -55,7 +55,7 @@ pub fn run(arg: PathBuf) {
     let mut memo_v: Vec<CursorMemo> = Vec::new();
     let mut stdin = stdin().keys();
 
-    loop {
+    'main: loop {
         let len = state.list.len();
         let (_, y) = screen.cursor_pos().unwrap();
         let input = stdin.next();
@@ -766,7 +766,7 @@ pub fn run(arg: PathBuf) {
                     let mut command: Vec<char> = Vec::new();
                     screen.flush().unwrap();
 
-                    'outer: loop {
+                    'command: loop {
                         let eow = command.len() + 2;
                         let (x, _) = screen.cursor_pos().unwrap();
                         let input = stdin.next();
@@ -784,6 +784,11 @@ pub fn run(arg: PathBuf) {
                                         );
                                         break;
                                     }
+
+                                    if command == vec!['q'] {
+                                        break 'main;
+                                    }
+
                                     let commands: String = command.iter().collect();
                                     let commands = commands.split_ascii_whitespace();
 
@@ -814,7 +819,7 @@ pub fn run(arg: PathBuf) {
                                             cursor::Hide
                                         );
                                         nums.reset();
-                                        break 'outer;
+                                        break 'command;
                                     }
 
                                     print!("{}", screen::ToAlternateScreen);
@@ -920,7 +925,53 @@ pub fn run(arg: PathBuf) {
                     print!("{}{}>{}", cursor::Hide, cursor::Goto(1, y), cursor::Left(1));
                 }
 
-                Key::Esc => break,
+                Key::Char('Z') => {
+                    print!(" {}{}Z", cursor::Goto(2, 2), clear::CurrentLine,);
+                    print!("{}{}", cursor::Show, cursor::BlinkingBlock);
+
+                    let mut command: Vec<char> = vec!['Z'];
+                    screen.flush().unwrap();
+
+                    'quit: loop {
+                        let input = stdin.next();
+                        if let Some(Ok(key)) = input {
+                            match key {
+                                Key::Esc => {
+                                    print!("{}", clear::CurrentLine);
+                                    print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
+                                    print!(
+                                        "{}{}>{}",
+                                        cursor::Hide,
+                                        cursor::Goto(1, y),
+                                        cursor::Left(1)
+                                    );
+                                    break 'quit;
+                                }
+
+                                //Input char(case-sensitive)
+                                Key::Char(c) => {
+                                    command.push(c);
+
+                                    if command == vec!['Z', 'Z'] {
+                                        break 'main;
+                                    } else {
+                                        print!("{}", clear::CurrentLine);
+                                        print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
+                                        print!(
+                                            "{}{}>{}",
+                                            cursor::Hide,
+                                            cursor::Goto(1, y),
+                                            cursor::Left(1)
+                                        );
+                                        break 'quit;
+                                    }
+                                }
+
+                                _ => continue,
+                            }
+                        }
+                    }
+                }
 
                 _ => {
                     continue;
