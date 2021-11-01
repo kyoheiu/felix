@@ -12,6 +12,7 @@ use termion::{color, cursor};
 pub const STARTING_POINT: u16 = 3;
 pub const DOWN_ARROW: char = '\u{21D3}';
 pub const RIGHT_ARROW: char = '\u{21D2}';
+pub const CHECK: char = '\u{1F5F8}';
 pub const FM_CONFIG_DIR: &str = "fm";
 pub const CONFIG_FILE: &str = "config.toml";
 pub const TRASH: &str = "trash";
@@ -21,16 +22,30 @@ pub const WHEN_EMPTY: &str = "Are you sure to empty the trash directory? (if yes
 pub const WHEN_DELETE: &str = "Are you sure to cut this item? (if yes: y)";
 
 macro_rules! print_item {
-    ($color: expr, $name: expr, $time: expr) => {
-        print!(
-            "{}{}{}{}{}{}",
-            $color,
-            $name,
-            cursor::Left(60),
-            cursor::Right(34),
-            $time,
-            color::Fg(color::Reset)
-        );
+    ($color: expr, $name: expr, $time: expr, $selected: expr) => {
+        if *($selected) {
+            print!(
+                "{}{}{}{}{}{}{}{}",
+                cursor::Left(1),
+                CHECK,
+                $color,
+                $name,
+                cursor::Left(60),
+                cursor::Right(34),
+                $time,
+                color::Fg(color::Reset)
+            );
+        } else {
+            print!(
+                "{}{}{}{}{}{}",
+                $color,
+                $name,
+                cursor::Left(60),
+                cursor::Right(34),
+                $time,
+                color::Fg(color::Reset)
+            );
+        }
     };
 }
 #[derive(Clone)]
@@ -286,6 +301,7 @@ impl State {
             item.file_name.clone()
         };
         let time = format_time(&item.modified);
+        let selected = &item.selected;
         let color = match &item.file_type {
             &FileType::Directory => &self.colors.0,
             &FileType::File => &self.colors.1,
@@ -293,58 +309,58 @@ impl State {
         };
         match color {
             Colorname::AnsiValue(n) => {
-                print_item!(color::Fg(color::AnsiValue(*n)), name, time);
+                print_item!(color::Fg(color::AnsiValue(*n)), name, time, selected);
             }
             Colorname::Black => {
-                print_item!(color::Fg(color::Black), name, time);
+                print_item!(color::Fg(color::Black), name, time, selected);
             }
             Colorname::Blue => {
-                print_item!(color::Fg(color::Blue), name, time);
+                print_item!(color::Fg(color::Blue), name, time, selected);
             }
             Colorname::Cyan => {
-                print_item!(color::Fg(color::Cyan), name, time);
+                print_item!(color::Fg(color::Cyan), name, time, selected);
             }
             Colorname::Green => {
-                print_item!(color::Fg(color::Green), name, time);
+                print_item!(color::Fg(color::Green), name, time, selected);
             }
             Colorname::LightBlack => {
-                print_item!(color::Fg(color::LightBlack), name, time);
+                print_item!(color::Fg(color::LightBlack), name, time, selected);
             }
             Colorname::LightBlue => {
-                print_item!(color::Fg(color::LightBlue), name, time);
+                print_item!(color::Fg(color::LightBlue), name, time, selected);
             }
             Colorname::LightCyan => {
-                print_item!(color::Fg(color::LightCyan), name, time);
+                print_item!(color::Fg(color::LightCyan), name, time, selected);
             }
             Colorname::LightGreen => {
-                print_item!(color::Fg(color::LightGreen), name, time);
+                print_item!(color::Fg(color::LightGreen), name, time, selected);
             }
             Colorname::LightMagenta => {
-                print_item!(color::Fg(color::LightMagenta), name, time);
+                print_item!(color::Fg(color::LightMagenta), name, time, selected);
             }
             Colorname::LightRed => {
-                print_item!(color::Fg(color::LightRed), name, time);
+                print_item!(color::Fg(color::LightRed), name, time, selected);
             }
             Colorname::LightWhite => {
-                print_item!(color::Fg(color::LightWhite), name, time);
+                print_item!(color::Fg(color::LightWhite), name, time, selected);
             }
             Colorname::LightYellow => {
-                print_item!(color::Fg(color::LightYellow), name, time);
+                print_item!(color::Fg(color::LightYellow), name, time, selected);
             }
             Colorname::Magenta => {
-                print_item!(color::Fg(color::Magenta), name, time);
+                print_item!(color::Fg(color::Magenta), name, time, selected);
             }
             Colorname::Red => {
-                print_item!(color::Fg(color::Red), name, time);
+                print_item!(color::Fg(color::Red), name, time, selected);
             }
             Colorname::Rgb(x, y, z) => {
-                print_item!(color::Fg(color::Rgb(*x, *y, *z)), name, time);
+                print_item!(color::Fg(color::Rgb(*x, *y, *z)), name, time, selected);
             }
             Colorname::White => {
-                print_item!(color::Fg(color::White), name, time);
+                print_item!(color::Fg(color::White), name, time, selected);
             }
             Colorname::Yellow => {
-                print_item!(color::Fg(color::Yellow), name, time);
+                print_item!(color::Fg(color::Yellow), name, time, selected);
             }
         }
     }
