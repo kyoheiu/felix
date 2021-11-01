@@ -51,6 +51,7 @@ pub struct ItemInfo {
     pub file_name: String,
     pub file_path: std::path::PathBuf,
     pub modified: Option<String>,
+    pub selected: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -402,6 +403,7 @@ fn make_parent_dir(p: PathBuf) -> ItemInfo {
         file_name: String::from("../"),
         file_path: p,
         modified: None,
+        selected: false,
     };
 }
 
@@ -432,6 +434,7 @@ fn make_item(dir: fs::DirEntry) -> ItemInfo {
         file_name: name,
         file_path: path,
         modified: time,
+        selected: false,
     };
 }
 
