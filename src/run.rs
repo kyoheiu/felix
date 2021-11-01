@@ -211,6 +211,15 @@ pub fn run(arg: PathBuf) {
                     }
                 },
 
+                Key::Char('V') => {
+                    let mut item = state.list.get_mut(nums.index).unwrap();
+                    item.selected = true;
+
+                    clear_and_show(&current_dir);
+                    state.list_up(nums.skip);
+                    print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+                }
+
                 Key::Char('t') => {
                     match state.sort_by {
                         SortKey::Name => {
