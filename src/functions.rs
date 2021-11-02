@@ -136,3 +136,11 @@ pub fn to_extension_map(config: &HashMap<String, Vec<String>>) -> HashMap<String
     }
     new_map
 }
+
+pub fn debug_select(state: &State) {
+    for item in &state.list {
+        if item.selected {
+            print!("{} ", item.file_name);
+        }
+    }
+}

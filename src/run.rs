@@ -81,6 +81,7 @@ pub fn run(arg: PathBuf) {
                 //Go down. If lists exceed max-row, lists "scrolls" before the bottom of the list
                 Key::Char('k') | Key::Up => {
                     if y == STARTING_POINT {
+                        continue;
                     } else if y == STARTING_POINT + 3 && nums.skip != 0 {
                         nums.dec_skip();
                         clear_and_show(&current_dir);
@@ -218,6 +219,163 @@ pub fn run(arg: PathBuf) {
                     clear_and_show(&current_dir);
                     state.list_up(nums.skip);
                     print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+                    screen.flush().unwrap();
+
+                    let start_pos = nums.index;
+
+                    loop {
+                        let (_, y) = screen.cursor_pos().unwrap();
+                        let input = stdin.next();
+                        if let Some(Ok(key)) = input {
+                            match key {
+                                Key::Char('j') | Key::Down => {
+                                    if nums.index == len - 1 {
+                                        continue;
+                                    } else if y == row - 4
+                                        && len > (row - STARTING_POINT) as usize - 1
+                                    {
+                                        nums.inc_skip();
+                                        nums.go_down();
+
+                                        if nums.index > start_pos {
+                                            let mut item = state.list.get_mut(nums.index).unwrap();
+                                            item.selected = true;
+                                        } else if nums.index < start_pos {
+                                            let mut item =
+                                                state.list.get_mut(nums.index - 1).unwrap();
+                                            item.selected = false;
+                                        }
+
+                                        clear_and_show(&current_dir);
+                                        state.list_up(nums.skip);
+                                        print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+                                        screen.flush().unwrap();
+                                    } else {
+                                        nums.go_down();
+
+                                        if nums.index > start_pos {
+                                            let mut item = state.list.get_mut(nums.index).unwrap();
+                                            item.selected = true;
+                                        } else if nums.index <= start_pos {
+                                            let mut item =
+                                                state.list.get_mut(nums.index - 1).unwrap();
+                                            item.selected = false;
+                                        }
+
+                                        clear_and_show(&current_dir);
+                                        state.list_up(nums.skip);
+                                        print!("{}>{}", cursor::Goto(1, y + 1), cursor::Left(1));
+                                        screen.flush().unwrap();
+                                    }
+                                }
+
+                                //Go down. If lists exceed max-row, lists "scrolls" before the bottom of the list
+                                Key::Char('k') | Key::Up => {
+                                    if y == STARTING_POINT {
+                                        continue;
+                                    } else if y == STARTING_POINT + 3 && nums.skip != 0 {
+                                        nums.dec_skip();
+                                        nums.go_up();
+
+                                        if nums.index >= start_pos {
+                                            let mut item =
+                                                state.list.get_mut(nums.index + 1).unwrap();
+                                            item.selected = false;
+                                        } else if nums.index < start_pos {
+                                            let mut item = state.list.get_mut(nums.index).unwrap();
+                                            item.selected = true;
+                                        }
+
+                                        clear_and_show(&current_dir);
+                                        state.list_up(nums.skip);
+                                        print!(
+                                            "{}>{}",
+                                            cursor::Goto(1, STARTING_POINT + 3),
+                                            cursor::Left(1)
+                                        );
+                                        screen.flush().unwrap();
+                                    } else {
+                                        nums.go_up();
+
+                                        if nums.index >= start_pos {
+                                            let mut item =
+                                                state.list.get_mut(nums.index + 1).unwrap();
+                                            item.selected = false;
+                                        } else if nums.index < start_pos {
+                                            let mut item = state.list.get_mut(nums.index).unwrap();
+                                            item.selected = true;
+                                        }
+
+                                        clear_and_show(&current_dir);
+                                        state.list_up(nums.skip);
+                                        print!("{}>{}", cursor::Goto(1, y - 1), cursor::Left(1));
+                                        screen.flush().unwrap();
+                                    }
+                                }
+
+                                //Go to top
+                                Key::Char('g') => {
+                                    if nums.index == 0 {
+                                        continue;
+                                    } else if nums.skip != 0 {
+                                        nums.reset();
+                                        clear_and_show(&current_dir);
+                                        state.list_up(nums.skip);
+                                        print!(
+                                            " {}>{}",
+                                            cursor::Goto(1, STARTING_POINT),
+                                            cursor::Left(1)
+                                        );
+                                        nums.go_top();
+                                    } else {
+                                        print!(
+                                            " {}>{}",
+                                            cursor::Goto(1, STARTING_POINT),
+                                            cursor::Left(1)
+                                        );
+                                        nums.go_top();
+                                    }
+                                }
+
+                                //Go to bottom
+                                Key::Char('G') => {
+                                    if len > (row - STARTING_POINT) as usize {
+                                        nums.skip = (len as u16) - row + STARTING_POINT;
+                                        clear_and_show(&current_dir);
+                                        state.list_up(nums.skip);
+                                        print!("{}>{}", cursor::Goto(1, row - 1), cursor::Left(1));
+                                        nums.go_bottom(len - 1);
+                                    } else {
+                                        print!(
+                                            " {}>{}",
+                                            cursor::Goto(1, len as u16 + STARTING_POINT - 1),
+                                            cursor::Left(1)
+                                        );
+                                        nums.go_bottom(len - 1);
+                                    }
+                                }
+
+                                Key::Char('S') => {
+                                    print!("{}", cursor::Goto(2, 2));
+                                    debug_select(&state);
+                                    print!("{}", cursor::Goto(1, y));
+                                }
+
+                                Key::Esc => {
+                                    state.reset_selection();
+                                    clear_and_show(&current_dir);
+                                    state.list_up(nums.skip);
+                                    print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+                                    break;
+                                }
+
+                                _ => {
+                                    continue;
+                                }
+                            }
+                        }
+                        screen.flush().unwrap();
+                    }
                 }
 
                 Key::Char('t') => {

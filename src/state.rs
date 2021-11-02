@@ -410,6 +410,12 @@ impl State {
     pub fn update_list(&mut self, path: &PathBuf) {
         self.list = push_items(path, &self.sort_by).unwrap();
     }
+
+    pub fn reset_selection(&mut self) {
+        for mut item in self.list.iter_mut() {
+            item.selected = false;
+        }
+    }
 }
 
 fn make_parent_dir(p: PathBuf) -> ItemInfo {
