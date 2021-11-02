@@ -12,7 +12,6 @@ use termion::{color, cursor};
 pub const STARTING_POINT: u16 = 3;
 pub const DOWN_ARROW: char = '\u{21D3}';
 pub const RIGHT_ARROW: char = '\u{21D2}';
-pub const CHECK: char = '\u{1F5F8}';
 pub const FM_CONFIG_DIR: &str = "fm";
 pub const CONFIG_FILE: &str = "config.toml";
 pub const TRASH: &str = "trash";
@@ -26,14 +25,14 @@ macro_rules! print_item {
         if *($selected) {
             print!(
                 "{}{}{}{}{}{}{}{}",
-                cursor::Left(1),
-                CHECK,
                 $color,
+                color::Bg(color::LightBlack),
                 $name,
+                color::Bg(color::Reset),
                 cursor::Left(60),
                 cursor::Right(34),
                 $time,
-                color::Fg(color::Reset)
+                color::Fg(color::Reset),
             );
         } else {
             print!(
