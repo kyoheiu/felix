@@ -49,7 +49,6 @@ pub fn run(arg: PathBuf) {
     screen.flush().unwrap();
 
     let mut memo_v: Vec<CursorMemo> = Vec::new();
-    let mut register_v: Vec<ItemInfo> = Vec::new();
     let mut stdin = stdin().keys();
 
     'main: loop {
@@ -362,11 +361,11 @@ pub fn run(arg: PathBuf) {
                                 }
 
                                 Key::Char('y') => {
-                                    register_v.clear();
+                                    state.registered.clear();
                                     for mut item in state.list.iter_mut() {
                                         if item.selected == true {
                                             item.selected = false;
-                                            register_v.push(item.clone());
+                                            state.registered.push(item.clone());
                                         }
                                     }
                                     clear_and_show(&current_dir);
@@ -395,7 +394,7 @@ pub fn run(arg: PathBuf) {
                 //for debug select mode
                 Key::Char('S') => {
                     print!("{}", cursor::Goto(2, 2));
-                    debug_select(&register_v);
+                    debug_select(&state.registered);
                     print!("{}", cursor::Goto(1, y));
                 }
 
@@ -523,33 +522,29 @@ pub fn run(arg: PathBuf) {
                     if len == 0 {
                         continue;
                     }
-                    if let Ok(item) = state.get_item(nums.index) {
-                        state.item_buf = Some(item.clone());
-                    }
+                    let item = state.get_item(nums.index).unwrap().clone();
+                    state.registered.clear();
+                    state.registered.push(item.clone());
                 }
 
-                //todo: paste item of path_buffer
                 Key::Char('p') => {
-                    let item = state.item_buf.clone();
-                    if item == None {
-                        continue;
-                    } else {
-                        match item.unwrap().file_type {
+                    for item in state.registered.clone().into_iter() {
+                        match item.file_type {
                             FileType::Directory => {
-                                if let Err(e) = state.paste_dir(&current_dir) {
+                                if let Err(e) = state.paste_dir(&item, &current_dir) {
                                     print_warning(e, y);
                                 }
                             }
                             FileType::File | FileType::Symlink => {
-                                if let Err(e) = state.paste_file(&current_dir) {
+                                if let Err(e) = state.paste_file(&item, &current_dir) {
                                     print_warning(e, y);
                                 }
                             }
                         }
-                        clear_and_show(&current_dir);
-                        state.list_up(nums.skip);
-                        print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                     }
+                    clear_and_show(&current_dir);
+                    state.list_up(nums.skip);
+                    print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                 }
 
                 Key::Char('c') => {

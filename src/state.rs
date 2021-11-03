@@ -50,7 +50,7 @@ macro_rules! print_item {
 #[derive(Clone)]
 pub struct State {
     pub list: Vec<ItemInfo>,
-    pub item_buf: Option<ItemInfo>,
+    pub registered: Vec<ItemInfo>,
     pub trash_dir: PathBuf,
     pub colors: (Colorname, Colorname, Colorname),
     pub default: String,
@@ -80,7 +80,7 @@ impl Default for State {
         let config = read_config().unwrap();
         State {
             list: Vec::new(),
-            item_buf: None,
+            registered: Vec::new(),
             trash_dir: PathBuf::new(),
             colors: (
                 config.color.dir_fg,
@@ -150,7 +150,7 @@ impl State {
         std::fs::copy(from, &to)?;
 
         //copy original information to item_buf
-        self.to_item_buf(&item, to, rename);
+        self.to_registered(&item, to, rename);
 
         //remove original
         std::fs::remove_file(from)?;
@@ -201,7 +201,7 @@ impl State {
         }
 
         //copy original information to item_buf
-        self.to_item_buf(&item, trash_path, trash_name);
+        self.to_registered(&item, trash_path, trash_name);
 
         //remove original
         std::fs::remove_dir_all(&item.file_path)?;
@@ -211,40 +211,32 @@ impl State {
         Ok(())
     }
 
-    fn to_item_buf(&mut self, item: &ItemInfo, file_path: PathBuf, file_name: String) {
+    fn to_registered(&mut self, item: &ItemInfo, file_path: PathBuf, file_name: String) {
         let mut buf = item.clone();
         buf.file_path = file_path;
         buf.file_name = file_name;
-        self.item_buf = Some(buf);
+        self.registered.push(buf);
     }
 
-    pub fn paste_file(&mut self, current_dir: &PathBuf) -> std::io::Result<()> {
-        let item = &self.item_buf.clone();
-        match item {
-            None => Ok(()),
-            Some(item) => {
-                if item.file_path.parent() == Some(&self.trash_dir) {
-                    let mut item = item.clone();
-                    let rename = item.file_name.chars().skip(11).collect();
-                    item.file_name = rename;
-                    let rename = rename_file(&item, &self);
-                    std::fs::copy(&item.file_path, current_dir.join(&rename))?;
-                } else {
-                    let rename = rename_file(&item, &self);
-                    std::fs::copy(&item.file_path, current_dir.join(&rename))?;
-                }
-
-                self.update_list(current_dir);
-                Ok(())
-            }
+    pub fn paste_file(&mut self, item: &ItemInfo, current_dir: &PathBuf) -> std::io::Result<()> {
+        if item.file_path.parent() == Some(&self.trash_dir) {
+            let mut item = item.clone();
+            let rename = item.file_name.chars().skip(11).collect();
+            item.file_name = rename;
+            let rename = rename_file(&item, &self);
+            std::fs::copy(&item.file_path, current_dir.join(&rename))?;
+        } else {
+            let rename = rename_file(&item, &self);
+            std::fs::copy(&item.file_path, current_dir.join(&rename))?;
         }
+
+        self.update_list(current_dir);
+        Ok(())
     }
 
-    pub fn paste_dir(&mut self, current_dir: &PathBuf) -> std::io::Result<()> {
+    pub fn paste_dir(&mut self, buf: &ItemInfo, current_dir: &PathBuf) -> std::io::Result<()> {
         let mut base: usize = 0;
         let mut target: PathBuf = PathBuf::new();
-        let buf = self.item_buf.clone();
-        let mut buf = buf.unwrap();
         let original_path = &(buf).file_path;
 
         let mut i = 0;
@@ -255,6 +247,7 @@ impl State {
 
                 let parent = &original_path.parent().unwrap();
                 if parent == &self.trash_dir {
+                    let mut buf = buf.clone();
                     let rename = buf.file_name.chars().skip(11).collect();
                     buf.file_name = rename;
 
