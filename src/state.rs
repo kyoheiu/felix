@@ -416,16 +416,13 @@ impl State {
             item.selected = false;
         }
     }
-}
 
-fn make_parent_dir(p: PathBuf) -> ItemInfo {
-    return ItemInfo {
-        file_type: FileType::Directory,
-        file_name: String::from("../"),
-        file_path: p,
-        modified: None,
-        selected: false,
-    };
+    pub fn select_from_top(&mut self, start_pos: usize) {
+        let mut i = 0;
+        for mut item in self.list.iter_mut() {
+            item.selected = false;
+        }
+    }
 }
 
 fn make_item(dir: fs::DirEntry) -> ItemInfo {
@@ -464,13 +461,6 @@ pub fn push_items(p: &PathBuf, key: &SortKey) -> Result<Vec<ItemInfo>, Error> {
     let mut dir_v = Vec::new();
     let mut file_v = Vec::new();
 
-    match p.parent() {
-        Some(parent_p) => {
-            let parent_dir = make_parent_dir(parent_p.to_path_buf());
-            result.push(parent_dir);
-        }
-        None => {}
-    }
     for entry in fs::read_dir(p)? {
         let e = entry?;
         let entry = make_item(e);

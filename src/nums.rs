@@ -26,7 +26,7 @@ impl Num {
         self.index = len;
     }
     pub fn reset(&mut self) {
-        self.index = 1;
+        self.index = 0;
         self.skip = 0;
     }
     pub fn inc_skip(&mut self) {
@@ -42,6 +42,6 @@ impl Num {
 
 impl Default for Num {
     fn default() -> Self {
-        Num { index: 1, skip: 0 }
+        Num { index: 0, skip: 0 }
     }
 }

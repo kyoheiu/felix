@@ -119,14 +119,6 @@ pub fn print_result<T: std::fmt::Display>(message: T, then: u16) {
     );
 }
 
-pub fn empty_or_not(len: usize) -> u16 {
-    if len == 1 {
-        STARTING_POINT
-    } else {
-        STARTING_POINT + 1
-    }
-}
-
 pub fn to_extension_map(config: &HashMap<String, Vec<String>>) -> HashMap<String, String> {
     let mut new_map = HashMap::new();
     for (command, extensions) in config.iter() {

@@ -45,11 +45,7 @@ pub fn run(arg: PathBuf) {
     clear_and_show(&current_dir);
     state.list_up(nums.skip);
 
-    print!(
-        "{}>{}",
-        cursor::Goto(1, empty_or_not(state.list.len())),
-        cursor::Left(1)
-    );
+    print!("{}>{}", cursor::Goto(1, STARTING_POINT), cursor::Left(1));
     screen.flush().unwrap();
 
     let mut memo_v: Vec<CursorMemo> = Vec::new();
@@ -172,7 +168,7 @@ pub fn run(arg: PathBuf) {
                                     state.list_up(0);
                                     print!(
                                         "{}>{}",
-                                        cursor::Goto(1, empty_or_not(state.list.len())),
+                                        cursor::Goto(1, STARTING_POINT),
                                         cursor::Left(1)
                                     );
                                     nums.reset();
@@ -199,11 +195,7 @@ pub fn run(arg: PathBuf) {
                             }
                             None => {
                                 nums.reset();
-                                print!(
-                                    "{}>{}",
-                                    cursor::Goto(1, STARTING_POINT + 1),
-                                    cursor::Left(1)
-                                );
+                                print!("{}>{}", cursor::Goto(1, STARTING_POINT), cursor::Left(1));
                             }
                         }
                     }
@@ -390,11 +382,7 @@ pub fn run(arg: PathBuf) {
                     state.update_list(&current_dir);
                     clear_and_show(&current_dir);
                     state.list_up(0);
-                    print!(
-                        "{}>{}",
-                        cursor::Goto(1, empty_or_not(state.list.len())),
-                        cursor::Left(1)
-                    );
+                    print!("{}>{}", cursor::Goto(1, STARTING_POINT), cursor::Left(1));
                     nums.reset();
                 }
 
@@ -833,7 +821,7 @@ pub fn run(arg: PathBuf) {
                                     print!(
                                         "{}{}>{}",
                                         cursor::Hide,
-                                        cursor::Goto(1, empty_or_not(state.list.len())),
+                                        cursor::Goto(1, STARTING_POINT),
                                         cursor::Left(1)
                                     );
 
@@ -981,7 +969,7 @@ pub fn run(arg: PathBuf) {
                                         state.list_up(0);
                                         print!(
                                             "{}>{}{}",
-                                            cursor::Goto(1, empty_or_not(state.list.len())),
+                                            cursor::Goto(1, STARTING_POINT),
                                             cursor::Left(1),
                                             cursor::Hide
                                         );
