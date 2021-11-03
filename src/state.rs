@@ -3,7 +3,7 @@ use super::functions::*;
 use chrono::prelude::*;
 use std::collections::HashMap;
 use std::fs;
-use std::io::Error;
+use std::io::{Error, ErrorKind};
 use std::path::PathBuf;
 use std::process::Command;
 use std::process::ExitStatus;
@@ -99,15 +99,14 @@ impl State {
     pub fn new() -> Self {
         Default::default()
     }
-    pub fn get_item(&self, index: usize) -> &ItemInfo {
-        &self
-            .list
+    pub fn get_item(&self, index: usize) -> Result<&ItemInfo, std::io::Error> {
+        self.list
             .get(index)
-            .unwrap_or_else(|| panic!("cannot choose item."))
+            .ok_or_else(|| Error::new(ErrorKind::NotFound, "cannot choose item."))
     }
 
     pub fn open_file(&self, index: usize) -> std::io::Result<ExitStatus> {
-        let item = self.get_item(index);
+        let item = self.get_item(index)?;
         let path = &item.file_path;
         let map = &self.commands;
         let extention = path.extension();
@@ -136,7 +135,8 @@ impl State {
 
     pub fn remove_file(&mut self, index: usize) -> std::io::Result<()> {
         //prepare from and to for copy
-        let item = self.get_item(index).clone();
+        let item = self.get_item(index)?;
+        let item = item.clone();
         let from = &item.file_path;
 
         let name = &item.file_name;
@@ -164,8 +164,9 @@ impl State {
         let mut base: usize = 0;
         let mut trash_path: std::path::PathBuf = PathBuf::new();
         let mut target: PathBuf;
-        let item = self.get_item(index).clone();
 
+        let item = self.get_item(index)?;
+        let item = item.clone();
         let mut i = 0;
         for entry in walkdir::WalkDir::new(&item.file_path).sort_by_key(|x| x.path().to_path_buf())
         {
@@ -290,7 +291,7 @@ impl State {
     }
 
     pub fn print(&self, index: usize) {
-        let item = &self.get_item(index);
+        let item = &self.get_item(index).unwrap();
         let chars: Vec<char> = item.file_name.chars().collect();
         let name = if chars.len() > NAME_MAX_LEN {
             let mut result = chars.iter().take(NAME_MAX_LEN - 2).collect::<String>();

@@ -60,7 +60,7 @@ pub fn run(arg: PathBuf) {
             match key {
                 //Go up. If lists exceed max-row, lists "scrolls" before the top of the list
                 Key::Char('j') | Key::Down => {
-                    if nums.index == len - 1 {
+                    if len == 0 || nums.index == len - 1 {
                         continue;
                     } else if y == row - 4 && len > (row - STARTING_POINT) as usize - 1 {
                         nums.inc_skip();
@@ -111,6 +111,9 @@ pub fn run(arg: PathBuf) {
 
                 //Go to bottom
                 Key::Char('G') => {
+                    if len == 0 {
+                        continue;
+                    }
                     if len > (row - STARTING_POINT) as usize {
                         nums.skip = (len as u16) - row + STARTING_POINT;
                         clear_and_show(&current_dir);
@@ -129,48 +132,50 @@ pub fn run(arg: PathBuf) {
 
                 //Open file or change directory
                 Key::Char('l') | Key::Char('\n') | Key::Right => {
-                    let item = if len == 1 {
-                        state.get_item(0)
-                    } else {
-                        state.get_item(nums.index)
-                    };
-                    match item.file_type {
-                        FileType::File | FileType::Symlink => {
-                            print!("{}", screen::ToAlternateScreen);
-                            if let Err(e) = state.open_file(nums.index) {
-                                print_warning(e, y);
-                            }
-                            print!("{}", screen::ToAlternateScreen);
-                            clear_and_show(&current_dir);
-                            state.list_up(nums.skip);
-                            print!("{}{}>{}", cursor::Hide, cursor::Goto(1, y), cursor::Left(1));
-                        }
-                        FileType::Directory => {
-                            match std::fs::File::open(&item.file_path) {
-                                Err(e) => {
+                    if let Ok(item) = state.get_item(nums.index) {
+                        match item.file_type {
+                            FileType::File | FileType::Symlink => {
+                                print!("{}", screen::ToAlternateScreen);
+                                if let Err(e) = state.open_file(nums.index) {
                                     print_warning(e, y);
-                                    continue;
                                 }
-                                Ok(_) => {
-                                    //store the last cursor position and skip number
-                                    let cursor_memo = CursorMemo {
-                                        num: nums.clone(),
-                                        cursor_pos: y,
-                                    };
-                                    memo_v.push(cursor_memo);
+                                print!("{}", screen::ToAlternateScreen);
+                                clear_and_show(&current_dir);
+                                state.list_up(nums.skip);
+                                print!(
+                                    "{}{}>{}",
+                                    cursor::Hide,
+                                    cursor::Goto(1, y),
+                                    cursor::Left(1)
+                                );
+                            }
+                            FileType::Directory => {
+                                match std::fs::File::open(&item.file_path) {
+                                    Err(e) => {
+                                        print_warning(e, y);
+                                        continue;
+                                    }
+                                    Ok(_) => {
+                                        //store the last cursor position and skip number
+                                        let cursor_memo = CursorMemo {
+                                            num: nums.clone(),
+                                            cursor_pos: y,
+                                        };
+                                        memo_v.push(cursor_memo);
 
-                                    current_dir = item.file_path.clone();
-                                    std::env::set_current_dir(&current_dir)
-                                        .unwrap_or_else(|e| print_warning(e, y));
-                                    state.update_list(&current_dir);
-                                    clear_and_show(&current_dir);
-                                    state.list_up(0);
-                                    print!(
-                                        "{}>{}",
-                                        cursor::Goto(1, STARTING_POINT),
-                                        cursor::Left(1)
-                                    );
-                                    nums.reset();
+                                        current_dir = item.file_path.clone();
+                                        std::env::set_current_dir(&current_dir)
+                                            .unwrap_or_else(|e| print_warning(e, y));
+                                        state.update_list(&current_dir);
+                                        clear_and_show(&current_dir);
+                                        state.list_up(0);
+                                        print!(
+                                            "{}>{}",
+                                            cursor::Goto(1, STARTING_POINT),
+                                            cursor::Left(1)
+                                        );
+                                        nums.reset();
+                                    }
                                 }
                             }
                         }
@@ -204,6 +209,9 @@ pub fn run(arg: PathBuf) {
                 },
 
                 Key::Char('V') => {
+                    if len == 0 {
+                        continue;
+                    }
                     let mut item = state.list.get_mut(nums.index).unwrap();
                     item.selected = true;
 
@@ -385,7 +393,7 @@ pub fn run(arg: PathBuf) {
                 }
 
                 Key::Char('D') => {
-                    if nums.index == 0 && &state.get_item(0).file_name == "../" {
+                    if len == 0 {
                         continue;
                     } else {
                         match &state.warning {
@@ -398,7 +406,8 @@ pub fn run(arg: PathBuf) {
                                     if let Some(Ok(key)) = input {
                                         match key {
                                             Key::Char('y') | Key::Char('Y') => {
-                                                match state.get_item(nums.index).file_type {
+                                                match state.get_item(nums.index).unwrap().file_type
+                                                {
                                                     FileType::Directory => {
                                                         if let Err(e) = state.remove_dir(nums.index)
                                                         {
@@ -454,7 +463,7 @@ pub fn run(arg: PathBuf) {
                                 }
                             }
                             false => {
-                                match state.get_item(nums.index).file_type {
+                                match state.get_item(nums.index).unwrap().file_type {
                                     FileType::Directory => {
                                         if let Err(e) = state.remove_dir(nums.index) {
                                             print_warning(e, y);
@@ -488,11 +497,12 @@ pub fn run(arg: PathBuf) {
                 }
 
                 Key::Char('y') => {
-                    if nums.index == 0 {
+                    if len == 0 {
                         continue;
                     }
-                    let item = state.get_item(nums.index);
-                    state.item_buf = Some(item.clone());
+                    if let Ok(item) = state.get_item(nums.index) {
+                        state.item_buf = Some(item.clone());
+                    }
                 }
 
                 //todo: paste item of path_buffer
@@ -520,8 +530,11 @@ pub fn run(arg: PathBuf) {
                 }
 
                 Key::Char('c') => {
+                    if len == 0 {
+                        continue;
+                    }
                     print!("{}{}", cursor::Show, cursor::BlinkingBlock);
-                    let item = state.get_item(nums.index);
+                    let item = state.get_item(nums.index).unwrap();
 
                     let mut rename = item.file_name.chars().collect::<Vec<char>>();
                     print!(
@@ -638,7 +651,10 @@ pub fn run(arg: PathBuf) {
                 }
 
                 Key::Ctrl('c') => {
-                    let item = state.get_item(nums.index);
+                    if len == 0 {
+                        continue;
+                    }
+                    let item = state.get_item(nums.index).unwrap();
 
                     let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
                     match ctx.set_contents(item.file_name.clone()) {
@@ -782,6 +798,9 @@ pub fn run(arg: PathBuf) {
                 }
 
                 Key::Char('/') => {
+                    if len == 0 {
+                        continue;
+                    }
                     print!(
                         " {}{}{} ",
                         cursor::Goto(2, 2),
