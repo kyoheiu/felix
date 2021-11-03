@@ -360,13 +360,126 @@ pub fn run(arg: PathBuf) {
                                     }
                                 }
 
+                                Key::Char('d') => match &state.warning {
+                                    true => {
+                                        print_warning(WHEN_DELETE, y);
+                                        screen.flush().unwrap();
+
+                                        loop {
+                                            let input = stdin.next();
+                                            if let Some(Ok(key)) = input {
+                                                match key {
+                                                    Key::Char('y') | Key::Char('Y') => {
+                                                        state.registered.clear();
+                                                        let item = state
+                                                            .get_item(nums.index)
+                                                            .unwrap()
+                                                            .clone();
+                                                        match item.file_type {
+                                                            FileType::Directory => {
+                                                                if let Err(e) =
+                                                                    state.remove_dir(item)
+                                                                {
+                                                                    print_warning(e, y);
+                                                                }
+                                                            }
+                                                            FileType::File | FileType::Symlink => {
+                                                                let item = state
+                                                                    .get_item(nums.index)
+                                                                    .unwrap()
+                                                                    .clone();
+                                                                if let Err(e) =
+                                                                    state.remove_file(item)
+                                                                {
+                                                                    print_warning(e, y);
+                                                                }
+                                                            }
+                                                        }
+
+                                                        clear_and_show(&current_dir);
+                                                        state.update_list(&current_dir);
+                                                        state.list_up(nums.skip);
+                                                        if nums.index == len - 1 {
+                                                            print!(
+                                                                "{}>{}",
+                                                                cursor::Goto(1, y - 1),
+                                                                cursor::Left(1)
+                                                            );
+                                                            nums.go_up();
+                                                        } else {
+                                                            print!(
+                                                                "{}>{}",
+                                                                cursor::Goto(1, y),
+                                                                cursor::Left(1)
+                                                            );
+                                                        }
+                                                        break;
+                                                    }
+                                                    _ => {
+                                                        print!(
+                                                            "{}{}{}",
+                                                            cursor::Goto(2, 2),
+                                                            clear::CurrentLine,
+                                                            DOWN_ARROW
+                                                        );
+                                                        screen.flush().unwrap();
+
+                                                        print!(
+                                                            "{}{}>{}",
+                                                            cursor::Hide,
+                                                            cursor::Goto(1, y),
+                                                            cursor::Left(1)
+                                                        );
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    false => {
+                                        state.registered.clear();
+                                        let iter = state.list.clone().into_iter();
+                                        for item in iter {
+                                            if item.selected {
+                                                match item.file_type {
+                                                    FileType::Directory => {
+                                                        if let Err(e) = state.remove_dir(item) {
+                                                            print_warning(e, y);
+                                                        }
+                                                    }
+                                                    FileType::File | FileType::Symlink => {
+                                                        if let Err(e) = state.remove_file(item) {
+                                                            print_warning(e, y);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        clear_and_show(&current_dir);
+                                        state.update_list(&current_dir);
+                                        state.list_up(nums.skip);
+                                        if len == 0 {
+                                            print!(
+                                                "{}>{}",
+                                                cursor::Goto(1, STARTING_POINT),
+                                                cursor::Left(1)
+                                            );
+                                        } else if nums.index > len - 1 {
+                                            print!(
+                                                "{}>{}",
+                                                cursor::Goto(1, len as u16 + STARTING_POINT - 1),
+                                                cursor::Left(1)
+                                            );
+                                        } else {
+                                            print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+                                        }
+                                        break;
+                                    }
+                                },
                                 Key::Char('y') => {
                                     state.registered.clear();
-                                    for mut item in state.list.iter_mut() {
-                                        if item.selected == true {
-                                            item.selected = false;
-                                            state.registered.push(item.clone());
-                                        }
+                                    for item in state.list.iter_mut().filter(|item| item.selected) {
+                                        state.registered.push(item.clone());
                                     }
                                     clear_and_show(&current_dir);
                                     state.list_up(nums.skip);
@@ -390,7 +503,6 @@ pub fn run(arg: PathBuf) {
                         screen.flush().unwrap();
                     }
                 }
-
                 //for debug select mode
                 Key::Char('S') => {
                     print!("{}", cursor::Goto(2, 2));
@@ -428,39 +540,49 @@ pub fn run(arg: PathBuf) {
                                     if let Some(Ok(key)) = input {
                                         match key {
                                             Key::Char('y') | Key::Char('Y') => {
-                                                match state.get_item(nums.index).unwrap().file_type
-                                                {
+                                                state.registered.clear();
+                                                let item =
+                                                    state.get_item(nums.index).unwrap().clone();
+                                                match item.file_type {
                                                     FileType::Directory => {
-                                                        if let Err(e) = state.remove_dir(nums.index)
-                                                        {
+                                                        if let Err(e) = state.remove_dir(item) {
                                                             print_warning(e, y);
                                                         }
                                                     }
                                                     FileType::File | FileType::Symlink => {
-                                                        if let Err(e) =
-                                                            state.remove_file(nums.index)
-                                                        {
+                                                        if let Err(e) = state.remove_file(item) {
                                                             print_warning(e, y);
                                                         }
                                                     }
                                                 }
 
                                                 clear_and_show(&current_dir);
+                                                state.update_list(&current_dir);
                                                 state.list_up(nums.skip);
-                                                if nums.index == len - 1 {
+                                                if len == 0 {
                                                     print!(
                                                         "{}>{}",
-                                                        cursor::Goto(1, y - 1),
+                                                        cursor::Goto(1, STARTING_POINT),
                                                         cursor::Left(1)
                                                     );
-                                                    nums.go_up();
+                                                    nums.reset();
                                                 } else {
-                                                    print!(
-                                                        "{}>{}",
-                                                        cursor::Goto(1, y),
-                                                        cursor::Left(1)
-                                                    );
+                                                    if nums.index == len - 1 {
+                                                        print!(
+                                                            "{}>{}",
+                                                            cursor::Goto(1, y - 1),
+                                                            cursor::Left(1)
+                                                        );
+                                                        nums.go_up();
+                                                    } else {
+                                                        print!(
+                                                            "{}>{}",
+                                                            cursor::Goto(1, y),
+                                                            cursor::Left(1)
+                                                        );
+                                                    }
                                                 }
+                                                print!("{}", cursor::Hide);
                                                 break;
                                             }
                                             _ => {
@@ -485,33 +607,38 @@ pub fn run(arg: PathBuf) {
                                 }
                             }
                             false => {
-                                match state.get_item(nums.index).unwrap().file_type {
+                                state.registered.clear();
+                                let item = state.get_item(nums.index).unwrap().clone();
+                                match item.file_type {
                                     FileType::Directory => {
-                                        if let Err(e) = state.remove_dir(nums.index) {
+                                        if let Err(e) = state.remove_dir(item) {
                                             print_warning(e, y);
                                         }
                                     }
                                     FileType::File | FileType::Symlink => {
-                                        if let Err(e) = state.remove_file(nums.index) {
+                                        if let Err(e) = state.remove_file(item) {
                                             print_warning(e, y);
                                         }
                                     }
                                 }
 
                                 clear_and_show(&current_dir);
+                                state.update_list(&current_dir);
                                 state.list_up(nums.skip);
-                                if nums.index == len - 1 {
-                                    if len == 0 {
-                                        print!(
-                                            "{}List is empty. Press h/Key Left to go back.",
-                                            cursor::Goto(2, 3)
-                                        );
-                                    } else {
+                                if len == 0 {
+                                    print!(
+                                        "{}>{}",
+                                        cursor::Goto(1, STARTING_POINT),
+                                        cursor::Left(1)
+                                    );
+                                    nums.reset();
+                                } else {
+                                    if nums.index == len - 1 {
                                         print!("{}>{}", cursor::Goto(1, y - 1), cursor::Left(1));
                                         nums.go_up();
+                                    } else {
+                                        print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                                     }
-                                } else {
-                                    print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                                 }
                             }
                         }

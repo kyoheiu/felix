@@ -133,10 +133,8 @@ impl State {
         }
     }
 
-    pub fn remove_file(&mut self, index: usize) -> std::io::Result<()> {
+    pub fn remove_file(&mut self, item: ItemInfo) -> std::io::Result<()> {
         //prepare from and to for copy
-        let item = self.get_item(index)?;
-        let item = item.clone();
         let from = &item.file_path;
 
         let name = &item.file_name;
@@ -155,18 +153,15 @@ impl State {
         //remove original
         std::fs::remove_file(from)?;
 
-        let _ = self.list.remove(index);
         Ok(())
     }
 
-    pub fn remove_dir(&mut self, index: usize) -> std::io::Result<()> {
+    pub fn remove_dir(&mut self, item: ItemInfo) -> std::io::Result<()> {
         let mut trash_name = String::new();
         let mut base: usize = 0;
         let mut trash_path: std::path::PathBuf = PathBuf::new();
         let mut target: PathBuf;
 
-        let item = self.get_item(index)?;
-        let item = item.clone();
         let mut i = 0;
         for entry in walkdir::WalkDir::new(&item.file_path).sort_by_key(|x| x.path().to_path_buf())
         {
@@ -206,8 +201,6 @@ impl State {
         //remove original
         std::fs::remove_dir_all(&item.file_path)?;
 
-        let _ = self.list.remove(index);
-
         Ok(())
     }
 
@@ -215,6 +208,7 @@ impl State {
         let mut buf = item.clone();
         buf.file_path = file_path;
         buf.file_name = file_name;
+        buf.selected = false;
         self.registered.push(buf);
     }
 
