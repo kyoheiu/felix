@@ -420,7 +420,24 @@ impl State {
     pub fn select_from_top(&mut self, start_pos: usize) {
         let mut i = 0;
         for mut item in self.list.iter_mut() {
-            item.selected = false;
+            if i <= start_pos {
+                item.selected = true;
+            } else {
+                item.selected = false;
+            }
+            i += 1;
+        }
+    }
+
+    pub fn select_to_bottom(&mut self, start_pos: usize) {
+        let mut i = 0;
+        for mut item in self.list.iter_mut() {
+            if i < start_pos {
+                item.selected = false;
+            } else {
+                item.selected = true;
+            }
+            i += 1;
         }
     }
 }

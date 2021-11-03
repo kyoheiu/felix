@@ -19,9 +19,6 @@ impl Num {
     pub fn go_down(&mut self) {
         self.index += 1;
     }
-    pub fn go_top(&mut self) {
-        self.index = 0;
-    }
     pub fn go_bottom(&mut self, len: usize) {
         self.index = len;
     }

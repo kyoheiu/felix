@@ -103,10 +103,9 @@ pub fn run(arg: PathBuf) {
                         clear_and_show(&current_dir);
                         state.list_up(nums.skip);
                         print!(" {}>{}", cursor::Goto(1, STARTING_POINT), cursor::Left(1));
-                        nums.go_top();
                     } else {
                         print!(" {}>{}", cursor::Goto(1, STARTING_POINT), cursor::Left(1));
-                        nums.go_top();
+                        nums.reset();
                     }
                 }
 
@@ -318,14 +317,13 @@ pub fn run(arg: PathBuf) {
                                             cursor::Goto(1, STARTING_POINT),
                                             cursor::Left(1)
                                         );
-                                        nums.go_top();
                                     } else {
                                         print!(
                                             " {}>{}",
                                             cursor::Goto(1, STARTING_POINT),
                                             cursor::Left(1)
                                         );
-                                        nums.go_top();
+                                        nums.reset();
                                     }
                                 }
 
@@ -472,7 +470,7 @@ pub fn run(arg: PathBuf) {
                                 clear_and_show(&current_dir);
                                 state.list_up(nums.skip);
                                 if nums.index == len - 1 {
-                                    if len == 1 {
+                                    if len == 0 {
                                         print!(
                                             "{}List is empty. Press h/Key Left to go back.",
                                             cursor::Goto(2, 3)
@@ -809,7 +807,7 @@ pub fn run(arg: PathBuf) {
                                     screen.flush().unwrap();
 
                                     print!("{}>{}", cursor::Goto(1, 3), cursor::Left(1));
-                                    nums.go_top();
+                                    nums.reset();
                                     break;
                                 }
 
