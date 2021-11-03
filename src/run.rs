@@ -318,6 +318,7 @@ pub fn run(arg: PathBuf) {
                                         continue;
                                     } else if nums.skip != 0 {
                                         nums.reset();
+                                        state.select_from_top(start_pos);
                                         clear_and_show(&current_dir);
                                         state.list_up(nums.skip);
                                         print!(
@@ -326,12 +327,15 @@ pub fn run(arg: PathBuf) {
                                             cursor::Left(1)
                                         );
                                     } else {
+                                        nums.reset();
+                                        state.select_from_top(start_pos);
+                                        clear_and_show(&current_dir);
+                                        state.list_up(nums.skip);
                                         print!(
                                             " {}>{}",
                                             cursor::Goto(1, STARTING_POINT),
                                             cursor::Left(1)
                                         );
-                                        nums.reset();
                                     }
                                 }
 
@@ -339,17 +343,21 @@ pub fn run(arg: PathBuf) {
                                 Key::Char('G') => {
                                     if len > (row - STARTING_POINT) as usize {
                                         nums.skip = (len as u16) - row + STARTING_POINT;
+                                        nums.go_bottom(len - 1);
+                                        state.select_to_bottom(start_pos);
                                         clear_and_show(&current_dir);
                                         state.list_up(nums.skip);
                                         print!("{}>{}", cursor::Goto(1, row - 1), cursor::Left(1));
-                                        nums.go_bottom(len - 1);
                                     } else {
+                                        nums.go_bottom(len - 1);
+                                        state.select_to_bottom(start_pos);
+                                        clear_and_show(&current_dir);
+                                        state.list_up(nums.skip);
                                         print!(
                                             " {}>{}",
                                             cursor::Goto(1, len as u16 + STARTING_POINT - 1),
                                             cursor::Left(1)
                                         );
-                                        nums.go_bottom(len - 1);
                                     }
                                 }
 
