@@ -49,6 +49,7 @@ pub fn run(arg: PathBuf) {
     screen.flush().unwrap();
 
     let mut memo_v: Vec<CursorMemo> = Vec::new();
+    let mut register_v: Vec<ItemInfo> = Vec::new();
     let mut stdin = stdin().keys();
 
     'main: loop {
@@ -339,7 +340,6 @@ pub fn run(arg: PathBuf) {
                                     }
                                 }
 
-                                //Go to bottom
                                 Key::Char('G') => {
                                     if len > (row - STARTING_POINT) as usize {
                                         nums.skip = (len as u16) - row + STARTING_POINT;
@@ -361,10 +361,18 @@ pub fn run(arg: PathBuf) {
                                     }
                                 }
 
-                                Key::Char('S') => {
-                                    print!("{}", cursor::Goto(2, 2));
-                                    debug_select(&state);
-                                    print!("{}", cursor::Goto(1, y));
+                                Key::Char('y') => {
+                                    register_v.clear();
+                                    for mut item in state.list.iter_mut() {
+                                        if item.selected == true {
+                                            item.selected = false;
+                                            register_v.push(item.clone());
+                                        }
+                                    }
+                                    clear_and_show(&current_dir);
+                                    state.list_up(nums.skip);
+                                    print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+                                    break;
                                 }
 
                                 Key::Esc => {
@@ -382,6 +390,13 @@ pub fn run(arg: PathBuf) {
                         }
                         screen.flush().unwrap();
                     }
+                }
+
+                //for debug select mode
+                Key::Char('S') => {
+                    print!("{}", cursor::Goto(2, 2));
+                    debug_select(&register_v);
+                    print!("{}", cursor::Goto(1, y));
                 }
 
                 Key::Char('t') => {
