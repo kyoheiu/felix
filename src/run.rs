@@ -115,7 +115,7 @@ pub fn run(arg: PathBuf) {
                         continue;
                     }
                     if len > (row - STARTING_POINT) as usize {
-                        nums.skip = (len as u16) - row + STARTING_POINT;
+                        nums.skip = (len as u16) + STARTING_POINT - row;
                         clear_and_show(&current_dir);
                         state.list_up(nums.skip);
                         print!("{}>{}", cursor::Goto(1, row - 1), cursor::Left(1));
@@ -316,16 +316,6 @@ pub fn run(arg: PathBuf) {
                                 Key::Char('g') => {
                                     if nums.index == 0 {
                                         continue;
-                                    } else if nums.skip != 0 {
-                                        nums.reset();
-                                        state.select_from_top(start_pos);
-                                        clear_and_show(&current_dir);
-                                        state.list_up(nums.skip);
-                                        print!(
-                                            " {}>{}",
-                                            cursor::Goto(1, STARTING_POINT),
-                                            cursor::Left(1)
-                                        );
                                     } else {
                                         nums.reset();
                                         state.select_from_top(start_pos);
@@ -341,7 +331,7 @@ pub fn run(arg: PathBuf) {
 
                                 Key::Char('G') => {
                                     if len > (row - STARTING_POINT) as usize {
-                                        nums.skip = (len as u16) - row + STARTING_POINT;
+                                        nums.skip = (len as u16) + STARTING_POINT - row;
                                         nums.go_bottom(len - 1);
                                         state.select_to_bottom(start_pos);
                                         clear_and_show(&current_dir);
@@ -371,41 +361,50 @@ pub fn run(arg: PathBuf) {
                                                 match key {
                                                     Key::Char('y') | Key::Char('Y') => {
                                                         state.registered.clear();
-                                                        let item = state
-                                                            .get_item(nums.index)
-                                                            .unwrap()
-                                                            .clone();
-                                                        match item.file_type {
-                                                            FileType::Directory => {
-                                                                if let Err(e) =
-                                                                    state.remove_dir(item)
-                                                                {
-                                                                    print_warning(e, y);
-                                                                }
-                                                            }
-                                                            FileType::File | FileType::Symlink => {
-                                                                let item = state
-                                                                    .get_item(nums.index)
-                                                                    .unwrap()
-                                                                    .clone();
-                                                                if let Err(e) =
-                                                                    state.remove_file(item)
-                                                                {
-                                                                    print_warning(e, y);
+                                                        let iter = state.list.clone().into_iter();
+                                                        for item in iter {
+                                                            if item.selected {
+                                                                match item.file_type {
+                                                                    FileType::Directory => {
+                                                                        if let Err(e) = state
+                                                                            .remove_and_yank_dir(
+                                                                                item,
+                                                                            )
+                                                                        {
+                                                                            print_warning(e, y);
+                                                                        }
+                                                                    }
+                                                                    FileType::File
+                                                                    | FileType::Symlink => {
+                                                                        if let Err(e) = state
+                                                                            .remove_and_yank_file(
+                                                                                item,
+                                                                            )
+                                                                        {
+                                                                            print_warning(e, y);
+                                                                        }
+                                                                    }
                                                                 }
                                                             }
                                                         }
-
                                                         clear_and_show(&current_dir);
                                                         state.update_list(&current_dir);
                                                         state.list_up(nums.skip);
-                                                        if nums.index == len - 1 {
+                                                        if len == 0 {
                                                             print!(
                                                                 "{}>{}",
-                                                                cursor::Goto(1, y - 1),
+                                                                cursor::Goto(1, STARTING_POINT),
                                                                 cursor::Left(1)
                                                             );
-                                                            nums.go_up();
+                                                        } else if nums.index > len - 1 {
+                                                            print!(
+                                                                "{}>{}",
+                                                                cursor::Goto(
+                                                                    1,
+                                                                    len as u16 + STARTING_POINT - 1
+                                                                ),
+                                                                cursor::Left(1)
+                                                            );
                                                         } else {
                                                             print!(
                                                                 "{}>{}",
@@ -443,12 +442,16 @@ pub fn run(arg: PathBuf) {
                                             if item.selected {
                                                 match item.file_type {
                                                     FileType::Directory => {
-                                                        if let Err(e) = state.remove_dir(item) {
+                                                        if let Err(e) =
+                                                            state.remove_and_yank_dir(item)
+                                                        {
                                                             print_warning(e, y);
                                                         }
                                                     }
                                                     FileType::File | FileType::Symlink => {
-                                                        if let Err(e) = state.remove_file(item) {
+                                                        if let Err(e) =
+                                                            state.remove_and_yank_file(item)
+                                                        {
                                                             print_warning(e, y);
                                                         }
                                                     }
@@ -457,30 +460,48 @@ pub fn run(arg: PathBuf) {
                                         }
                                         clear_and_show(&current_dir);
                                         state.update_list(&current_dir);
-                                        state.list_up(nums.skip);
-                                        if len == 0 {
+                                        let new_len = state.list.len();
+                                        if new_len > (row - STARTING_POINT) as usize {
+                                            nums.reset();
+                                            state.list_up(nums.skip);
                                             print!(
-                                                "{}>{}",
+                                                " {}>{}",
                                                 cursor::Goto(1, STARTING_POINT),
                                                 cursor::Left(1)
                                             );
-                                        } else if nums.index > len - 1 {
-                                            print!(
-                                                "{}>{}",
-                                                cursor::Goto(1, len as u16 + STARTING_POINT - 1),
-                                                cursor::Left(1)
-                                            );
                                         } else {
-                                            print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+                                            state.list_up(nums.skip);
+
+                                            if new_len == 0 {
+                                                print!(
+                                                    "{}>{}",
+                                                    cursor::Goto(1, STARTING_POINT),
+                                                    cursor::Left(1)
+                                                );
+                                            } else if y as usize > new_len - 1 {
+                                                print!(
+                                                    "{}>{}",
+                                                    cursor::Goto(
+                                                        1,
+                                                        new_len as u16 + STARTING_POINT - 1
+                                                    ),
+                                                    cursor::Left(1)
+                                                );
+                                                nums.index = new_len - 1;
+                                            } else {
+                                                print!(
+                                                    "{}>{}",
+                                                    cursor::Goto(1, y),
+                                                    cursor::Left(1)
+                                                );
+                                            }
                                         }
                                         break;
                                     }
                                 },
                                 Key::Char('y') => {
-                                    state.registered.clear();
-                                    for item in state.list.iter_mut().filter(|item| item.selected) {
-                                        state.registered.push(item.clone());
-                                    }
+                                    state.yank_item(nums.index, true);
+                                    state.reset_selection();
                                     clear_and_show(&current_dir);
                                     state.list_up(nums.skip);
                                     print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
@@ -545,12 +566,16 @@ pub fn run(arg: PathBuf) {
                                                     state.get_item(nums.index).unwrap().clone();
                                                 match item.file_type {
                                                     FileType::Directory => {
-                                                        if let Err(e) = state.remove_dir(item) {
+                                                        if let Err(e) =
+                                                            state.remove_and_yank_dir(item)
+                                                        {
                                                             print_warning(e, y);
                                                         }
                                                     }
                                                     FileType::File | FileType::Symlink => {
-                                                        if let Err(e) = state.remove_file(item) {
+                                                        if let Err(e) =
+                                                            state.remove_and_yank_file(item)
+                                                        {
                                                             print_warning(e, y);
                                                         }
                                                     }
@@ -611,12 +636,12 @@ pub fn run(arg: PathBuf) {
                                 let item = state.get_item(nums.index).unwrap().clone();
                                 match item.file_type {
                                     FileType::Directory => {
-                                        if let Err(e) = state.remove_dir(item) {
+                                        if let Err(e) = state.remove_and_yank_dir(item) {
                                             print_warning(e, y);
                                         }
                                     }
                                     FileType::File | FileType::Symlink => {
-                                        if let Err(e) = state.remove_file(item) {
+                                        if let Err(e) = state.remove_and_yank_file(item) {
                                             print_warning(e, y);
                                         }
                                     }
@@ -649,21 +674,19 @@ pub fn run(arg: PathBuf) {
                     if len == 0 {
                         continue;
                     }
-                    let item = state.get_item(nums.index).unwrap().clone();
-                    state.registered.clear();
-                    state.registered.push(item.clone());
+                    state.yank_item(nums.index, false);
                 }
 
                 Key::Char('p') => {
                     for item in state.registered.clone().into_iter() {
                         match item.file_type {
                             FileType::Directory => {
-                                if let Err(e) = state.paste_dir(&item, &current_dir) {
+                                if let Err(e) = state.put_dir(&item, &current_dir) {
                                     print_warning(e, y);
                                 }
                             }
                             FileType::File | FileType::Symlink => {
-                                if let Err(e) = state.paste_file(&item, &current_dir) {
+                                if let Err(e) = state.put_file(&item, &current_dir) {
                                     print_warning(e, y);
                                 }
                             }

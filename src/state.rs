@@ -133,7 +133,7 @@ impl State {
         }
     }
 
-    pub fn remove_file(&mut self, item: ItemInfo) -> std::io::Result<()> {
+    pub fn remove_and_yank_file(&mut self, item: ItemInfo) -> std::io::Result<()> {
         //prepare from and to for copy
         let from = &item.file_path;
 
@@ -156,7 +156,7 @@ impl State {
         Ok(())
     }
 
-    pub fn remove_dir(&mut self, item: ItemInfo) -> std::io::Result<()> {
+    pub fn remove_and_yank_dir(&mut self, item: ItemInfo) -> std::io::Result<()> {
         let mut trash_name = String::new();
         let mut base: usize = 0;
         let mut trash_path: std::path::PathBuf = PathBuf::new();
@@ -212,7 +212,20 @@ impl State {
         self.registered.push(buf);
     }
 
-    pub fn paste_file(&mut self, item: &ItemInfo, current_dir: &PathBuf) -> std::io::Result<()> {
+    pub fn yank_item(&mut self, index: usize, selected: bool) {
+        if selected {
+            self.registered.clear();
+            for item in self.list.iter_mut().filter(|item| item.selected) {
+                self.registered.push(item.clone());
+            }
+        } else {
+            self.registered.clear();
+            let item = self.get_item(index).unwrap().clone();
+            self.registered.push(item.clone());
+        }
+    }
+
+    pub fn put_file(&mut self, item: &ItemInfo, current_dir: &PathBuf) -> std::io::Result<()> {
         if item.file_path.parent() == Some(&self.trash_dir) {
             let mut item = item.clone();
             let rename = item.file_name.chars().skip(11).collect();
@@ -228,7 +241,7 @@ impl State {
         Ok(())
     }
 
-    pub fn paste_dir(&mut self, buf: &ItemInfo, current_dir: &PathBuf) -> std::io::Result<()> {
+    pub fn put_dir(&mut self, buf: &ItemInfo, current_dir: &PathBuf) -> std::io::Result<()> {
         let mut base: usize = 0;
         let mut target: PathBuf = PathBuf::new();
         let original_path = &(buf).file_path;
