@@ -390,24 +390,19 @@ pub fn run(arg: PathBuf) {
                                                         clear_and_show(&current_dir);
                                                         state.update_list(&current_dir);
                                                         state.list_up(nums.skip);
-                                                        if len == 0 {
+
+                                                        let new_len = state.list.len();
+                                                        if new_len == 0 {
                                                             print!(
                                                                 "{}>{}",
                                                                 cursor::Goto(1, STARTING_POINT),
                                                                 cursor::Left(1)
                                                             );
-                                                        } else if nums.index > len - 1 {
-                                                            print!(
-                                                                "{}>{}",
-                                                                cursor::Goto(
-                                                                    1,
-                                                                    len as u16 + STARTING_POINT - 1
-                                                                ),
-                                                                cursor::Left(1)
-                                                            );
+                                                            nums.reset();
                                                         } else {
+                                                            state.list_up(nums.skip);
                                                             print!(
-                                                                "{}>{}",
+                                                                " {}>{}",
                                                                 cursor::Goto(1, y),
                                                                 cursor::Left(1)
                                                             );
@@ -460,41 +455,19 @@ pub fn run(arg: PathBuf) {
                                         }
                                         clear_and_show(&current_dir);
                                         state.update_list(&current_dir);
+                                        state.list_up(nums.skip);
+
                                         let new_len = state.list.len();
-                                        if new_len > (row - STARTING_POINT) as usize {
-                                            nums.reset();
-                                            state.list_up(nums.skip);
+                                        if new_len == 0 {
                                             print!(
-                                                " {}>{}",
+                                                "{}>{}",
                                                 cursor::Goto(1, STARTING_POINT),
                                                 cursor::Left(1)
                                             );
+                                            nums.reset();
                                         } else {
                                             state.list_up(nums.skip);
-
-                                            if new_len == 0 {
-                                                print!(
-                                                    "{}>{}",
-                                                    cursor::Goto(1, STARTING_POINT),
-                                                    cursor::Left(1)
-                                                );
-                                            } else if y as usize > new_len - 1 {
-                                                print!(
-                                                    "{}>{}",
-                                                    cursor::Goto(
-                                                        1,
-                                                        new_len as u16 + STARTING_POINT - 1
-                                                    ),
-                                                    cursor::Left(1)
-                                                );
-                                                nums.index = new_len - 1;
-                                            } else {
-                                                print!(
-                                                    "{}>{}",
-                                                    cursor::Goto(1, y),
-                                                    cursor::Left(1)
-                                                );
-                                            }
+                                            print!(" {}>{}", cursor::Goto(1, y), cursor::Left(1));
                                         }
                                         break;
                                     }

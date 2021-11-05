@@ -18,11 +18,13 @@ G                     :Go to the bottom.
 D                     :Delete and yank item.
 y                     :Yank item.
 p                     :Put yanked item in the current directory.
+V                     :Switch to select mode.
+  - d                 :In select mode, delete and yank selected items.
+  - y                 :In select mode, yank selected items.
 Ctrl+c                :Copy file name to clipboard.
 t                     :Toggle sort order (name <-> modified time).
 :                     :Switch to shell mode.
 c                     :Switch to rename mode.
-m                     :Switch to `mkdir` mode.
 /                     :Switch to filter mode.
 E                     :Empty the trash directory.
 :q / ZZ               :Exit the program.
