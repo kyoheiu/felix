@@ -449,6 +449,15 @@ pub fn run(arg: PathBuf) {
                                     } else {
                                         state.list_up(nums.skip);
                                         print!(" {}>{}", cursor::Goto(1, y), cursor::Left(1));
+                                        if nums.index > new_len {
+                                            print!(
+                                                " {}{}>{}",
+                                                cursor::Left(1),
+                                                cursor::Up((nums.index - new_len + 1) as u16),
+                                                cursor::Left(1)
+                                            );
+                                            nums.index = new_len - 1;
+                                        }
                                     }
                                     break;
                                 }

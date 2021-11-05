@@ -102,3 +102,4 @@ then, .jpg, .jpeg, .png, .gif and .svg files are opened by `feh <file-name>`, .p
 - [x] change sort order (file name / new to old)
 - [x] implement shell mode
 - [x] implement `V`(select mode)
+- [ ] show item size
