@@ -95,7 +95,7 @@ zathura = ["pdf"]
 
 then, .jpg, .jpeg, .png, .gif and .svg files are opened by `feh <file-name>`, .pdf files by `zathura <file-name>` and others by `nvim <file-name>` .
 
-## todo (finished for now)
+## todo
 
 - [x] easier way to configurate exec commands
 - [x] choose whether the warning appears or not when delete
