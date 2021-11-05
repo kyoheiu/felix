@@ -1,9 +1,6 @@
 # default exec command when open files
 default = "nvim"
 
-# Whether you see the warning message when delete item
-warning = false
-
 # default key for sorting item list ("Name" or "Time")
 sort_by = "Name"
 
