@@ -46,9 +46,9 @@ cargo +nightly install --path .
 | k / Key Down          | Go down. If the list exceeds max-row, list "scrolls" before the bottom of the list.                                                                                                                                                                     |
 | h / Key Left          | Go to parent directory if exists.                                                                                                                                                                                                                       |
 | l / Key Right / Enter | Open file or change directory. Commands for execution can be managed in config file.                                                                                                                                                                    |
-| g                     | Go to the top.                                                                                                                                                                                                                                          |
+| gg                    | Go to the top.                                                                                                                                                                                                                                          |
 | G                     | Go to the bottom.                                                                                                                                                                                                                                       |
-| D                     | Delete and yank item (item will go to the trash directory).                                                                                                                                                                                             |
+| dd                    | Delete and yank item (item will go to the trash directory).                                                                                                                                                                                             |
 | y                     | Yank item. If you yanked other item before, its information is replaced by this one.                                                                                                                                                                    |
 | p                     | Put yanked item(s) in the current directory. If item with same name exists, copied item will be renamed with the suffix "\_copied".                                                                                                                     |
 | V                     | Switch to select mode, where you can move cursor to select items.                                                                                                                                                                                       |
@@ -78,7 +78,6 @@ Default config file, which is [here](config.toml), will be created automatically
 In config.toml, you can configurate:
 
 - color of directory, file, and symlink separatively
-- whether you see the warning message when delete item
 - default key for sorting item list ("Name" or "Time")
 - how to open files
 

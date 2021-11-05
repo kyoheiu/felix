@@ -13,9 +13,9 @@ j / Key Up            :Go up.
 k / Key Down          :Go down.
 h / Key Left          :Go to parent directory if exists.
 l / Key Right / Enter :Open file or change directory.
-g                     :Go to the top.
+gg                    :Go to the top.
 G                     :Go to the bottom.
-D                     :Delete and yank item.
+dd                    :Delete and yank item.
 y                     :Yank item.
 p                     :Put yanked item in the current directory.
 V                     :Switch to select mode.
