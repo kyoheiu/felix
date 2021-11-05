@@ -16,7 +16,7 @@ l / Key Right / Enter :Open file or change directory.
 gg                    :Go to the top.
 G                     :Go to the bottom.
 dd                    :Delete and yank item.
-y                     :Yank item.
+yy                    :Yank item.
 p                     :Put yanked item in the current directory.
 V                     :Switch to select mode.
   - d                 :In select mode, delete and yank selected items.
