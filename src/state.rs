@@ -370,7 +370,7 @@ impl State {
         let len = self.list.len();
 
         //if lists exceed max-row
-        if row > STARTING_POINT - 1 && len > (row - STARTING_POINT) as usize - 1 {
+        if len > (row - STARTING_POINT) as usize - 1 {
             let mut row_count = 0;
             for (i, _) in self.list.iter().enumerate() {
                 if i < skip_number as usize {
