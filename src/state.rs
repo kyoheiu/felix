@@ -18,7 +18,6 @@ pub const TRASH: &str = "trash";
 pub const NAME_MAX_LEN: usize = 30;
 pub const TIME_START_POS: u16 = 32;
 pub const WHEN_EMPTY: &str = "Are you sure to empty the trash directory? (if yes: y)";
-pub const WHEN_DELETE: &str = "Are you sure to cut this item? (if yes: y)";
 
 macro_rules! print_item {
     ($color: expr, $name: expr, $time: expr, $selected: expr) => {
@@ -55,7 +54,6 @@ pub struct State {
     pub colors: (Colorname, Colorname, Colorname),
     pub default: String,
     pub commands: HashMap<String, String>,
-    pub warning: bool,
     pub sort_by: SortKey,
 }
 
@@ -89,7 +87,6 @@ impl Default for State {
             ),
             default: config.default,
             commands: to_extension_map(&config.exec),
-            warning: config.warning,
             sort_by: config.sort_by,
         }
     }

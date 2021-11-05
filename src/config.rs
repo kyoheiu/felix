@@ -10,9 +10,6 @@ pub const CONFIG_EXAMPLE: &str = "
 # default exec command when open files
 default = \"nvim\"
 
-# Whether you see the warning message when delete item
-warning = false
-
 # default key for sorting item list (\"Name\" or \"Time\")
 sort_by = \"Name\"
 
@@ -51,7 +48,6 @@ symlink_fg = \"LightYellow\"
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config {
     pub default: String,
-    pub warning: bool,
     pub sort_by: SortKey,
     pub exec: HashMap<String, Vec<String>>,
     pub color: Color,
