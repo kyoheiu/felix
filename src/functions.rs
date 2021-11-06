@@ -49,9 +49,11 @@ pub fn rename_file(item: &ItemInfo, state: &State) -> String {
         let extension = rename.extension();
 
         let mut rename = rename.file_stem().unwrap().to_os_string();
-        rename.push("_copied.");
         if let Some(ext) = extension {
+            rename.push("_copied.");
             rename.push(ext);
+        } else {
+            rename.push("_copied");
         }
 
         let rename = rename
