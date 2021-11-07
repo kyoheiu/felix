@@ -233,8 +233,6 @@ impl State {
             let rename = rename_file(&item, &self);
             std::fs::copy(&item.file_path, current_dir.join(&rename))?;
         }
-
-        self.update_list(current_dir);
         Ok(())
     }
 
@@ -283,7 +281,6 @@ impl State {
                 std::fs::copy(entry.path(), &child)?;
             }
         }
-        self.update_list(current_dir);
         Ok(())
     }
 
