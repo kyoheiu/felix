@@ -5,8 +5,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::io::{Error, ErrorKind};
 use std::path::PathBuf;
-use std::process::Command;
-use std::process::ExitStatus;
+use std::process::{Command, ExitStatus};
 use termion::{color, cursor};
 
 pub const STARTING_POINT: u16 = 3;
