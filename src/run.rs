@@ -974,6 +974,18 @@ pub fn run(arg: PathBuf) {
 
                                     if command == vec!['q'] {
                                         break 'main;
+                                    } else if command == vec!['e'] {
+                                        state.update_list(&current_dir);
+                                        clear_and_show(&current_dir);
+                                        state.list_up(0);
+                                        print!(
+                                            "{}{}>{}",
+                                            cursor::Hide,
+                                            cursor::Goto(1, STARTING_POINT),
+                                            cursor::Left(1)
+                                        );
+                                        nums.reset();
+                                        break 'command;
                                     }
 
                                     let commands: String = command.iter().collect();
@@ -1000,10 +1012,10 @@ pub fn run(arg: PathBuf) {
                                         clear_and_show(&current_dir);
                                         state.list_up(0);
                                         print!(
-                                            "{}>{}{}",
+                                            "{}{}>{}",
+                                            cursor::Hide,
                                             cursor::Goto(1, STARTING_POINT),
                                             cursor::Left(1),
-                                            cursor::Hide
                                         );
                                         nums.reset();
                                         break 'command;
@@ -1029,7 +1041,7 @@ pub fn run(arg: PathBuf) {
                                         cursor::Goto(1, y),
                                         cursor::Left(1)
                                     );
-                                    break;
+                                    break 'command;
                                 }
 
                                 Key::Esc => {
@@ -1041,7 +1053,7 @@ pub fn run(arg: PathBuf) {
                                         cursor::Goto(1, y),
                                         cursor::Left(1)
                                     );
-                                    break;
+                                    break 'command;
                                 }
 
                                 Key::Left => {
