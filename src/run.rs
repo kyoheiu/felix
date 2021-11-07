@@ -647,6 +647,7 @@ pub fn run(arg: PathBuf) {
                         }
                     }
                     clear_and_show(&current_dir);
+                    state.update_list(&current_dir);
                     state.list_up(nums.skip);
                     print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                 }

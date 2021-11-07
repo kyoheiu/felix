@@ -209,31 +209,6 @@ impl State {
         self.registered.push(buf);
     }
 
-    pub fn check_duplicate(&self) -> Vec<bool> {
-        let mut vec_bool = Vec::new();
-        let sample = self.registered[0].clone().file_path;
-        let parent = sample.parent().unwrap();
-        if parent == &self.trash_dir {
-            for item in &self.registered {
-                let new_name: String = item.file_name.chars().skip(11).collect();
-                if self.list.iter().any(|x| x.file_name == new_name) {
-                    vec_bool.push(true);
-                } else {
-                    vec_bool.push(false);
-                }
-            }
-        } else {
-            for item in &self.registered {
-                if self.list.iter().any(|x| x.file_name == item.file_name) {
-                    vec_bool.push(true);
-                } else {
-                    vec_bool.push(false);
-                }
-            }
-        }
-        vec_bool
-    }
-
     pub fn yank_item(&mut self, index: usize, selected: bool) {
         if selected {
             self.registered.clear();
@@ -258,8 +233,6 @@ impl State {
             let rename = rename_file(&item, &self);
             std::fs::copy(&item.file_path, current_dir.join(&rename))?;
         }
-
-        self.update_list(current_dir);
         Ok(())
     }
 
@@ -308,7 +281,6 @@ impl State {
                 std::fs::copy(entry.path(), &child)?;
             }
         }
-        self.update_list(current_dir);
         Ok(())
     }
 
