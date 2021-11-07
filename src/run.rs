@@ -629,6 +629,9 @@ pub fn run(arg: PathBuf) {
                 }
 
                 Key::Char('p') => {
+                    if state.registered.is_empty() {
+                        continue;
+                    }
                     for item in state.registered.clone().into_iter() {
                         match item.file_type {
                             FileType::Directory => {
