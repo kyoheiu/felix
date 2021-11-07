@@ -27,6 +27,7 @@ t                     :Toggle sort order (name <-> modified time).
 c                     :Switch to rename mode.
 /                     :Switch to filter mode.
 E                     :Empty the trash directory.
+:e                    :Reload the current directory.
 :q / ZZ               :Exit the program.
 Esc                   :Return to normal mode.
 H                     :Show help.
