@@ -980,9 +980,24 @@ pub fn run(arg: PathBuf) {
                                         );
                                         nums.reset();
                                         break 'command;
+                                    } else if command == vec!['h'] {
+                                        print!("{}", cursor::Hide);
+                                        print!("{}{}", clear::All, cursor::Goto(1, 1));
+                                        let mut i = 2;
+                                        for line in HELP.lines() {
+                                            println!("{}{}", line, cursor::Goto(1, i));
+                                            i += 1;
+                                        }
+                                        println!("\nInput any key to go back.");
+                                        let _ = stdin.next();
+                                        clear_and_show(&current_dir);
+                                        state.list_up(nums.skip);
+                                        print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+                                        break 'command;
                                     }
 
                                     let commands: String = command.iter().collect();
+
                                     let commands = commands.split_ascii_whitespace();
 
                                     let mut c = "";
@@ -1102,20 +1117,6 @@ pub fn run(arg: PathBuf) {
                             }
                         }
                     }
-                }
-
-                Key::Char('H') => {
-                    print!("{}{}", clear::All, cursor::Goto(1, 1));
-                    let mut i = 2;
-                    for line in HELP.lines() {
-                        println!("{}{}", line, cursor::Goto(1, i));
-                        i += 1;
-                    }
-                    println!("\nInput any key to go back.");
-                    let _ = stdin.next();
-                    clear_and_show(&current_dir);
-                    state.list_up(nums.skip);
-                    print!("{}{}>{}", cursor::Hide, cursor::Goto(1, y), cursor::Left(1));
                 }
 
                 Key::Char('Z') => {
