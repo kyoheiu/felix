@@ -101,6 +101,24 @@ pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
     );
 }
 
+pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
+    print!(
+        " {}{}{}{}{}",
+        cursor::Goto(2, 2),
+        color::Fg(color::White),
+        clear::CurrentLine,
+        message,
+        color::Fg(color::Reset)
+    );
+
+    print!(
+        "{}{}>{}",
+        cursor::Hide,
+        cursor::Goto(1, then),
+        cursor::Left(1)
+    );
+}
+
 pub fn print_result<T: std::fmt::Display>(message: T, then: u16) {
     print!(
         " {}{}{}{}{}{}{}",

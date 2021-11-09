@@ -415,6 +415,7 @@ pub fn run(arg: PathBuf) {
                                 Key::Char('d') => {
                                     state.registered.clear();
                                     let iter = state.list.clone().into_iter();
+                                    let mut i = 0;
                                     for item in iter {
                                         if item.selected {
                                             match item.file_type {
@@ -431,11 +432,16 @@ pub fn run(arg: PathBuf) {
                                                     }
                                                 }
                                             }
+                                            i += 1;
                                         }
                                     }
                                     clear_and_show(&current_dir);
                                     state.update_list(&current_dir);
                                     state.list_up(nums.skip);
+
+                                    let mut delete_message: String = i.to_string();
+                                    delete_message.push_str(" items deleted");
+                                    print_info(delete_message, y);
 
                                     let new_len = state.list.len();
                                     if new_len == 0 {
@@ -466,6 +472,12 @@ pub fn run(arg: PathBuf) {
                                     state.reset_selection();
                                     clear_and_show(&current_dir);
                                     state.list_up(nums.skip);
+
+                                    let mut yank_message: String =
+                                        state.registered.len().to_string();
+                                    yank_message.push_str(" items yanked");
+                                    print_info(yank_message, y);
+
                                     print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                                     break;
                                 }
@@ -542,6 +554,7 @@ pub fn run(arg: PathBuf) {
                                         print!("{}", cursor::Hide);
                                         state.update_list(&current_dir);
                                         state.list_up(nums.skip);
+                                        print_info("1 item deleted", y);
                                         if len == 0 {
                                             print!(
                                                 "{}>{}",
@@ -602,6 +615,7 @@ pub fn run(arg: PathBuf) {
                                         cursor::Goto(1, y),
                                         cursor::Left(1)
                                     );
+                                    print_info("1 item yanked", y);
                                     break 'yank;
                                 }
 
@@ -642,6 +656,11 @@ pub fn run(arg: PathBuf) {
                     clear_and_show(&current_dir);
                     state.update_list(&current_dir);
                     state.list_up(nums.skip);
+
+                    let mut put_message: String = state.registered.len().to_string();
+                    put_message.push_str(" items inserted");
+                    print_info(put_message, y);
+
                     print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                 }
 
