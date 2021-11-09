@@ -498,12 +498,6 @@ pub fn run(arg: PathBuf) {
                         screen.flush().unwrap();
                     }
                 }
-                //for debug select mode
-                Key::Char('S') => {
-                    print!("{}", cursor::Goto(2, 2));
-                    debug_select(&state.registered);
-                    print!("{}", cursor::Goto(1, y));
-                }
 
                 Key::Char('t') => {
                     match state.sort_by {
