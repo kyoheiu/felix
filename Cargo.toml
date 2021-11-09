@@ -1,11 +1,15 @@
 [package]
-authors = ["Kyohei Uto <kyoheiu@outlook.com>"]
-description = "simple TUI file manager with vim-like keybind"
-edition = "2018"
-license = "MIT"
 name = "fm"
-repository = "https://github.com/kyoheiu/fm"
 version = "0.2.2"
+authors = ["Kyohei Uto <kyoheiu@outlook.com>"]
+edition = "2018"
+description = "simple TUI file manager with vim-like keybind"
+license = "MIT"
+repository = "https://github.com/kyoheiu/fm"
+keywords = ["tui", "termion", "file-manager"]
+categories = ["command-line-utilities", "filesystem"]
+readme = "README.md"
+
 [dependencies]
 chrono = "*"
 clipboard = "*"
