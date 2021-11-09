@@ -779,33 +779,6 @@ pub fn run(arg: PathBuf) {
                     }
                 }
 
-                Key::Char('E') => {
-                    print_warning(WHEN_EMPTY, y);
-                    screen.flush().unwrap();
-
-                    loop {
-                        let input = stdin.next();
-                        if let Some(Ok(key)) = input {
-                            match key {
-                                Key::Char('y') | Key::Char('Y') => {
-                                    if let Err(e) = std::fs::remove_dir_all(&state.trash_dir) {
-                                        print_warning(e, y);
-                                    }
-                                    if let Err(e) = std::fs::create_dir(&state.trash_dir) {
-                                        print_warning(e, y);
-                                    }
-                                    break;
-                                }
-                                _ => {
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    print!("{}{}{}", cursor::Goto(2, 2), clear::CurrentLine, DOWN_ARROW);
-                    print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
-                }
-
                 Key::Char('/') => {
                     if len == 0 {
                         continue;
@@ -1010,6 +983,44 @@ pub fn run(arg: PathBuf) {
                                         } else {
                                             args.push(s);
                                         }
+                                    }
+
+                                    if c == "empty" && args.is_empty() {
+                                        print_warning(WHEN_EMPTY, y);
+                                        screen.flush().unwrap();
+
+                                        'empty: loop {
+                                            let input = stdin.next();
+                                            if let Some(Ok(key)) = input {
+                                                match key {
+                                                    Key::Char('y') | Key::Char('Y') => {
+                                                        if let Err(e) = std::fs::remove_dir_all(
+                                                            &state.trash_dir,
+                                                        ) {
+                                                            print_warning(e, y);
+                                                        }
+                                                        if let Err(e) =
+                                                            std::fs::create_dir(&state.trash_dir)
+                                                        {
+                                                            print_warning(e, y);
+                                                        }
+                                                        break 'empty;
+                                                    }
+                                                    _ => {
+                                                        break 'empty;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        print!(
+                                            "{}{}{}{}",
+                                            cursor::Hide,
+                                            cursor::Goto(2, 2),
+                                            clear::CurrentLine,
+                                            DOWN_ARROW
+                                        );
+                                        print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+                                        break 'command;
                                     }
 
                                     if c == "cd" {
