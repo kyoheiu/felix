@@ -4,7 +4,7 @@ use chrono::prelude::*;
 use std::collections::HashMap;
 use std::fs;
 use std::io::{Error, ErrorKind};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
 use termion::{color, cursor};
 
@@ -144,7 +144,7 @@ impl State {
         std::fs::copy(from, &to)?;
 
         //copy original information to item_buf
-        self.to_registered(&item, to, rename);
+        self.to_registered_mut(&item, to, rename);
 
         //remove original
         std::fs::remove_file(from)?;
@@ -192,7 +192,7 @@ impl State {
         }
 
         //copy original information to item_buf
-        self.to_registered(&item, trash_path, trash_name);
+        self.to_registered_mut(&item, trash_path, trash_name);
 
         //remove original
         std::fs::remove_dir_all(&item.file_path)?;
@@ -200,7 +200,7 @@ impl State {
         Ok(())
     }
 
-    fn to_registered(&mut self, item: &ItemInfo, file_path: PathBuf, file_name: String) {
+    fn to_registered_mut(&mut self, item: &ItemInfo, file_path: PathBuf, file_name: String) {
         let mut buf = item.clone();
         buf.file_path = file_path;
         buf.file_name = file_name;
@@ -217,25 +217,25 @@ impl State {
         } else {
             self.registered.clear();
             let item = self.get_item(index).unwrap().clone();
-            self.registered.push(item.clone());
+            self.registered.push(item);
         }
     }
 
-    pub fn put_file(&mut self, item: &ItemInfo, current_dir: &PathBuf) -> std::io::Result<()> {
+    pub fn put_file(&mut self, item: &ItemInfo, current_dir: &Path) -> std::io::Result<()> {
         if item.file_path.parent() == Some(&self.trash_dir) {
             let mut item = item.clone();
             let rename = item.file_name.chars().skip(11).collect();
             item.file_name = rename;
-            let rename = rename_file(&item, &self);
+            let rename = rename_file(&item, self);
             std::fs::copy(&item.file_path, current_dir.join(&rename))?;
         } else {
-            let rename = rename_file(&item, &self);
+            let rename = rename_file(item, self);
             std::fs::copy(&item.file_path, current_dir.join(&rename))?;
         }
         Ok(())
     }
 
-    pub fn put_dir(&mut self, buf: &ItemInfo, current_dir: &PathBuf) -> std::io::Result<()> {
+    pub fn put_dir(&mut self, buf: &ItemInfo, current_dir: &Path) -> std::io::Result<()> {
         let mut base: usize = 0;
         let mut target: PathBuf = PathBuf::new();
         let original_path = &(buf).file_path;
@@ -252,11 +252,11 @@ impl State {
                     let rename = buf.file_name.chars().skip(11).collect();
                     buf.file_name = rename;
 
-                    let rename = rename_dir(&buf, &self);
+                    let rename = rename_dir(&buf, self);
                     target = current_dir.join(rename);
                     std::fs::create_dir(&target)?;
                 } else {
-                    let rename = rename_dir(&buf, &self);
+                    let rename = rename_dir(buf, self);
                     target = current_dir.join(rename);
                     std::fs::create_dir(&target)?;
                 }
@@ -269,11 +269,9 @@ impl State {
                 if entry.file_type().is_dir() {
                     std::fs::create_dir(child)?;
                     continue;
-                } else {
-                    if let Some(parent) = entry.path().parent() {
-                        if !parent.exists() {
-                            std::fs::create_dir(parent)?;
-                        }
+                } else if let Some(parent) = entry.path().parent() {
+                    if !parent.exists() {
+                        std::fs::create_dir(parent)?;
                     }
                 }
 
@@ -295,10 +293,10 @@ impl State {
         };
         let time = format_time(&item.modified);
         let selected = &item.selected;
-        let color = match &item.file_type {
-            &FileType::Directory => &self.colors.0,
-            &FileType::File => &self.colors.1,
-            &FileType::Symlink => &self.colors.2,
+        let color = match item.file_type {
+            FileType::Directory => &self.colors.0,
+            FileType::File => &self.colors.1,
+            FileType::Symlink => &self.colors.2,
         };
         match color {
             Colorname::AnsiValue(n) => {
@@ -452,7 +450,7 @@ fn make_item(dir: fs::DirEntry) -> ItemInfo {
         .into_string()
         .unwrap_or_else(|_| panic!("failed to get file name."));
 
-    return ItemInfo {
+    ItemInfo {
         file_type: if path.is_symlink() {
             FileType::Symlink
         } else if path.is_file() {
@@ -464,10 +462,10 @@ fn make_item(dir: fs::DirEntry) -> ItemInfo {
         file_path: path,
         modified: time,
         selected: false,
-    };
+    }
 }
 
-pub fn push_items(p: &PathBuf, key: &SortKey) -> Result<Vec<ItemInfo>, Error> {
+pub fn push_items(p: &Path, key: &SortKey) -> Result<Vec<ItemInfo>, Error> {
     let mut result = Vec::new();
     let mut dir_v = Vec::new();
     let mut file_v = Vec::new();

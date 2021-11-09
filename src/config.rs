@@ -95,7 +95,7 @@ pub fn read_config() -> Option<Config> {
     let config = read_to_string(config.as_path());
     if let Ok(config) = config {
         let deserialized: Config = toml::from_str(&config).unwrap();
-        return Some(deserialized);
+        Some(deserialized)
     } else {
         None
     }

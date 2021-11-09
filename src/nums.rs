@@ -11,7 +11,7 @@ pub struct Num {
 
 impl Num {
     pub fn new() -> Self {
-        Default::default()
+        Num { index: 0, skip: 0 }
     }
     pub fn go_up(&mut self) {
         self.index -= 1;
@@ -34,11 +34,5 @@ impl Num {
     }
     pub fn reset_skip(&mut self) {
         self.skip = 0;
-    }
-}
-
-impl Default for Num {
-    fn default() -> Self {
-        Num { index: 0, skip: 0 }
     }
 }

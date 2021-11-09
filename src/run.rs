@@ -26,7 +26,7 @@ pub fn run(arg: PathBuf) {
     }
 
     let mut state = State::new();
-    let mut current_dir = arg.canonicalize().unwrap().to_path_buf();
+    let mut current_dir = arg.canonicalize().unwrap();
     state.update_list(&current_dir);
     state.trash_dir = trash_dir;
 
@@ -549,21 +549,15 @@ pub fn run(arg: PathBuf) {
                                                 cursor::Left(1)
                                             );
                                             nums.reset();
+                                        } else if nums.index == len - 1 {
+                                            print!(
+                                                "{}>{}",
+                                                cursor::Goto(1, y - 1),
+                                                cursor::Left(1)
+                                            );
+                                            nums.go_up();
                                         } else {
-                                            if nums.index == len - 1 {
-                                                print!(
-                                                    "{}>{}",
-                                                    cursor::Goto(1, y - 1),
-                                                    cursor::Left(1)
-                                                );
-                                                nums.go_up();
-                                            } else {
-                                                print!(
-                                                    "{}>{}",
-                                                    cursor::Goto(1, y),
-                                                    cursor::Left(1)
-                                                );
-                                            }
+                                            print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                                         }
                                         break 'delete;
                                     }

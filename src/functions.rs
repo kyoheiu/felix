@@ -2,10 +2,10 @@ use super::config::CONFIG_EXAMPLE;
 use super::state::*;
 use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use termion::{clear, color, cursor, style};
 
-pub fn make_config(config_file: &PathBuf, trash_dir: &PathBuf) -> std::io::Result<()> {
+pub fn make_config(config_file: &Path, trash_dir: &Path) -> std::io::Result<()> {
     if !config_file.exists() {
         fs::write(&config_file, CONFIG_EXAMPLE)
             .unwrap_or_else(|_| panic!("cannot write new confi file."));
@@ -25,7 +25,7 @@ pub fn format_time(time: &Option<String>) -> String {
     }
 }
 
-pub fn clear_and_show(dir: &PathBuf) {
+pub fn clear_and_show(dir: &Path) {
     print!("{}{}", clear::All, cursor::Goto(1, 1));
     //Show current directory path
     println!(
@@ -62,7 +62,7 @@ pub fn rename_file(item: &ItemInfo, state: &State) -> String {
 
         let mut renamed_item = item.clone();
         renamed_item.file_name = rename;
-        return rename_file(&renamed_item, state);
+        rename_file(&renamed_item, state)
     } else {
         file_name.clone()
     }
@@ -75,7 +75,7 @@ pub fn rename_dir(item: &ItemInfo, state: &State) -> String {
         rename.push_str("_copied");
         let mut renamed_item = item.clone();
         renamed_item.file_name = rename;
-        return rename_dir(&renamed_item, state);
+        rename_dir(&renamed_item, state)
     } else {
         file_name.clone()
     }
@@ -131,7 +131,7 @@ pub fn to_extension_map(config: &HashMap<String, Vec<String>>) -> HashMap<String
     new_map
 }
 
-pub fn debug_select(vec: &Vec<ItemInfo>) {
+pub fn debug_select(vec: &[ItemInfo]) {
     for item in vec {
         print!("{} ", item.file_name);
     }
