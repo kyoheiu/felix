@@ -18,8 +18,8 @@ My goal is to make a file manager that enables you to:
 ## Installation
 
 ```
-git clone https://github.com/kyoheiu/fx.git
-cd fx
+git clone https://github.com/kyoheiu/fx-rs.git
+cd fx-rs
 cargo +nightly install --path .
 ```
 
