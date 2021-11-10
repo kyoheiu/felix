@@ -1,3 +1,5 @@
+![crates.io](https://img.shields.io/crates/v/felix)
+
 # felix
 
 A tui file manager with vim-like key mapping, written in Rust.
