@@ -1,14 +1,14 @@
 [package]
-authors = ["Kyohei Uto <kyoheiu@outlook.com>"]
-categories = ["command-line-utilities", "filesystem"]
-description = "simple TUI file manager with vim-like keybind"
-edition = "2018"
-keywords = ["tui", "termion", "file-manager"]
-license = "MIT"
-name = "fx-rs"
-readme = "README.md"
-repository = "https://github.com/kyoheiu/fx"
+name = "felix"
 version = "0.2.3"
+authors = ["Kyohei Uto <kyoheiu@outlook.com>"]
+edition = "2018"
+description = "tui file manager with vim-like key mapping"
+readme = "README.md"
+repository = "https://github.com/kyoheiu/felix"
+license = "MIT"
+keywords = ["tui", "termion", "file-manager"]
+categories = ["command-line-utilities", "filesystem"]
 
 [[bin]]
 name = "fx"
@@ -17,13 +17,13 @@ test = false
 bench = false
 
 [dependencies]
-chrono = "*"
-clipboard = "*"
+chrono = "0.4.19"
+clipboard = "0.5.0"
 dirs = "4.0.0"
-natord = "*"
+natord = "1.0.9"
 termion = "1.5.6"
 toml = "0.5.8"
-walkdir = "*"
+walkdir = "2.3.2"
 
 [dependencies.serde]
 features = ["derive"]
