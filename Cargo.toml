@@ -1,14 +1,20 @@
 [package]
-name = "fm"
-version = "0.2.2"
 authors = ["Kyohei Uto <kyoheiu@outlook.com>"]
-edition = "2018"
-description = "simple TUI file manager with vim-like keybind"
-license = "MIT"
-repository = "https://github.com/kyoheiu/fm"
-keywords = ["tui", "termion", "file-manager"]
 categories = ["command-line-utilities", "filesystem"]
+description = "simple TUI file manager with vim-like keybind"
+edition = "2018"
+keywords = ["tui", "termion", "file-manager"]
+license = "MIT"
+name = "fx-rs"
 readme = "README.md"
+repository = "https://github.com/kyoheiu/fx"
+version = "0.2.3"
+
+[[bin]]
+name = "fx"
+path = "src/main.rs"
+test = false
+bench = false
 
 [dependencies]
 chrono = "*"

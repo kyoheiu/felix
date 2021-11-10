@@ -82,8 +82,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "fm"
-version = "0.2.2"
+name = "fx-rs"
+version = "0.2.3"
 dependencies = [
  "chrono",
  "clipboard",
