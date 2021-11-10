@@ -1,10 +1,10 @@
-pub const HELP: &str = "# fx
+pub const HELP: &str = "# felix
 A simple TUI file manager with vim-like keybind.
 
 ## Usage
 
-`fx` => Show items in current directory.
-`fx <directory path>` => Show items in the path.
+`felix` => Show items in current directory.
+`felix <directory path>` => Show items in the path.
 Both relative and absolute available.
 
 ### Manual
@@ -34,9 +34,9 @@ Esc                   :Return to normal mode.
 
 ## Configuration
 
-config file    : $XDG_CONFIG_HOME/fx/config.toml
-trash directory: $XDG_CONFIG_HOME/fx/trash
+config file    : $XDG_CONFIG_HOME/felix/config.toml
+trash directory: $XDG_CONFIG_HOME/felix/trash
 
 for more detail, visit:
-https://github.com/kyoheiu/fx
+https://github.com/kyoheiu/felix
 ";

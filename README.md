@@ -1,8 +1,8 @@
-# fx
+# felix
 
-A TUI file manager with vim-like keybind, written in Rust.
+A tui file manager with vim-like key mapping, written in Rust.
 
-![sample](https://github.com/kyoheiu/fx-rs/blob/main/screenshots/sample.gif)
+![sample](https://github.com/kyoheiu/felix/blob/main/screenshots/sample.gif)
 
 My goal is to make a file manager that enables you to:
 
@@ -18,8 +18,8 @@ My goal is to make a file manager that enables you to:
 ## Installation
 
 ```
-git clone https://github.com/kyoheiu/fx-rs.git
-cd fx-rs
+git clone https://github.com/kyoheiu/felix.git
+cd felix
 cargo +nightly install --path .
 ```
 
@@ -27,8 +27,8 @@ cargo +nightly install --path .
 
 | command               |                                                               |
 | --------------------- | ------------------------------------------------------------- |
-| `fx`                  | Show items in the current directory.                          |
-| `fx <directory path>` | Show items in the path. Both relative and absolute available. |
+| `felix`                  | Show items in the current directory.                          |
+| `felix <directory path>` | Show items in the path. Both relative and absolute available. |
 
 ## Key manual
 
@@ -63,8 +63,8 @@ Note that items moved to the trash directory are prefixed with Unix time (like `
 
 |                 |                                   |
 | --------------- | --------------------------------- |
-| config file     | `$XDG_CONFIG_HOME/fx/config.toml` |
-| trash directory | `$XDG_CONFIG_HOME/fx/trash`       |
+| config file     | `$XDG_CONFIG_HOME/felix/config.toml` |
+| trash directory | `$XDG_CONFIG_HOME/felix/trash`       |
 
 Default config file, which is [here](config.toml), will be created automatically when you launch the program for the first time.
 

@@ -11,7 +11,7 @@ use termion::{color, cursor};
 pub const STARTING_POINT: u16 = 3;
 pub const DOWN_ARROW: char = '\u{21D3}';
 pub const RIGHT_ARROW: char = '\u{21D2}';
-pub const FX_CONFIG_DIR: &str = "fx";
+pub const FX_CONFIG_DIR: &str = "felix";
 pub const CONFIG_FILE: &str = "config.toml";
 pub const TRASH: &str = "trash";
 pub const NAME_MAX_LEN: usize = 30;
