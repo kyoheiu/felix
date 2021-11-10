@@ -1,4 +1,4 @@
-![crates.io](https://img.shields.io/crates/v/felix)
+[![crates.io](https://img.shields.io/crates/v/felix)](https://crates.io/crates/felix)
 
 # felix
 
