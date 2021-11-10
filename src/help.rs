@@ -1,10 +1,10 @@
-pub const HELP: &str = "# fm
+pub const HELP: &str = "# fx
 A simple TUI file manager with vim-like keybind.
 
 ## Usage
 
-`fm` => Show items in current directory.
-`fm <directory path>` => Show items in the path.
+`fx` => Show items in current directory.
+`fx <directory path>` => Show items in the path.
 Both relative and absolute available.
 
 ### Manual
@@ -26,17 +26,17 @@ t                     :Toggle sort order (name <-> modified time).
 :                     :Switch to shell mode.
 c                     :Switch to rename mode.
 /                     :Switch to filter mode.
-E                     :Empty the trash directory.
-:e                    :Reload the current directory.
-:q / ZZ               :Exit the program.
 Esc                   :Return to normal mode.
-H                     :Show help.
+:e                    :Reload the current directory.
+:empty                :Empty the trash directory.
+:h                    :Show help.
+:q / ZZ               :Exit the program.
 
 ## Configuration
 
-config file    : $XDG_CONFIG_HOME/fm/config.toml
-trash directory: $XDG_CONFIG_HOME/fm/trash
+config file    : $XDG_CONFIG_HOME/fx/config.toml
+trash directory: $XDG_CONFIG_HOME/fx/trash
 
 for more detail, visit:
-https://github.com/kyoheiu/fm
+https://github.com/kyoheiu/fx
 ";
