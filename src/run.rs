@@ -14,7 +14,7 @@ use termion::{clear, cursor, screen};
 
 pub fn run(arg: PathBuf) {
     let mut config_dir = dirs::config_dir().unwrap_or_else(|| panic!("cannot read config dir."));
-    config_dir.push(FM_CONFIG_DIR);
+    config_dir.push(FX_CONFIG_DIR);
     let config_file = config_dir.join(PathBuf::from(CONFIG_FILE));
     let trash_dir = config_dir.join(PathBuf::from(TRASH));
     make_config(&config_file, &trash_dir)
@@ -787,7 +787,7 @@ pub fn run(arg: PathBuf) {
 
                     let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
                     match ctx.set_contents(item.file_name.clone()) {
-                        Ok(()) => print_result("file name copied!", y),
+                        Ok(()) => print_info("file name copied", y),
                         Err(e) => print_warning(e, y),
                     }
                 }
