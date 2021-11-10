@@ -17,6 +17,14 @@ My goal is to make a file manager that enables you to:
 
 ## Installation
 
+from crates.io:
+
+```
+cargo install felix
+```
+
+from this repository:
+
 ```
 git clone https://github.com/kyoheiu/felix.git
 cd felix
