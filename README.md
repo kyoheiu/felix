@@ -1,33 +1,25 @@
-# fm
+# fx
 
-A simple TUI file manager with vim-like keybind, written in Rust.
+A TUI file manager with vim-like keybind, written in Rust.
+
+![sample](https://github.com/kyoheiu/fx/blob/main/screenshots/sample.gif)
+
+My goal is to make a file manager that enables you to:
+
+- configurate easily
+- do what you want in daily use
+
+## Status
 
 - Linux : works well
 - MacOS : _should_ work, though some unusual errors may occur
 - Windows: almost unavailable due to file-name encoding error
 
-![sample](https://github.com/kyoheiu/fm/blob/main/screenshots/sample.gif)
-
-My aim is to make a file manager that enables you to:
-
-- configurate easily
-- do what you want in daily use
-
-And with `fm`, now you can:
-
-- set your own commands to open file inside this program with `config.toml`
-- delete, yank & put multiple items
-- filter the list and choose item easily
-- toggle sort order
-- rename item
-- empty the trash directory
-- execute shell command in shell mode
-
 ## Installation
 
 ```
-git clone https://github.com/kyoheiu/fm.git
-cd fm
+git clone https://github.com/kyoheiu/fx.git
+cd fx
 cargo +nightly install --path .
 ```
 
@@ -35,8 +27,8 @@ cargo +nightly install --path .
 
 | command               |                                                               |
 | --------------------- | ------------------------------------------------------------- |
-| `fm`                  | Show items in the current directory.                          |
-| `fm <directory path>` | Show items in the path. Both relative and absolute available. |
+| `fx`                  | Show items in the current directory.                          |
+| `fx <directory path>` | Show items in the path. Both relative and absolute available. |
 
 ## Key manual
 
@@ -59,11 +51,11 @@ cargo +nightly install --path .
 | :                     | Switch to shell mode. Type command and press Enter to execute it (e.g. `:cd ~` means to change directory to home dir and to refresh the list). You can use any command in the displayed directory, though the list may be broken during the execution. |
 | c                     | Switch to rename mode (enter new name and press Enter to rename the item).                                                                                                                                                                             |
 | /                     | Switch to filter mode (enter keyword and press Enter to go to filtered list).                                                                                                                                                                          |
-| E                     | Empty the trash directory. **Please think twice before using this command.**                                                                                                                                                                           |
 | Esc                   | Return to normal mode.                                                                                                                                                                                                                                 |
 | :e                    | Reload the current directory. Useful when something goes wrong in filter mode (e.g. no matches) or shell mode.                                                                                                                                         |
+| :empty                | Empty the trash directory. **Please think twice before using this command.**                                                                                                                                                                           |
+| :h                    | Show help.                                                                                                                                                                                                                                             |
 | :q / ZZ               | Exit the program.                                                                                                                                                                                                                                      |
-| H                     | Show help.                                                                                                                                                                                                                                             |
 
 Note that items moved to the trash directory are prefixed with Unix time (like `1633843993`) to avoid name conflict. This prefix will be removed when paste.
 
@@ -71,8 +63,8 @@ Note that items moved to the trash directory are prefixed with Unix time (like `
 
 |                 |                                   |
 | --------------- | --------------------------------- |
-| config file     | `$XDG_CONFIG_HOME/fm/config.toml` |
-| trash directory | `$XDG_CONFIG_HOME/fm/trash`       |
+| config file     | `$XDG_CONFIG_HOME/fx/config.toml` |
+| trash directory | `$XDG_CONFIG_HOME/fx/trash`       |
 
 Default config file, which is [here](config.toml), will be created automatically when you launch the program for the first time.
 
@@ -103,4 +95,3 @@ then, .jpg, .jpeg, .png, .gif and .svg files are opened by `feh <file-name>`, .p
 - [x] change sort order (file name / new to old)
 - [x] implement shell mode
 - [x] implement `V`(select mode)
-- [ ] show item size
