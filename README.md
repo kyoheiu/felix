@@ -2,7 +2,7 @@
 
 A TUI file manager with vim-like keybind, written in Rust.
 
-![sample](https://github.com/kyoheiu/fx/blob/main/screenshots/sample.gif)
+![sample](https://github.com/kyoheiu/fx-rs/blob/main/screenshots/sample.gif)
 
 My goal is to make a file manager that enables you to:
 
