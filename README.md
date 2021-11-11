@@ -22,7 +22,7 @@ While this project is heavliy inspired by the great `vifm` and trying to impleme
 from crates.io:
 
 ```
-cargo install felix
+cargo +nightly install felix
 ```
 
 from this repository:
