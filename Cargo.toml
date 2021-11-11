@@ -1,6 +1,6 @@
 [package]
 name = "felix"
-version = "0.2.5"
+version = "0.2.6"
 authors = ["Kyohei Uto <kyoheiu@outlook.com>"]
 edition = "2018"
 description = "tui file manager with vim-like key mapping"
