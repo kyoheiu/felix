@@ -209,13 +209,12 @@ impl State {
     }
 
     pub fn yank_item(&mut self, index: usize, selected: bool) {
+        self.registered.clear();
         if selected {
-            self.registered.clear();
             for item in self.list.iter_mut().filter(|item| item.selected) {
                 self.registered.push(item.clone());
             }
         } else {
-            self.registered.clear();
             let item = self.get_item(index).unwrap().clone();
             self.registered.push(item);
         }
@@ -254,12 +253,11 @@ impl State {
 
                     let rename = rename_dir(&buf, self);
                     target = current_dir.join(rename);
-                    std::fs::create_dir(&target)?;
                 } else {
                     let rename = rename_dir(buf, self);
                     target = current_dir.join(rename);
-                    std::fs::create_dir(&target)?;
                 }
+                std::fs::create_dir(&target)?;
                 i += 1;
                 continue;
             } else {
@@ -436,13 +434,31 @@ impl State {
 
 fn make_item(dir: fs::DirEntry) -> ItemInfo {
     let path = dir.path();
+    let metadata = &fs::symlink_metadata(&path);
 
-    let time = if let Ok(metadata) = fs::metadata(&path) {
-        let sometime = metadata.modified().unwrap();
-        let chrono_time: DateTime<Local> = DateTime::from(sometime);
-        Some(chrono_time.to_rfc3339_opts(SecondsFormat::Secs, false))
-    } else {
-        None
+    let time = match metadata {
+        Ok(metadata) => {
+            let sometime = metadata.modified().unwrap();
+            let chrono_time: DateTime<Local> = DateTime::from(sometime);
+            Some(chrono_time.to_rfc3339_opts(SecondsFormat::Secs, false))
+        }
+        Err(_) => None,
+    };
+
+    let filetype = match metadata {
+        Ok(metadata) => {
+            let file_type = metadata.file_type();
+            if file_type.is_dir() {
+                FileType::Directory
+            } else if file_type.is_file() {
+                FileType::File
+            } else if file_type.is_symlink() {
+                FileType::Symlink
+            } else {
+                FileType::File
+            }
+        }
+        Err(_) => FileType::File,
     };
 
     let name = dir
@@ -451,13 +467,7 @@ fn make_item(dir: fs::DirEntry) -> ItemInfo {
         .unwrap_or_else(|_| panic!("failed to get file name."));
 
     ItemInfo {
-        file_type: if path.is_symlink() {
-            FileType::Symlink
-        } else if path.is_file() {
-            FileType::File
-        } else {
-            FileType::Directory
-        },
+        file_type: filetype,
         file_name: name,
         file_path: path,
         modified: time,
