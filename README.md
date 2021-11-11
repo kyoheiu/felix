@@ -22,7 +22,7 @@ While this project is heavliy inspired by the great `vifm` and trying to impleme
 from crates.io:
 
 ```
-cargo +nightly install felix
+cargo install felix
 ```
 
 from this repository:
@@ -30,7 +30,7 @@ from this repository:
 ```
 git clone https://github.com/kyoheiu/felix.git
 cd felix
-cargo +nightly install --path .
+cargo install --path .
 ```
 
 ## Usage
