@@ -3,8 +3,8 @@ A simple TUI file manager with vim-like keybind.
 
 ## Usage
 
-`felix` => Show items in current directory.
-`felix <directory path>` => Show items in the path.
+`fx` => Show items in current directory.
+`fx <directory path>` => Show items in the path.
 Both relative and absolute available.
 
 ### Manual
