@@ -6,10 +6,10 @@ A tui file manager with vim-like key mapping, written in Rust.
 
 ![sample](https://github.com/kyoheiu/felix/blob/main/screenshots/sample.gif)
 
-My goal is to make a file manager that enables you to:
+While this project is heavliy inspired by the great `vifm` and trying to implement its comfortable experience in Rust, at the same time `felix` focuses on the following points:
 
-- configurate easily
-- do what you want in daily use
+- easy configuration of how to open files
+- as simple and lightweight as possible
 
 ## Status
 
@@ -37,8 +37,8 @@ cargo +nightly install --path .
 
 | command               |                                                               |
 | --------------------- | ------------------------------------------------------------- |
-| `felix`                  | Show items in the current directory.                          |
-| `felix <directory path>` | Show items in the path. Both relative and absolute available. |
+| `fx`                  | Show items in the current directory.                          |
+| `fx <directory path>` | Show items in the path. Both relative and absolute available. |
 
 ## Key manual
 
