@@ -164,7 +164,7 @@ pub fn run(arg: PathBuf) {
                         match item.file_type {
                             FileType::File | FileType::Symlink => {
                                 print!("{}", screen::ToAlternateScreen);
-                                if let Err(_) = state.open_file(nums.index) {
+                                if state.open_file(nums.index).is_err() {
                                     print_warning("Cannot open file. Check your config!", y);
                                     continue;
                                 }
@@ -1036,31 +1036,37 @@ pub fn run(arg: PathBuf) {
                                         break 'command;
                                     }
 
-                                    if c == "cd" {
-                                        current_dir =
-                                            PathBuf::from(args[0]).canonicalize().unwrap();
-                                        std::env::set_current_dir(&current_dir)
-                                            .unwrap_or_else(|e| print_warning(e, y));
-                                        state.update_list(&current_dir);
-                                        clear_and_show(&current_dir);
-                                        state.list_up(0);
-                                        print!(
-                                            "{}{}>{}",
-                                            cursor::Hide,
-                                            cursor::Goto(1, STARTING_POINT),
-                                            cursor::Left(1),
-                                        );
-                                        nums.reset();
-                                        break 'command;
-                                    }
+                                    // if c == "cd" {
+                                    //     current_dir =
+                                    //         PathBuf::from(args[0]).canonicalize().unwrap();
+                                    //     state.update_list(&current_dir);
+                                    //     clear_and_show(&current_dir);
+                                    //     state.list_up(0);
+                                    //     print!(
+                                    //         "{}{}>{}",
+                                    //         cursor::Hide,
+                                    //         cursor::Goto(1, STARTING_POINT),
+                                    //         cursor::Left(1),
+                                    //     );
+                                    //     nums.reset();
+                                    //     break 'command;
+                                    // }
 
                                     print!("{}", screen::ToAlternateScreen);
                                     std::env::set_current_dir(&current_dir)
                                         .unwrap_or_else(|e| print_warning(e, y));
-                                    if let Err(e) =
+                                    if let Err(_) =
                                         std::process::Command::new(c).args(args).status()
                                     {
-                                        print_warning(e, y);
+                                        print!("{}", screen::ToAlternateScreen);
+
+                                        clear_and_show(&current_dir);
+                                        state.update_list(&current_dir);
+                                        state.list_up(nums.skip);
+
+                                        print!("{}", cursor::Hide,);
+                                        print_warning("cannot execute command", y);
+                                        break 'command;
                                     }
                                     print!("{}", screen::ToAlternateScreen);
 
