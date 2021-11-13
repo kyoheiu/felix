@@ -6,10 +6,10 @@ A tui file manager with vim-like key mapping, written in Rust.
 
 ![sample](https://github.com/kyoheiu/felix/blob/main/screenshots/sample.gif)
 
-While this project is heavliy inspired by the great `vifm` and trying to implement its comfortable experience in Rust, at the same time `felix` focuses on the following points:
+While heavliy inspired by the great `vifm` and trying to implement its pleasant experience in Rust, at the same time this project focuses on the following points:
 
-- easy configuration of how to open files
-- as simple and lightweight as possible
+- easy to configure how files are opened
+- simple and lightweight
 
 ## Status
 
@@ -78,13 +78,13 @@ Note that items moved to the trash directory are prefixed with Unix time (like `
 
 Default config file, which is [here](config.toml), will be created automatically when you launch the program for the first time.
 
-In config.toml, you can configurate:
+In config.toml, you can configure:
 
 - color of directory, file, and symlink separatively
 - default key for sorting item list ("Name" or "Time")
 - how to open files
 
-### Command configuration
+### Command setting
 
 If you write
 
@@ -97,11 +97,3 @@ zathura = ["pdf"]
 ```
 
 then, .jpg, .jpeg, .png, .gif and .svg files are opened by `feh <file-name>`, .pdf files by `zathura <file-name>` and others by `nvim <file-name>` .
-
-## todo
-
-- [x] easier way to configurate exec commands
-- [x] choose whether the warning appears or not when delete
-- [x] change sort order (file name / new to old)
-- [x] implement shell mode
-- [x] implement `V`(select mode)
