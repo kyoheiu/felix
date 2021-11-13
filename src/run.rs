@@ -148,15 +148,14 @@ pub fn run(arg: PathBuf) {
                         clear_and_show(&current_dir);
                         state.list_up(nums.skip);
                         print!("{}>{}", cursor::Goto(1, row - 1), cursor::Left(1));
-                        nums.go_bottom(len - 1);
                     } else {
                         print!(
                             " {}>{}",
                             cursor::Goto(1, len as u16 + STARTING_POINT - 1),
                             cursor::Left(1)
                         );
-                        nums.go_bottom(len - 1);
                     }
+                    nums.go_bottom(len - 1);
                 }
 
                 //Open file or change directory
@@ -165,8 +164,9 @@ pub fn run(arg: PathBuf) {
                         match item.file_type {
                             FileType::File | FileType::Symlink => {
                                 print!("{}", screen::ToAlternateScreen);
-                                if let Err(e) = state.open_file(nums.index) {
-                                    print_warning(e, y);
+                                if let Err(_) = state.open_file(nums.index) {
+                                    print_warning("Cannot open file. Check your config!", y);
+                                    continue;
                                 }
                                 print!("{}", screen::ToAlternateScreen);
                                 clear_and_show(&current_dir);
