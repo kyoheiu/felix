@@ -15,4 +15,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Install
-      run: cargo install --path .
+      run: |
+        sudo apt update
+        sudo apt-get install libxcb-composite0-dev
+        cargo install --path .
