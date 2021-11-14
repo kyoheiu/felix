@@ -1,7 +1,8 @@
 name: 'install test'
 
 on:
-  push
+  push:
+    branches: '!main'
 
 env:
   CARGO_TERM_COLOR: always
