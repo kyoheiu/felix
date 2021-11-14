@@ -1,8 +1,7 @@
 name: 'install test'
 
 on:
-  push:
-    branches: [ ghactions ]
+  push
 
 env:
   CARGO_TERM_COLOR: always
