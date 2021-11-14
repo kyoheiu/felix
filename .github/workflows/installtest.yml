@@ -10,7 +10,7 @@ env:
 jobs:
   build:
 
-    runs-on: rust-latest
+    runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v2
