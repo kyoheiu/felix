@@ -1,0 +1,26 @@
+name: 'install test'
+
+on:
+  push:
+    branches: '!main'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  ubuntu-build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install
+      run: |
+        sudo apt update
+        sudo apt-get install libxcb-composite0-dev
+        cargo install --path .
+  macos-build:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install
+      run: |
+        cargo install --path .
