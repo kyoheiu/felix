@@ -548,24 +548,15 @@ pub fn run(arg: PathBuf) {
                                         print!("{}", cursor::Hide);
                                         state.update_list(&current_dir);
                                         state.list_up(nums.skip);
-                                        print_info("1 item deleted", y);
-                                        if len == 0 {
-                                            print!(
-                                                "{}>{}",
-                                                cursor::Goto(1, STARTING_POINT),
-                                                cursor::Left(1)
-                                            );
-                                            nums.reset();
+                                        let cursor_pos = if state.list.is_empty() {
+                                            STARTING_POINT
                                         } else if nums.index == len - 1 {
-                                            print!(
-                                                "{}>{}",
-                                                cursor::Goto(1, y - 1),
-                                                cursor::Left(1)
-                                            );
                                             nums.go_up();
+                                            y - 1
                                         } else {
-                                            print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
-                                        }
+                                            y
+                                        };
+                                        print_info("1 item deleted", cursor_pos);
                                         break 'delete;
                                     }
                                     _ => {
