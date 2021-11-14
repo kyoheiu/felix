@@ -4,7 +4,7 @@
 
 A tui file manager with vim-like key mapping, written in Rust.
 
-![sample](https://github.com/kyoheiu/felix/blob/main/screenshots/sample.gif)
+[sample gif](https://github.com/kyoheiu/felix/blob/main/screenshots/sample.gif)
 
 While heavliy inspired by the great `vifm` and trying to implement its pleasant experience in Rust, at the same time this project focuses on the following points:
 
@@ -25,7 +25,7 @@ from crates.io:
 cargo install felix
 ```
 
-or from this repository:
+or from GitHub repository:
 
 ```
 git clone https://github.com/kyoheiu/felix.git
