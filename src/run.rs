@@ -1046,9 +1046,7 @@ pub fn run(arg: PathBuf) {
                                     print!("{}", screen::ToAlternateScreen);
                                     std::env::set_current_dir(&current_dir)
                                         .unwrap_or_else(|e| print_warning(e, y));
-                                    if let Err(_) =
-                                        std::process::Command::new(c).args(args).status()
-                                    {
+                                    if std::process::Command::new(c).args(args).status().is_err() {
                                         print!("{}", screen::ToAlternateScreen);
 
                                         clear_and_show(&current_dir);
