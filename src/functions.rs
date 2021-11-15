@@ -28,16 +28,32 @@ pub fn format_time(time: &Option<String>) -> String {
 pub fn clear_and_show(dir: &Path) {
     print!("{}{}", clear::All, cursor::Goto(1, 1));
     //Show current directory path
-    println!(
-        " {}{}{}{}{}{}{}",
+    print!(
+        " {}{}{}{}{}{}",
         style::Bold,
-        color::Bg(color::Cyan),
-        color::Fg(color::Black),
+        color::Fg(color::Cyan),
+        style::Invert,
         dir.display(),
+        color::Fg(color::Reset),
         style::Reset,
-        color::Bg(color::Reset),
-        color::Fg(color::Reset)
     );
+
+    let git = dir.join(".git");
+    if git.exists() {
+        let current_branch = std::process::Command::new("git")
+            .args(["branch", "--show-current"])
+            .output();
+        if let Ok(result) = current_branch {
+            let branch = String::from_utf8(result.stdout).unwrap_or_default();
+            print!(
+                " on {}{}{}",
+                color::Fg(color::LightGreen),
+                branch,
+                color::Fg(color::Reset)
+            );
+        }
+    }
+
     //Show arrow
     print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
 }
