@@ -193,8 +193,10 @@ pub fn run(arg: PathBuf) {
                                         memo_v.push(cursor_memo);
 
                                         current_dir = item.file_path.clone();
-                                        std::env::set_current_dir(&current_dir)
-                                            .unwrap_or_else(|e| print_warning(e, y));
+                                        if let Err(e) = std::env::set_current_dir(&current_dir) {
+                                            print_warning(e, y);
+                                            continue;
+                                        }
                                         state.update_list(&current_dir);
                                         clear_and_show(&current_dir);
                                         state.list_up(0);
@@ -423,12 +425,14 @@ pub fn run(arg: PathBuf) {
                                                     if let Err(e) = state.remove_and_yank_dir(item)
                                                     {
                                                         print_warning(e, y);
+                                                        break;
                                                     }
                                                 }
                                                 FileType::File | FileType::Symlink => {
                                                     if let Err(e) = state.remove_and_yank_file(item)
                                                     {
                                                         print_warning(e, y);
+                                                        break;
                                                     }
                                                 }
                                             }
@@ -534,12 +538,20 @@ pub fn run(arg: PathBuf) {
                                         match item.file_type {
                                             FileType::Directory => {
                                                 if let Err(e) = state.remove_and_yank_dir(item) {
+                                                    clear_and_show(&current_dir);
+                                                    print!("{}", cursor::Hide);
                                                     print_warning(e, y);
+                                                    break 'delete;
                                                 }
                                             }
                                             FileType::File | FileType::Symlink => {
+                                                clear_and_show(&current_dir);
+                                                print!("{}", cursor::Hide);
                                                 if let Err(e) = state.remove_and_yank_file(item) {
+                                                    clear_and_show(&current_dir);
+                                                    print!("{}", cursor::Hide);
                                                     print_warning(e, y);
+                                                    break 'delete;
                                                 }
                                             }
                                         }
@@ -629,11 +641,13 @@ pub fn run(arg: PathBuf) {
                             FileType::Directory => {
                                 if let Err(e) = state.put_dir(&item, &current_dir) {
                                     print_warning(e, y);
+                                    continue;
                                 }
                             }
                             FileType::File | FileType::Symlink => {
                                 if let Err(e) = state.put_file(&item, &current_dir) {
                                     print_warning(e, y);
+                                    continue;
                                 }
                             }
                         }
@@ -680,6 +694,7 @@ pub fn run(arg: PathBuf) {
                                     if let Err(e) =
                                         std::fs::rename(Path::new(&item.file_path), Path::new(&to))
                                     {
+                                        print!("{}", cursor::Hide);
                                         print_warning(e, y);
                                         break;
                                     }
@@ -1001,12 +1016,16 @@ pub fn run(arg: PathBuf) {
                                                         if let Err(e) = std::fs::remove_dir_all(
                                                             &state.trash_dir,
                                                         ) {
+                                                            print!("{}", cursor::Hide);
                                                             print_warning(e, y);
+                                                            continue 'main;
                                                         }
                                                         if let Err(e) =
                                                             std::fs::create_dir(&state.trash_dir)
                                                         {
+                                                            print!("{}", cursor::Hide);
                                                             print_warning(e, y);
+                                                            continue 'main;
                                                         }
                                                         break 'empty;
                                                     }
@@ -1044,8 +1063,11 @@ pub fn run(arg: PathBuf) {
                                     // }
 
                                     print!("{}", screen::ToAlternateScreen);
-                                    std::env::set_current_dir(&current_dir)
-                                        .unwrap_or_else(|e| print_warning(e, y));
+                                    if std::env::set_current_dir(&current_dir).is_err() {
+                                        print!("{}", cursor::Hide,);
+                                        print_warning("cannot execute command", y);
+                                        break 'command;
+                                    }
                                     if std::process::Command::new(c).args(args).status().is_err() {
                                         print!("{}", screen::ToAlternateScreen);
 
