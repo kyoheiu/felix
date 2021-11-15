@@ -538,15 +538,12 @@ pub fn run(arg: PathBuf) {
                                         match item.file_type {
                                             FileType::Directory => {
                                                 if let Err(e) = state.remove_and_yank_dir(item) {
-                                                    clear_and_show(&current_dir);
                                                     print!("{}", cursor::Hide);
                                                     print_warning(e, y);
                                                     break 'delete;
                                                 }
                                             }
                                             FileType::File | FileType::Symlink => {
-                                                clear_and_show(&current_dir);
-                                                print!("{}", cursor::Hide);
                                                 if let Err(e) = state.remove_and_yank_file(item) {
                                                     clear_and_show(&current_dir);
                                                     print!("{}", cursor::Hide);
