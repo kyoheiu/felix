@@ -665,8 +665,6 @@ pub fn run(arg: PathBuf) {
                     let mut put_message: String = state.registered.len().to_string();
                     put_message.push_str(" items inserted");
                     print_info(put_message, y);
-
-                    print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                 }
 
                 Key::Char('c') => {
@@ -1051,7 +1049,18 @@ pub fn run(arg: PathBuf) {
                                             clear::CurrentLine,
                                             DOWN_ARROW
                                         );
-                                        print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+                                        if current_dir == state.trash_dir {
+                                            clear_and_show(&current_dir);
+                                            state.update_list(&current_dir);
+                                            state.list_up(nums.skip);
+                                            print!(
+                                                "{}>{}",
+                                                cursor::Goto(1, STARTING_POINT),
+                                                cursor::Left(1)
+                                            );
+                                        } else {
+                                            print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+                                        }
                                         break 'command;
                                     }
 
