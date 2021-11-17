@@ -415,6 +415,9 @@ pub fn run(arg: PathBuf) {
                                 }
 
                                 Key::Char('d') => {
+                                    print_info("Processing...", y);
+                                    screen.flush().unwrap();
+
                                     state.registered.clear();
                                     let iter = state.list.clone().into_iter();
                                     let mut i = 0;
@@ -533,6 +536,9 @@ pub fn run(arg: PathBuf) {
                             if let Some(Ok(key)) = input {
                                 match key {
                                     Key::Char('d') => {
+                                        print_info("Processing...", y);
+                                        screen.flush().unwrap();
+
                                         state.registered.clear();
                                         let item = state.get_item(nums.index).unwrap().clone();
                                         match item.file_type {
@@ -633,6 +639,9 @@ pub fn run(arg: PathBuf) {
                     if state.registered.is_empty() {
                         continue;
                     }
+                    print_info("Processing...", y);
+                    screen.flush().unwrap();
+
                     for item in state.registered.clone().into_iter() {
                         match item.file_type {
                             FileType::Directory => {
@@ -1010,6 +1019,9 @@ pub fn run(arg: PathBuf) {
                                             if let Some(Ok(key)) = input {
                                                 match key {
                                                     Key::Char('y') | Key::Char('Y') => {
+                                                        print_info("Processing...", y);
+                                                        screen.flush().unwrap();
+
                                                         if let Err(e) = std::fs::remove_dir_all(
                                                             &state.trash_dir,
                                                         ) {

@@ -241,7 +241,7 @@ impl State {
 
         let mut i = 0;
         for entry in walkdir::WalkDir::new(&original_path).sort_by_key(|x| x.path().to_path_buf()) {
-            let entry = entry.unwrap();
+            let entry = entry?;
             if i == 0 {
                 base = entry.path().iter().count();
 
