@@ -31,11 +31,11 @@ pub fn clear_and_show(dir: &Path) {
     print!(
         " {}{}{}{}{}{}",
         style::Bold,
+        style::Underline,
         color::Fg(color::Cyan),
-        style::Invert,
         dir.display(),
-        color::Fg(color::Reset),
         style::Reset,
+        color::Fg(color::Reset),
     );
 
     let git = dir.join(".git");
@@ -47,7 +47,7 @@ pub fn clear_and_show(dir: &Path) {
             let branch = String::from_utf8(result.stdout).unwrap_or_default();
             print!(
                 " on {}{}{}",
-                color::Fg(color::LightGreen),
+                color::Fg(color::Magenta),
                 branch,
                 color::Fg(color::Reset)
             );
