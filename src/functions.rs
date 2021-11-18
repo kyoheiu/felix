@@ -29,9 +29,8 @@ pub fn clear_and_show(dir: &Path) {
     print!("{}{}", clear::All, cursor::Goto(1, 1));
     //Show current directory path
     print!(
-        " {}{}{}{}{}{}",
+        " {}{}{}{}{}",
         style::Bold,
-        style::Underline,
         color::Fg(color::Cyan),
         dir.display(),
         style::Reset,
@@ -46,9 +45,11 @@ pub fn clear_and_show(dir: &Path) {
         if let Ok(result) = current_branch {
             let branch = String::from_utf8(result.stdout).unwrap_or_default();
             print!(
-                " on {}{}{}",
+                " on {}{}{}{}{}",
+                style::Bold,
                 color::Fg(color::Magenta),
                 branch,
+                style::Reset,
                 color::Fg(color::Reset)
             );
         }

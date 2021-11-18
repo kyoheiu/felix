@@ -49,6 +49,7 @@ macro_rules! print_item {
 pub struct State {
     pub list: Vec<ItemInfo>,
     pub registered: Vec<ItemInfo>,
+    pub current_dir: PathBuf,
     pub trash_dir: PathBuf,
     pub colors: (Colorname, Colorname, Colorname),
     pub default: String,
@@ -78,6 +79,7 @@ impl Default for State {
         State {
             list: Vec::new(),
             registered: Vec::new(),
+            current_dir: PathBuf::new(),
             trash_dir: PathBuf::new(),
             colors: (
                 config.color.dir_fg,
@@ -220,21 +222,21 @@ impl State {
         }
     }
 
-    pub fn put_file(&mut self, item: &ItemInfo, current_dir: &Path) -> std::io::Result<()> {
+    pub fn put_file(&mut self, item: &ItemInfo) -> std::io::Result<()> {
         if item.file_path.parent() == Some(&self.trash_dir) {
             let mut item = item.clone();
             let rename = item.file_name.chars().skip(11).collect();
             item.file_name = rename;
             let rename = rename_file(&item, self);
-            std::fs::copy(&item.file_path, current_dir.join(&rename))?;
+            std::fs::copy(&item.file_path, &self.current_dir.join(&rename))?;
         } else {
             let rename = rename_file(item, self);
-            std::fs::copy(&item.file_path, current_dir.join(&rename))?;
+            std::fs::copy(&item.file_path, &self.current_dir.join(&rename))?;
         }
         Ok(())
     }
 
-    pub fn put_dir(&mut self, buf: &ItemInfo, current_dir: &Path) -> std::io::Result<()> {
+    pub fn put_dir(&mut self, buf: &ItemInfo) -> std::io::Result<()> {
         let mut base: usize = 0;
         let mut target: PathBuf = PathBuf::new();
         let original_path = &(buf).file_path;
@@ -252,10 +254,10 @@ impl State {
                     buf.file_name = rename;
 
                     let rename = rename_dir(&buf, self);
-                    target = current_dir.join(rename);
+                    target = self.current_dir.join(rename);
                 } else {
                     let rename = rename_dir(buf, self);
-                    target = current_dir.join(rename);
+                    target = self.current_dir.join(rename);
                 }
                 std::fs::create_dir(&target)?;
                 i += 1;
@@ -397,8 +399,8 @@ impl State {
         }
     }
 
-    pub fn update_list(&mut self, path: &Path) {
-        self.list = push_items(path, &self.sort_by).unwrap();
+    pub fn update_list(&mut self) {
+        self.list = push_items(&self.current_dir, &self.sort_by).unwrap();
     }
 
     pub fn reset_selection(&mut self) {

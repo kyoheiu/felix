@@ -26,8 +26,8 @@ pub fn run(arg: PathBuf) {
     }
 
     let mut state = State::new();
-    let mut current_dir = arg.canonicalize().unwrap();
-    state.update_list(&current_dir);
+    state.current_dir = arg.canonicalize().unwrap();
+    state.update_list();
     state.trash_dir = trash_dir;
 
     let mut nums = Num::new();
@@ -41,7 +41,7 @@ pub fn run(arg: PathBuf) {
 
     print!("{}", cursor::Hide);
 
-    clear_and_show(&current_dir);
+    clear_and_show(&state.current_dir);
     state.list_up(nums.skip);
 
     print!("{}>{}", cursor::Goto(1, STARTING_POINT), cursor::Left(1));
@@ -63,7 +63,7 @@ pub fn run(arg: PathBuf) {
                         continue;
                     } else if y == row - 4 && len > (row - STARTING_POINT) as usize - 1 {
                         nums.inc_skip();
-                        clear_and_show(&current_dir);
+                        clear_and_show(&state.current_dir);
                         state.list_up(nums.skip);
                         print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                         nums.go_down();
@@ -79,7 +79,7 @@ pub fn run(arg: PathBuf) {
                         continue;
                     } else if y == STARTING_POINT + 3 && nums.skip != 0 {
                         nums.dec_skip();
-                        clear_and_show(&current_dir);
+                        clear_and_show(&state.current_dir);
                         state.list_up(nums.skip);
                         print!(
                             "{}>{}",
@@ -111,7 +111,7 @@ pub fn run(arg: PathBuf) {
                                     Key::Char('g') => {
                                         print!("{}", cursor::Hide);
                                         nums.reset();
-                                        clear_and_show(&current_dir);
+                                        clear_and_show(&state.current_dir);
                                         state.list_up(0);
                                         print!(
                                             " {}>{}",
@@ -145,7 +145,7 @@ pub fn run(arg: PathBuf) {
                     }
                     if len > (row - STARTING_POINT) as usize {
                         nums.skip = (len as u16) + STARTING_POINT - row;
-                        clear_and_show(&current_dir);
+                        clear_and_show(&state.current_dir);
                         state.list_up(nums.skip);
                         print!("{}>{}", cursor::Goto(1, row - 1), cursor::Left(1));
                     } else {
@@ -169,7 +169,7 @@ pub fn run(arg: PathBuf) {
                                     continue;
                                 }
                                 print!("{}", screen::ToAlternateScreen);
-                                clear_and_show(&current_dir);
+                                clear_and_show(&state.current_dir);
                                 state.list_up(nums.skip);
                                 print!(
                                     "{}{}>{}",
@@ -192,13 +192,15 @@ pub fn run(arg: PathBuf) {
                                         };
                                         memo_v.push(cursor_memo);
 
-                                        current_dir = item.file_path.clone();
-                                        if let Err(e) = std::env::set_current_dir(&current_dir) {
+                                        state.current_dir = item.file_path.clone();
+                                        if let Err(e) =
+                                            std::env::set_current_dir(&state.current_dir)
+                                        {
                                             print_warning(e, y);
                                             continue;
                                         }
-                                        state.update_list(&current_dir);
-                                        clear_and_show(&current_dir);
+                                        state.update_list();
+                                        clear_and_show(&state.current_dir);
                                         state.list_up(0);
                                         print!(
                                             "{}>{}",
@@ -214,13 +216,13 @@ pub fn run(arg: PathBuf) {
                 }
 
                 //Go to parent directory if exists
-                Key::Char('h') | Key::Left => match current_dir.parent() {
+                Key::Char('h') | Key::Left => match state.current_dir.parent() {
                     Some(parent_p) => {
-                        current_dir = parent_p.to_path_buf();
-                        std::env::set_current_dir(&current_dir)
+                        state.current_dir = parent_p.to_path_buf();
+                        std::env::set_current_dir(&state.current_dir)
                             .unwrap_or_else(|e| print_warning(e, y));
-                        state.update_list(&current_dir);
-                        clear_and_show(&current_dir);
+                        state.update_list();
+                        clear_and_show(&state.current_dir);
                         state.list_up(0);
 
                         match memo_v.pop() {
@@ -246,7 +248,7 @@ pub fn run(arg: PathBuf) {
                     let mut item = state.list.get_mut(nums.index).unwrap();
                     item.selected = true;
 
-                    clear_and_show(&current_dir);
+                    clear_and_show(&state.current_dir);
                     state.list_up(nums.skip);
                     print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                     screen.flush().unwrap();
@@ -276,7 +278,7 @@ pub fn run(arg: PathBuf) {
                                             item.selected = false;
                                         }
 
-                                        clear_and_show(&current_dir);
+                                        clear_and_show(&state.current_dir);
                                         state.list_up(nums.skip);
                                         print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                                         screen.flush().unwrap();
@@ -292,7 +294,7 @@ pub fn run(arg: PathBuf) {
                                             item.selected = false;
                                         }
 
-                                        clear_and_show(&current_dir);
+                                        clear_and_show(&state.current_dir);
                                         state.list_up(nums.skip);
                                         print!("{}>{}", cursor::Goto(1, y + 1), cursor::Left(1));
                                         screen.flush().unwrap();
@@ -316,7 +318,7 @@ pub fn run(arg: PathBuf) {
                                             item.selected = true;
                                         }
 
-                                        clear_and_show(&current_dir);
+                                        clear_and_show(&state.current_dir);
                                         state.list_up(nums.skip);
                                         print!(
                                             "{}>{}",
@@ -336,7 +338,7 @@ pub fn run(arg: PathBuf) {
                                             item.selected = true;
                                         }
 
-                                        clear_and_show(&current_dir);
+                                        clear_and_show(&state.current_dir);
                                         state.list_up(nums.skip);
                                         print!("{}>{}", cursor::Goto(1, y - 1), cursor::Left(1));
                                         screen.flush().unwrap();
@@ -362,7 +364,7 @@ pub fn run(arg: PathBuf) {
                                                         print!("{}", cursor::Hide);
                                                         nums.reset();
                                                         state.select_from_top(start_pos);
-                                                        clear_and_show(&current_dir);
+                                                        clear_and_show(&state.current_dir);
                                                         state.list_up(0);
                                                         print!(
                                                             " {}>{}",
@@ -398,13 +400,13 @@ pub fn run(arg: PathBuf) {
                                         nums.skip = (len as u16) + STARTING_POINT - row;
                                         nums.go_bottom(len - 1);
                                         state.select_to_bottom(start_pos);
-                                        clear_and_show(&current_dir);
+                                        clear_and_show(&state.current_dir);
                                         state.list_up(nums.skip);
                                         print!("{}>{}", cursor::Goto(1, row - 1), cursor::Left(1));
                                     } else {
                                         nums.go_bottom(len - 1);
                                         state.select_to_bottom(start_pos);
-                                        clear_and_show(&current_dir);
+                                        clear_and_show(&state.current_dir);
                                         state.list_up(nums.skip);
                                         print!(
                                             " {}>{}",
@@ -442,8 +444,8 @@ pub fn run(arg: PathBuf) {
                                             i += 1;
                                         }
                                     }
-                                    clear_and_show(&current_dir);
-                                    state.update_list(&current_dir);
+                                    clear_and_show(&state.current_dir);
+                                    state.update_list();
                                     state.list_up(nums.skip);
 
                                     let mut delete_message: String = i.to_string();
@@ -477,7 +479,7 @@ pub fn run(arg: PathBuf) {
                                 Key::Char('y') => {
                                     state.yank_item(nums.index, true);
                                     state.reset_selection();
-                                    clear_and_show(&current_dir);
+                                    clear_and_show(&state.current_dir);
                                     state.list_up(nums.skip);
 
                                     let mut yank_message: String =
@@ -491,7 +493,7 @@ pub fn run(arg: PathBuf) {
 
                                 Key::Esc => {
                                     state.reset_selection();
-                                    clear_and_show(&current_dir);
+                                    clear_and_show(&state.current_dir);
                                     state.list_up(nums.skip);
                                     print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                                     break;
@@ -515,8 +517,8 @@ pub fn run(arg: PathBuf) {
                             state.sort_by = SortKey::Name;
                         }
                     }
-                    state.update_list(&current_dir);
-                    clear_and_show(&current_dir);
+                    state.update_list();
+                    clear_and_show(&state.current_dir);
                     state.list_up(0);
                     print!("{}>{}", cursor::Goto(1, STARTING_POINT), cursor::Left(1));
                     nums.reset();
@@ -551,7 +553,7 @@ pub fn run(arg: PathBuf) {
                                             }
                                             FileType::File | FileType::Symlink => {
                                                 if let Err(e) = state.remove_and_yank_file(item) {
-                                                    clear_and_show(&current_dir);
+                                                    clear_and_show(&state.current_dir);
                                                     print!("{}", cursor::Hide);
                                                     print_warning(e, y);
                                                     break 'delete;
@@ -559,9 +561,9 @@ pub fn run(arg: PathBuf) {
                                             }
                                         }
 
-                                        clear_and_show(&current_dir);
+                                        clear_and_show(&state.current_dir);
                                         print!("{}", cursor::Hide);
-                                        state.update_list(&current_dir);
+                                        state.update_list();
                                         state.list_up(nums.skip);
                                         let cursor_pos = if state.list.is_empty() {
                                             STARTING_POINT
@@ -645,21 +647,21 @@ pub fn run(arg: PathBuf) {
                     for item in state.registered.clone().into_iter() {
                         match item.file_type {
                             FileType::Directory => {
-                                if let Err(e) = state.put_dir(&item, &current_dir) {
+                                if let Err(e) = state.put_dir(&item) {
                                     print_warning(e, y);
                                     continue;
                                 }
                             }
                             FileType::File | FileType::Symlink => {
-                                if let Err(e) = state.put_file(&item, &current_dir) {
+                                if let Err(e) = state.put_file(&item) {
                                     print_warning(e, y);
                                     continue;
                                 }
                             }
                         }
                     }
-                    clear_and_show(&current_dir);
-                    state.update_list(&current_dir);
+                    clear_and_show(&state.current_dir);
+                    state.update_list();
                     state.list_up(nums.skip);
 
                     let mut put_message: String = state.registered.len().to_string();
@@ -693,7 +695,7 @@ pub fn run(arg: PathBuf) {
                                 //rename item
                                 Key::Char('\n') => {
                                     let rename = rename.iter().collect::<String>();
-                                    let mut to = current_dir.clone();
+                                    let mut to = state.current_dir.clone();
                                     to.push(rename);
                                     if let Err(e) =
                                         std::fs::rename(Path::new(&item.file_path), Path::new(&to))
@@ -703,8 +705,8 @@ pub fn run(arg: PathBuf) {
                                         break;
                                     }
 
-                                    clear_and_show(&current_dir);
-                                    state.update_list(&current_dir);
+                                    clear_and_show(&state.current_dir);
+                                    state.update_list();
                                     state.list_up(nums.skip);
 
                                     print!(
@@ -836,7 +838,7 @@ pub fn run(arg: PathBuf) {
                                 }
 
                                 Key::Esc => {
-                                    clear_and_show(&current_dir);
+                                    clear_and_show(&state.current_dir);
                                     state.list = original_list;
                                     state.list_up(0);
 
@@ -883,7 +885,7 @@ pub fn run(arg: PathBuf) {
                                         .collect();
 
                                     nums.reset_skip();
-                                    clear_and_show(&current_dir);
+                                    clear_and_show(&state.current_dir);
                                     state.list_up(nums.skip);
 
                                     print!(
@@ -915,7 +917,7 @@ pub fn run(arg: PathBuf) {
                                         .collect();
 
                                     nums.reset_skip();
-                                    clear_and_show(&current_dir);
+                                    clear_and_show(&state.current_dir);
                                     state.list_up(nums.skip);
 
                                     print!(
@@ -965,8 +967,8 @@ pub fn run(arg: PathBuf) {
                                     if command == vec!['q'] {
                                         break 'main;
                                     } else if command == vec!['e'] {
-                                        state.update_list(&current_dir);
-                                        clear_and_show(&current_dir);
+                                        state.update_list();
+                                        clear_and_show(&state.current_dir);
                                         state.list_up(0);
                                         print!(
                                             "{}{}>{}",
@@ -986,7 +988,7 @@ pub fn run(arg: PathBuf) {
                                         }
                                         println!("\nInput any key to go back.");
                                         let _ = stdin.next();
-                                        clear_and_show(&current_dir);
+                                        clear_and_show(&state.current_dir);
                                         state.list_up(nums.skip);
                                         print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
                                         break 'command;
@@ -1049,9 +1051,9 @@ pub fn run(arg: PathBuf) {
                                             clear::CurrentLine,
                                             DOWN_ARROW
                                         );
-                                        if current_dir == state.trash_dir {
-                                            clear_and_show(&current_dir);
-                                            state.update_list(&current_dir);
+                                        if state.current_dir == state.trash_dir {
+                                            clear_and_show(&state.current_dir);
+                                            state.update_list();
                                             state.list_up(nums.skip);
                                             print!(
                                                 "{}>{}",
@@ -1067,8 +1069,8 @@ pub fn run(arg: PathBuf) {
                                     // if c == "cd" {
                                     //     current_dir =
                                     //         PathBuf::from(args[0]).canonicalize().unwrap();
-                                    //     state.update_list(&current_dir);
-                                    //     clear_and_show(&current_dir);
+                                    //     state.update_list();
+                                    //     clear_and_show(&state.current_dir);
                                     //     state.list_up(0);
                                     //     print!(
                                     //         "{}{}>{}",
@@ -1081,7 +1083,7 @@ pub fn run(arg: PathBuf) {
                                     // }
 
                                     print!("{}", screen::ToAlternateScreen);
-                                    if std::env::set_current_dir(&current_dir).is_err() {
+                                    if std::env::set_current_dir(&state.current_dir).is_err() {
                                         print!("{}", cursor::Hide,);
                                         print_warning("cannot execute command", y);
                                         break 'command;
@@ -1089,8 +1091,8 @@ pub fn run(arg: PathBuf) {
                                     if std::process::Command::new(c).args(args).status().is_err() {
                                         print!("{}", screen::ToAlternateScreen);
 
-                                        clear_and_show(&current_dir);
-                                        state.update_list(&current_dir);
+                                        clear_and_show(&state.current_dir);
+                                        state.update_list();
                                         state.list_up(nums.skip);
 
                                         print!("{}", cursor::Hide,);
@@ -1099,8 +1101,8 @@ pub fn run(arg: PathBuf) {
                                     }
                                     print!("{}", screen::ToAlternateScreen);
 
-                                    clear_and_show(&current_dir);
-                                    state.update_list(&current_dir);
+                                    clear_and_show(&state.current_dir);
+                                    state.update_list();
                                     state.list_up(nums.skip);
 
                                     print!(
