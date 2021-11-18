@@ -222,6 +222,20 @@ impl State {
         }
     }
 
+    pub fn put_items(&mut self) -> std::io::Result<()> {
+        for item in self.registered.clone().into_iter() {
+            match item.file_type {
+                FileType::Directory => {
+                    self.put_dir(&item)?;
+                }
+                FileType::File | FileType::Symlink => {
+                    self.put_file(&item)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
     pub fn put_file(&mut self, item: &ItemInfo) -> std::io::Result<()> {
         if item.file_path.parent() == Some(&self.trash_dir) {
             let mut item = item.clone();

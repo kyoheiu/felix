@@ -644,22 +644,11 @@ pub fn run(arg: PathBuf) {
                     print_info("Processing...", y);
                     screen.flush().unwrap();
 
-                    for item in state.registered.clone().into_iter() {
-                        match item.file_type {
-                            FileType::Directory => {
-                                if let Err(e) = state.put_dir(&item) {
-                                    print_warning(e, y);
-                                    continue;
-                                }
-                            }
-                            FileType::File | FileType::Symlink => {
-                                if let Err(e) = state.put_file(&item) {
-                                    print_warning(e, y);
-                                    continue;
-                                }
-                            }
-                        }
+                    if let Err(e) = state.put_items() {
+                        print_warning(e, y);
+                        continue;
                     }
+
                     clear_and_show(&state.current_dir);
                     state.update_list();
                     state.list_up(nums.skip);
