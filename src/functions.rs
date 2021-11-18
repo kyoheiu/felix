@@ -1,6 +1,7 @@
 use super::config::CONFIG_EXAMPLE;
 use super::state::*;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use termion::{clear, color, cursor, style};
@@ -59,9 +60,9 @@ pub fn clear_and_show(dir: &Path) {
     print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
 }
 
-pub fn rename_file(item: &ItemInfo, state: &State) -> String {
+pub fn rename_file(item: &ItemInfo, name_set: &HashSet<String>) -> String {
     let file_name = &item.file_name;
-    if state.list.iter().any(|x| &x.file_name == file_name) {
+    if name_set.contains(file_name) {
         let rename = PathBuf::from(&(item).file_name);
         let extension = rename.extension();
 
@@ -75,26 +76,26 @@ pub fn rename_file(item: &ItemInfo, state: &State) -> String {
 
         let rename = rename
             .into_string()
-            .unwrap_or_else(|_| panic!("cannot paste item."));
+            .unwrap_or_else(|_| panic!("cannot rename item."));
 
         let mut renamed_item = item.clone();
         renamed_item.file_name = rename;
-        rename_file(&renamed_item, state)
+        rename_file(&renamed_item, name_set)
     } else {
         file_name.clone()
     }
 }
 
-pub fn rename_dir(item: &ItemInfo, state: &State) -> String {
-    let file_name = &item.file_name;
-    if state.list.iter().any(|x| &x.file_name == file_name) {
-        let mut rename = file_name.clone();
+pub fn rename_dir(item: &ItemInfo, name_set: &HashSet<String>) -> String {
+    let dir_name = &item.file_name;
+    if name_set.contains(dir_name) {
+        let mut rename = dir_name.clone();
         rename.push_str("_copied");
         let mut renamed_item = item.clone();
         renamed_item.file_name = rename;
-        rename_dir(&renamed_item, state)
+        rename_dir(&renamed_item, name_set)
     } else {
-        file_name.clone()
+        dir_name.clone()
     }
 }
 

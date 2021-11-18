@@ -2,6 +2,7 @@ use super::config::*;
 use super::functions::*;
 use chrono::prelude::*;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fs;
 use std::io::{Error, ErrorKind};
 use std::path::{Path, PathBuf};
@@ -223,34 +224,42 @@ impl State {
     }
 
     pub fn put_items(&mut self) -> std::io::Result<()> {
+        //make HashSet<String> of file_name
+        let mut name_set = HashSet::new();
+        for item in self.list.iter() {
+            name_set.insert(item.file_name.clone());
+        }
+
         for item in self.registered.clone().into_iter() {
             match item.file_type {
                 FileType::Directory => {
-                    self.put_dir(&item)?;
+                    self.put_dir(&item, &mut name_set)?;
                 }
                 FileType::File | FileType::Symlink => {
-                    self.put_file(&item)?;
+                    self.put_file(&item, &mut name_set)?;
                 }
             }
         }
         Ok(())
     }
 
-    pub fn put_file(&mut self, item: &ItemInfo) -> std::io::Result<()> {
+    fn put_file(&mut self, item: &ItemInfo, name_set: &mut HashSet<String>) -> std::io::Result<()> {
         if item.file_path.parent() == Some(&self.trash_dir) {
             let mut item = item.clone();
             let rename = item.file_name.chars().skip(11).collect();
             item.file_name = rename;
-            let rename = rename_file(&item, self);
+            let rename = rename_file(&item, name_set);
             std::fs::copy(&item.file_path, &self.current_dir.join(&rename))?;
+            name_set.insert(rename);
         } else {
-            let rename = rename_file(item, self);
+            let rename = rename_file(item, name_set);
             std::fs::copy(&item.file_path, &self.current_dir.join(&rename))?;
+            name_set.insert(rename);
         }
         Ok(())
     }
 
-    pub fn put_dir(&mut self, buf: &ItemInfo) -> std::io::Result<()> {
+    fn put_dir(&mut self, buf: &ItemInfo, name_set: &mut HashSet<String>) -> std::io::Result<()> {
         let mut base: usize = 0;
         let mut target: PathBuf = PathBuf::new();
         let original_path = &(buf).file_path;
@@ -267,11 +276,13 @@ impl State {
                     let rename = buf.file_name.chars().skip(11).collect();
                     buf.file_name = rename;
 
-                    let rename = rename_dir(&buf, self);
-                    target = self.current_dir.join(rename);
+                    let rename = rename_dir(&buf, name_set);
+                    target = self.current_dir.join(&rename);
+                    name_set.insert(rename);
                 } else {
-                    let rename = rename_dir(buf, self);
-                    target = self.current_dir.join(rename);
+                    let rename = rename_dir(buf, name_set);
+                    target = self.current_dir.join(&rename);
+                    name_set.insert(rename);
                 }
                 std::fs::create_dir(&target)?;
                 i += 1;
