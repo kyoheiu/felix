@@ -25,12 +25,12 @@ macro_rules! print_item {
             print!(
                 "{}{}{}{}{}{}{}{}",
                 $color,
-                color::Bg(color::LightBlack),
+                termion::style::Invert,
                 $name,
-                color::Bg(color::Reset),
                 cursor::Left(60),
                 cursor::Right(34),
                 $time,
+                termion::style::Reset,
                 color::Fg(color::Reset),
             );
         } else {
