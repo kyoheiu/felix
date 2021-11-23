@@ -24,3 +24,12 @@ jobs:
     - name: Install
       run: |
         cargo install --path .
+  archlinux-install:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install
+      run: |
+        cargo install --path .
