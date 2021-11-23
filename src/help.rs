@@ -21,7 +21,6 @@ p                     :Put yanked item in the current directory.
 V                     :Switch to select mode.
   - d                 :In select mode, delete and yank selected items.
   - y                 :In select mode, yank selected items.
-Ctrl+c                :Copy file name to clipboard.
 t                     :Toggle sort order (name <-> modified time).
 :                     :Switch to shell mode.
 c                     :Switch to rename mode.
