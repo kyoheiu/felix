@@ -32,6 +32,6 @@ jobs:
     - uses: actions/checkout@v2
     - name: Install
       run: |
-        sudo pacman -Syy
-        sudo pacman -S cargo
+        pacman -Syy
+        pacman -S cargo
         cargo install --path .
