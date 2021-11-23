@@ -33,5 +33,5 @@ jobs:
     - name: Install
       run: |
         pacman -Syy
-        pacman -S cargo
+        pacman -S rustup
         cargo install --path .
