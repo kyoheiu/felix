@@ -3,7 +3,7 @@ use super::functions::*;
 use super::help::HELP;
 use super::nums::*;
 use super::state::*;
-use clipboard::{ClipboardContext, ClipboardProvider};
+// use clipboard::{ClipboardContext, ClipboardProvider};
 use std::io::{stdin, stdout, Write};
 use std::path::{Path, PathBuf};
 use termion::cursor::DetectCursorPos;
@@ -780,19 +780,18 @@ pub fn run(arg: PathBuf) {
                     }
                 }
 
-                Key::Ctrl('c') => {
-                    if len == 0 {
-                        continue;
-                    }
-                    let item = state.get_item(nums.index).unwrap();
+                // Key::Ctrl('c') => {
+                //     if len == 0 {
+                //         continue;
+                //     }
+                //     let item = state.get_item(nums.index).unwrap();
 
-                    let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
-                    match ctx.set_contents(item.file_name.clone()) {
-                        Ok(()) => print_info("file name copied", y),
-                        Err(e) => print_warning(e, y),
-                    }
-                }
-
+                //     let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
+                //     match ctx.set_contents(item.file_name.clone()) {
+                //         Ok(()) => print_info("file name copied", y),
+                //         Err(e) => print_warning(e, y),
+                //     }
+                // }
                 Key::Char('/') => {
                     if len == 0 {
                         continue;

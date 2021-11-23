@@ -7,7 +7,7 @@ use std::fs;
 use std::io::{Error, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
-use termion::{color, cursor};
+use termion::{color, cursor, style};
 
 pub const STARTING_POINT: u16 = 3;
 pub const DOWN_ARROW: char = '\u{21D3}';
@@ -23,15 +23,14 @@ macro_rules! print_item {
     ($color: expr, $name: expr, $time: expr, $selected: expr) => {
         if *($selected) {
             print!(
-                "{}{}{}{}{}{}{}{}",
+                "{}{}{}{}{}{}{}",
                 $color,
-                termion::style::Invert,
+                style::Invert,
                 $name,
                 cursor::Left(60),
                 cursor::Right(34),
                 $time,
-                termion::style::Reset,
-                color::Fg(color::Reset),
+                style::Reset
             );
         } else {
             print!(
