@@ -2,7 +2,7 @@ name: 'install test'
 
 on:
   push:
-    branches: '!main'
+    branches-ignore: 'main'
     paths-ignore:
       - '*.md'
 
