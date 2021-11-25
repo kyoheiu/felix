@@ -19,6 +19,8 @@ While heavliy inspired by the great `vifm` and trying to implement its pleasant 
 
 ## Installation
 
+Before installation, make sure that `gcc` is installed.
+
 from crates.io:
 
 ```
