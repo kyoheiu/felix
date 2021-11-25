@@ -33,6 +33,7 @@ jobs:
     - name: Install
       run: |
         pacman -Syu --noconfirm
+        pacman -S gcc --noconfirm
         pacman -S rustup --noconfirm
         rustup install stable
         rustup default stable
