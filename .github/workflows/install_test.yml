@@ -27,13 +27,12 @@ jobs:
   archlinux-install:
     runs-on: ubuntu-latest
     container:
-      image: archlinux:latest
+      image: archlinux:base-devel
     steps:
     - uses: actions/checkout@v2
     - name: Install
       run: |
         pacman -Syu --noconfirm
-        pacman -S gcc --noconfirm
         pacman -S rustup --noconfirm
         rustup install stable
         rustup default stable
