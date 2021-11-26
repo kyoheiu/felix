@@ -31,7 +31,17 @@ pub fn run(arg: PathBuf) {
     };
 
     let mut state = State::new();
-    state.terminal_size = column;
+
+    let time_start = if column >= 48 { 32 } else { column - 16 };
+    let name_max: usize = if column >= 48 {
+        29
+    } else {
+        (time_start - 2).into()
+    };
+    state.layout = Layout {
+        name_max_len: name_max,
+        time_start_pos: time_start,
+    };
     state.current_dir = arg.canonicalize().unwrap();
     state.update_list();
     state.trash_dir = trash_dir;

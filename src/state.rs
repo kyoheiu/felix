@@ -47,13 +47,13 @@ macro_rules! print_item {
 pub struct State {
     pub list: Vec<ItemInfo>,
     pub registered: Vec<ItemInfo>,
-    pub terminal_size: u16,
     pub current_dir: PathBuf,
     pub trash_dir: PathBuf,
     pub colors: (Colorname, Colorname, Colorname),
     pub default: String,
     pub commands: HashMap<String, String>,
     pub sort_by: SortKey,
+    pub layout: Layout,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -72,13 +72,18 @@ pub enum FileType {
     Symlink,
 }
 
+#[derive(Clone)]
+pub struct Layout {
+    pub name_max_len: usize,
+    pub time_start_pos: u16,
+}
+
 impl Default for State {
     fn default() -> Self {
         let config = read_config().unwrap();
         State {
             list: Vec::new(),
             registered: Vec::new(),
-            terminal_size: 0,
             current_dir: PathBuf::new(),
             trash_dir: PathBuf::new(),
             colors: (
@@ -89,6 +94,10 @@ impl Default for State {
             default: config.default,
             commands: to_extension_map(&config.exec),
             sort_by: config.sort_by,
+            layout: Layout {
+                name_max_len: 0,
+                time_start_pos: 0,
+            },
         }
     }
 }
@@ -308,18 +317,11 @@ impl State {
     pub fn print(&self, index: usize) {
         let item = &self.get_item(index).unwrap();
         let chars: Vec<char> = item.file_name.chars().collect();
-        let time_start_pos = if self.terminal_size >= 48 {
-            32
-        } else {
-            self.terminal_size - 16
-        };
-        let name_max_len: usize = if self.terminal_size >= 48 {
-            29
-        } else {
-            (time_start_pos - 2).into()
-        };
-        let name = if chars.len() > name_max_len {
-            let mut result = chars.iter().take(name_max_len - 3).collect::<String>();
+        let name = if chars.len() > self.layout.name_max_len {
+            let mut result = chars
+                .iter()
+                .take(self.layout.name_max_len - 3)
+                .collect::<String>();
             result.push_str("..");
             result
         } else {
@@ -339,7 +341,7 @@ impl State {
                     name,
                     time,
                     selected,
-                    time_start_pos
+                    self.layout.time_start_pos
                 );
             }
             Colorname::Black => {
@@ -348,14 +350,26 @@ impl State {
                     name,
                     time,
                     selected,
-                    time_start_pos
+                    self.layout.time_start_pos
                 );
             }
             Colorname::Blue => {
-                print_item!(color::Fg(color::Blue), name, time, selected, time_start_pos);
+                print_item!(
+                    color::Fg(color::Blue),
+                    name,
+                    time,
+                    selected,
+                    self.layout.time_start_pos
+                );
             }
             Colorname::Cyan => {
-                print_item!(color::Fg(color::Cyan), name, time, selected, time_start_pos);
+                print_item!(
+                    color::Fg(color::Cyan),
+                    name,
+                    time,
+                    selected,
+                    self.layout.time_start_pos
+                );
             }
             Colorname::Green => {
                 print_item!(
@@ -363,7 +377,7 @@ impl State {
                     name,
                     time,
                     selected,
-                    time_start_pos
+                    self.layout.time_start_pos
                 );
             }
             Colorname::LightBlack => {
@@ -372,7 +386,7 @@ impl State {
                     name,
                     time,
                     selected,
-                    time_start_pos
+                    self.layout.time_start_pos
                 );
             }
             Colorname::LightBlue => {
@@ -381,7 +395,7 @@ impl State {
                     name,
                     time,
                     selected,
-                    time_start_pos
+                    self.layout.time_start_pos
                 );
             }
             Colorname::LightCyan => {
@@ -390,7 +404,7 @@ impl State {
                     name,
                     time,
                     selected,
-                    time_start_pos
+                    self.layout.time_start_pos
                 );
             }
             Colorname::LightGreen => {
@@ -399,7 +413,7 @@ impl State {
                     name,
                     time,
                     selected,
-                    time_start_pos
+                    self.layout.time_start_pos
                 );
             }
             Colorname::LightMagenta => {
@@ -408,7 +422,7 @@ impl State {
                     name,
                     time,
                     selected,
-                    time_start_pos
+                    self.layout.time_start_pos
                 );
             }
             Colorname::LightRed => {
@@ -417,7 +431,7 @@ impl State {
                     name,
                     time,
                     selected,
-                    time_start_pos
+                    self.layout.time_start_pos
                 );
             }
             Colorname::LightWhite => {
@@ -426,7 +440,7 @@ impl State {
                     name,
                     time,
                     selected,
-                    time_start_pos
+                    self.layout.time_start_pos
                 );
             }
             Colorname::LightYellow => {
@@ -435,7 +449,7 @@ impl State {
                     name,
                     time,
                     selected,
-                    time_start_pos
+                    self.layout.time_start_pos
                 );
             }
             Colorname::Magenta => {
@@ -444,11 +458,17 @@ impl State {
                     name,
                     time,
                     selected,
-                    time_start_pos
+                    self.layout.time_start_pos
                 );
             }
             Colorname::Red => {
-                print_item!(color::Fg(color::Red), name, time, selected, time_start_pos);
+                print_item!(
+                    color::Fg(color::Red),
+                    name,
+                    time,
+                    selected,
+                    self.layout.time_start_pos
+                );
             }
             Colorname::Rgb(x, y, z) => {
                 print_item!(
@@ -456,7 +476,7 @@ impl State {
                     name,
                     time,
                     selected,
-                    time_start_pos
+                    self.layout.time_start_pos
                 );
             }
             Colorname::White => {
@@ -465,7 +485,7 @@ impl State {
                     name,
                     time,
                     selected,
-                    time_start_pos
+                    self.layout.time_start_pos
                 );
             }
             Colorname::Yellow => {
@@ -474,7 +494,7 @@ impl State {
                     name,
                     time,
                     selected,
-                    time_start_pos
+                    self.layout.time_start_pos
                 );
             }
         }
