@@ -25,17 +25,28 @@ pub fn run(arg: PathBuf) {
         return;
     }
 
+    let (column, row) = termion::terminal_size().unwrap();
+    if column < 21 {
+        panic!("too small terminal size.")
+    };
+
     let mut state = State::new();
+
+    let time_start = if column >= 48 { 32 } else { column - 16 };
+    let name_max: usize = if column >= 48 {
+        29
+    } else {
+        (time_start - 2).into()
+    };
+    state.layout = Layout {
+        name_max_len: name_max,
+        time_start_pos: time_start,
+    };
     state.current_dir = arg.canonicalize().unwrap();
     state.update_list();
     state.trash_dir = trash_dir;
 
     let mut nums = Num::new();
-
-    let (column, row) = termion::terminal_size().unwrap();
-    if column < NAME_MAX_LEN as u16 + TIME_START_POS - 3 {
-        panic!("too small terminal size.")
-    };
 
     let mut screen = screen::AlternateScreen::from(stdout().into_raw_mode().unwrap());
 
