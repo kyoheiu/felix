@@ -2,7 +2,8 @@
 
 # felix
 
-A tui file manager with vim-like key mapping, written in Rust.
+A tui file manager with vim-like key mapping, written in Rust.  
+Works on terminals with 21 columns or more (from v0.2.11).
 
 [sample gif](https://github.com/kyoheiu/felix/blob/main/screenshots/sample.gif)
 
@@ -13,13 +14,15 @@ While heavliy inspired by the great `vifm` and trying to implement its pleasant 
 
 ## Status
 
-- Linux : works well
-- MacOS : _should_ work, though some unusual errors may occur
-- Windows: almost unavailable due to file-name encoding error
+| OS | Status |
+| -- | ------ |
+|Linux  | works well |
+|MacOS  | works, though some errors may occur. if so, let me know!|
+|Windows| almost unavailable due to file-name encoding error|
 
 ## Installation
 
-Before you do the following, make sure that `gcc` is installed.
+*Make sure that `gcc` is installed.*
 
 from crates.io:
 
