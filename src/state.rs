@@ -15,12 +15,10 @@ pub const RIGHT_ARROW: char = '\u{21D2}';
 pub const FX_CONFIG_DIR: &str = "felix";
 pub const CONFIG_FILE: &str = "config.toml";
 pub const TRASH: &str = "trash";
-pub const NAME_MAX_LEN: usize = 30;
-pub const TIME_START_POS: u16 = 32;
 pub const WHEN_EMPTY: &str = "Are you sure to empty the trash directory? (if yes: y)";
 
 macro_rules! print_item {
-    ($color: expr, $name: expr, $time: expr, $selected: expr) => {
+    ($color: expr, $name: expr, $time: expr, $selected: expr, $time_start_pos: expr) => {
         if *($selected) {
             print!(
                 "{}{}{}{}{}{}{}",
@@ -28,7 +26,7 @@ macro_rules! print_item {
                 style::Invert,
                 $name,
                 cursor::Left(60),
-                cursor::Right(34),
+                cursor::Right($time_start_pos),
                 $time,
                 style::Reset
             );
@@ -38,7 +36,7 @@ macro_rules! print_item {
                 $color,
                 $name,
                 cursor::Left(60),
-                cursor::Right(34),
+                cursor::Right($time_start_pos),
                 $time,
                 color::Fg(color::Reset)
             );
@@ -49,6 +47,7 @@ macro_rules! print_item {
 pub struct State {
     pub list: Vec<ItemInfo>,
     pub registered: Vec<ItemInfo>,
+    pub terminal_size: u16,
     pub current_dir: PathBuf,
     pub trash_dir: PathBuf,
     pub colors: (Colorname, Colorname, Colorname),
@@ -79,6 +78,7 @@ impl Default for State {
         State {
             list: Vec::new(),
             registered: Vec::new(),
+            terminal_size: 0,
             current_dir: PathBuf::new(),
             trash_dir: PathBuf::new(),
             colors: (
@@ -308,8 +308,18 @@ impl State {
     pub fn print(&self, index: usize) {
         let item = &self.get_item(index).unwrap();
         let chars: Vec<char> = item.file_name.chars().collect();
-        let name = if chars.len() > NAME_MAX_LEN {
-            let mut result = chars.iter().take(NAME_MAX_LEN - 2).collect::<String>();
+        let time_start_pos = if self.terminal_size >= 48 {
+            32
+        } else {
+            self.terminal_size - 16
+        };
+        let name_max_len: usize = if self.terminal_size >= 48 {
+            29
+        } else {
+            (time_start_pos - 2).into()
+        };
+        let name = if chars.len() > name_max_len {
+            let mut result = chars.iter().take(name_max_len - 3).collect::<String>();
             result.push_str("..");
             result
         } else {
@@ -324,58 +334,148 @@ impl State {
         };
         match color {
             Colorname::AnsiValue(n) => {
-                print_item!(color::Fg(color::AnsiValue(*n)), name, time, selected);
+                print_item!(
+                    color::Fg(color::AnsiValue(*n)),
+                    name,
+                    time,
+                    selected,
+                    time_start_pos
+                );
             }
             Colorname::Black => {
-                print_item!(color::Fg(color::Black), name, time, selected);
+                print_item!(
+                    color::Fg(color::Black),
+                    name,
+                    time,
+                    selected,
+                    time_start_pos
+                );
             }
             Colorname::Blue => {
-                print_item!(color::Fg(color::Blue), name, time, selected);
+                print_item!(color::Fg(color::Blue), name, time, selected, time_start_pos);
             }
             Colorname::Cyan => {
-                print_item!(color::Fg(color::Cyan), name, time, selected);
+                print_item!(color::Fg(color::Cyan), name, time, selected, time_start_pos);
             }
             Colorname::Green => {
-                print_item!(color::Fg(color::Green), name, time, selected);
+                print_item!(
+                    color::Fg(color::Green),
+                    name,
+                    time,
+                    selected,
+                    time_start_pos
+                );
             }
             Colorname::LightBlack => {
-                print_item!(color::Fg(color::LightBlack), name, time, selected);
+                print_item!(
+                    color::Fg(color::LightBlack),
+                    name,
+                    time,
+                    selected,
+                    time_start_pos
+                );
             }
             Colorname::LightBlue => {
-                print_item!(color::Fg(color::LightBlue), name, time, selected);
+                print_item!(
+                    color::Fg(color::LightBlue),
+                    name,
+                    time,
+                    selected,
+                    time_start_pos
+                );
             }
             Colorname::LightCyan => {
-                print_item!(color::Fg(color::LightCyan), name, time, selected);
+                print_item!(
+                    color::Fg(color::LightCyan),
+                    name,
+                    time,
+                    selected,
+                    time_start_pos
+                );
             }
             Colorname::LightGreen => {
-                print_item!(color::Fg(color::LightGreen), name, time, selected);
+                print_item!(
+                    color::Fg(color::LightGreen),
+                    name,
+                    time,
+                    selected,
+                    time_start_pos
+                );
             }
             Colorname::LightMagenta => {
-                print_item!(color::Fg(color::LightMagenta), name, time, selected);
+                print_item!(
+                    color::Fg(color::LightMagenta),
+                    name,
+                    time,
+                    selected,
+                    time_start_pos
+                );
             }
             Colorname::LightRed => {
-                print_item!(color::Fg(color::LightRed), name, time, selected);
+                print_item!(
+                    color::Fg(color::LightRed),
+                    name,
+                    time,
+                    selected,
+                    time_start_pos
+                );
             }
             Colorname::LightWhite => {
-                print_item!(color::Fg(color::LightWhite), name, time, selected);
+                print_item!(
+                    color::Fg(color::LightWhite),
+                    name,
+                    time,
+                    selected,
+                    time_start_pos
+                );
             }
             Colorname::LightYellow => {
-                print_item!(color::Fg(color::LightYellow), name, time, selected);
+                print_item!(
+                    color::Fg(color::LightYellow),
+                    name,
+                    time,
+                    selected,
+                    time_start_pos
+                );
             }
             Colorname::Magenta => {
-                print_item!(color::Fg(color::Magenta), name, time, selected);
+                print_item!(
+                    color::Fg(color::Magenta),
+                    name,
+                    time,
+                    selected,
+                    time_start_pos
+                );
             }
             Colorname::Red => {
-                print_item!(color::Fg(color::Red), name, time, selected);
+                print_item!(color::Fg(color::Red), name, time, selected, time_start_pos);
             }
             Colorname::Rgb(x, y, z) => {
-                print_item!(color::Fg(color::Rgb(*x, *y, *z)), name, time, selected);
+                print_item!(
+                    color::Fg(color::Rgb(*x, *y, *z)),
+                    name,
+                    time,
+                    selected,
+                    time_start_pos
+                );
             }
             Colorname::White => {
-                print_item!(color::Fg(color::White), name, time, selected);
+                print_item!(
+                    color::Fg(color::White),
+                    name,
+                    time,
+                    selected,
+                    time_start_pos
+                );
             }
             Colorname::Yellow => {
-                print_item!(color::Fg(color::Yellow), name, time, selected);
+                print_item!(
+                    color::Fg(color::Yellow),
+                    name,
+                    time,
+                    selected,
+                    time_start_pos
+                );
             }
         }
     }
