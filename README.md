@@ -1,4 +1,4 @@
-[![crates.io](https://img.shields.io/crates/v/felix)](https://crates.io/crates/felix)
+[![crates.io](https://img.shields.io/crates/v/felix)](https://crates.io/crates/felix) [https://img.shields.io/aur/version/felix-rs]
 
 # felix
 
@@ -28,6 +28,12 @@ from crates.io:
 
 ```
 cargo install felix
+```
+
+from aur:
+
+```
+yay -S felix-rs
 ```
 
 or from this repository:

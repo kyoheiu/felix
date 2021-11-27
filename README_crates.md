@@ -1,5 +1,3 @@
-[![crates.io](https://img.shields.io/crates/v/felix)](https://crates.io/crates/felix)
-
 # felix
 
 A tui file manager with vim-like key mapping, written in Rust.  
@@ -28,6 +26,12 @@ from crates.io:
 
 ```
 cargo install felix
+```
+
+from aur:
+
+```
+yay -S felix-rs
 ```
 
 or from GitHub repository:
