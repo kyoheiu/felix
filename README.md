@@ -17,6 +17,7 @@ While heavliy inspired by the great `vifm` and trying to implement its pleasant 
 | OS | Status |
 | -- | ------ |
 |Linux  | works well |
+|NetBSD | works well |
 |MacOS  | works, though some errors may occur. if so, let me know!|
 |Windows| almost unavailable due to file-name encoding error|
 
@@ -42,6 +43,12 @@ or from this repository:
 git clone https://github.com/kyoheiu/felix.git
 cd felix
 cargo install --path .
+```
+
+On NetBSD, package is available from the official repositories:
+
+```
+pkgin install felix
 ```
 
 ## Usage
