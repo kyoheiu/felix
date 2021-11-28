@@ -154,7 +154,6 @@ impl State {
         //copy
         std::fs::copy(from, &to)?;
 
-        //copy original information to item_buf
         self.to_registered_mut(&item, to, rename);
 
         //remove original
@@ -202,7 +201,6 @@ impl State {
             }
         }
 
-        //copy original information to item_buf
         self.to_registered_mut(&item, trash_path, trash_name);
 
         //remove original
@@ -504,7 +502,7 @@ impl State {
         let (_, row) = termion::terminal_size().unwrap();
         let len = self.list.len();
 
-        //if lists exceed max-row
+        //if list exceeds max-row
         if len > (row - STARTING_POINT) as usize - 1 {
             let mut row_count = 0;
             for (i, _) in self.list.iter().enumerate() {
