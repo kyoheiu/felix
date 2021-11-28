@@ -118,7 +118,6 @@ pub fn run(arg: PathBuf) {
                             let input = stdin.next();
                             if let Some(Ok(key)) = input {
                                 match key {
-                                    //Input char(case-sensitive)
                                     Key::Char('g') => {
                                         print!("{}", cursor::Hide);
                                         nums.reset();
@@ -312,7 +311,6 @@ pub fn run(arg: PathBuf) {
                                     }
                                 }
 
-                                //Go down. If lists exceed max-row, lists "scrolls" before the bottom of the list
                                 Key::Char('k') | Key::Up => {
                                     if y == STARTING_POINT {
                                         continue;
@@ -356,7 +354,6 @@ pub fn run(arg: PathBuf) {
                                     }
                                 }
 
-                                //Go to top
                                 Key::Char('g') => {
                                     if nums.index == 0 {
                                         continue;
@@ -370,7 +367,6 @@ pub fn run(arg: PathBuf) {
                                             let input = stdin.next();
                                             if let Some(Ok(key)) = input {
                                                 match key {
-                                                    //Input char(case-sensitive)
                                                     Key::Char('g') => {
                                                         print!("{}", cursor::Hide);
                                                         nums.reset();
@@ -617,7 +613,6 @@ pub fn run(arg: PathBuf) {
                         let input = stdin.next();
                         if let Some(Ok(key)) = input {
                             match key {
-                                //Input char(case-sensitive)
                                 Key::Char('y') => {
                                     state.yank_item(nums.index, false);
                                     print!("{}", clear::CurrentLine);
@@ -718,7 +713,6 @@ pub fn run(arg: PathBuf) {
                                     break;
                                 }
 
-                                //Exit rename mode and return to original lists
                                 Key::Esc => {
                                     print!("{}", clear::CurrentLine);
                                     print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
@@ -749,7 +743,6 @@ pub fn run(arg: PathBuf) {
                                     screen.flush().unwrap();
                                 }
 
-                                //Input char(case-sensitive)
                                 Key::Char(c) => {
                                     let memo_x = x;
                                     rename.insert((x - 4).into(), c);
@@ -868,7 +861,6 @@ pub fn run(arg: PathBuf) {
                                     screen.flush().unwrap();
                                 }
 
-                                //Input char(case-sensitive)
                                 Key::Char(c) => {
                                     let memo_x = x;
                                     keyword.insert((x - 4).into(), c);
@@ -1065,22 +1057,6 @@ pub fn run(arg: PathBuf) {
                                         break 'command;
                                     }
 
-                                    // if c == "cd" {
-                                    //     current_dir =
-                                    //         PathBuf::from(args[0]).canonicalize().unwrap();
-                                    //     state.update_list();
-                                    //     clear_and_show(&state.current_dir);
-                                    //     state.list_up(0);
-                                    //     print!(
-                                    //         "{}{}>{}",
-                                    //         cursor::Hide,
-                                    //         cursor::Goto(1, STARTING_POINT),
-                                    //         cursor::Left(1),
-                                    //     );
-                                    //     nums.reset();
-                                    //     break 'command;
-                                    // }
-
                                     print!("{}", screen::ToAlternateScreen);
                                     if std::env::set_current_dir(&state.current_dir).is_err() {
                                         print!("{}", cursor::Hide,);
@@ -1141,7 +1117,6 @@ pub fn run(arg: PathBuf) {
                                     screen.flush().unwrap();
                                 }
 
-                                //Input char(case-sensitive)
                                 Key::Char(c) => {
                                     command.insert((x - 3).into(), c);
 
@@ -1202,7 +1177,6 @@ pub fn run(arg: PathBuf) {
                                     break 'quit;
                                 }
 
-                                //Input char(case-sensitive)
                                 Key::Char(c) => {
                                     command.push(c);
 
