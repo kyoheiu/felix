@@ -37,18 +37,18 @@ from aur:
 yay -S felix-rs
 ```
 
-or from this repository:
+On NetBSD, package is available from the official repositories:
+
+```
+pkgin install felix
+```
+
+from this repository:
 
 ```
 git clone https://github.com/kyoheiu/felix.git
 cd felix
 cargo install --path .
-```
-
-On NetBSD, package is available from the official repositories:
-
-```
-pkgin install felix
 ```
 
 ## Usage
