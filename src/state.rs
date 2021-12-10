@@ -144,22 +144,27 @@ impl State {
         //prepare from and to for copy
         let from = &item.file_path;
 
-        let name = &item.file_name;
-        let mut rename = Local::now().timestamp().to_string();
-        rename.push('_');
-        rename.push_str(name);
+        if item.file_type == FileType::Symlink && !from.exists() {
+            let _ = Command::new("rm").arg(from).status();
+            Ok(())
+        } else {
+            let name = &item.file_name;
+            let mut rename = Local::now().timestamp().to_string();
+            rename.push('_');
+            rename.push_str(name);
 
-        let to = self.trash_dir.join(&rename);
+            let to = self.trash_dir.join(&rename);
 
-        //copy
-        std::fs::copy(from, &to)?;
+            //copy
+            std::fs::copy(from, &to)?;
 
-        self.to_registered_mut(&item, to, rename);
+            self.to_registered_mut(&item, to, rename);
 
-        //remove original
-        std::fs::remove_file(from)?;
+            //remove original
+            std::fs::remove_file(from)?;
 
-        Ok(())
+            Ok(())
+        }
     }
 
     pub fn remove_and_yank_dir(&mut self, item: ItemInfo) -> std::io::Result<()> {
