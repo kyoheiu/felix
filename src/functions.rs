@@ -21,7 +21,7 @@ pub fn make_config(config_file: &Path, trash_dir: &Path) -> std::io::Result<()> 
 
 pub fn format_time(time: &Option<String>) -> String {
     match time {
-        Some(datetime) => format!("{} {}", &datetime[0..10], &datetime[11..16]),
+        Some(datetime) => format!(" {} {}", &datetime[0..10], &datetime[11..16]),
         None => "".to_string(),
     }
 }

@@ -32,7 +32,7 @@ pub fn run(arg: PathBuf) {
 
     let mut state = State::new();
 
-    let time_start = if column >= 48 { 32 } else { column - 16 };
+    let time_start = if column >= 48 { 31 } else { column - 17 };
     let name_max: usize = if column >= 48 {
         29
     } else {
