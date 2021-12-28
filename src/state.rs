@@ -74,6 +74,7 @@ pub enum FileType {
 
 #[derive(Clone)]
 pub struct Layout {
+    pub terminal_row: u16,
     pub name_max_len: usize,
     pub time_start_pos: u16,
 }
@@ -95,6 +96,7 @@ impl Default for State {
             commands: to_extension_map(&config.exec),
             sort_by: config.sort_by,
             layout: Layout {
+                terminal_row: 0,
                 name_max_len: 0,
                 time_start_pos: 0,
             },
@@ -504,7 +506,7 @@ impl State {
     }
 
     pub fn list_up(&self, skip_number: u16) {
-        let (_, row) = termion::terminal_size().unwrap();
+        let row = self.layout.terminal_row;
         let len = self.list.len();
 
         //if list exceeds max-row
@@ -526,7 +528,7 @@ impl State {
                         cursor::Left(2),
                         color::Bg(color::LightWhite),
                         color::Fg(color::Black),
-                        skip_number,
+                        skip_number + 1,
                         row - STARTING_POINT + skip_number,
                         len,
                         color::Bg(color::Reset),
