@@ -1,6 +1,6 @@
 [![crates.io](https://img.shields.io/crates/v/felix)](https://crates.io/crates/felix) ![aur:felix-rs](https://img.shields.io/aur/version/felix-rs)
 
-# felix v0.2.12
+# felix v0.2.13
 
 A tui file manager with vim-like key mapping, written in Rust.  
 Works on terminals with 21 columns or more (from v0.2.11).
@@ -43,10 +43,10 @@ On NetBSD, package is available from the official repositories:
 pkgin install felix
 ```
 
-from this repository:
+from this repository(develop branch):
 
 ```
-git clone https://github.com/kyoheiu/felix.git
+git clone -b develop https://github.com/kyoheiu/felix.git
 cd felix
 cargo install --path .
 ```
