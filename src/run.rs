@@ -39,6 +39,7 @@ pub fn run(arg: PathBuf) {
         (time_start - 2).into()
     };
     state.layout = Layout {
+        terminal_row: row,
         name_max_len: name_max,
         time_start_pos: time_start,
     };
@@ -228,22 +229,64 @@ pub fn run(arg: PathBuf) {
                 //Go to parent directory if exists
                 Key::Char('h') | Key::Left => match state.current_dir.parent() {
                     Some(parent_p) => {
+                        let pre = state.current_dir.clone();
+                        let pre = pre.file_name().unwrap().to_str();
+
                         state.current_dir = parent_p.to_path_buf();
                         std::env::set_current_dir(&state.current_dir)
                             .unwrap_or_else(|e| print_warning(e, y));
                         state.update_list();
-                        clear_and_show(&state.current_dir);
-                        state.list_up(0);
 
                         match memo_v.pop() {
                             Some(memo) => {
                                 nums = memo.num;
+                                clear_and_show(&state.current_dir);
+                                state.list_up(nums.skip);
                                 print!("{}>{}", cursor::Goto(1, memo.cursor_pos), cursor::Left(1));
                             }
-                            None => {
-                                nums.reset();
-                                print!("{}>{}", cursor::Goto(1, STARTING_POINT), cursor::Left(1));
-                            }
+                            None => match pre {
+                                Some(name) => {
+                                    let mut new_pos = 0;
+                                    for (i, item) in state.list.iter().enumerate() {
+                                        if item.file_name == name {
+                                            new_pos = i;
+                                        }
+                                    }
+                                    nums.index = new_pos;
+
+                                    if nums.index
+                                        > (state.layout.terminal_row - (STARTING_POINT + 1)).into()
+                                    {
+                                        nums.skip = (nums.index - 3) as u16;
+                                        clear_and_show(&state.current_dir);
+                                        state.list_up(nums.skip);
+                                        print!(
+                                            "{}>{}",
+                                            cursor::Goto(1, STARTING_POINT + 3),
+                                            cursor::Left(1)
+                                        );
+                                    } else {
+                                        nums.skip = 0;
+                                        clear_and_show(&state.current_dir);
+                                        state.list_up(0);
+                                        print!(
+                                            "{}>{}",
+                                            cursor::Goto(1, (nums.index + 3) as u16),
+                                            cursor::Left(1)
+                                        );
+                                    }
+                                }
+                                None => {
+                                    nums.reset();
+                                    clear_and_show(&state.current_dir);
+                                    state.list_up(0);
+                                    print!(
+                                        "{}>{}",
+                                        cursor::Goto(1, STARTING_POINT),
+                                        cursor::Left(1)
+                                    );
+                                }
+                            },
                         }
                     }
                     None => {
