@@ -1,4 +1,4 @@
-pub const HELP: &str = "# felix v0.2.12
+pub const HELP: &str = "# felix v0.2.13
 A simple TUI file manager with vim-like keymapping.
 This program works on terminals with 21 columns or more.
 
@@ -37,6 +37,6 @@ Esc                   :Return to normal mode.
 config file    : $XDG_CONFIG_HOME/felix/config.toml
 trash directory: $XDG_CONFIG_HOME/felix/trash
 
-for more detail, visit:
+For more detail, visit:
 https://github.com/kyoheiu/felix
 ";
