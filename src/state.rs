@@ -21,18 +21,20 @@ macro_rules! print_item {
     ($color: expr, $name: expr, $time: expr, $selected: expr, $time_start_pos: expr) => {
         if *($selected) {
             print!(
-                "{}{}{}{}{}{}{}",
+                "{}{}{}{}{}{} {}{}{}",
                 $color,
                 style::Invert,
                 $name,
+                style::Reset,
                 cursor::Left(60),
                 cursor::Right($time_start_pos),
+                style::Invert,
                 $time,
                 style::Reset
             );
         } else {
             print!(
-                "{}{}{}{}{}{}",
+                "{}{}{}{} {}{}",
                 $color,
                 $name,
                 cursor::Left(60),
