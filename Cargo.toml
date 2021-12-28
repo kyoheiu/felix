@@ -2,7 +2,7 @@
 name = "felix"
 version = "0.2.13"
 authors = ["Kyohei Uto <kyoheiu@outlook.com>"]
-edition = "2018"
+edition = "2021"
 description = "tui file manager with vim-like key mapping"
 readme = "README_crates.md"
 repository = "https://github.com/kyoheiu/felix"
