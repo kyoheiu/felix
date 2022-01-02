@@ -833,18 +833,6 @@ pub fn run(arg: PathBuf) {
                     }
                 }
 
-                // Key::Ctrl('c') => {
-                //     if len == 0 {
-                //         continue;
-                //     }
-                //     let item = state.get_item(nums.index).unwrap();
-
-                //     let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
-                //     match ctx.set_contents(item.file_name.clone()) {
-                //         Ok(()) => print_info("file name copied", y),
-                //         Err(e) => print_warning(e, y),
-                //     }
-                // }
                 Key::Char('/') => {
                     if len == 0 {
                         continue;
