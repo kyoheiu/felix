@@ -77,7 +77,7 @@ pub fn run(arg: PathBuf) {
                         nums.inc_skip();
                         clear_and_show(&state.current_dir);
                         state.list_up(nums.skip);
-                        print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+                        state.move_cursor(y);
                         nums.go_down();
                     } else {
                         print!(" {}\n>{}", cursor::Left(1), cursor::Left(1));
@@ -93,11 +93,7 @@ pub fn run(arg: PathBuf) {
                         nums.dec_skip();
                         clear_and_show(&state.current_dir);
                         state.list_up(nums.skip);
-                        print!(
-                            "{}>{}",
-                            cursor::Goto(1, STARTING_POINT + 3),
-                            cursor::Left(1)
-                        );
+                        state.move_cursor(STARTING_POINT + 3);
                         nums.go_up();
                     } else {
                         print!(" {}{}>{}", cursor::Up(1), cursor::Left(1), cursor::Left(1));
@@ -124,23 +120,16 @@ pub fn run(arg: PathBuf) {
                                         nums.reset();
                                         clear_and_show(&state.current_dir);
                                         state.list_up(0);
-                                        print!(
-                                            " {}>{}",
-                                            cursor::Goto(1, STARTING_POINT),
-                                            cursor::Left(1)
-                                        );
+                                        print!(" ");
+                                        state.move_cursor(STARTING_POINT);
                                         break 'top;
                                     }
 
                                     _ => {
                                         print!("{}", clear::CurrentLine);
                                         print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
-                                        print!(
-                                            "{}{}>{}",
-                                            cursor::Hide,
-                                            cursor::Goto(1, y),
-                                            cursor::Left(1)
-                                        );
+                                        print!("{}", cursor::Hide);
+                                        state.move_cursor(y);
                                         break 'top;
                                     }
                                 }
@@ -154,17 +143,14 @@ pub fn run(arg: PathBuf) {
                     if len == 0 {
                         continue;
                     }
-                    if len > (row - STARTING_POINT) as usize {
-                        nums.skip = (len as u16) + STARTING_POINT - row;
+                    if len > (state.layout.terminal_row - STARTING_POINT) as usize {
+                        nums.skip = (len as u16) + STARTING_POINT - state.layout.terminal_row;
                         clear_and_show(&state.current_dir);
                         state.list_up(nums.skip);
-                        print!("{}>{}", cursor::Goto(1, row - 1), cursor::Left(1));
+                        state.move_cursor(row - 1);
                     } else {
-                        print!(
-                            " {}>{}",
-                            cursor::Goto(1, len as u16 + STARTING_POINT - 1),
-                            cursor::Left(1)
-                        );
+                        print!(" ");
+                        state.move_cursor(len as u16 + STARTING_POINT - 1);
                     }
                     nums.go_bottom(len - 1);
                 }
@@ -182,12 +168,8 @@ pub fn run(arg: PathBuf) {
                                 print!("{}", screen::ToAlternateScreen);
                                 clear_and_show(&state.current_dir);
                                 state.list_up(nums.skip);
-                                print!(
-                                    "{}{}>{}",
-                                    cursor::Hide,
-                                    cursor::Goto(1, y),
-                                    cursor::Left(1)
-                                );
+                                print!("{}", cursor::Hide);
+                                state.move_cursor(y);
                             }
                             FileType::Directory => {
                                 match std::fs::File::open(&item.file_path) {
@@ -213,11 +195,7 @@ pub fn run(arg: PathBuf) {
                                         state.update_list();
                                         clear_and_show(&state.current_dir);
                                         state.list_up(0);
-                                        print!(
-                                            "{}>{}",
-                                            cursor::Goto(1, STARTING_POINT),
-                                            cursor::Left(1)
-                                        );
+                                        state.move_cursor(STARTING_POINT);
                                         nums.reset();
                                     }
                                 }
@@ -242,7 +220,7 @@ pub fn run(arg: PathBuf) {
                                 nums = memo.num;
                                 clear_and_show(&state.current_dir);
                                 state.list_up(nums.skip);
-                                print!("{}>{}", cursor::Goto(1, memo.cursor_pos), cursor::Left(1));
+                                state.move_cursor(memo.cursor_pos);
                             }
                             None => match pre {
                                 Some(name) => {
@@ -260,20 +238,12 @@ pub fn run(arg: PathBuf) {
                                         nums.skip = (nums.index - 3) as u16;
                                         clear_and_show(&state.current_dir);
                                         state.list_up(nums.skip);
-                                        print!(
-                                            "{}>{}",
-                                            cursor::Goto(1, STARTING_POINT + 3),
-                                            cursor::Left(1)
-                                        );
+                                        state.move_cursor(STARTING_POINT + 3);
                                     } else {
                                         nums.skip = 0;
                                         clear_and_show(&state.current_dir);
                                         state.list_up(0);
-                                        print!(
-                                            "{}>{}",
-                                            cursor::Goto(1, (nums.index + 3) as u16),
-                                            cursor::Left(1)
-                                        );
+                                        state.move_cursor((nums.index + 3) as u16);
                                     }
                                 }
                                 None => {
