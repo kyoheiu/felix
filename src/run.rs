@@ -47,6 +47,8 @@ pub fn run(arg: PathBuf) {
     state.update_list();
     state.trash_dir = trash_dir;
 
+    let mut filtered = false;
+
     let mut nums = Num::new();
 
     let mut screen = screen::AlternateScreen::from(stdout().into_raw_mode().unwrap());
@@ -180,11 +182,19 @@ pub fn run(arg: PathBuf) {
                                     }
                                     Ok(_) => {
                                         //store the last cursor position and skip number
-                                        let cursor_memo = CursorMemo {
-                                            num: nums.clone(),
-                                            cursor_pos: y,
+                                        let cursor_memo = if !filtered {
+                                            CursorMemo {
+                                                num: nums.clone(),
+                                                cursor_pos: y,
+                                            }
+                                        } else {
+                                            CursorMemo {
+                                                num: Num::new(),
+                                                cursor_pos: STARTING_POINT,
+                                            }
                                         };
                                         p_memo_v.push(cursor_memo);
+                                        filtered = false;
 
                                         state.current_dir = item.file_path.clone();
                                         if let Err(e) =
@@ -219,11 +229,19 @@ pub fn run(arg: PathBuf) {
                 //Go to parent directory if exists
                 Key::Char('h') | Key::Left => match state.current_dir.parent() {
                     Some(parent_p) => {
-                        let cursor_memo = CursorMemo {
-                            num: nums.clone(),
-                            cursor_pos: y,
+                        let cursor_memo = if !filtered {
+                            CursorMemo {
+                                num: nums.clone(),
+                                cursor_pos: y,
+                            }
+                        } else {
+                            CursorMemo {
+                                num: Num::new(),
+                                cursor_pos: STARTING_POINT,
+                            }
                         };
                         c_memo_v.push(cursor_memo);
+                        filtered = false;
 
                         let pre = state.current_dir.clone();
                         let pre = pre.file_name().unwrap().to_str();
@@ -851,6 +869,7 @@ pub fn run(arg: PathBuf) {
                         if let Some(Ok(key)) = input {
                             match key {
                                 Key::Char('\n') => {
+                                    filtered = true;
                                     print!("{}", clear::CurrentLine);
                                     print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
                                     screen.flush().unwrap();
