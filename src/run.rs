@@ -59,7 +59,8 @@ pub fn run(arg: PathBuf) {
     print!("{}>{}", cursor::Goto(1, STARTING_POINT), cursor::Left(1));
     screen.flush().unwrap();
 
-    let mut memo_v: Vec<CursorMemo> = Vec::new();
+    let mut p_memo_v: Vec<CursorMemo> = Vec::new();
+    let mut c_memo_v: Vec<CursorMemo> = Vec::new();
     let mut stdin = stdin().keys();
 
     'main: loop {
@@ -183,7 +184,7 @@ pub fn run(arg: PathBuf) {
                                             num: nums.clone(),
                                             cursor_pos: y,
                                         };
-                                        memo_v.push(cursor_memo);
+                                        p_memo_v.push(cursor_memo);
 
                                         state.current_dir = item.file_path.clone();
                                         if let Err(e) =
@@ -193,10 +194,21 @@ pub fn run(arg: PathBuf) {
                                             continue;
                                         }
                                         state.update_list();
-                                        clear_and_show(&state.current_dir);
-                                        state.list_up(0);
-                                        state.move_cursor(STARTING_POINT);
-                                        nums.reset();
+
+                                        match c_memo_v.pop() {
+                                            Some(memo) => {
+                                                nums = memo.num;
+                                                clear_and_show(&state.current_dir);
+                                                state.list_up(nums.skip);
+                                                state.move_cursor(memo.cursor_pos);
+                                            }
+                                            None => {
+                                                clear_and_show(&state.current_dir);
+                                                state.list_up(0);
+                                                state.move_cursor(STARTING_POINT);
+                                                nums.reset();
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -207,6 +219,12 @@ pub fn run(arg: PathBuf) {
                 //Go to parent directory if exists
                 Key::Char('h') | Key::Left => match state.current_dir.parent() {
                     Some(parent_p) => {
+                        let cursor_memo = CursorMemo {
+                            num: nums.clone(),
+                            cursor_pos: y,
+                        };
+                        c_memo_v.push(cursor_memo);
+
                         let pre = state.current_dir.clone();
                         let pre = pre.file_name().unwrap().to_str();
 
@@ -215,7 +233,7 @@ pub fn run(arg: PathBuf) {
                             .unwrap_or_else(|e| print_warning(e, y));
                         state.update_list();
 
-                        match memo_v.pop() {
+                        match p_memo_v.pop() {
                             Some(memo) => {
                                 nums = memo.num;
                                 clear_and_show(&state.current_dir);
