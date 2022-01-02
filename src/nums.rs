@@ -3,6 +3,10 @@ pub struct CursorMemo {
     pub cursor_pos: u16,
 }
 
+pub struct ChildMemo {
+    pub dir_name: String,
+    pub cursor_memo: CursorMemo,
+}
 #[derive(Clone)]
 pub struct Num {
     pub index: usize,
