@@ -870,16 +870,15 @@ pub fn run(arg: PathBuf) {
                                 Key::Esc => {
                                     clear_and_show(&state.current_dir);
                                     state.list = original_list;
-                                    state.list_up(0);
+                                    state.list_up(nums.skip);
 
                                     print!(
                                         "{}{}>{}",
                                         cursor::Hide,
-                                        cursor::Goto(1, STARTING_POINT),
+                                        cursor::Goto(1, y),
                                         cursor::Left(1)
                                     );
 
-                                    nums.reset();
                                     break;
                                 }
 
@@ -913,9 +912,8 @@ pub fn run(arg: PathBuf) {
                                         })
                                         .collect();
 
-                                    nums.reset_skip();
                                     clear_and_show(&state.current_dir);
-                                    state.list_up(nums.skip);
+                                    state.list_up(0);
 
                                     print!(
                                         "{}{} {}{}",
