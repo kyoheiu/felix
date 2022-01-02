@@ -55,7 +55,7 @@ dependencies = [
 
 [[package]]
 name = "felix"
-version = "0.2.14"
+version = "0.2.13"
 dependencies = [
  "chrono",
  "dirs",
