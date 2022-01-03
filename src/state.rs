@@ -579,10 +579,6 @@ impl State {
             }
         }
     }
-
-    pub fn move_cursor(&self, y: u16) {
-        print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
-    }
 }
 
 fn make_item(dir: fs::DirEntry) -> ItemInfo {

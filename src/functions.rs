@@ -146,3 +146,7 @@ pub fn to_extension_map(config: &HashMap<String, Vec<String>>) -> HashMap<String
     }
     new_map
 }
+
+pub fn move_cursor(y: u16) {
+    print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+}
