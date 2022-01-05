@@ -1,5 +1,6 @@
 use super::config::*;
 use super::functions::*;
+use super::nums::*;
 use chrono::prelude::*;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -8,7 +9,7 @@ use std::fs;
 use std::io::{Error, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
-use termion::{color, cursor, style};
+use termion::{clear, color, cursor, style};
 
 pub const STARTING_POINT: u16 = 3;
 pub const DOWN_ARROW: char = '\u{21D3}';
@@ -608,7 +609,19 @@ impl State {
         }
     }
 
-    pub fn move_cursor(&self, y: u16) {
+    pub fn move_cursor(&self, nums: &Num, y: u16) {
+        print!("{}", cursor::Goto(1, self.layout.terminal_row));
+        print!("{}", clear::CurrentLine);
+
+        let item = self.get_item(nums.index).unwrap();
+        print!(
+            "[{}/{}] {:?} {}",
+            nums.index + 1,
+            self.list.len(),
+            item.file_ext,
+            item.file_size
+        );
+
         print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
     }
 }

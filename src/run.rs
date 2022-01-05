@@ -83,11 +83,12 @@ pub fn run(arg: PathBuf) {
                         nums.inc_skip();
                         clear_and_show(&state.current_dir);
                         state.list_up(nums.skip);
-                        state.move_cursor(y);
+                        state.move_cursor(&nums, y);
                         nums.go_down();
                     } else {
-                        print!(" {}\n>{}", cursor::Left(1), cursor::Left(1));
+                        print!(" ");
                         nums.go_down();
+                        state.move_cursor(&nums, y + 1);
                     }
                 }
 
@@ -99,11 +100,12 @@ pub fn run(arg: PathBuf) {
                         nums.dec_skip();
                         clear_and_show(&state.current_dir);
                         state.list_up(nums.skip);
-                        state.move_cursor(STARTING_POINT + 3);
+                        state.move_cursor(&nums, STARTING_POINT + 3);
                         nums.go_up();
                     } else {
-                        print!(" {}{}>{}", cursor::Up(1), cursor::Left(1), cursor::Left(1));
+                        print!(" ");
                         nums.go_up();
+                        state.move_cursor(&nums, y - 1);
                     }
                 }
 
@@ -127,7 +129,7 @@ pub fn run(arg: PathBuf) {
                                         clear_and_show(&state.current_dir);
                                         state.list_up(0);
                                         print!(" ");
-                                        state.move_cursor(STARTING_POINT);
+                                        state.move_cursor(&nums, STARTING_POINT);
                                         break 'top;
                                     }
 
@@ -135,7 +137,7 @@ pub fn run(arg: PathBuf) {
                                         print!("{}", clear::CurrentLine);
                                         print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
                                         print!("{}", cursor::Hide);
-                                        state.move_cursor(y);
+                                        state.move_cursor(&nums, y);
                                         break 'top;
                                     }
                                 }
@@ -153,10 +155,10 @@ pub fn run(arg: PathBuf) {
                         nums.skip = (len as u16) + STARTING_POINT - state.layout.terminal_row;
                         clear_and_show(&state.current_dir);
                         state.list_up(nums.skip);
-                        state.move_cursor(state.layout.terminal_row - 1);
+                        state.move_cursor(&nums, state.layout.terminal_row - 1);
                     } else {
                         print!(" ");
-                        state.move_cursor(len as u16 + STARTING_POINT - 1);
+                        state.move_cursor(&nums, len as u16 + STARTING_POINT - 1);
                     }
                     nums.go_bottom(len - 1);
                 }
@@ -175,7 +177,7 @@ pub fn run(arg: PathBuf) {
                                 clear_and_show(&state.current_dir);
                                 state.list_up(nums.skip);
                                 print!("{}", cursor::Hide);
-                                state.move_cursor(y);
+                                state.move_cursor(&nums, y);
                             }
                             FileType::Directory => {
                                 match std::fs::File::open(&item.file_path) {
@@ -215,18 +217,21 @@ pub fn run(arg: PathBuf) {
                                                     nums = memo.cursor_memo.num;
                                                     clear_and_show(&state.current_dir);
                                                     state.list_up(nums.skip);
-                                                    state.move_cursor(memo.cursor_memo.cursor_pos);
+                                                    state.move_cursor(
+                                                        &nums,
+                                                        memo.cursor_memo.cursor_pos,
+                                                    );
                                                 } else {
                                                     clear_and_show(&state.current_dir);
                                                     state.list_up(0);
-                                                    state.move_cursor(STARTING_POINT);
+                                                    state.move_cursor(&nums, STARTING_POINT);
                                                     nums.reset();
                                                 }
                                             }
                                             None => {
                                                 clear_and_show(&state.current_dir);
                                                 state.list_up(0);
-                                                state.move_cursor(STARTING_POINT);
+                                                state.move_cursor(&nums, STARTING_POINT);
                                                 nums.reset();
                                             }
                                         }
@@ -274,7 +279,7 @@ pub fn run(arg: PathBuf) {
                                     nums = memo.num;
                                     clear_and_show(&state.current_dir);
                                     state.list_up(nums.skip);
-                                    state.move_cursor(memo.cursor_pos);
+                                    state.move_cursor(&nums, memo.cursor_pos);
                                 }
                                 None => match pre {
                                     Some(name) => {
@@ -293,19 +298,19 @@ pub fn run(arg: PathBuf) {
                                             nums.skip = (nums.index - 3) as u16;
                                             clear_and_show(&state.current_dir);
                                             state.list_up(nums.skip);
-                                            state.move_cursor(STARTING_POINT + 3);
+                                            state.move_cursor(&nums, STARTING_POINT + 3);
                                         } else {
                                             nums.skip = 0;
                                             clear_and_show(&state.current_dir);
                                             state.list_up(0);
-                                            state.move_cursor((nums.index + 3) as u16);
+                                            state.move_cursor(&nums, (nums.index + 3) as u16);
                                         }
                                     }
                                     None => {
                                         nums.reset();
                                         clear_and_show(&state.current_dir);
                                         state.list_up(0);
-                                        state.move_cursor(STARTING_POINT);
+                                        state.move_cursor(&nums, STARTING_POINT);
                                     }
                                 },
                             }
@@ -325,7 +330,7 @@ pub fn run(arg: PathBuf) {
 
                     clear_and_show(&state.current_dir);
                     state.list_up(nums.skip);
-                    state.move_cursor(y);
+                    state.move_cursor(&nums, y);
                     screen.flush().unwrap();
 
                     let start_pos = nums.index;
@@ -357,7 +362,7 @@ pub fn run(arg: PathBuf) {
 
                                         clear_and_show(&state.current_dir);
                                         state.list_up(nums.skip);
-                                        state.move_cursor(y);
+                                        state.move_cursor(&nums, y);
                                         screen.flush().unwrap();
                                     } else {
                                         nums.go_down();
@@ -373,7 +378,7 @@ pub fn run(arg: PathBuf) {
 
                                         clear_and_show(&state.current_dir);
                                         state.list_up(nums.skip);
-                                        state.move_cursor(y + 1);
+                                        state.move_cursor(&nums, y + 1);
                                         screen.flush().unwrap();
                                     }
                                 }
@@ -396,7 +401,7 @@ pub fn run(arg: PathBuf) {
 
                                         clear_and_show(&state.current_dir);
                                         state.list_up(nums.skip);
-                                        state.move_cursor(STARTING_POINT + 3);
+                                        state.move_cursor(&nums, STARTING_POINT + 3);
                                         screen.flush().unwrap();
                                     } else {
                                         nums.go_up();
@@ -412,7 +417,7 @@ pub fn run(arg: PathBuf) {
 
                                         clear_and_show(&state.current_dir);
                                         state.list_up(nums.skip);
-                                        state.move_cursor(y - 1);
+                                        state.move_cursor(&nums, y - 1);
                                         screen.flush().unwrap();
                                     }
                                 }
@@ -452,7 +457,7 @@ pub fn run(arg: PathBuf) {
                                                             DOWN_ARROW
                                                         );
                                                         print!("{}", cursor::Hide);
-                                                        state.move_cursor(y);
+                                                        state.move_cursor(&nums, y);
                                                         break 'top_select;
                                                     }
                                                 }
@@ -469,14 +474,14 @@ pub fn run(arg: PathBuf) {
                                         state.select_to_bottom(start_pos);
                                         clear_and_show(&state.current_dir);
                                         state.list_up(nums.skip);
-                                        state.move_cursor(state.layout.terminal_row - 1);
+                                        state.move_cursor(&nums, state.layout.terminal_row - 1);
                                     } else {
                                         nums.go_bottom(len - 1);
                                         state.select_to_bottom(start_pos);
                                         clear_and_show(&state.current_dir);
                                         state.list_up(nums.skip);
                                         print!(" ");
-                                        state.move_cursor(len as u16 + STARTING_POINT - 1);
+                                        state.move_cursor(&nums, len as u16 + STARTING_POINT - 1);
                                     }
                                 }
 
@@ -518,7 +523,7 @@ pub fn run(arg: PathBuf) {
 
                                     let new_len = state.list.len();
                                     if new_len == 0 {
-                                        state.move_cursor(STARTING_POINT);
+                                        state.move_cursor(&nums, STARTING_POINT);
                                         nums.reset();
                                     } else {
                                         state.list_up(nums.skip);
@@ -547,7 +552,7 @@ pub fn run(arg: PathBuf) {
                                     yank_message.push_str(" items yanked");
                                     print_info(yank_message, y);
 
-                                    state.move_cursor(y);
+                                    state.move_cursor(&nums, y);
                                     break;
                                 }
 
@@ -555,7 +560,7 @@ pub fn run(arg: PathBuf) {
                                     state.reset_selection();
                                     clear_and_show(&state.current_dir);
                                     state.list_up(nums.skip);
-                                    state.move_cursor(y);
+                                    state.move_cursor(&nums, y);
                                     break;
                                 }
 
@@ -580,7 +585,7 @@ pub fn run(arg: PathBuf) {
                     state.update_list();
                     clear_and_show(&state.current_dir);
                     state.list_up(0);
-                    state.move_cursor(STARTING_POINT);
+                    state.move_cursor(&nums, STARTING_POINT);
                     nums.reset();
                 }
 
@@ -640,7 +645,7 @@ pub fn run(arg: PathBuf) {
                                         print!("{}", clear::CurrentLine);
                                         print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
                                         print!("{}", cursor::Hide);
-                                        state.move_cursor(y);
+                                        state.move_cursor(&nums, y);
                                         break 'delete;
                                     }
                                 }
@@ -667,7 +672,7 @@ pub fn run(arg: PathBuf) {
                                     print!("{}", clear::CurrentLine);
                                     print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
                                     print!("{}", cursor::Hide);
-                                    state.move_cursor(y);
+                                    state.move_cursor(&nums, y);
                                     print_info("1 item yanked", y);
                                     break 'yank;
                                 }
@@ -676,7 +681,7 @@ pub fn run(arg: PathBuf) {
                                     print!("{}", clear::CurrentLine);
                                     print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
                                     print!("{}", cursor::Hide);
-                                    state.move_cursor(y);
+                                    state.move_cursor(&nums, y);
                                     break 'yank;
                                 }
                             }
@@ -746,7 +751,7 @@ pub fn run(arg: PathBuf) {
                                     state.list_up(nums.skip);
 
                                     print!("{}", cursor::Hide);
-                                    state.move_cursor(y);
+                                    state.move_cursor(&nums, y);
                                     break;
                                 }
 
@@ -756,7 +761,7 @@ pub fn run(arg: PathBuf) {
                                     screen.flush().unwrap();
 
                                     print!("{}", cursor::Hide);
-                                    state.move_cursor(y);
+                                    state.move_cursor(&nums, y);
                                     break;
                                 }
 
@@ -857,7 +862,7 @@ pub fn run(arg: PathBuf) {
                                     state.list_up(nums.skip);
 
                                     print!("{}", cursor::Hide);
-                                    state.move_cursor(y);
+                                    state.move_cursor(&nums, y);
 
                                     break;
                                 }
@@ -963,7 +968,7 @@ pub fn run(arg: PathBuf) {
                                         print!("{}", clear::CurrentLine);
                                         print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
                                         print!("{}", cursor::Hide);
-                                        state.move_cursor(y);
+                                        state.move_cursor(&nums, y);
                                         break;
                                     }
 
@@ -974,7 +979,7 @@ pub fn run(arg: PathBuf) {
                                         clear_and_show(&state.current_dir);
                                         state.list_up(0);
                                         print!("{}", cursor::Hide);
-                                        state.move_cursor(STARTING_POINT);
+                                        state.move_cursor(&nums, STARTING_POINT);
                                         nums.reset();
                                         break 'command;
                                     } else if command == vec!['h'] {
@@ -989,7 +994,7 @@ pub fn run(arg: PathBuf) {
                                         let _ = stdin.next();
                                         clear_and_show(&state.current_dir);
                                         state.list_up(nums.skip);
-                                        state.move_cursor(y);
+                                        state.move_cursor(&nums, y);
                                         break 'command;
                                     }
 
@@ -1054,9 +1059,9 @@ pub fn run(arg: PathBuf) {
                                             clear_and_show(&state.current_dir);
                                             state.update_list();
                                             state.list_up(nums.skip);
-                                            state.move_cursor(STARTING_POINT);
+                                            state.move_cursor(&nums, STARTING_POINT);
                                         } else {
-                                            state.move_cursor(y);
+                                            state.move_cursor(&nums, y);
                                         }
                                         break 'command;
                                     }
@@ -1085,7 +1090,7 @@ pub fn run(arg: PathBuf) {
                                     state.list_up(nums.skip);
 
                                     print!("{}", cursor::Hide);
-                                    state.move_cursor(y);
+                                    state.move_cursor(&nums, y);
                                     break 'command;
                                 }
 
@@ -1093,7 +1098,7 @@ pub fn run(arg: PathBuf) {
                                     print!("{}", clear::CurrentLine);
                                     print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
                                     print!("{}", cursor::Hide);
-                                    state.move_cursor(y);
+                                    state.move_cursor(&nums, y);
                                     break 'command;
                                 }
 
@@ -1165,7 +1170,7 @@ pub fn run(arg: PathBuf) {
                                     print!("{}", clear::CurrentLine);
                                     print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
                                     print!("{}", cursor::Hide);
-                                    state.move_cursor(y);
+                                    state.move_cursor(&nums, y);
                                     break 'quit;
                                 }
 
@@ -1178,7 +1183,7 @@ pub fn run(arg: PathBuf) {
                                         print!("{}", clear::CurrentLine);
                                         print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
                                         print!("{}", cursor::Hide);
-                                        state.move_cursor(y);
+                                        state.move_cursor(&nums, y);
                                         break 'quit;
                                     }
                                 }
