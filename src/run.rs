@@ -77,7 +77,9 @@ pub fn run(arg: PathBuf) {
                 Key::Char('j') | Key::Down => {
                     if len == 0 || nums.index == len - 1 {
                         continue;
-                    } else if y == row - 4 && len > (row - STARTING_POINT) as usize - 1 {
+                    } else if y == state.layout.terminal_row - 4
+                        && len > (state.layout.terminal_row - STARTING_POINT) as usize - 1
+                    {
                         nums.inc_skip();
                         clear_and_show(&state.current_dir);
                         state.list_up(nums.skip);
@@ -151,7 +153,7 @@ pub fn run(arg: PathBuf) {
                         nums.skip = (len as u16) + STARTING_POINT - state.layout.terminal_row;
                         clear_and_show(&state.current_dir);
                         state.list_up(nums.skip);
-                        move_cursor(row - 1);
+                        move_cursor(state.layout.terminal_row - 1);
                     } else {
                         print!(" ");
                         move_cursor(len as u16 + STARTING_POINT - 1);
@@ -336,8 +338,10 @@ pub fn run(arg: PathBuf) {
                                 Key::Char('j') | Key::Down => {
                                     if nums.index == len - 1 {
                                         continue;
-                                    } else if y == row - 4
-                                        && len > (row - STARTING_POINT) as usize - 1
+                                    } else if y == state.layout.terminal_row - 4
+                                        && len
+                                            > (state.layout.terminal_row - STARTING_POINT) as usize
+                                                - 1
                                     {
                                         nums.inc_skip();
                                         nums.go_down();
@@ -458,13 +462,14 @@ pub fn run(arg: PathBuf) {
                                 }
 
                                 Key::Char('G') => {
-                                    if len > (row - STARTING_POINT) as usize {
-                                        nums.skip = (len as u16) + STARTING_POINT - row;
+                                    if len > (state.layout.terminal_row - STARTING_POINT) as usize {
+                                        nums.skip = (len as u16) + STARTING_POINT
+                                            - state.layout.terminal_row;
                                         nums.go_bottom(len - 1);
                                         state.select_to_bottom(start_pos);
                                         clear_and_show(&state.current_dir);
                                         state.list_up(nums.skip);
-                                        move_cursor(row - 1);
+                                        move_cursor(state.layout.terminal_row - 1);
                                     } else {
                                         nums.go_bottom(len - 1);
                                         state.select_to_bottom(start_pos);
