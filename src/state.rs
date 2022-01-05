@@ -18,7 +18,7 @@ pub const TRASH: &str = "trash";
 pub const WHEN_EMPTY: &str = "Are you sure to empty the trash directory? (if yes: y)";
 
 macro_rules! print_item {
-    ($color: expr, $name: expr, $time: expr, $selected: expr, $time_start_pos: expr) => {
+    ($color: expr, $name: expr, $time: expr, $selected: expr, $time_start_pos: expr, $column: expr) => {
         if *($selected) {
             print!(
                 "{}{}{}{}{}{} {}{}{}",
@@ -42,6 +42,11 @@ macro_rules! print_item {
                 $time,
                 color::Fg(color::Reset)
             );
+        }
+        if $column > 58 {
+            print!("{}", (0..8).map(|_| ' ').collect::<String>());
+        } else if $column > 49 {
+            print!("{}", (0..($column - 49)).map(|_| ' ').collect::<String>());
         }
     };
 }
@@ -350,7 +355,8 @@ impl State {
                     name,
                     time,
                     selected,
-                    self.layout.time_start_pos
+                    self.layout.time_start_pos,
+                    self.layout.terminal_column
                 );
             }
             Colorname::Black => {
@@ -359,7 +365,8 @@ impl State {
                     name,
                     time,
                     selected,
-                    self.layout.time_start_pos
+                    self.layout.time_start_pos,
+                    self.layout.terminal_column
                 );
             }
             Colorname::Blue => {
@@ -368,7 +375,8 @@ impl State {
                     name,
                     time,
                     selected,
-                    self.layout.time_start_pos
+                    self.layout.time_start_pos,
+                    self.layout.terminal_column
                 );
             }
             Colorname::Cyan => {
@@ -377,7 +385,8 @@ impl State {
                     name,
                     time,
                     selected,
-                    self.layout.time_start_pos
+                    self.layout.time_start_pos,
+                    self.layout.terminal_column
                 );
             }
             Colorname::Green => {
@@ -386,7 +395,8 @@ impl State {
                     name,
                     time,
                     selected,
-                    self.layout.time_start_pos
+                    self.layout.time_start_pos,
+                    self.layout.terminal_column
                 );
             }
             Colorname::LightBlack => {
@@ -395,7 +405,8 @@ impl State {
                     name,
                     time,
                     selected,
-                    self.layout.time_start_pos
+                    self.layout.time_start_pos,
+                    self.layout.terminal_column
                 );
             }
             Colorname::LightBlue => {
@@ -404,7 +415,8 @@ impl State {
                     name,
                     time,
                     selected,
-                    self.layout.time_start_pos
+                    self.layout.time_start_pos,
+                    self.layout.terminal_column
                 );
             }
             Colorname::LightCyan => {
@@ -413,7 +425,8 @@ impl State {
                     name,
                     time,
                     selected,
-                    self.layout.time_start_pos
+                    self.layout.time_start_pos,
+                    self.layout.terminal_column
                 );
             }
             Colorname::LightGreen => {
@@ -422,7 +435,8 @@ impl State {
                     name,
                     time,
                     selected,
-                    self.layout.time_start_pos
+                    self.layout.time_start_pos,
+                    self.layout.terminal_column
                 );
             }
             Colorname::LightMagenta => {
@@ -431,7 +445,8 @@ impl State {
                     name,
                     time,
                     selected,
-                    self.layout.time_start_pos
+                    self.layout.time_start_pos,
+                    self.layout.terminal_column
                 );
             }
             Colorname::LightRed => {
@@ -440,7 +455,8 @@ impl State {
                     name,
                     time,
                     selected,
-                    self.layout.time_start_pos
+                    self.layout.time_start_pos,
+                    self.layout.terminal_column
                 );
             }
             Colorname::LightWhite => {
@@ -449,7 +465,8 @@ impl State {
                     name,
                     time,
                     selected,
-                    self.layout.time_start_pos
+                    self.layout.time_start_pos,
+                    self.layout.terminal_column
                 );
             }
             Colorname::LightYellow => {
@@ -458,7 +475,8 @@ impl State {
                     name,
                     time,
                     selected,
-                    self.layout.time_start_pos
+                    self.layout.time_start_pos,
+                    self.layout.terminal_column
                 );
             }
             Colorname::Magenta => {
@@ -467,7 +485,8 @@ impl State {
                     name,
                     time,
                     selected,
-                    self.layout.time_start_pos
+                    self.layout.time_start_pos,
+                    self.layout.terminal_column
                 );
             }
             Colorname::Red => {
@@ -476,7 +495,8 @@ impl State {
                     name,
                     time,
                     selected,
-                    self.layout.time_start_pos
+                    self.layout.time_start_pos,
+                    self.layout.terminal_column
                 );
             }
             Colorname::Rgb(x, y, z) => {
@@ -485,7 +505,8 @@ impl State {
                     name,
                     time,
                     selected,
-                    self.layout.time_start_pos
+                    self.layout.time_start_pos,
+                    self.layout.terminal_column
                 );
             }
             Colorname::White => {
@@ -494,7 +515,8 @@ impl State {
                     name,
                     time,
                     selected,
-                    self.layout.time_start_pos
+                    self.layout.time_start_pos,
+                    self.layout.terminal_column
                 );
             }
             Colorname::Yellow => {
@@ -503,7 +525,8 @@ impl State {
                     name,
                     time,
                     selected,
-                    self.layout.time_start_pos
+                    self.layout.time_start_pos,
+                    self.layout.terminal_column
                 );
             }
         }
