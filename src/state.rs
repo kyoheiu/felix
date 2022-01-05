@@ -3,6 +3,7 @@ use super::functions::*;
 use chrono::prelude::*;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::ffi::OsString;
 use std::fs;
 use std::io::{Error, ErrorKind};
 use std::path::{Path, PathBuf};
@@ -68,6 +69,8 @@ pub struct ItemInfo {
     pub file_type: FileType,
     pub file_name: String,
     pub file_path: std::path::PathBuf,
+    pub file_size: u64,
+    pub file_ext: Option<OsString>,
     pub modified: Option<String>,
     pub selected: bool,
 }
@@ -640,10 +643,19 @@ fn make_item(dir: fs::DirEntry) -> ItemInfo {
         .into_string()
         .unwrap_or_else(|_| panic!("failed to get file name."));
 
+    let size = match metadata {
+        Ok(metadata) => metadata.len(),
+        Err(_) => 0,
+    };
+
+    let ext = path.extension().map(|s| s.to_os_string());
+
     ItemInfo {
         file_type: filetype,
         file_name: name,
         file_path: path,
+        file_size: size,
+        file_ext: ext,
         modified: time,
         selected: false,
     }
