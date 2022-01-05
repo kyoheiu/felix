@@ -40,6 +40,7 @@ pub fn run(arg: PathBuf) {
     };
     state.layout = Layout {
         terminal_row: row,
+        terminal_column: column,
         name_max_len: name_max,
         time_start_pos: time_start,
     };

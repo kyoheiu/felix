@@ -77,6 +77,7 @@ pub enum FileType {
 #[derive(Clone)]
 pub struct Layout {
     pub terminal_row: u16,
+    pub terminal_column: u16,
     pub name_max_len: usize,
     pub time_start_pos: u16,
 }
@@ -99,6 +100,7 @@ impl Default for State {
             sort_by: config.sort_by,
             layout: Layout {
                 terminal_row: 0,
+                terminal_column: 0,
                 name_max_len: 0,
                 time_start_pos: 0,
             },
