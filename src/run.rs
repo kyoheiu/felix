@@ -59,7 +59,7 @@ pub fn run(arg: PathBuf) {
     clear_and_show(&state.current_dir);
     state.list_up(nums.skip);
 
-    print!("{}>{}", cursor::Goto(1, STARTING_POINT), cursor::Left(1));
+    state.move_cursor(&nums, STARTING_POINT);
     screen.flush().unwrap();
 
     let mut p_memo_v: Vec<CursorMemo> = Vec::new();
@@ -86,8 +86,8 @@ pub fn run(arg: PathBuf) {
                         state.move_cursor(&nums, y);
                         nums.go_down();
                     } else {
-                        print!(" ");
                         nums.go_down();
+                        print!(" ");
                         state.move_cursor(&nums, y + 1);
                     }
                 }
@@ -100,11 +100,11 @@ pub fn run(arg: PathBuf) {
                         nums.dec_skip();
                         clear_and_show(&state.current_dir);
                         state.list_up(nums.skip);
+                        nums.go_up();
                         state.move_cursor(&nums, STARTING_POINT + 3);
-                        nums.go_up();
                     } else {
-                        print!(" ");
                         nums.go_up();
+                        print!(" ");
                         state.move_cursor(&nums, y - 1);
                     }
                 }
@@ -151,6 +151,7 @@ pub fn run(arg: PathBuf) {
                     if len == 0 {
                         continue;
                     }
+                    nums.go_bottom(len - 1);
                     if len > (state.layout.terminal_row - STARTING_POINT) as usize {
                         nums.skip = (len as u16) + STARTING_POINT - state.layout.terminal_row;
                         clear_and_show(&state.current_dir);
@@ -160,7 +161,6 @@ pub fn run(arg: PathBuf) {
                         print!(" ");
                         state.move_cursor(&nums, len as u16 + STARTING_POINT - 1);
                     }
-                    nums.go_bottom(len - 1);
                 }
 
                 //Open file or change directory
@@ -224,15 +224,15 @@ pub fn run(arg: PathBuf) {
                                                 } else {
                                                     clear_and_show(&state.current_dir);
                                                     state.list_up(0);
-                                                    state.move_cursor(&nums, STARTING_POINT);
                                                     nums.reset();
+                                                    state.move_cursor(&nums, STARTING_POINT);
                                                 }
                                             }
                                             None => {
                                                 clear_and_show(&state.current_dir);
                                                 state.list_up(0);
-                                                state.move_cursor(&nums, STARTING_POINT);
                                                 nums.reset();
+                                                state.move_cursor(&nums, STARTING_POINT);
                                             }
                                         }
                                     }
@@ -520,23 +520,18 @@ pub fn run(arg: PathBuf) {
                                     let mut delete_message: String = i.to_string();
                                     delete_message.push_str(" items deleted");
                                     print_info(delete_message, y);
+                                    print!(" ");
 
                                     let new_len = state.list.len();
                                     if new_len == 0 {
-                                        state.move_cursor(&nums, STARTING_POINT);
                                         nums.reset();
+                                        state.move_cursor(&nums, STARTING_POINT);
+                                    } else if nums.index > new_len - 1 {
+                                        let new_y = y - (nums.index - (new_len - 1)) as u16;
+                                        nums.index = new_len - 1;
+                                        state.move_cursor(&nums, new_y)
                                     } else {
-                                        state.list_up(nums.skip);
-                                        print!(" {}>{}", cursor::Goto(1, y), cursor::Left(1));
-                                        if nums.index > new_len {
-                                            print!(
-                                                " {}{}>{}",
-                                                cursor::Left(1),
-                                                cursor::Up((nums.index - new_len + 1) as u16),
-                                                cursor::Left(1)
-                                            );
-                                            nums.index = new_len - 1;
-                                        }
+                                        state.move_cursor(&nums, y);
                                     }
                                     break;
                                 }
@@ -585,8 +580,8 @@ pub fn run(arg: PathBuf) {
                     state.update_list();
                     clear_and_show(&state.current_dir);
                     state.list_up(0);
-                    state.move_cursor(&nums, STARTING_POINT);
                     nums.reset();
+                    state.move_cursor(&nums, STARTING_POINT);
                 }
 
                 Key::Char('d') => {
@@ -613,6 +608,7 @@ pub fn run(arg: PathBuf) {
                                                 if let Err(e) = state.remove_and_yank_dir(item) {
                                                     print!("{}", cursor::Hide);
                                                     print_warning(e, y);
+                                                    state.move_cursor(&nums, y);
                                                     break 'delete;
                                                 }
                                             }
@@ -621,6 +617,7 @@ pub fn run(arg: PathBuf) {
                                                     clear_and_show(&state.current_dir);
                                                     print!("{}", cursor::Hide);
                                                     print_warning(e, y);
+                                                    state.move_cursor(&nums, y);
                                                     break 'delete;
                                                 }
                                             }
@@ -639,6 +636,7 @@ pub fn run(arg: PathBuf) {
                                             y
                                         };
                                         print_info("1 item deleted", cursor_pos);
+                                        state.move_cursor(&nums, cursor_pos);
                                         break 'delete;
                                     }
                                     _ => {
@@ -708,6 +706,7 @@ pub fn run(arg: PathBuf) {
                     let mut put_message: String = state.registered.len().to_string();
                     put_message.push_str(" items inserted");
                     print_info(put_message, y);
+                    state.move_cursor(&nums, y);
                 }
 
                 Key::Char('c') => {
@@ -851,8 +850,8 @@ pub fn run(arg: PathBuf) {
                                     print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
                                     screen.flush().unwrap();
 
-                                    print!("{}>{}", cursor::Goto(1, 3), cursor::Left(1));
                                     nums.reset();
+                                    state.move_cursor(&nums, STARTING_POINT);
                                     break;
                                 }
 
@@ -979,8 +978,8 @@ pub fn run(arg: PathBuf) {
                                         clear_and_show(&state.current_dir);
                                         state.list_up(0);
                                         print!("{}", cursor::Hide);
-                                        state.move_cursor(&nums, STARTING_POINT);
                                         nums.reset();
+                                        state.move_cursor(&nums, STARTING_POINT);
                                         break 'command;
                                     } else if command == vec!['h'] {
                                         print!("{}", cursor::Hide);
