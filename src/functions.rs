@@ -146,3 +146,21 @@ pub fn to_extension_map(config: &HashMap<String, Vec<String>>) -> HashMap<String
     }
     new_map
 }
+
+pub fn to_proper_size(byte: u64) -> String {
+    let mut result: String;
+    if byte < 1000 {
+        result = byte.to_string();
+        result.push('B');
+    } else if byte < 1_000_000 {
+        result = (byte / 1_000).to_string();
+        result.push_str("KB");
+    } else if byte < 1_000_000_000 {
+        result = (byte / 1_000_000).to_string();
+        result.push_str("MB");
+    } else {
+        result = (byte / 1_000_000_000).to_string();
+        result.push_str("GB");
+    }
+    result
+}

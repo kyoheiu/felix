@@ -614,13 +614,25 @@ impl State {
         print!("{}", clear::CurrentLine);
 
         let item = self.get_item(nums.index).unwrap();
-        print!(
-            "[{}/{}] {:?} {}",
-            nums.index + 1,
-            self.list.len(),
-            item.file_ext,
-            item.file_size
-        );
+        match &item.file_ext {
+            Some(ext) => {
+                print!(
+                    "[{}/{}] {} {}",
+                    nums.index + 1,
+                    self.list.len(),
+                    ext.clone().into_string().unwrap_or_default(),
+                    to_proper_size(item.file_size)
+                );
+            }
+            None => {
+                print!(
+                    "[{}/{}] {}",
+                    nums.index + 1,
+                    self.list.len(),
+                    to_proper_size(item.file_size)
+                );
+            }
+        }
 
         print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
     }
