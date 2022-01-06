@@ -613,27 +613,28 @@ impl State {
         print!("{}", cursor::Goto(1, self.layout.terminal_row));
         print!("{}", clear::CurrentLine);
 
-        let item = self.get_item(nums.index).unwrap();
-        match &item.file_ext {
-            Some(ext) => {
-                print!(
-                    "[{}/{}] {} {}",
-                    nums.index + 1,
-                    self.list.len(),
-                    ext.clone().into_string().unwrap_or_default(),
-                    to_proper_size(item.file_size)
-                );
-            }
-            None => {
-                print!(
-                    "[{}/{}] {}",
-                    nums.index + 1,
-                    self.list.len(),
-                    to_proper_size(item.file_size)
-                );
+        let item = self.get_item(nums.index);
+        if let Ok(item) = item {
+            match &item.file_ext {
+                Some(ext) => {
+                    print!(
+                        "[{}/{}] {} {}",
+                        nums.index + 1,
+                        self.list.len(),
+                        ext.clone().into_string().unwrap_or_default(),
+                        to_proper_size(item.file_size)
+                    );
+                }
+                None => {
+                    print!(
+                        "[{}/{}] {}",
+                        nums.index + 1,
+                        self.list.len(),
+                        to_proper_size(item.file_size)
+                    );
+                }
             }
         }
-
         print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
     }
 }

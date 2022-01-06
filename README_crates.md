@@ -1,7 +1,7 @@
-# felix v0.2.13
+# felix v0.3.0
 
 A tui file manager with vim-like key mapping, written in Rust.  
-Works on terminals with 21 columns or more (from v0.2.11).
+Works on terminals with 21 columns or more.
 
 [sample gif](https://github.com/kyoheiu/felix/blob/main/screenshots/sample.gif)
 
