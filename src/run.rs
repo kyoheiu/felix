@@ -3,6 +3,7 @@ use super::functions::*;
 use super::help::HELP;
 use super::nums::*;
 use super::state::*;
+use std::ffi::OsStr;
 // use clipboard::{ClipboardContext, ClipboardProvider};
 use std::io::{stdin, stdout, Write};
 use std::path::{Path, PathBuf};
@@ -200,7 +201,6 @@ pub fn run(arg: PathBuf) {
                                         };
                                         p_memo_v.push(cursor_memo);
                                         filtered = false;
-                                        let target = item.file_name.clone();
 
                                         state.current_dir = item.file_path.clone();
                                         if let Err(e) =
@@ -213,7 +213,7 @@ pub fn run(arg: PathBuf) {
 
                                         match c_memo_v.pop() {
                                             Some(memo) => {
-                                                if target == memo.dir_name {
+                                                if state.current_dir == memo.dir_path {
                                                     nums = memo.cursor_memo.num;
                                                     clear_and_show(&state.current_dir);
                                                     state.list_up(nums.skip);
@@ -245,13 +245,12 @@ pub fn run(arg: PathBuf) {
                 //Go to parent directory if exists
                 Key::Char('h') | Key::Left => {
                     let pre = state.current_dir.clone();
-                    let pre = pre.file_name().unwrap().to_str();
 
                     match state.current_dir.parent() {
                         Some(parent_p) => {
                             let cursor_memo = if !filtered {
                                 ChildMemo {
-                                    dir_name: pre.unwrap().to_string(),
+                                    dir_path: pre.clone(),
                                     cursor_memo: CursorMemo {
                                         num: nums.clone(),
                                         cursor_pos: y,
@@ -259,7 +258,7 @@ pub fn run(arg: PathBuf) {
                                 }
                             } else {
                                 ChildMemo {
-                                    dir_name: "".to_string(),
+                                    dir_path: PathBuf::from(""),
                                     cursor_memo: CursorMemo {
                                         num: Num::new(),
                                         cursor_pos: STARTING_POINT,
@@ -281,11 +280,12 @@ pub fn run(arg: PathBuf) {
                                     state.list_up(nums.skip);
                                     state.move_cursor(&nums, memo.cursor_pos);
                                 }
-                                None => match pre {
+                                None => match pre.file_name() {
                                     Some(name) => {
                                         let mut new_pos = 0;
                                         for (i, item) in state.list.iter().enumerate() {
-                                            if item.file_name == name {
+                                            let name_as_os_str: &OsStr = item.file_name.as_ref();
+                                            if name_as_os_str == name {
                                                 new_pos = i;
                                             }
                                         }

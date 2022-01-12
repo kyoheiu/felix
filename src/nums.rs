@@ -4,7 +4,7 @@ pub struct CursorMemo {
 }
 
 pub struct ChildMemo {
-    pub dir_name: String,
+    pub dir_path: std::path::PathBuf,
     pub cursor_memo: CursorMemo,
 }
 #[derive(Clone)]
