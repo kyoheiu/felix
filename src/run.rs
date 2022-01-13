@@ -81,11 +81,11 @@ pub fn run(arg: PathBuf) {
                     } else if y == state.layout.terminal_row - 4
                         && len > (state.layout.terminal_row - STARTING_POINT) as usize - 1
                     {
+                        nums.go_down();
                         nums.inc_skip();
                         clear_and_show(&state.current_dir);
                         state.list_up(nums.skip);
                         state.move_cursor(&nums, y);
-                        nums.go_down();
                     } else {
                         nums.go_down();
                         print!(" ");
@@ -98,10 +98,10 @@ pub fn run(arg: PathBuf) {
                     if y == STARTING_POINT {
                         continue;
                     } else if y == STARTING_POINT + 3 && nums.skip != 0 {
+                        nums.go_up();
                         nums.dec_skip();
                         clear_and_show(&state.current_dir);
                         state.list_up(nums.skip);
-                        nums.go_up();
                         state.move_cursor(&nums, STARTING_POINT + 3);
                     } else {
                         nums.go_up();
@@ -292,7 +292,7 @@ pub fn run(arg: PathBuf) {
                                         nums.index = new_pos;
 
                                         if nums.index
-                                            > (state.layout.terminal_row - (STARTING_POINT + 1))
+                                            >= (state.layout.terminal_row - (STARTING_POINT + 3))
                                                 .into()
                                         {
                                             nums.skip = (nums.index - 3) as u16;
