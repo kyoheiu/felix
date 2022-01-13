@@ -5,6 +5,8 @@ use super::nums::*;
 use super::state::*;
 use std::ffi::OsStr;
 // use clipboard::{ClipboardContext, ClipboardProvider};
+use log::debug;
+use log::error;
 use std::io::{stdin, stdout, Write};
 use std::path::{Path, PathBuf};
 use termion::cursor::DetectCursorPos;
@@ -14,6 +16,9 @@ use termion::raw::IntoRawMode;
 use termion::{clear, cursor, screen};
 
 pub fn run(arg: PathBuf) {
+    env_logger::init();
+    debug!("starts initial setup.");
+
     let mut config_dir = dirs::config_dir().unwrap_or_else(|| panic!("cannot read config dir."));
     config_dir.push(FX_CONFIG_DIR);
     let config_file = config_dir.join(PathBuf::from(CONFIG_FILE));
@@ -28,7 +33,8 @@ pub fn run(arg: PathBuf) {
 
     let (column, row) = termion::terminal_size().unwrap();
     if column < 21 {
-        panic!("too small terminal size.")
+        error!("too small terminal size.");
+        panic!("panic due to terminal size (less than 21 column).")
     };
 
     let mut state = State::new();
@@ -53,19 +59,29 @@ pub fn run(arg: PathBuf) {
 
     let mut nums = Num::new();
 
+    debug!("starts screen.");
     let mut screen = screen::AlternateScreen::from(stdout().into_raw_mode().unwrap());
+    debug!("finished starting screen.");
 
     print!("{}", cursor::Hide);
+    debug!("cursor hidden.");
 
     clear_and_show(&state.current_dir);
+    debug!("clear_and_show finished.");
     state.list_up(nums.skip);
+    debug!("list_up finished.");
 
     state.move_cursor(&nums, STARTING_POINT);
-    screen.flush().unwrap();
+    debug!("move_cursor finished.");
+    match screen.flush() {
+        Ok(_) => debug!("first flush."),
+        Err(_) => error!("flush failed."),
+    }
 
     let mut p_memo_v: Vec<CursorMemo> = Vec::new();
     let mut c_memo_v: Vec<ChildMemo> = Vec::new();
     let mut stdin = stdin().keys();
+    debug!("finished initial setup.");
 
     'main: loop {
         let len = state.list.len();

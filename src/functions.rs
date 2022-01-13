@@ -1,5 +1,6 @@
 use super::config::CONFIG_EXAMPLE;
 use super::state::*;
+use log::{debug, error};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
@@ -28,6 +29,7 @@ pub fn format_time(time: &Option<String>) -> String {
 
 pub fn clear_and_show(dir: &Path) {
     print!("{}{}", clear::All, cursor::Goto(1, 1));
+    debug!("clear::All finished.");
     //Show current directory path
     print!(
         " {}{}{}{}{}",
