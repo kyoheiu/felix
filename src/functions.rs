@@ -39,27 +39,28 @@ pub fn clear_and_show(dir: &Path) {
         style::Reset,
         color::Fg(color::Reset),
     );
+    debug!("current_dir displayed.");
 
     let git = dir.join(".git");
     if git.exists() {
-        let current_branch = std::process::Command::new("git")
-            .args(["branch", "--show-current"])
-            .output();
-        if let Ok(result) = current_branch {
-            let branch = String::from_utf8(result.stdout).unwrap_or_default();
-            print!(
-                " on {}{}{}{}{}",
-                style::Bold,
-                color::Fg(color::Magenta),
-                branch,
-                style::Reset,
-                color::Fg(color::Reset)
-            );
-        }
+        let head = std::fs::read(".git/HEAD").unwrap();
+        let branch: Vec<u8> = head.into_iter().skip(16).collect();
+        let branch = std::str::from_utf8(&branch).unwrap();
+        debug!("caught current_branch.");
+        debug!("current branch to String finished.");
+        print!(
+            " on {}{}{}{}{}",
+            style::Bold,
+            color::Fg(color::Magenta),
+            branch,
+            style::Reset,
+            color::Fg(color::Reset)
+        );
+        debug!("branch name appeared.");
     }
-
     //Show arrow
     print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
+    debug!("arrow appeared.");
 }
 
 pub fn rename_file(item: &ItemInfo, name_set: &HashSet<String>) -> String {
