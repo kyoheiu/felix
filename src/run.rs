@@ -132,7 +132,7 @@ pub fn run(arg: PathBuf) {
                         continue;
                     } else {
                         print!("{}{}g", cursor::Goto(2, 2), clear::CurrentLine,);
-                        print!("{}{}", cursor::Show, cursor::BlinkingBar);
+                        print!("{}", cursor::Show);
 
                         screen.flush().unwrap();
 
@@ -443,7 +443,7 @@ pub fn run(arg: PathBuf) {
                                         continue;
                                     } else {
                                         print!("{}{}g", cursor::Goto(2, 2), clear::CurrentLine,);
-                                        print!("{}{}", cursor::Show, cursor::BlinkingBar);
+                                        print!("{}", cursor::Show);
 
                                         screen.flush().unwrap();
 
@@ -605,7 +605,7 @@ pub fn run(arg: PathBuf) {
                         continue;
                     } else {
                         print!("{}{}d", cursor::Goto(2, 2), clear::CurrentLine,);
-                        print!("{}{}", cursor::Show, cursor::BlinkingBar);
+                        print!("{}", cursor::Show);
 
                         screen.flush().unwrap();
 
@@ -673,7 +673,7 @@ pub fn run(arg: PathBuf) {
                         continue;
                     }
                     print!("{}{}y", cursor::Goto(2, 2), clear::CurrentLine,);
-                    print!("{}{}", cursor::Show, cursor::BlinkingBar);
+                    print!("{}", cursor::Show);
 
                     screen.flush().unwrap();
 
@@ -729,7 +729,7 @@ pub fn run(arg: PathBuf) {
                     if len == 0 {
                         continue;
                     }
-                    print!("{}{}", cursor::Show, cursor::BlinkingBar);
+                    print!("{}", cursor::Show);
                     let item = state.get_item(nums.index).unwrap();
 
                     let mut rename = item.file_name.chars().collect::<Vec<char>>();
@@ -847,7 +847,7 @@ pub fn run(arg: PathBuf) {
                         clear::CurrentLine,
                         RIGHT_ARROW
                     );
-                    print!("{}{}", cursor::Show, cursor::BlinkingBar);
+                    print!("{}", cursor::Show);
                     screen.flush().unwrap();
 
                     let original_list = state.list.clone();
@@ -967,7 +967,7 @@ pub fn run(arg: PathBuf) {
 
                 Key::Char(':') => {
                     print!(" {}{}:", cursor::Goto(2, 2), clear::CurrentLine,);
-                    print!("{}{}", cursor::Show, cursor::BlinkingBar);
+                    print!("{}", cursor::Show);
 
                     let mut command: Vec<char> = Vec::new();
                     screen.flush().unwrap();
@@ -1172,7 +1172,7 @@ pub fn run(arg: PathBuf) {
 
                 Key::Char('Z') => {
                     print!(" {}{}Z", cursor::Goto(2, 2), clear::CurrentLine,);
-                    print!("{}{}", cursor::Show, cursor::BlinkingBar);
+                    print!("{}", cursor::Show);
 
                     let mut command: Vec<char> = vec!['Z'];
                     screen.flush().unwrap();
@@ -1217,5 +1217,5 @@ pub fn run(arg: PathBuf) {
         screen.flush().unwrap();
     }
     //When finishes, restore the cursor
-    print!("{}", cursor::Show);
+    print!("{}", cursor::Restore);
 }
