@@ -1,6 +1,6 @@
 [![crates.io](https://img.shields.io/crates/v/felix)](https://crates.io/crates/felix) ![aur:felix-rs](https://img.shields.io/aur/version/felix-rs)
 
-# *felix* v0.3.1
+# *felix* v0.3.2
 
 A tui file manager with vim-like key mapping, written in Rust.  
 Works on terminals with 21 columns or more.
