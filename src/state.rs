@@ -2,6 +2,7 @@ use super::config::*;
 use super::functions::*;
 use super::nums::*;
 use chrono::prelude::*;
+use log::debug;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::ffi::OsString;
@@ -537,6 +538,7 @@ impl State {
     }
 
     pub fn list_up(&self, skip_number: u16) {
+        debug!("list_up starts.");
         let row = self.layout.terminal_row;
         let len = self.list.len();
 
@@ -612,8 +614,10 @@ impl State {
     pub fn move_cursor(&self, nums: &Num, y: u16) {
         print!("{}", cursor::Goto(1, self.layout.terminal_row));
         print!("{}", clear::CurrentLine);
+        debug!("move_cursor setup finished.");
 
         let item = self.get_item(nums.index);
+        debug!("get_item finished.");
         if let Ok(item) = item {
             match &item.file_ext {
                 Some(ext) => {
@@ -626,16 +630,19 @@ impl State {
                     );
                 }
                 None => {
+                    debug!("no extensions arm starts.");
                     print!(
                         "[{}/{}] {}",
                         nums.index + 1,
                         self.list.len(),
                         to_proper_size(item.file_size)
                     );
+                    debug!("no extensions arm finished.");
                 }
             }
         }
         print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+        debug!("printing cursor finished.");
     }
 }
 
