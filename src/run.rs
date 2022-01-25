@@ -72,7 +72,6 @@ pub fn run(arg: PathBuf) {
     let mut p_memo_v: Vec<CursorMemo> = Vec::new();
     let mut c_memo_v: Vec<ChildMemo> = Vec::new();
     let mut stdin = stdin().keys();
-    debug!("finished initial setup.");
 
     'main: loop {
         let len = state.list.len();
