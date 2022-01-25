@@ -1,6 +1,5 @@
 use super::config::CONFIG_EXAMPLE;
 use super::state::*;
-use log::debug;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
@@ -29,7 +28,6 @@ pub fn format_time(time: &Option<String>) -> String {
 
 pub fn clear_and_show(dir: &Path) {
     print!("{}{}", clear::All, cursor::Goto(1, 1));
-    debug!("clear::All finished.");
     //Show current directory path
     print!(
         " {}{}{}{}{}",
@@ -39,15 +37,12 @@ pub fn clear_and_show(dir: &Path) {
         style::Reset,
         color::Fg(color::Reset),
     );
-    debug!("current_dir displayed.");
 
     let git = dir.join(".git");
     if git.exists() {
         let head = std::fs::read(".git/HEAD").unwrap();
         let branch: Vec<u8> = head.into_iter().skip(16).collect();
         let branch = std::str::from_utf8(&branch).unwrap();
-        debug!("caught current_branch.");
-        debug!("current branch to String finished.");
         print!(
             " on {}{}{}{}{}",
             style::Bold,
@@ -56,11 +51,9 @@ pub fn clear_and_show(dir: &Path) {
             style::Reset,
             color::Fg(color::Reset)
         );
-        debug!("branch name appeared.");
     }
     //Show arrow
     print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
-    debug!("arrow appeared.");
 }
 
 pub fn rename_file(item: &ItemInfo, name_set: &HashSet<String>) -> String {

@@ -59,24 +59,15 @@ pub fn run(arg: PathBuf) {
 
     let mut nums = Num::new();
 
-    debug!("starts screen.");
     let mut screen = screen::AlternateScreen::from(stdout().into_raw_mode().unwrap());
-    debug!("finished starting screen.");
 
     print!("{}", cursor::Hide);
-    debug!("cursor hidden.");
 
     clear_and_show(&state.current_dir);
-    debug!("clear_and_show finished.");
     state.list_up(nums.skip);
-    debug!("list_up finished.");
 
     state.move_cursor(&nums, STARTING_POINT);
-    debug!("move_cursor finished.");
-    match screen.flush() {
-        Ok(_) => debug!("first flush."),
-        Err(_) => error!("flush failed."),
-    }
+    screen.flush().unwrap();
 
     let mut p_memo_v: Vec<CursorMemo> = Vec::new();
     let mut c_memo_v: Vec<ChildMemo> = Vec::new();
