@@ -3,10 +3,9 @@ use super::functions::*;
 use super::help::HELP;
 use super::nums::*;
 use super::state::*;
-use std::ffi::OsStr;
-// use clipboard::{ClipboardContext, ClipboardProvider};
 use log::debug;
 use log::error;
+use std::ffi::OsStr;
 use std::io::{stdin, stdout, Write};
 use std::path::{Path, PathBuf};
 use termion::cursor::DetectCursorPos;
@@ -90,6 +89,8 @@ pub fn run(arg: PathBuf) {
 
         if let Some(Ok(key)) = input {
             match key {
+                // Quit app
+                Key::Char('q') => break 'main,
                 //Go up. If lists exceed max-row, lists "scrolls" before the top of the list
                 Key::Char('j') | Key::Down => {
                     if len == 0 || nums.index == len - 1 {
