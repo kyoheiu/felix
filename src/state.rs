@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::ffi::OsString;
 use std::fs;
+use std::fs::DirEntry;
 use std::io::{Error, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
@@ -64,6 +65,7 @@ pub struct State {
     pub commands: HashMap<String, String>,
     pub sort_by: SortKey,
     pub layout: Layout,
+    pub show_hidden: bool,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -114,6 +116,7 @@ impl Default for State {
                 name_max_len: 0,
                 time_start_pos: 0,
             },
+            show_hidden: false,
         }
     }
 }
@@ -582,7 +585,7 @@ impl State {
     }
 
     pub fn update_list(&mut self) {
-        self.list = push_items(&self.current_dir, &self.sort_by).unwrap();
+        self.list = push_items(&self.current_dir, &self.sort_by, self.show_hidden).unwrap();
     }
 
     pub fn reset_selection(&mut self) {
@@ -698,13 +701,24 @@ fn make_item(dir: fs::DirEntry) -> ItemInfo {
     }
 }
 
-pub fn push_items(p: &Path, key: &SortKey) -> Result<Vec<ItemInfo>, Error> {
+fn is_not_hidden(entry: &DirEntry) -> bool {
+    entry
+        .file_name()
+        .to_str()
+        .map(|s| !s.starts_with('.'))
+        .unwrap_or(false)
+}
+
+pub fn push_items(p: &Path, key: &SortKey, show_hidden: bool) -> Result<Vec<ItemInfo>, Error> {
     let mut result = Vec::new();
     let mut dir_v = Vec::new();
     let mut file_v = Vec::new();
 
     for entry in fs::read_dir(p)? {
         let e = entry?;
+        if !show_hidden && !is_not_hidden(&e) {
+            continue;
+        }
         let entry = make_item(e);
         match entry.file_type {
             FileType::Directory => dir_v.push(entry),
