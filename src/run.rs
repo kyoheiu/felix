@@ -1208,7 +1208,15 @@ pub fn run(arg: PathBuf) {
                         }
                     }
                 }
-
+                // Show/hide hidden files or directories
+                Key::Backspace => {
+                    state.show_hidden = !state.show_hidden;
+                    state.update_list();
+                    clear_and_show(&state.current_dir);
+                    state.list_up(0);
+                    nums.reset();
+                    state.move_cursor(&nums, STARTING_POINT);
+                }
                 _ => {
                     continue;
                 }
