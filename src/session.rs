@@ -16,6 +16,12 @@ pub struct Session {
     pub show_hidden: bool
 }
 
+#[derive(Deserialize,Serialize, Debug, Clone)]
+pub enum SortKey {
+    Name,
+    Time,
+}
+
 pub fn read_session() -> Option<Session> {
     let mut session = dirs::config_dir().unwrap_or_else(|| panic!("cannot read config dir."));
     session.push(FX_CONFIG_DIR);
