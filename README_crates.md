@@ -1,4 +1,4 @@
-# *felix* v0.3.2
+# *felix* v0.4.0
 
 A tui file manager with vim-like key mapping, written in Rust.  
 Works on terminals with 21 columns or more.
@@ -72,7 +72,8 @@ cargo install --path .
 | V                     | Switch to select mode, where you can move cursor to select items.                                                                                                                                                                                      |
 | d (select mode)       | Delete and yank selected items, and return to normal mode.                                                                                                                                                                                             |
 | y (select mode)       | Yank selected items, and return to normal mode.                                                                                                                                                                                                        |
-| t                     | Toggle sort order (by name <-> by modified time). This change remains until the program ends (sort order will be restored as configured).                                                                                                              |
+| backspace                     | Toggle whether to show hidden items or not. This change remains after exit (stored in .session file in config directory).                                                                                                              |
+| t                     | Toggle sort order (by name <-> by modified time). This change remains after exit (same as above).                                                                                                              |
 | :                     | Switch to shell mode (***experimantal***). Type command and press Enter to execute it. You can use any command in the displayed directory, but it may fail to execute the command (e.g. `cd` doesn't work for now), and also the display of items may collapse during execution. |
 | c                     | Switch to rename mode (enter new name and press Enter to rename the item).                                                                                                                                                                             |
 | /                     | Switch to filter mode (enter keyword and press Enter to go to filtered list).                                                                                                                                                                          |

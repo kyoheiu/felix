@@ -1,4 +1,4 @@
-pub const HELP: &str = "# felix v0.3.2
+pub const HELP: &str = "# felix v0.4.0
 A simple TUI file manager with vim-like keymapping.
 This program works on terminals with 21 columns or more.
 
@@ -23,6 +23,7 @@ V                     :Switch to select mode.
   - d                 :In select mode, delete and yank selected items.
   - y                 :In select mode, yank selected items.
 t                     :Toggle sort order (name <-> modified time).
+backspace             :Toggle whether to show hidden items.
 :                     :Switch to shell mode.
 c                     :Switch to rename mode.
 /                     :Switch to filter mode.
