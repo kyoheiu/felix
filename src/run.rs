@@ -70,10 +70,7 @@ pub fn run(arg: PathBuf) {
     state.list_up(nums.skip);
 
     state.move_cursor(&nums, STARTING_POINT);
-    match screen.flush() {
-        Ok(_) => debug!("first flush."),
-        Err(_) => error!("flush failed."),
-    }
+    screen.flush().unwrap();
 
     let mut p_memo_v: Vec<CursorMemo> = Vec::new();
     let mut c_memo_v: Vec<ChildMemo> = Vec::new();
