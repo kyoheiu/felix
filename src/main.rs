@@ -4,6 +4,7 @@ mod help;
 mod nums;
 mod run;
 mod state;
+mod session;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();

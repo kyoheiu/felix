@@ -1,3 +1,4 @@
+use crate::session::*;
 use super::config::SortKey;
 use super::functions::*;
 use super::help::HELP;
@@ -22,9 +23,12 @@ pub fn run(arg: PathBuf) {
     let mut config_dir = dirs::config_dir().unwrap_or_else(|| panic!("cannot read config dir."));
     config_dir.push(FX_CONFIG_DIR);
     let config_file = config_dir.join(PathBuf::from(CONFIG_FILE));
+    let session_file = config_dir.join(PathBuf::from(SESSION_FILE));
     let trash_dir = config_dir.join(PathBuf::from(TRASH));
     make_config(&config_file, &trash_dir)
         .unwrap_or_else(|_| panic!("cannot make config file or trash dir."));
+    make_session(&session_file)
+        .unwrap_or_else(|_| panic!("cannot make session file."));
 
     if !&arg.exists() {
         println!("Invalid path: {}", &arg.display());
@@ -59,20 +63,14 @@ pub fn run(arg: PathBuf) {
 
     let mut nums = Num::new();
 
-    debug!("starts screen.");
     let mut screen = screen::AlternateScreen::from(stdout().into_raw_mode().unwrap());
-    debug!("finished starting screen.");
 
     print!("{}", cursor::Hide);
-    debug!("cursor hidden.");
 
     clear_and_show(&state.current_dir);
-    debug!("clear_and_show finished.");
     state.list_up(nums.skip);
-    debug!("list_up finished.");
 
     state.move_cursor(&nums, STARTING_POINT);
-    debug!("move_cursor finished.");
     match screen.flush() {
         Ok(_) => debug!("first flush."),
         Err(_) => error!("flush failed."),
@@ -81,7 +79,6 @@ pub fn run(arg: PathBuf) {
     let mut p_memo_v: Vec<CursorMemo> = Vec::new();
     let mut c_memo_v: Vec<ChildMemo> = Vec::new();
     let mut stdin = stdin().keys();
-    debug!("finished initial setup.");
 
     'main: loop {
         let len = state.list.len();
@@ -1226,4 +1223,5 @@ pub fn run(arg: PathBuf) {
     }
     //When finishes, restore the cursor
     print!("{}", cursor::Restore);
+    state.write_session(session_file);
 }

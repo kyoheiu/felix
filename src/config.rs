@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::read_to_string;
 
@@ -53,7 +53,7 @@ pub struct Config {
     pub color: Color,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize,Serialize, Debug, Clone)]
 pub enum SortKey {
     Name,
     Time,

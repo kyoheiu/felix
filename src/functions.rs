@@ -6,6 +6,7 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use termion::{clear, color, cursor, style};
+use super::session::*;
 
 pub fn make_config(config_file: &Path, trash_dir: &Path) -> std::io::Result<()> {
     if !trash_dir.exists() {
@@ -15,6 +16,15 @@ pub fn make_config(config_file: &Path, trash_dir: &Path) -> std::io::Result<()> 
     if !config_file.exists() {
         fs::write(&config_file, CONFIG_EXAMPLE)
             .unwrap_or_else(|_| panic!("cannot write new config file."));
+    }
+
+    Ok(())
+}
+
+pub fn make_session(session_file: &Path) -> std::io::Result<()> {
+    if !session_file.exists() {
+        fs::write(&session_file, SESSION_EXAMPLE)
+            .unwrap_or_else(|_| panic!("cannot write new session file."));
     }
 
     Ok(())
