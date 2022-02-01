@@ -22,10 +22,10 @@ pub fn run(arg: PathBuf) {
     let mut config_dir = dirs::config_dir().unwrap_or_else(|| panic!("cannot read config dir."));
     config_dir.push(FX_CONFIG_DIR);
     let config_file = config_dir.join(PathBuf::from(CONFIG_FILE));
-    let session_file = config_dir.join(PathBuf::from(SESSION_FILE));
     let trash_dir = config_dir.join(PathBuf::from(TRASH));
     make_config(&config_file, &trash_dir)
         .unwrap_or_else(|_| panic!("cannot make config file or trash dir."));
+    let session_file = config_dir.join(PathBuf::from(SESSION_FILE));
     make_session(&session_file)
         .unwrap_or_else(|_| panic!("cannot make session file."));
 
