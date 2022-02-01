@@ -10,9 +10,6 @@ pub const CONFIG_EXAMPLE: &str = "
 # default exec command when open files
 default = \"nvim\"
 
-# default key for sorting item list (\"Name\" or \"Time\")
-sort_by = \"Name\"
-
 # key(command you want to use) = values(extensions)
 [exec]
 feh = [\"jpg\", \"jpeg\", \"png\", \"gif\", \"svg\"]
@@ -48,15 +45,8 @@ symlink_fg = \"LightYellow\"
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config {
     pub default: String,
-    pub sort_by: SortKey,
     pub exec: HashMap<String, Vec<String>>,
     pub color: Color,
-}
-
-#[derive(Deserialize, Debug, Clone)]
-pub enum SortKey {
-    Name,
-    Time,
 }
 
 #[derive(Deserialize, Debug, Clone)]

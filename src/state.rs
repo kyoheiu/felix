@@ -1,3 +1,4 @@
+use super::session::*;
 use super::config::*;
 use super::functions::*;
 use super::nums::*;
@@ -96,6 +97,7 @@ pub struct Layout {
 impl Default for State {
     fn default() -> Self {
         let config = read_config().unwrap();
+        let session = read_session().unwrap();
         State {
             list: Vec::new(),
             registered: Vec::new(),
@@ -108,14 +110,14 @@ impl Default for State {
             ),
             default: config.default,
             commands: to_extension_map(&config.exec),
-            sort_by: config.sort_by,
+            sort_by: session.sort_by,
             layout: Layout {
                 terminal_row: 0,
                 terminal_column: 0,
                 name_max_len: 0,
                 time_start_pos: 0,
             },
-            show_hidden: false,
+            show_hidden: session.show_hidden,
         }
     }
 }
@@ -639,6 +641,16 @@ impl State {
             }
         }
         print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+    }
+
+    pub fn write_session(&self, session_path: PathBuf) {
+        let session = Session{
+            sort_by: self.sort_by.clone(),
+            show_hidden: self.show_hidden
+        };
+        let serialized = toml::to_string(&session).unwrap();
+        fs::write(&session_path, serialized)
+            .unwrap_or_else(|_| panic!("cannot write new session file."));
     }
 }
 
