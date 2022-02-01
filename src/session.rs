@@ -1,12 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::fs::read_to_string;
-use super::config::SortKey;
 
 use crate::state::FX_CONFIG_DIR;
 
 pub const SESSION_FILE: &str = ".session";
 
-pub const SESSION_EXAMPLE: &str = "sort_by = \"Time\"
+pub const SESSION_EXAMPLE: &str = "sort_by = \"Name\"
 show_hidden = false
 ";
 

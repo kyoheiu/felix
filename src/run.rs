@@ -1,5 +1,4 @@
 use crate::session::*;
-use super::config::SortKey;
 use super::functions::*;
 use super::help::HELP;
 use super::nums::*;
