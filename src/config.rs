@@ -1,6 +1,7 @@
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::read_to_string;
+use super::errors::MyError;
 
 use crate::state::FX_CONFIG_DIR;
 
@@ -78,15 +79,15 @@ pub enum Colorname {
     Yellow,
 }
 
-pub fn read_config() -> Option<Config> {
-    let mut config = dirs::config_dir().unwrap_or_else(|| panic!("cannot read config dir."));
+pub fn read_config() -> Result<Config, MyError> {
+    let mut config = dirs::config_dir().unwrap_or_else(|| panic!("Cannot read config dir."));
     config.push(FX_CONFIG_DIR);
     config.push(CONFIG_FILE);
     let config = read_to_string(config.as_path());
     if let Ok(config) = config {
-        let deserialized: Config = toml::from_str(&config).unwrap();
-        Some(deserialized)
+        let deserialized: Config = toml::from_str(&config)?;
+        Ok(deserialized)
     } else {
-        None
+        panic!("Cannot deserialize config file.");
     }
 }

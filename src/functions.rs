@@ -6,8 +6,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use termion::{clear, color, cursor, style};
 use super::session::*;
+use super::errors::MyError;
 
-pub fn make_config(config_file: &Path, trash_dir: &Path) -> std::io::Result<()> {
+pub fn make_config(config_file: &Path, trash_dir: &Path) -> Result<(), MyError> {
     if !trash_dir.exists() {
         fs::create_dir_all(trash_dir)?;
     }
@@ -20,7 +21,7 @@ pub fn make_config(config_file: &Path, trash_dir: &Path) -> std::io::Result<()> 
     Ok(())
 }
 
-pub fn make_session(session_file: &Path) -> std::io::Result<()> {
+pub fn make_session(session_file: &Path) -> Result<(), MyError> {
     if !session_file.exists() {
         fs::write(&session_file, SESSION_EXAMPLE)
             .unwrap_or_else(|_| panic!("cannot write new session file."));

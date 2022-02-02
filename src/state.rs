@@ -1,7 +1,8 @@
-use super::session::*;
 use super::config::*;
+use super::errors::MyError;
 use super::functions::*;
 use super::nums::*;
+use super::session::*;
 use chrono::prelude::*;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -126,13 +127,16 @@ impl State {
     pub fn new() -> Self {
         Default::default()
     }
-    pub fn get_item(&self, index: usize) -> Result<&ItemInfo, std::io::Error> {
-        self.list
-            .get(index)
-            .ok_or_else(|| Error::new(ErrorKind::NotFound, "cannot choose item."))
+    pub fn get_item(&self, index: usize) -> Result<&ItemInfo, MyError> {
+        self.list.get(index).ok_or_else(|| {
+            MyError::IoError(std::io::Error::new(
+                ErrorKind::NotFound,
+                "Cannot choose item.",
+            ))
+        })
     }
 
-    pub fn open_file(&self, index: usize) -> std::io::Result<ExitStatus> {
+    pub fn open_file(&self, index: usize) -> Result<ExitStatus, MyError> {
         let item = self.get_item(index)?;
         let path = &item.file_path;
         let map = &self.commands;
@@ -144,18 +148,18 @@ impl State {
                 match map.get(&ext) {
                     Some(command) => {
                         let mut ex = Command::new(command);
-                        ex.arg(path).status()
+                        ex.arg(path).status().map_err(MyError::IoError)
                     }
                     None => {
                         let mut ex = Command::new(&self.default);
-                        ex.arg(path).status()
+                        ex.arg(path).status().map_err(MyError::IoError)
                     }
                 }
             }
 
             None => {
                 let mut ex = Command::new(&self.default);
-                ex.arg(path).status()
+                ex.arg(path).status().map_err(MyError::IoError)
             }
         }
     }
@@ -644,9 +648,9 @@ impl State {
     }
 
     pub fn write_session(&self, session_path: PathBuf) {
-        let session = Session{
+        let session = Session {
             sort_by: self.sort_by.clone(),
-            show_hidden: self.show_hidden
+            show_hidden: self.show_hidden,
         };
         let serialized = toml::to_string(&session).unwrap();
         fs::write(&session_path, serialized)

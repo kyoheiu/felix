@@ -25,6 +25,7 @@ toml = "0.5.8"
 walkdir = "2.3.2"
 log = "0.4.14"
 env_logger = "0.9.0"
+thiserror = "1.0.30"
 
 [dependencies.serde]
 features = ["derive"]
