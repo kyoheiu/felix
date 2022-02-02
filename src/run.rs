@@ -25,16 +25,16 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
     let config_file = config_dir.join(PathBuf::from(CONFIG_FILE));
     let trash_dir = config_dir.join(PathBuf::from(TRASH));
     make_config(&config_file, &trash_dir)
-        .unwrap_or_else(|_| panic!("cannot make config file or trash dir."));
+        .unwrap_or_else(|_| panic!("Cannot make config file or trash dir."));
     let session_file = config_dir.join(PathBuf::from(SESSION_FILE));
-    make_session(&session_file).unwrap_or_else(|_| panic!("cannot make session file."));
+    make_session(&session_file).unwrap_or_else(|_| panic!("Cannot make session file."));
 
     if !&arg.exists() {
         println!("Invalid path: {}", &arg.display());
         return Ok(());
     }
 
-    let (column, row) = termion::terminal_size().unwrap();
+    let (column, row) = termion::terminal_size()?;
     if column < 21 {
         error!("too small terminal size.");
         panic!("panic due to terminal size (less than 21 column).")
@@ -54,7 +54,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
         name_max_len: name_max,
         time_start_pos: time_start,
     };
-    state.current_dir = arg.canonicalize().unwrap();
+    state.current_dir = arg.canonicalize()?;
     state.update_list();
     state.trash_dir = trash_dir;
 
@@ -70,7 +70,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
     state.list_up(nums.skip);
 
     state.move_cursor(&nums, STARTING_POINT);
-    screen.flush().unwrap();
+    screen.flush()?;
 
     let mut p_memo_v: Vec<CursorMemo> = Vec::new();
     let mut c_memo_v: Vec<ChildMemo> = Vec::new();
@@ -78,7 +78,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
 
     'main: loop {
         let len = state.list.len();
-        let (_, y) = screen.cursor_pos().unwrap();
+        let (_, y) = screen.cursor_pos()?;
         let input = stdin.next();
 
         if let Some(Ok(key)) = input {
@@ -127,7 +127,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                         print!("{}{}g", cursor::Goto(2, 2), clear::CurrentLine,);
                         print!("{}", cursor::Show);
 
-                        screen.flush().unwrap();
+                        screen.flush()?;
 
                         'top: loop {
                             let input = stdin.next();
@@ -179,8 +179,8 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                         match item.file_type {
                             FileType::File | FileType::Symlink => {
                                 print!("{}", screen::ToAlternateScreen);
-                                if state.open_file(nums.index).is_err() {
-                                    print_warning("Cannot open file. Check your config!", y);
+                                if let Err(e) = state.open_file(nums.index) {
+                                    print_warning(e, y);
                                     continue;
                                 }
                                 print!("{}", screen::ToAlternateScreen);
@@ -340,12 +340,12 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     clear_and_show(&state.current_dir);
                     state.list_up(nums.skip);
                     state.move_cursor(&nums, y);
-                    screen.flush().unwrap();
+                    screen.flush()?;
 
                     let start_pos = nums.index;
 
                     loop {
-                        let (_, y) = screen.cursor_pos().unwrap();
+                        let (_, y) = screen.cursor_pos()?;
                         let input = stdin.next();
                         if let Some(Ok(key)) = input {
                             match key {
@@ -372,7 +372,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         clear_and_show(&state.current_dir);
                                         state.list_up(nums.skip);
                                         state.move_cursor(&nums, y);
-                                        screen.flush().unwrap();
+                                        screen.flush()?;
                                     } else {
                                         nums.go_down();
 
@@ -388,7 +388,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         clear_and_show(&state.current_dir);
                                         state.list_up(nums.skip);
                                         state.move_cursor(&nums, y + 1);
-                                        screen.flush().unwrap();
+                                        screen.flush()?;
                                     }
                                 }
 
@@ -411,7 +411,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         clear_and_show(&state.current_dir);
                                         state.list_up(nums.skip);
                                         state.move_cursor(&nums, STARTING_POINT + 3);
-                                        screen.flush().unwrap();
+                                        screen.flush()?;
                                     } else {
                                         nums.go_up();
 
@@ -438,7 +438,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         print!("{}{}g", cursor::Goto(2, 2), clear::CurrentLine,);
                                         print!("{}", cursor::Show);
 
-                                        screen.flush().unwrap();
+                                        screen.flush()?;
 
                                         'top_select: loop {
                                             let input = stdin.next();
@@ -496,7 +496,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
 
                                 Key::Char('d') => {
                                     print_info("Processing...", y);
-                                    screen.flush().unwrap();
+                                    screen.flush()?;
 
                                     state.registered.clear();
                                     let iter = state.list.clone().into_iter();
@@ -573,7 +573,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                 }
                             }
                         }
-                        screen.flush().unwrap();
+                        screen.flush()?;
                     }
                 }
 
@@ -600,7 +600,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                         print!("{}{}d", cursor::Goto(2, 2), clear::CurrentLine,);
                         print!("{}", cursor::Show);
 
-                        screen.flush().unwrap();
+                        screen.flush()?;
 
                         'delete: loop {
                             let input = stdin.next();
@@ -608,10 +608,10 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                 match key {
                                     Key::Char('d') => {
                                         print_info("Processing...", y);
-                                        screen.flush().unwrap();
+                                        screen.flush()?;
 
                                         state.registered.clear();
-                                        let item = state.get_item(nums.index).unwrap().clone();
+                                        let item = state.get_item(nums.index)?.clone();
                                         match item.file_type {
                                             FileType::Directory => {
                                                 if let Err(e) = state.remove_and_yank_dir(item) {
@@ -668,7 +668,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     print!("{}{}y", cursor::Goto(2, 2), clear::CurrentLine,);
                     print!("{}", cursor::Show);
 
-                    screen.flush().unwrap();
+                    screen.flush()?;
 
                     'yank: loop {
                         let input = stdin.next();
@@ -701,7 +701,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                         continue;
                     }
                     print_info("Processing...", y);
-                    screen.flush().unwrap();
+                    screen.flush()?;
 
                     if let Err(e) = state.put_items() {
                         print_warning(e, y);
@@ -733,11 +733,11 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                         RIGHT_ARROW,
                         &rename.iter().collect::<String>(),
                     );
-                    screen.flush().unwrap();
+                    screen.flush()?;
 
                     loop {
                         let eow = rename.len() + 3;
-                        let (x, _) = screen.cursor_pos().unwrap();
+                        let (x, _) = screen.cursor_pos()?;
                         let input = stdin.next();
                         if let Some(Ok(key)) = input {
                             match key {
@@ -766,7 +766,6 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                 Key::Esc => {
                                     print!("{}", clear::CurrentLine);
                                     print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
-                                    screen.flush().unwrap();
 
                                     print!("{}", cursor::Hide);
                                     state.move_cursor(&nums, y);
@@ -778,7 +777,6 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         continue;
                                     };
                                     print!("{}", cursor::Left(1));
-                                    screen.flush().unwrap();
                                 }
 
                                 Key::Right => {
@@ -786,7 +784,6 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         continue;
                                     };
                                     print!("{}", cursor::Right(1));
-                                    screen.flush().unwrap();
                                 }
 
                                 Key::Char(c) => {
@@ -801,8 +798,6 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         &rename.iter().collect::<String>(),
                                         cursor::Goto(memo_x + 1, 2)
                                     );
-
-                                    screen.flush().unwrap();
                                 }
 
                                 Key::Backspace => {
@@ -820,12 +815,11 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         &rename.iter().collect::<String>(),
                                         cursor::Goto(memo_x - 1, 2)
                                     );
-
-                                    screen.flush().unwrap();
                                 }
 
                                 _ => continue,
                             }
+                            screen.flush()?;
                         }
                     }
                 }
@@ -841,13 +835,13 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                         RIGHT_ARROW
                     );
                     print!("{}", cursor::Show);
-                    screen.flush().unwrap();
+                    screen.flush()?;
 
                     let original_list = state.list.clone();
 
                     let mut keyword: Vec<char> = Vec::new();
                     loop {
-                        let (x, _) = screen.cursor_pos().unwrap();
+                        let (x, _) = screen.cursor_pos()?;
                         let keyword_len = keyword.len();
 
                         let input = stdin.next();
@@ -857,7 +851,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                     filtered = true;
                                     print!("{}", clear::CurrentLine);
                                     print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
-                                    screen.flush().unwrap();
+                                    screen.flush()?;
 
                                     nums.reset();
                                     state.move_cursor(&nums, STARTING_POINT);
@@ -880,7 +874,6 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         continue;
                                     }
                                     print!("{}", cursor::Left(1));
-                                    screen.flush().unwrap();
                                 }
 
                                 Key::Right => {
@@ -888,7 +881,6 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         continue;
                                     }
                                     print!("{}", cursor::Right(1));
-                                    screen.flush().unwrap();
                                 }
 
                                 Key::Char(c) => {
@@ -915,8 +907,6 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         &keyword.iter().collect::<String>(),
                                         cursor::Goto(memo_x + 1, 2)
                                     );
-
-                                    screen.flush().unwrap();
                                 }
 
                                 Key::Backspace => {
@@ -947,12 +937,11 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         &keyword.iter().collect::<String>(),
                                         cursor::Goto(memo_x - 1, 2)
                                     );
-
-                                    screen.flush().unwrap();
                                 }
 
                                 _ => continue,
                             }
+                            screen.flush()?;
                         }
                     }
                     print!("{}", cursor::Hide);
@@ -963,11 +952,11 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     print!("{}", cursor::Show);
 
                     let mut command: Vec<char> = Vec::new();
-                    screen.flush().unwrap();
+                    screen.flush()?;
 
                     'command: loop {
                         let eow = command.len() + 2;
-                        let (x, _) = screen.cursor_pos().unwrap();
+                        let (x, _) = screen.cursor_pos()?;
                         let input = stdin.next();
                         if let Some(Ok(key)) = input {
                             match key {
@@ -1024,7 +1013,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
 
                                     if c == "empty" && args.is_empty() {
                                         print_warning(WHEN_EMPTY, y);
-                                        screen.flush().unwrap();
+                                        screen.flush()?;
 
                                         'empty: loop {
                                             let input = stdin.next();
@@ -1032,7 +1021,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                                 match key {
                                                     Key::Char('y') | Key::Char('Y') => {
                                                         print_info("Processing...", y);
-                                                        screen.flush().unwrap();
+                                                        screen.flush()?;
 
                                                         if let Err(e) = std::fs::remove_dir_all(
                                                             &state.trash_dir,
@@ -1077,7 +1066,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                     print!("{}", screen::ToAlternateScreen);
                                     if std::env::set_current_dir(&state.current_dir).is_err() {
                                         print!("{}", cursor::Hide,);
-                                        print_warning("cannot execute command", y);
+                                        print_warning("Cannot execute command", y);
                                         break 'command;
                                     }
                                     if std::process::Command::new(c).args(args).status().is_err() {
@@ -1088,7 +1077,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         state.list_up(nums.skip);
 
                                         print!("{}", cursor::Hide,);
-                                        print_warning("cannot execute command", y);
+                                        print_warning("Cannot execute command", y);
                                         break 'command;
                                     }
                                     print!("{}", screen::ToAlternateScreen);
@@ -1115,7 +1104,6 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         continue;
                                     };
                                     print!("{}", cursor::Left(1));
-                                    screen.flush().unwrap();
                                 }
 
                                 Key::Right => {
@@ -1123,7 +1111,6 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         continue;
                                     };
                                     print!("{}", cursor::Right(1));
-                                    screen.flush().unwrap();
                                 }
 
                                 Key::Char(c) => {
@@ -1136,8 +1123,6 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         &command.iter().collect::<String>(),
                                         cursor::Goto(x + 1, 2)
                                     );
-
-                                    screen.flush().unwrap();
                                 }
 
                                 Key::Backspace => {
@@ -1153,12 +1138,11 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         &command.iter().collect::<String>(),
                                         cursor::Goto(x - 1, 2)
                                     );
-
-                                    screen.flush().unwrap();
                                 }
 
                                 _ => continue,
                             }
+                            screen.flush()?;
                         }
                     }
                 }
@@ -1168,7 +1152,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     print!("{}", cursor::Show);
 
                     let mut command: Vec<char> = vec!['Z'];
-                    screen.flush().unwrap();
+                    screen.flush()?;
 
                     'quit: loop {
                         let input = stdin.next();
@@ -1215,9 +1199,9 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                 }
             }
         }
-        screen.flush().unwrap();
+        screen.flush()?;
     }
-    //When finishes, restore the cursor
+    //When exits, restore the cursor
     print!("{}", cursor::Restore);
     state.write_session(session_file)?;
     Ok(())
