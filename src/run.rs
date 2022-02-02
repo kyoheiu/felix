@@ -10,6 +10,7 @@ use log::debug;
 use log::error;
 use std::io::{stdin, stdout, Write};
 use std::path::{Path, PathBuf};
+use std::time::Instant;
 use termion::cursor::DetectCursorPos;
 use termion::event::Key;
 use termion::input::TermRead;
@@ -496,6 +497,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
 
                                 Key::Char('d') => {
                                     print_info("Processing...", y);
+                                    let start = Instant::now();
                                     screen.flush()?;
 
                                     state.registered.clear();
@@ -527,7 +529,11 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                     state.list_up(nums.skip);
 
                                     let mut delete_message: String = i.to_string();
-                                    delete_message.push_str(" items deleted");
+                                    let duration = start.elapsed();
+                                    delete_message.push_str(&format!(
+                                        " items deleted: {:?}s",
+                                        duration.as_secs_f32()
+                                    ));
                                     print_info(delete_message, y);
                                     print!(" ");
 
@@ -608,6 +614,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                 match key {
                                     Key::Char('d') => {
                                         print_info("Processing...", y);
+                                        let start = Instant::now();
                                         screen.flush()?;
 
                                         state.registered.clear();
@@ -644,7 +651,14 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         } else {
                                             y
                                         };
-                                        print_info("1 item deleted", cursor_pos);
+                                        let duration = start.elapsed();
+                                        print_info(
+                                            format!(
+                                                "1 item deleted; {:?}s",
+                                                duration.as_secs_f32()
+                                            ),
+                                            cursor_pos,
+                                        );
                                         state.move_cursor(&nums, cursor_pos);
                                         break 'delete;
                                     }
@@ -701,6 +715,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                         continue;
                     }
                     print_info("Processing...", y);
+                    let instant = Instant::now();
                     screen.flush()?;
 
                     if let Err(e) = state.put_items() {
@@ -713,7 +728,9 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     state.list_up(nums.skip);
 
                     let mut put_message: String = state.registered.len().to_string();
-                    put_message.push_str(" items inserted");
+                    let duration = instant.elapsed();
+                    put_message
+                        .push_str(&format!(" items inserted; {:?}s", duration.as_secs_f32()));
                     print_info(put_message, y);
                     state.move_cursor(&nums, y);
                 }
@@ -1021,6 +1038,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                                 match key {
                                                     Key::Char('y') | Key::Char('Y') => {
                                                         print_info("Processing...", y);
+                                                        let start = Instant::now();
                                                         screen.flush()?;
 
                                                         if let Err(e) = std::fs::remove_dir_all(
