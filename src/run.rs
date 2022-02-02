@@ -1,8 +1,9 @@
-use crate::session::*;
+use super::errors::MyError;
 use super::functions::*;
 use super::help::HELP;
 use super::nums::*;
 use super::state::*;
+use crate::session::*;
 use std::ffi::OsStr;
 // use clipboard::{ClipboardContext, ClipboardProvider};
 use log::debug;
@@ -15,23 +16,22 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::{clear, cursor, screen};
 
-pub fn run(arg: PathBuf) {
+pub fn run(arg: PathBuf) -> Result<(), MyError> {
     env_logger::init();
     debug!("starts initial setup.");
 
-    let mut config_dir = dirs::config_dir().unwrap_or_else(|| panic!("cannot read config dir."));
+    let mut config_dir = dirs::config_dir().unwrap_or_else(|| panic!("Cannot read config dir."));
     config_dir.push(FX_CONFIG_DIR);
     let config_file = config_dir.join(PathBuf::from(CONFIG_FILE));
     let trash_dir = config_dir.join(PathBuf::from(TRASH));
     make_config(&config_file, &trash_dir)
         .unwrap_or_else(|_| panic!("cannot make config file or trash dir."));
     let session_file = config_dir.join(PathBuf::from(SESSION_FILE));
-    make_session(&session_file)
-        .unwrap_or_else(|_| panic!("cannot make session file."));
+    make_session(&session_file).unwrap_or_else(|_| panic!("cannot make session file."));
 
     if !&arg.exists() {
         println!("Invalid path: {}", &arg.display());
-        return;
+        return Ok(());
     }
 
     let (column, row) = termion::terminal_size().unwrap();
@@ -1219,5 +1219,6 @@ pub fn run(arg: PathBuf) {
     }
     //When finishes, restore the cursor
     print!("{}", cursor::Restore);
-    state.write_session(session_file);
+    state.write_session(session_file)?;
+    Ok(())
 }
