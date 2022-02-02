@@ -182,12 +182,20 @@ impl State {
             let to = self.trash_dir.join(&rename);
 
             //copy
-            std::fs::copy(from, &to)?;
+            if std::fs::copy(from, &to).is_err() {
+                return Err(MyError::FileCopyError {
+                    msg: format!("Cannot copy item: {:?}", from),
+                });
+            }
 
             self.to_registered_mut(&item, to, rename);
 
             //remove original
-            std::fs::remove_file(from)?;
+            if std::fs::remove_file(from).is_err() {
+                return Err(MyError::FileRemoveError {
+                    msg: format!("Cannot Remove item: {:?}", from),
+                });
+            }
 
             Ok(())
         }
@@ -203,8 +211,9 @@ impl State {
         for entry in walkdir::WalkDir::new(&item.file_path).sort_by_key(|x| x.path().to_path_buf())
         {
             let entry = entry?;
+            let entry_path = entry.path();
             if i == 0 {
-                base = entry.path().iter().count();
+                base = entry_path.iter().count();
 
                 trash_name = chrono::Local::now().timestamp().to_string();
                 trash_name.push('_');
@@ -221,27 +230,35 @@ impl State {
                 i += 1;
                 continue;
             } else {
-                target = entry.path().iter().skip(base).collect();
+                target = entry_path.iter().skip(base).collect();
                 target = trash_path.join(target);
                 if entry.file_type().is_dir() {
                     std::fs::create_dir(&target)?;
                     continue;
                 }
 
-                if let Some(parent) = entry.path().parent() {
+                if let Some(parent) = entry_path.parent() {
                     if !parent.exists() {
                         std::fs::create_dir(parent)?;
                     }
                 }
 
-                std::fs::copy(entry.path(), &target)?;
+                if std::fs::copy(entry_path, &target).is_err() {
+                    return Err(MyError::FileCopyError {
+                        msg: format!("Cannot copy item: {:?}", entry_path),
+                    });
+                }
             }
         }
 
         self.to_registered_mut(&item, trash_path, trash_name);
 
         //remove original
-        std::fs::remove_dir_all(&item.file_path)?;
+        if std::fs::remove_dir_all(&item.file_path).is_err() {
+            return Err(MyError::FileRemoveError {
+                msg: format!("Cannot Remove directory: {:?}", item.file_name),
+            });
+        }
 
         Ok(())
     }
@@ -292,11 +309,19 @@ impl State {
             let rename = item.file_name.chars().skip(11).collect();
             item.file_name = rename;
             let rename = rename_file(&item, name_set);
-            std::fs::copy(&item.file_path, &self.current_dir.join(&rename))?;
+            if std::fs::copy(&item.file_path, &self.current_dir.join(&rename)).is_err() {
+                return Err(MyError::FileCopyError {
+                    msg: format!("Cannot copy item: {:?}", &item.file_path),
+                });
+            }
             name_set.insert(rename);
         } else {
             let rename = rename_file(item, name_set);
-            std::fs::copy(&item.file_path, &self.current_dir.join(&rename))?;
+            if std::fs::copy(&item.file_path, &self.current_dir.join(&rename)).is_err() {
+                return Err(MyError::FileCopyError {
+                    msg: format!("Cannot copy item: {:?}", &item.file_path),
+                });
+            }
             name_set.insert(rename);
         }
         Ok(())
@@ -310,8 +335,9 @@ impl State {
         let mut i = 0;
         for entry in walkdir::WalkDir::new(&original_path).sort_by_key(|x| x.path().to_path_buf()) {
             let entry = entry?;
+            let entry_path = entry.path();
             if i == 0 {
-                base = entry.path().iter().count();
+                base = entry_path.iter().count();
 
                 let parent = &original_path.parent().unwrap();
                 if parent == &self.trash_dir {
@@ -331,19 +357,23 @@ impl State {
                 i += 1;
                 continue;
             } else {
-                let child: PathBuf = entry.path().iter().skip(base).collect();
+                let child: PathBuf = entry_path.iter().skip(base).collect();
                 let child = target.join(child);
 
                 if entry.file_type().is_dir() {
                     std::fs::create_dir(child)?;
                     continue;
-                } else if let Some(parent) = entry.path().parent() {
+                } else if let Some(parent) = entry_path.parent() {
                     if !parent.exists() {
                         std::fs::create_dir(parent)?;
                     }
                 }
 
-                std::fs::copy(entry.path(), &child)?;
+                if std::fs::copy(entry_path, &child).is_err() {
+                    return Err(MyError::FileCopyError {
+                        msg: format!("Cannot copy item: {:?}", entry_path),
+                    });
+                }
             }
         }
         Ok(())
@@ -666,8 +696,8 @@ impl State {
     }
 }
 
-fn make_item(dir: fs::DirEntry) -> ItemInfo {
-    let path = dir.path();
+fn make_item(entry: fs::DirEntry) -> ItemInfo {
+    let path = entry.path();
     let metadata = &fs::symlink_metadata(&path);
 
     let time = match metadata {
@@ -695,10 +725,10 @@ fn make_item(dir: fs::DirEntry) -> ItemInfo {
         Err(_) => FileType::File,
     };
 
-    let name = dir
+    let name = entry
         .file_name()
         .into_string()
-        .unwrap_or_else(|_| panic!("Failed to get file name."));
+        .unwrap_or_else(|_| "Invalid unicode name".to_string());
 
     let size = match metadata {
         Ok(metadata) => metadata.len(),

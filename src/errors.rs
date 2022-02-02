@@ -12,4 +12,8 @@ pub enum MyError {
     WalkDirError(#[from] walkdir::Error),
     #[error("{msg}")]
     UTF8Error { msg: String },
+    #[error("{msg}")]
+    FileCopyError { msg: String },
+    #[error("{msg}")]
+    FileRemoveError { msg: String },
 }
