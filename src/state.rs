@@ -9,7 +9,7 @@ use std::collections::HashSet;
 use std::ffi::OsString;
 use std::fs;
 use std::fs::DirEntry;
-use std::io::{Error, ErrorKind};
+use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
 use termion::{clear, color, cursor, style};
@@ -164,13 +164,15 @@ impl State {
         }
     }
 
-    pub fn remove_and_yank_file(&mut self, item: ItemInfo) -> std::io::Result<()> {
+    pub fn remove_and_yank_file(&mut self, item: ItemInfo) -> Result<(), MyError> {
         //prepare from and to for copy
         let from = &item.file_path;
 
         if item.file_type == FileType::Symlink && !from.exists() {
-            let _ = Command::new("rm").arg(from).status();
-            Ok(())
+            match Command::new("rm").arg(from).status() {
+                Ok(_) => Ok(()),
+                Err(e) => Err(MyError::IoError(e)),
+            }
         } else {
             let name = &item.file_name;
             let mut rename = Local::now().timestamp().to_string();
@@ -191,7 +193,7 @@ impl State {
         }
     }
 
-    pub fn remove_and_yank_dir(&mut self, item: ItemInfo) -> std::io::Result<()> {
+    pub fn remove_and_yank_dir(&mut self, item: ItemInfo) -> Result<(), MyError> {
         let mut trash_name = String::new();
         let mut base: usize = 0;
         let mut trash_path: std::path::PathBuf = PathBuf::new();
@@ -206,7 +208,13 @@ impl State {
 
                 trash_name = chrono::Local::now().timestamp().to_string();
                 trash_name.push('_');
-                trash_name.push_str(entry.file_name().to_str().unwrap());
+                let file_name = entry.file_name().to_str();
+                if file_name == None {
+                    return Err(MyError::UTF8Error {
+                        msg: "Cannot convert filename to UTF8.".to_string(),
+                    });
+                }
+                trash_name.push_str(file_name.unwrap());
                 trash_path = self.trash_dir.join(&trash_name);
                 std::fs::create_dir(&self.trash_dir.join(&trash_path))?;
 
@@ -258,7 +266,7 @@ impl State {
         }
     }
 
-    pub fn put_items(&mut self) -> std::io::Result<()> {
+    pub fn put_items(&mut self) -> Result<(), MyError> {
         //make HashSet<String> of file_name
         let mut name_set = HashSet::new();
         for item in self.list.iter() {
@@ -278,7 +286,7 @@ impl State {
         Ok(())
     }
 
-    fn put_file(&mut self, item: &ItemInfo, name_set: &mut HashSet<String>) -> std::io::Result<()> {
+    fn put_file(&mut self, item: &ItemInfo, name_set: &mut HashSet<String>) -> Result<(), MyError> {
         if item.file_path.parent() == Some(&self.trash_dir) {
             let mut item = item.clone();
             let rename = item.file_name.chars().skip(11).collect();
@@ -294,7 +302,7 @@ impl State {
         Ok(())
     }
 
-    fn put_dir(&mut self, buf: &ItemInfo, name_set: &mut HashSet<String>) -> std::io::Result<()> {
+    fn put_dir(&mut self, buf: &ItemInfo, name_set: &mut HashSet<String>) -> Result<(), MyError> {
         let mut base: usize = 0;
         let mut target: PathBuf = PathBuf::new();
         let original_path = &(buf).file_path;
@@ -647,14 +655,14 @@ impl State {
         print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
     }
 
-    pub fn write_session(&self, session_path: PathBuf) {
+    pub fn write_session(&self, session_path: PathBuf) -> Result<(), MyError> {
         let session = Session {
             sort_by: self.sort_by.clone(),
             show_hidden: self.show_hidden,
         };
-        let serialized = toml::to_string(&session).unwrap();
-        fs::write(&session_path, serialized)
-            .unwrap_or_else(|_| panic!("cannot write new session file."));
+        let serialized = toml::to_string(&session)?;
+        fs::write(&session_path, serialized)?;
+        Ok(())
     }
 }
 
@@ -690,7 +698,7 @@ fn make_item(dir: fs::DirEntry) -> ItemInfo {
     let name = dir
         .file_name()
         .into_string()
-        .unwrap_or_else(|_| panic!("failed to get file name."));
+        .unwrap_or_else(|_| panic!("Failed to get file name."));
 
     let size = match metadata {
         Ok(metadata) => metadata.len(),
@@ -718,7 +726,7 @@ fn is_not_hidden(entry: &DirEntry) -> bool {
         .unwrap_or(false)
 }
 
-pub fn push_items(p: &Path, key: &SortKey, show_hidden: bool) -> Result<Vec<ItemInfo>, Error> {
+pub fn push_items(p: &Path, key: &SortKey, show_hidden: bool) -> Result<Vec<ItemInfo>, MyError> {
     let mut result = Vec::new();
     let mut dir_v = Vec::new();
     let mut file_v = Vec::new();
