@@ -528,12 +528,10 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                     state.update_list();
                                     state.list_up(nums.skip);
 
+                                    let duration = duration_to_string(start.elapsed());
                                     let mut delete_message: String = i.to_string();
-                                    let duration = start.elapsed();
-                                    delete_message.push_str(&format!(
-                                        " items deleted: {:?}s",
-                                        duration.as_secs_f32()
-                                    ));
+                                    delete_message
+                                        .push_str(&format!(" items deleted [{}]", duration));
                                     print_info(delete_message, y);
                                     print!(" ");
 
@@ -651,12 +649,9 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         } else {
                                             y
                                         };
-                                        let duration = start.elapsed();
+                                        let duration = duration_to_string(start.elapsed());
                                         print_info(
-                                            format!(
-                                                "1 item deleted; {:?}s",
-                                                duration.as_secs_f32()
-                                            ),
+                                            format!("1 item deleted [{}]", duration),
                                             cursor_pos,
                                         );
                                         state.move_cursor(&nums, cursor_pos);
@@ -715,7 +710,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                         continue;
                     }
                     print_info("Processing...", y);
-                    let instant = Instant::now();
+                    let start = Instant::now();
                     screen.flush()?;
 
                     if let Err(e) = state.put_items() {
@@ -727,10 +722,9 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     state.update_list();
                     state.list_up(nums.skip);
 
+                    let duration = duration_to_string(start.elapsed());
                     let mut put_message: String = state.registered.len().to_string();
-                    let duration = instant.elapsed();
-                    put_message
-                        .push_str(&format!(" items inserted; {:?}s", duration.as_secs_f32()));
+                    put_message.push_str(&format!(" items inserted [{}]", duration));
                     print_info(put_message, y);
                     state.move_cursor(&nums, y);
                 }
@@ -1038,7 +1032,6 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                                 match key {
                                                     Key::Char('y') | Key::Char('Y') => {
                                                         print_info("Processing...", y);
-                                                        let start = Instant::now();
                                                         screen.flush()?;
 
                                                         if let Err(e) = std::fs::remove_dir_all(

@@ -1,12 +1,13 @@
 use super::config::CONFIG_EXAMPLE;
+use super::errors::MyError;
+use super::session::*;
 use super::state::*;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 use termion::{clear, color, cursor, style};
-use super::session::*;
-use super::errors::MyError;
 
 pub fn make_config(config_file: &Path, trash_dir: &Path) -> Result<(), MyError> {
     if !trash_dir.exists() {
@@ -169,5 +170,12 @@ pub fn to_proper_size(byte: u64) -> String {
         result = (byte / 1_000_000_000).to_string();
         result.push_str("GB");
     }
+    result
+}
+
+pub fn duration_to_string(duration: Duration) -> String {
+    let s = duration.as_secs_f32();
+    let mut result: String = s.to_string().chars().take(4).collect();
+    result.push('s');
     result
 }
