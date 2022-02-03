@@ -208,8 +208,7 @@ impl State {
         let mut target: PathBuf;
 
         let mut i = 0;
-        for entry in walkdir::WalkDir::new(&item.file_path).sort_by_key(|x| x.path().to_path_buf())
-        {
+        for entry in walkdir::WalkDir::new(&item.file_path) {
             let entry = entry?;
             let entry_path = entry.path();
             if i == 0 {
@@ -233,7 +232,7 @@ impl State {
                 target = entry_path.iter().skip(base).collect();
                 target = trash_path.join(target);
                 if entry.file_type().is_dir() {
-                    std::fs::create_dir(&target)?;
+                    std::fs::create_dir_all(&target)?;
                     continue;
                 }
 
@@ -333,7 +332,7 @@ impl State {
         let original_path = &(buf).file_path;
 
         let mut i = 0;
-        for entry in walkdir::WalkDir::new(&original_path).sort_by_key(|x| x.path().to_path_buf()) {
+        for entry in walkdir::WalkDir::new(&original_path) {
             let entry = entry?;
             let entry_path = entry.path();
             if i == 0 {
@@ -361,7 +360,7 @@ impl State {
                 let child = target.join(child);
 
                 if entry.file_type().is_dir() {
-                    std::fs::create_dir(child)?;
+                    std::fs::create_dir_all(child)?;
                     continue;
                 } else if let Some(parent) = entry_path.parent() {
                     if !parent.exists() {
