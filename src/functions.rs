@@ -2,6 +2,7 @@ use super::config::CONFIG_EXAMPLE;
 use super::errors::MyError;
 use super::session::*;
 use super::state::*;
+use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
@@ -178,4 +179,51 @@ pub fn duration_to_string(duration: Duration) -> String {
     let mut result: String = s.to_string().chars().take(4).collect();
     result.push('s');
     result
+}
+
+pub fn get_contents_r(path: PathBuf, vec: &mut Vec<PathBuf>) -> Result<Vec<PathBuf>, MyError> {
+    for entry in fs::read_dir(path)? {
+        let entry = entry?;
+        if entry.file_type()?.is_dir() {
+            let dir_path = entry.path();
+            vec.push(entry.path());
+            let childs = get_contents_r(dir_path, vec)?;
+            for child in childs {
+                vec.push(child.to_path_buf());
+            }
+        } else {
+            vec.push(entry.path());
+        }
+    }
+    Ok(vec.clone())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn get_contents_r_test() {
+        let path = PathBuf::from("/home/kyohei/nim/new");
+        let mut vec = vec![];
+        let result = get_contents_r(path, &mut vec).unwrap();
+        let mut bt = BTreeSet::new();
+        for p in result {
+            let p = p.into_os_string().into_string().unwrap();
+            bt.insert(p);
+        }
+        let target = BTreeSet::from([
+            "/home/kyohei/nim/new/1".to_string(),
+            "/home/kyohei/nim/new/2.txt".to_string(),
+            "/home/kyohei/nim/new/3.txt".to_string(),
+            "/home/kyohei/nim/new/new".to_string(),
+            "/home/kyohei/nim/new/new/6.txt".to_string(),
+            "/home/kyohei/nim/new/new/new".to_string(),
+            "/home/kyohei/nim/new/new/new/4.txt".to_string(),
+            "/home/kyohei/nim/new/new_".to_string(),
+            "/home/kyohei/nim/new/new_/new".to_string(),
+            "/home/kyohei/nim/new/new_/new/5.txt".to_string(),
+        ]);
+        assert_eq!(bt, target);
+    }
 }
