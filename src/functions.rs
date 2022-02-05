@@ -2,7 +2,6 @@ use super::config::CONFIG_EXAMPLE;
 use super::errors::MyError;
 use super::session::*;
 use super::state::*;
-use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
@@ -181,6 +180,7 @@ pub fn duration_to_string(duration: Duration) -> String {
     result
 }
 
+#[allow(dead_code)]
 pub fn get_contents_r(path: PathBuf, vec: &mut Vec<PathBuf>) -> Result<Vec<PathBuf>, MyError> {
     for entry in fs::read_dir(path)? {
         let entry = entry?;
