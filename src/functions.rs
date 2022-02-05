@@ -206,24 +206,18 @@ mod tests {
     fn get_contents_r_test() {
         let path = PathBuf::from("/home/kyohei/nim/new");
         let mut vec = vec![];
-        let result = get_contents_r(path, &mut vec).unwrap();
+        let result = get_contents_r(path.clone(), &mut vec).unwrap();
         let mut bt = BTreeSet::new();
+        bt.insert(path.clone());
         for p in result {
-            let p = p.into_os_string().into_string().unwrap();
             bt.insert(p);
         }
-        let target = BTreeSet::from([
-            "/home/kyohei/nim/new/1".to_string(),
-            "/home/kyohei/nim/new/2.txt".to_string(),
-            "/home/kyohei/nim/new/3.txt".to_string(),
-            "/home/kyohei/nim/new/new".to_string(),
-            "/home/kyohei/nim/new/new/6.txt".to_string(),
-            "/home/kyohei/nim/new/new/new".to_string(),
-            "/home/kyohei/nim/new/new/new/4.txt".to_string(),
-            "/home/kyohei/nim/new/new_".to_string(),
-            "/home/kyohei/nim/new/new_/new".to_string(),
-            "/home/kyohei/nim/new/new_/new/5.txt".to_string(),
-        ]);
+
+        let mut target = BTreeSet::new();
+        for entry in walkdir::WalkDir::new(path) {
+            let entry = entry.unwrap();
+            target.insert(entry.path().to_path_buf());
+        }
         assert_eq!(bt, target);
     }
 }
