@@ -207,8 +207,21 @@ impl State {
         let mut trash_path: std::path::PathBuf = PathBuf::new();
         let mut target: PathBuf;
 
-        let mut i = 0;
-        for entry in walkdir::WalkDir::new(&item.file_path) {
+        let len = walkdir::WalkDir::new(&item.file_path).into_iter().count();
+        let unit = len / 5;
+        for (i, entry) in walkdir::WalkDir::new(&item.file_path)
+            .into_iter()
+            .enumerate()
+        {
+            if i > unit * 4 {
+                print_process("[»»»»-]");
+            } else if i > unit * 3 {
+                print_process("[»»»--]");
+            } else if i > unit * 2 {
+                print_process("[»»---]");
+            } else if i > unit {
+                print_process("[»----]");
+            }
             let entry = entry?;
             let entry_path = entry.path();
             if i == 0 {
@@ -226,7 +239,6 @@ impl State {
                 trash_path = self.trash_dir.join(&trash_name);
                 std::fs::create_dir(&self.trash_dir.join(&trash_path))?;
 
-                i += 1;
                 continue;
             } else {
                 target = entry_path.iter().skip(base).collect();
@@ -289,7 +301,9 @@ impl State {
             name_set.insert(item.file_name.clone());
         }
 
-        for item in self.registered.clone().into_iter() {
+        let total_selected = self.registered.len();
+        for (i, item) in self.registered.clone().into_iter().enumerate() {
+            print_info(display_count(i, total_selected), STARTING_POINT);
             match item.file_type {
                 FileType::Directory => {
                     self.put_dir(&item, &mut name_set)?;
@@ -331,8 +345,21 @@ impl State {
         let mut target: PathBuf = PathBuf::new();
         let original_path = &(buf).file_path;
 
-        let mut i = 0;
-        for entry in walkdir::WalkDir::new(&original_path) {
+        let len = walkdir::WalkDir::new(&original_path).into_iter().count();
+        let unit = len / 5;
+        for (i, entry) in walkdir::WalkDir::new(&original_path)
+            .into_iter()
+            .enumerate()
+        {
+            if i > unit * 4 {
+                print_process("[»»»»-]");
+            } else if i > unit * 3 {
+                print_process("[»»»--]");
+            } else if i > unit * 2 {
+                print_process("[»»---]");
+            } else if i > unit {
+                print_process("[»----]");
+            }
             let entry = entry?;
             let entry_path = entry.path();
             if i == 0 {
@@ -353,7 +380,6 @@ impl State {
                     name_set.insert(rename);
                 }
                 std::fs::create_dir(&target)?;
-                i += 1;
                 continue;
             } else {
                 let child: PathBuf = entry_path.iter().skip(base).collect();
