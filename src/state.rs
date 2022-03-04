@@ -600,17 +600,6 @@ impl State {
                 );
 
                 if row_count == row - STARTING_POINT {
-                    print!(
-                        "  {}{}{}lines {}-{}({}){}{}",
-                        cursor::Left(2),
-                        color::Bg(color::LightWhite),
-                        color::Fg(color::Black),
-                        skip_number + 1,
-                        row - STARTING_POINT + skip_number,
-                        len,
-                        color::Bg(color::Reset),
-                        color::Fg(color::Reset)
-                    );
                     break;
                 } else {
                     self.print(i);
