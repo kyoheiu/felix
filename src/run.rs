@@ -501,35 +501,38 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                     screen.flush()?;
 
                                     state.registered.clear();
-                                    let iter = state.list.clone().into_iter();
-                                    let mut i = 0;
-                                    for item in iter {
-                                        if item.selected {
-                                            match item.file_type {
-                                                FileType::Directory => {
-                                                    if let Err(e) = state.remove_and_yank_dir(item)
-                                                    {
-                                                        print_warning(e, y);
-                                                        break;
-                                                    }
-                                                }
-                                                FileType::File | FileType::Symlink => {
-                                                    if let Err(e) = state.remove_and_yank_file(item)
-                                                    {
-                                                        print_warning(e, y);
-                                                        break;
-                                                    }
+                                    let mut count = 0;
+                                    let clone = state.list.clone();
+                                    let iter = clone.iter().filter(|item| item.selected);
+                                    let total_selected = iter.clone().count();
+                                    for (i, item) in iter.enumerate() {
+                                        print_info(display_count(i, total_selected), y);
+                                        match item.file_type {
+                                            FileType::Directory => {
+                                                if let Err(e) =
+                                                    state.remove_and_yank_dir(item.clone())
+                                                {
+                                                    print_warning(e, y);
+                                                    break;
                                                 }
                                             }
-                                            i += 1;
+                                            FileType::File | FileType::Symlink => {
+                                                if let Err(e) =
+                                                    state.remove_and_yank_file(item.clone())
+                                                {
+                                                    print_warning(e, y);
+                                                    break;
+                                                }
+                                            }
                                         }
+                                        count += 1;
                                     }
                                     clear_and_show(&state.current_dir);
                                     state.update_list();
                                     state.list_up(nums.skip);
 
                                     let duration = duration_to_string(start.elapsed());
-                                    let mut delete_message: String = i.to_string();
+                                    let mut delete_message: String = count.to_string();
                                     delete_message
                                         .push_str(&format!(" items deleted [{}]", duration));
                                     print_info(delete_message, y);
@@ -611,6 +614,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                             if let Some(Ok(key)) = input {
                                 match key {
                                     Key::Char('d') => {
+                                        print!("{}", cursor::Hide);
                                         print_info("Processing...", y);
                                         let start = Instant::now();
                                         screen.flush()?;
@@ -620,7 +624,6 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         match item.file_type {
                                             FileType::Directory => {
                                                 if let Err(e) = state.remove_and_yank_dir(item) {
-                                                    print!("{}", cursor::Hide);
                                                     print_warning(e, y);
                                                     state.move_cursor(&nums, y);
                                                     break 'delete;
@@ -629,7 +632,6 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                             FileType::File | FileType::Symlink => {
                                                 if let Err(e) = state.remove_and_yank_file(item) {
                                                     clear_and_show(&state.current_dir);
-                                                    print!("{}", cursor::Hide);
                                                     print_warning(e, y);
                                                     state.move_cursor(&nums, y);
                                                     break 'delete;
@@ -638,7 +640,6 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         }
 
                                         clear_and_show(&state.current_dir);
-                                        print!("{}", cursor::Hide);
                                         state.update_list();
                                         state.list_up(nums.skip);
                                         let cursor_pos = if state.list.is_empty() {
@@ -723,8 +724,13 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     state.list_up(nums.skip);
 
                     let duration = duration_to_string(start.elapsed());
-                    let mut put_message: String = state.registered.len().to_string();
-                    put_message.push_str(&format!(" items inserted [{}]", duration));
+                    let registered_len = state.registered.len();
+                    let mut put_message: String = registered_len.to_string();
+                    if registered_len == 1 {
+                        put_message.push_str(&format!(" item inserted [{}]", duration));
+                    } else {
+                        put_message.push_str(&format!(" items inserted [{}]", duration));
+                    }
                     print_info(put_message, y);
                     state.move_cursor(&nums, y);
                 }
