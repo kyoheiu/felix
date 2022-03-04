@@ -1,13 +1,15 @@
 use super::config::CONFIG_EXAMPLE;
+use super::errors::MyError;
+use super::session::*;
 use super::state::*;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 use termion::{clear, color, cursor, style};
-use super::session::*;
 
-pub fn make_config(config_file: &Path, trash_dir: &Path) -> std::io::Result<()> {
+pub fn make_config(config_file: &Path, trash_dir: &Path) -> Result<(), MyError> {
     if !trash_dir.exists() {
         fs::create_dir_all(trash_dir)?;
     }
@@ -20,7 +22,7 @@ pub fn make_config(config_file: &Path, trash_dir: &Path) -> std::io::Result<()> 
     Ok(())
 }
 
-pub fn make_session(session_file: &Path) -> std::io::Result<()> {
+pub fn make_session(session_file: &Path) -> Result<(), MyError> {
     if !session_file.exists() {
         fs::write(&session_file, SESSION_EXAMPLE)
             .unwrap_or_else(|_| panic!("cannot write new session file."));
@@ -126,14 +128,7 @@ pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
 }
 
 pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
-    print!(
-        " {}{}{}{}{}",
-        cursor::Goto(2, 2),
-        color::Fg(color::White),
-        clear::CurrentLine,
-        message,
-        color::Fg(color::Reset)
-    );
+    print!(" {}{}{}", cursor::Goto(2, 2), clear::CurrentLine, message,);
 
     print!(
         "{}{}>{}",
@@ -141,6 +136,18 @@ pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
         cursor::Goto(1, then),
         cursor::Left(1)
     );
+}
+
+pub fn print_process<T: std::fmt::Display>(message: T) {
+    print!("{}{}", cursor::Goto(16, 2), message);
+}
+
+pub fn display_count(i: usize, all: usize) -> String {
+    let mut result = String::new();
+    result.push_str(&(i + 1).to_string());
+    result.push('/');
+    result.push_str(&all.to_string());
+    result
 }
 
 pub fn to_extension_map(config: &HashMap<String, Vec<String>>) -> HashMap<String, String> {
@@ -169,4 +176,53 @@ pub fn to_proper_size(byte: u64) -> String {
         result.push_str("GB");
     }
     result
+}
+
+pub fn duration_to_string(duration: Duration) -> String {
+    let s = duration.as_secs_f32();
+    let mut result: String = s.to_string().chars().take(4).collect();
+    result.push('s');
+    result
+}
+
+#[allow(dead_code)]
+pub fn get_contents_r(path: PathBuf, vec: &mut Vec<PathBuf>) -> Result<Vec<PathBuf>, MyError> {
+    for entry in fs::read_dir(path)? {
+        let entry = entry?;
+        if entry.file_type()?.is_dir() {
+            let dir_path = entry.path();
+            vec.push(entry.path());
+            let childs = get_contents_r(dir_path, vec)?;
+            for child in childs {
+                vec.push(child.to_path_buf());
+            }
+        } else {
+            vec.push(entry.path());
+        }
+    }
+    Ok(vec.clone())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn get_contents_r_test() {
+        let path = PathBuf::from("/home/kyohei/nim/new");
+        let mut vec = vec![];
+        let result = get_contents_r(path.clone(), &mut vec).unwrap();
+        let mut bt = BTreeSet::new();
+        bt.insert(path.clone());
+        for p in result {
+            bt.insert(p);
+        }
+
+        let mut target = BTreeSet::new();
+        for entry in walkdir::WalkDir::new(path) {
+            let entry = entry.unwrap();
+            target.insert(entry.path().to_path_buf());
+        }
+        assert_eq!(bt, target);
+    }
 }
