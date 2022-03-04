@@ -138,6 +138,18 @@ pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
     );
 }
 
+pub fn print_process<T: std::fmt::Display>(message: T) {
+    print!("{}{}", cursor::Goto(16, 2), message);
+}
+
+pub fn display_count(i: usize, all: usize) -> String {
+    let mut result = String::new();
+    result.push_str(&(i + 1).to_string());
+    result.push('/');
+    result.push_str(&all.to_string());
+    result
+}
+
 pub fn to_extension_map(config: &HashMap<String, Vec<String>>) -> HashMap<String, String> {
     let mut new_map = HashMap::new();
     for (command, extensions) in config.iter() {
