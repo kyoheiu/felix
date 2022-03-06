@@ -222,7 +222,7 @@ impl State {
             } else if i > unit {
                 print_process("[»----]");
             } else if i == 0 {
-                print!(" [-----]{}", cursor::Left(7));
+                print_process(" [-----]");
             }
             let entry = entry?;
             let entry_path = entry.path();
@@ -367,7 +367,7 @@ impl State {
             } else if i > unit {
                 print_process("[»----]");
             } else if i == 0 {
-                print!(" [-----]{}", cursor::Left(7));
+                print_process(" [»----]");
             }
             let entry = entry?;
             let entry_path = entry.path();
