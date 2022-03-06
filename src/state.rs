@@ -303,7 +303,12 @@ impl State {
 
         let total_selected = self.registered.len();
         for (i, item) in self.registered.clone().into_iter().enumerate() {
-            print_info(display_count(i, total_selected), STARTING_POINT);
+            print!(
+                " {}{}{}",
+                cursor::Goto(2, 2),
+                clear::CurrentLine,
+                display_count(i, total_selected)
+            );
             match item.file_type {
                 FileType::Directory => {
                     self.put_dir(&item, &mut name_set)?;
@@ -359,6 +364,8 @@ impl State {
                 print_process("[»»---]");
             } else if i > unit {
                 print_process("[»----]");
+            } else if i == 0 {
+                print!(" [-----]{}", cursor::Left(7));
             }
             let entry = entry?;
             let entry_path = entry.path();

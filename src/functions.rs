@@ -139,7 +139,7 @@ pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
 }
 
 pub fn print_process<T: std::fmt::Display>(message: T) {
-    print!("{}{}", cursor::Goto(16, 2), message);
+    print!("{}{}", message, cursor::Left(7));
 }
 
 pub fn display_count(i: usize, all: usize) -> String {
