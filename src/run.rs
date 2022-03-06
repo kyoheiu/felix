@@ -506,7 +506,12 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                     let iter = clone.iter().filter(|item| item.selected);
                                     let total_selected = iter.clone().count();
                                     for (i, item) in iter.enumerate() {
-                                        print_info(display_count(i, total_selected), y);
+                                        print!(
+                                            " {}{}{}",
+                                            cursor::Goto(2, 2),
+                                            clear::CurrentLine,
+                                            display_count(i, total_selected)
+                                        );
                                         match item.file_type {
                                             FileType::Directory => {
                                                 if let Err(e) =
@@ -623,6 +628,11 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         let item = state.get_item(nums.index)?.clone();
                                         match item.file_type {
                                             FileType::Directory => {
+                                                print!(
+                                                    " {}{}1/1",
+                                                    cursor::Goto(2, 2),
+                                                    clear::CurrentLine
+                                                );
                                                 if let Err(e) = state.remove_and_yank_dir(item) {
                                                     print_warning(e, y);
                                                     state.move_cursor(&nums, y);
