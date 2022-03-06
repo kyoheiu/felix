@@ -221,6 +221,8 @@ impl State {
                 print_process("[»»---]");
             } else if i > unit {
                 print_process("[»----]");
+            } else if i == 0 {
+                print!(" [-----]{}", cursor::Left(7));
             }
             let entry = entry?;
             let entry_path = entry.path();

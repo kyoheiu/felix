@@ -623,6 +623,11 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         let item = state.get_item(nums.index)?.clone();
                                         match item.file_type {
                                             FileType::Directory => {
+                                                print!(
+                                                    "{}{}1/1",
+                                                    cursor::Goto(2, 2),
+                                                    clear::CurrentLine
+                                                );
                                                 if let Err(e) = state.remove_and_yank_dir(item) {
                                                     print_warning(e, y);
                                                     state.move_cursor(&nums, y);
