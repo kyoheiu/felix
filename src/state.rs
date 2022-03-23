@@ -696,6 +696,9 @@ impl State {
                     );
                 }
             }
+            if std::env::var("RUST_LOG") == Ok("debug".to_string()) {
+                print!(" index: {} skip: {}", nums.index, nums.skip);
+            }
         }
         print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
     }
