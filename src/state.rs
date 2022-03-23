@@ -619,32 +619,24 @@ impl State {
 
     pub fn list_up(&self, skip_number: u16) {
         let row = self.layout.terminal_row;
-        let len = self.list.len();
 
         //if list exceeds max-row
-        if len > (row - STARTING_POINT) as usize - 1 {
-            let mut row_count = 0;
-            for (i, _) in self.list.iter().enumerate() {
-                if i < skip_number as usize {
-                    continue;
-                }
-
-                print!(
-                    "{}",
-                    cursor::Goto(3, i as u16 + STARTING_POINT - skip_number)
-                );
-
-                if row_count == row - STARTING_POINT {
-                    break;
-                } else {
-                    self.print(i);
-                    row_count += 1;
-                }
+        let mut row_count = 0;
+        for (i, _) in self.list.iter().enumerate() {
+            if i < skip_number as usize {
+                continue;
             }
-        } else {
-            for (i, _) in self.list.iter().enumerate() {
-                print!("{}", cursor::Goto(3, i as u16 + STARTING_POINT));
+
+            print!(
+                "{}",
+                cursor::Goto(3, i as u16 + STARTING_POINT - skip_number)
+            );
+
+            if row_count == row - STARTING_POINT {
+                break;
+            } else {
                 self.print(i);
+                row_count += 1;
             }
         }
     }
