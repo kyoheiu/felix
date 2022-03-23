@@ -88,7 +88,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                 Key::Char('j') | Key::Down => {
                     if len == 0 || nums.index == len - 1 {
                         continue;
-                    } else if y == state.layout.terminal_row - 4
+                    } else if y >= state.layout.terminal_row - 4
                         && len > (state.layout.terminal_row - STARTING_POINT) as usize - 1
                     {
                         nums.go_down();
@@ -162,14 +162,17 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     if len == 0 {
                         continue;
                     }
-                    nums.go_bottom(len - 1);
                     if len > (state.layout.terminal_row - STARTING_POINT) as usize {
                         nums.skip = (len as u16) + STARTING_POINT - state.layout.terminal_row;
+                        nums.go_bottom(len - 1);
                         clear_and_show(&state.current_dir);
                         state.list_up(nums.skip);
                         state.move_cursor(&nums, state.layout.terminal_row - 1);
                     } else {
-                        print!(" ");
+                        nums.reset();
+                        nums.go_bottom(len - 1);
+                        clear_and_show(&state.current_dir);
+                        state.list_up(nums.skip);
                         state.move_cursor(&nums, len as u16 + STARTING_POINT - 1);
                     }
                 }
