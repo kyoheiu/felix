@@ -154,7 +154,7 @@ pub fn to_extension_map(config: &HashMap<String, Vec<String>>) -> HashMap<String
     let mut new_map = HashMap::new();
     for (command, extensions) in config.iter() {
         for ext in extensions.iter() {
-            new_map.insert(ext.clone(), command.clone());
+            new_map.insert(ext.to_lowercase(), command.clone());
         }
     }
     new_map

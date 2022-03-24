@@ -144,7 +144,7 @@ impl State {
 
         match extention {
             Some(extention) => {
-                let ext = extention.to_os_string().into_string().unwrap();
+                let ext = extention.to_ascii_lowercase().into_string().unwrap();
                 match map.get(&ext) {
                     Some(command) => {
                         let mut ex = Command::new(command);
