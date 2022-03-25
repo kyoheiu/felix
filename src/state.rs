@@ -718,51 +718,54 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
     let path = entry.path();
     let metadata = &fs::symlink_metadata(&path);
 
-    let time = match metadata {
-        Ok(metadata) => {
-            let sometime = metadata.modified().unwrap();
-            let chrono_time: DateTime<Local> = DateTime::from(sometime);
-            Some(chrono_time.to_rfc3339_opts(SecondsFormat::Secs, false))
-        }
-        Err(_) => None,
-    };
-
-    let filetype = match metadata {
-        Ok(metadata) => {
-            let file_type = metadata.file_type();
-            if file_type.is_dir() {
-                FileType::Directory
-            } else if file_type.is_file() {
-                FileType::File
-            } else if file_type.is_symlink() {
-                FileType::Symlink
-            } else {
-                FileType::File
-            }
-        }
-        Err(_) => FileType::File,
-    };
-
     let name = entry
         .file_name()
         .into_string()
         .unwrap_or_else(|_| "Invalid unicode name".to_string());
 
-    let size = match metadata {
-        Ok(metadata) => metadata.len(),
-        Err(_) => 0,
-    };
-
     let ext = path.extension().map(|s| s.to_os_string());
 
-    ItemInfo {
-        file_type: filetype,
-        file_name: name,
-        file_path: path,
-        file_size: size,
-        file_ext: ext,
-        modified: time,
-        selected: false,
+    match metadata {
+        Ok(metadata) => {
+            let time = {
+                let sometime = metadata.modified().unwrap();
+                let chrono_time: DateTime<Local> = DateTime::from(sometime);
+                Some(chrono_time.to_rfc3339_opts(SecondsFormat::Secs, false))
+            };
+
+            let filetype = {
+                let file_type = metadata.file_type();
+                if file_type.is_dir() {
+                    FileType::Directory
+                } else if file_type.is_file() {
+                    FileType::File
+                } else if file_type.is_symlink() {
+                    FileType::Symlink
+                } else {
+                    FileType::File
+                }
+            };
+
+            let size = metadata.len();
+            ItemInfo {
+                file_type: filetype,
+                file_name: name,
+                file_path: path,
+                file_size: size,
+                file_ext: ext,
+                modified: time,
+                selected: false,
+            }
+        }
+        Err(_) => ItemInfo {
+            file_type: FileType::File,
+            file_name: name,
+            file_path: path,
+            file_size: 0,
+            file_ext: ext,
+            modified: None,
+            selected: false,
+        },
     }
 }
 
