@@ -181,7 +181,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                 Key::Char('l') | Key::Char('\n') | Key::Right => {
                     if let Ok(item) = state.get_item(nums.index) {
                         match item.file_type {
-                            FileType::File | FileType::Symlink => {
+                            FileType::File => {
                                 print!("{}", screen::ToAlternateScreen);
                                 if let Err(e) = state.open_file(nums.index) {
                                     print_warning(e, y);
@@ -193,6 +193,42 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                 print!("{}", cursor::Hide);
                                 state.move_cursor(&nums, y);
                             }
+                            FileType::Symlink => match &item.symlink_dir_path {
+                                Some(true_path) => match std::fs::File::open(true_path) {
+                                    Err(e) => {
+                                        print_warning(e, y);
+                                        continue;
+                                    }
+                                    Ok(_) => {
+                                        p_memo_v = Vec::new();
+                                        c_memo_v = Vec::new();
+                                        state.current_dir = true_path.clone();
+                                        if let Err(e) =
+                                            std::env::set_current_dir(&state.current_dir)
+                                        {
+                                            print_warning(e, y);
+                                            continue;
+                                        }
+                                        state.update_list();
+                                        clear_and_show(&state.current_dir);
+                                        nums.reset();
+                                        state.list_up(nums.skip);
+                                        state.move_cursor(&nums, STARTING_POINT);
+                                    }
+                                },
+                                None => {
+                                    print!("{}", screen::ToAlternateScreen);
+                                    if let Err(e) = state.open_file(nums.index) {
+                                        print_warning(e, y);
+                                        continue;
+                                    }
+                                    print!("{}", screen::ToAlternateScreen);
+                                    clear_and_show(&state.current_dir);
+                                    state.list_up(nums.skip);
+                                    print!("{}", cursor::Hide);
+                                    state.move_cursor(&nums, y);
+                                }
+                            },
                             FileType::Directory => {
                                 match std::fs::File::open(&item.file_path) {
                                     Err(e) => {

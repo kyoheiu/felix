@@ -74,6 +74,7 @@ pub struct ItemInfo {
     pub file_type: FileType,
     pub file_name: String,
     pub file_path: std::path::PathBuf,
+    pub symlink_dir_path: Option<PathBuf>,
     pub file_size: u64,
     pub file_ext: Option<OsString>,
     pub modified: Option<String>,
@@ -697,7 +698,10 @@ impl State {
                 }
             }
             if std::env::var("RUST_LOG") == Ok("debug".to_string()) {
-                print!(" index: {} skip: {}", nums.index, nums.skip);
+                print!(
+                    " index: {} skip: {} sym_path: {:?}",
+                    nums.index, nums.skip, item.symlink_dir_path
+                );
             }
         }
         print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
@@ -716,7 +720,7 @@ impl State {
 
 fn make_item(entry: fs::DirEntry) -> ItemInfo {
     let path = entry.path();
-    let metadata = &fs::symlink_metadata(&path);
+    let metadata = fs::symlink_metadata(&path);
 
     let name = entry
         .file_name()
@@ -746,11 +750,28 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
                 }
             };
 
+            let sym_dir_path = {
+                if filetype == FileType::Symlink {
+                    if let Ok(sym_meta) = fs::metadata(&path) {
+                        if sym_meta.is_dir() {
+                            fs::canonicalize(path.clone()).ok()
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            };
+
             let size = metadata.len();
             ItemInfo {
                 file_type: filetype,
                 file_name: name,
                 file_path: path,
+                symlink_dir_path: sym_dir_path,
                 file_size: size,
                 file_ext: ext,
                 modified: time,
@@ -761,6 +782,7 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
             file_type: FileType::File,
             file_name: name,
             file_path: path,
+            symlink_dir_path: None,
             file_size: 0,
             file_ext: ext,
             modified: None,
