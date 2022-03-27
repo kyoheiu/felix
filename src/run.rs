@@ -200,8 +200,22 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         continue;
                                     }
                                     Ok(_) => {
-                                        p_memo_v = Vec::new();
-                                        c_memo_v = Vec::new();
+                                        let cursor_memo = if !filtered {
+                                            ParentMemo {
+                                                to_sym_dir: Some(state.current_dir.clone()),
+                                                num: nums.clone(),
+                                                cursor_pos: y,
+                                            }
+                                        } else {
+                                            ParentMemo {
+                                                to_sym_dir: Some(state.current_dir.clone()),
+                                                num: Num::new(),
+                                                cursor_pos: STARTING_POINT,
+                                            }
+                                        };
+                                        p_memo_v.push(cursor_memo);
+                                        filtered = false;
+
                                         state.current_dir = true_path.clone();
                                         if let Err(e) =
                                             std::env::set_current_dir(&state.current_dir)
@@ -238,12 +252,14 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                     Ok(_) => {
                                         //store the last cursor position and skip number
                                         let cursor_memo = if !filtered {
-                                            CursorMemo {
+                                            ParentMemo {
+                                                to_sym_dir: None,
                                                 num: nums.clone(),
                                                 cursor_pos: y,
                                             }
                                         } else {
-                                            CursorMemo {
+                                            ParentMemo {
+                                                to_sym_dir: None,
                                                 num: Num::new(),
                                                 cursor_pos: STARTING_POINT,
                                             }
@@ -310,51 +326,69 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                             c_memo_v.push(cursor_memo);
                             filtered = false;
 
-                            state.current_dir = parent_p.to_path_buf();
-                            std::env::set_current_dir(&state.current_dir)
-                                .unwrap_or_else(|e| print_warning(e, y));
-                            state.update_list();
-
                             match p_memo_v.pop() {
                                 Some(memo) => {
+                                    match memo.to_sym_dir {
+                                        Some(true_path) => {
+                                            state.current_dir = true_path;
+                                        }
+                                        None => {
+                                            state.current_dir = parent_p.to_path_buf();
+                                        }
+                                    }
+                                    if let Err(e) = std::env::set_current_dir(&state.current_dir) {
+                                        print_warning(e, y);
+                                        continue;
+                                    }
+                                    state.update_list();
                                     nums = memo.num;
                                     clear_and_show(&state.current_dir);
                                     state.list_up(nums.skip);
                                     state.move_cursor(&nums, memo.cursor_pos);
                                 }
-                                None => match pre.file_name() {
-                                    Some(name) => {
-                                        let mut new_pos = 0;
-                                        for (i, item) in state.list.iter().enumerate() {
-                                            let name_as_os_str: &OsStr = item.file_name.as_ref();
-                                            if name_as_os_str == name {
-                                                new_pos = i;
+                                None => {
+                                    state.current_dir = parent_p.to_path_buf();
+                                    if let Err(e) = std::env::set_current_dir(&state.current_dir) {
+                                        print_warning(e, y);
+                                        continue;
+                                    }
+                                    state.update_list();
+                                    match pre.file_name() {
+                                        Some(name) => {
+                                            let mut new_pos = 0;
+                                            for (i, item) in state.list.iter().enumerate() {
+                                                let name_as_os_str: &OsStr =
+                                                    item.file_name.as_ref();
+                                                if name_as_os_str == name {
+                                                    new_pos = i;
+                                                }
+                                            }
+                                            nums.index = new_pos;
+
+                                            if nums.index
+                                                >= (state.layout.terminal_row
+                                                    - (STARTING_POINT + 3))
+                                                    .into()
+                                            {
+                                                nums.skip = (nums.index - 3) as u16;
+                                                clear_and_show(&state.current_dir);
+                                                state.list_up(nums.skip);
+                                                state.move_cursor(&nums, STARTING_POINT + 3);
+                                            } else {
+                                                nums.skip = 0;
+                                                clear_and_show(&state.current_dir);
+                                                state.list_up(0);
+                                                state.move_cursor(&nums, (nums.index + 3) as u16);
                                             }
                                         }
-                                        nums.index = new_pos;
-
-                                        if nums.index
-                                            >= (state.layout.terminal_row - (STARTING_POINT + 3))
-                                                .into()
-                                        {
-                                            nums.skip = (nums.index - 3) as u16;
-                                            clear_and_show(&state.current_dir);
-                                            state.list_up(nums.skip);
-                                            state.move_cursor(&nums, STARTING_POINT + 3);
-                                        } else {
-                                            nums.skip = 0;
+                                        None => {
+                                            nums.reset();
                                             clear_and_show(&state.current_dir);
                                             state.list_up(0);
-                                            state.move_cursor(&nums, (nums.index + 3) as u16);
+                                            state.move_cursor(&nums, STARTING_POINT);
                                         }
                                     }
-                                    None => {
-                                        nums.reset();
-                                        clear_and_show(&state.current_dir);
-                                        state.list_up(0);
-                                        state.move_cursor(&nums, STARTING_POINT);
-                                    }
-                                },
+                                }
                             }
                         }
                         None => {
