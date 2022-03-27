@@ -73,7 +73,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
     state.move_cursor(&nums, STARTING_POINT);
     screen.flush()?;
 
-    let mut p_memo_v: Vec<CursorMemo> = Vec::new();
+    let mut p_memo_v: Vec<ParentMemo> = Vec::new();
     let mut c_memo_v: Vec<ChildMemo> = Vec::new();
     let mut stdin = stdin().keys();
 
@@ -263,13 +263,10 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         match c_memo_v.pop() {
                                             Some(memo) => {
                                                 if state.current_dir == memo.dir_path {
-                                                    nums = memo.cursor_memo.num;
+                                                    nums = memo.num;
                                                     clear_and_show(&state.current_dir);
                                                     state.list_up(nums.skip);
-                                                    state.move_cursor(
-                                                        &nums,
-                                                        memo.cursor_memo.cursor_pos,
-                                                    );
+                                                    state.move_cursor(&nums, memo.cursor_pos);
                                                 } else {
                                                     clear_and_show(&state.current_dir);
                                                     state.list_up(0);
@@ -300,18 +297,14 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                             let cursor_memo = if !filtered {
                                 ChildMemo {
                                     dir_path: pre.clone(),
-                                    cursor_memo: CursorMemo {
-                                        num: nums.clone(),
-                                        cursor_pos: y,
-                                    },
+                                    num: nums.clone(),
+                                    cursor_pos: y,
                                 }
                             } else {
                                 ChildMemo {
                                     dir_path: PathBuf::from(""),
-                                    cursor_memo: CursorMemo {
-                                        num: Num::new(),
-                                        cursor_pos: STARTING_POINT,
-                                    },
+                                    num: Num::new(),
+                                    cursor_pos: STARTING_POINT,
                                 }
                             };
                             c_memo_v.push(cursor_memo);

@@ -1,11 +1,13 @@
-pub struct CursorMemo {
+pub struct ParentMemo {
+    pub to_sym_dir: Option<std::path::PathBuf>,
     pub num: Num,
     pub cursor_pos: u16,
 }
 
 pub struct ChildMemo {
     pub dir_path: std::path::PathBuf,
-    pub cursor_memo: CursorMemo,
+    pub num: Num,
+    pub cursor_pos: u16,
 }
 #[derive(Clone)]
 pub struct Num {
