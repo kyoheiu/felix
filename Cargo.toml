@@ -16,6 +16,9 @@ path = "src/main.rs"
 test = false
 bench = false
 
+[profile.release]
+strip = true
+
 [dependencies]
 chrono = "0.4.19"
 dirs = "4.0.0"
