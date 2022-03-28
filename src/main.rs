@@ -15,7 +15,12 @@ fn main() -> Result<(), errors::MyError> {
             std::env::current_dir().unwrap_or_else(|_| panic!("Cannot access current directoy.")),
         )?,
 
-        2 => run::run(std::path::PathBuf::from(&args[1]))?,
+        2 => match args[1].as_str() {
+            "-h" | "--help" => {
+                print!("{}", help::HELP);
+            }
+            _ => run::run(std::path::PathBuf::from(&args[1]))?,
+        },
         _ => print!("{}", help::HELP),
     }
     Ok(())
