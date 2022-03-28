@@ -1,4 +1,4 @@
-pub const HELP: &str = "# felix v0.4.3
+pub const HELP: &str = "# felix v0.5.0
 A simple TUI file manager with vim-like keymapping.
 This program works on terminals with 21 columns or more.
 
@@ -7,6 +7,8 @@ This program works on terminals with 21 columns or more.
 `fx` => Show items in current directory.
 `fx <directory path>` => Show items in the path.
 Both relative and absolute available.
+
+`fx -h` or `fx --help` => Print help.
 
 ### Manual
 
