@@ -1,7 +1,7 @@
 [![crates.io](https://img.shields.io/crates/v/felix)](https://crates.io/crates/felix) ![aur:felix-rs](https://img.shields.io/aur/version/felix-rs)
 
 # *felix*
-v0.4.3
+v0.5.0
 
 A tui file manager with vim-like key mapping, written in Rust.  
 Works on terminals with 21 columns or more.
@@ -58,6 +58,7 @@ cargo install --path .
 | --------------------- | ------------------------------------------------------------- |
 | `fx`                  | Show items in the current directory.                          |
 | `fx <directory path>` | Show items in the path. Both relative and absolute available. |
+| `fx -h` or `fx --help` |Print help. |
 
 ## Key manual
 
