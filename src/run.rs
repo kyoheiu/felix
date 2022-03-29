@@ -567,7 +567,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                     screen.flush()?;
 
                                     state.registered.clear();
-                                    let mut count = 0;
+                                    let mut count: usize = 0;
                                     let clone = state.list.clone();
                                     let iter = clone.iter().filter(|item| item.selected);
                                     let total_selected = iter.clone().count();
@@ -603,9 +603,18 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                     state.list_up(nums.skip);
 
                                     let duration = duration_to_string(start.elapsed());
-                                    let mut delete_message: String = count.to_string();
-                                    delete_message
-                                        .push_str(&format!(" items deleted [{}]", duration));
+                                    let delete_message: String = {
+                                        if count == 1 {
+                                            format!("1 item deleted [{}]", duration)
+                                        } else {
+                                            let mut count = count.to_string();
+                                            count.push_str(&format!(
+                                                " items deleted [{}]",
+                                                duration
+                                            ));
+                                            count
+                                        }
+                                    };
                                     print_info(delete_message, y);
                                     print!(" ");
 
