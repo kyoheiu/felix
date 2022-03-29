@@ -67,6 +67,7 @@ pub struct State {
     pub sort_by: SortKey,
     pub layout: Layout,
     pub show_hidden: bool,
+    pub rust_log: Option<String>,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -120,6 +121,7 @@ impl Default for State {
                 time_start_pos: 0,
             },
             show_hidden: session.show_hidden,
+            rust_log: std::env::var("RUST_LOG").ok(),
         }
     }
 }
@@ -697,7 +699,7 @@ impl State {
                     );
                 }
             }
-            if std::env::var("RUST_LOG") == Ok("debug".to_string()) {
+            if self.rust_log == Some("debug".to_string()) {
                 print!(
                     " index: {} skip: {} sym_path: {:?}",
                     nums.index, nums.skip, item.symlink_dir_path
