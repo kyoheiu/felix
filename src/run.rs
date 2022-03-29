@@ -21,14 +21,15 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
     env_logger::init();
     debug!("starts initial setup.");
 
-    let mut config_dir = dirs::config_dir().unwrap_or_else(|| panic!("Cannot read config dir."));
-    config_dir.push(FX_CONFIG_DIR);
-    let config_file = config_dir.join(PathBuf::from(CONFIG_FILE));
-    let trash_dir = config_dir.join(PathBuf::from(TRASH));
-    make_config(&config_file, &trash_dir)
+    let mut config_dir_path =
+        dirs::config_dir().unwrap_or_else(|| panic!("Cannot read config dir."));
+    config_dir_path.push(FX_CONFIG_DIR);
+    let config_file_path = config_dir_path.join(PathBuf::from(CONFIG_FILE));
+    let trash_dir_path = config_dir_path.join(PathBuf::from(TRASH));
+    make_config(&config_file_path, &trash_dir_path)
         .unwrap_or_else(|_| panic!("Cannot make config file or trash dir."));
-    let session_file = config_dir.join(PathBuf::from(SESSION_FILE));
-    make_session(&session_file).unwrap_or_else(|_| panic!("Cannot make session file."));
+    let session_file_path = config_dir_path.join(PathBuf::from(SESSION_FILE));
+    make_session(&session_file_path).unwrap_or_else(|_| panic!("Cannot make session file."));
 
     if !&arg.exists() {
         println!("Invalid path: {}", &arg.display());
@@ -57,7 +58,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
     };
     state.current_dir = arg.canonicalize()?;
     state.update_list();
-    state.trash_dir = trash_dir;
+    state.trash_dir = trash_dir_path;
 
     let mut filtered = false;
 
@@ -1305,6 +1306,6 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
     }
     //When exits, restore the cursor
     print!("{}", cursor::Restore);
-    state.write_session(session_file)?;
+    state.write_session(session_file_path)?;
     Ok(())
 }
