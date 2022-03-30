@@ -153,6 +153,17 @@ impl State {
                         let mut ex = Command::new(command);
                         ex.arg(path).status().map_err(MyError::IoError)
                     }
+
+                    // Use xdg-open for opening files on Linux.
+                    #[cfg(target_os = "linux")]
+                    None => {
+                        Command::new("xdg-open")
+                            .arg(path)
+                            .status()
+                            .map_err(MyError::IoError)
+                    }
+
+                    #[cfg(not(target_os = "linux"))]
                     None => {
                         let mut ex = Command::new(&self.default);
                         ex.arg(path).status().map_err(MyError::IoError)
