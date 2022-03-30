@@ -147,14 +147,11 @@ impl State {
         let map = &self.commands;
         let extention = path.extension();
 
-        match extention {
+        let cmd = match extention {
             Some(extention) => {
                 let ext = extention.to_ascii_lowercase().into_string().unwrap();
                 match map.get(&ext) {
-                    Some(command) => {
-                        let mut ex = Command::new(command);
-                        ex.arg(path).status().map_err(MyError::IoError)
-                    }
+                    Some(command) => command.as_str(),
 
                     // Use xdg-open for opening files on Linux.
                     #[cfg(target_os = "linux")]
@@ -168,36 +165,29 @@ impl State {
                             .map_err(MyError::IoError)?
                             .stdout;
 
+                        let mut editor = None;
+
                         if let Ok(output) = String::from_utf8(mimetype) {
                             if output.starts_with("text/") {
-                                if let Some(editor) = self.editor.as_ref() {
-                                    return Command::new(editor)
-                                        .arg(path)
-                                        .status()
-                                        .map_err(MyError::IoError);
-                                }
+                                editor = self.editor.as_deref();
                             }
                         }
 
-                        Command::new("xdg-open")
-                            .arg(path)
-                            .status()
-                            .map_err(MyError::IoError)
+                        editor.unwrap_or("xdg-open")
                     }
 
                     #[cfg(not(target_os = "linux"))]
-                    None => {
-                        let mut ex = Command::new(&self.default);
-                        ex.arg(path).status().map_err(MyError::IoError)
-                    }
+                    None => &self.default,
                 }
             }
 
-            None => {
-                let mut ex = Command::new(&self.default);
-                ex.arg(path).status().map_err(MyError::IoError)
-            }
-        }
+            None => &self.default,
+        };
+
+        Command::new(cmd)
+            .arg(path)
+            .status()
+            .map_err(MyError::IoError)
     }
 
     pub fn remove_and_yank_file(&mut self, item: ItemInfo) -> Result<(), MyError> {
