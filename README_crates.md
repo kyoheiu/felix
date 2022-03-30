@@ -1,5 +1,5 @@
 # *felix*
-v0.5.0
+v0.5.1
 
 A tui file manager with vim-like key mapping, written in Rust.  
 Works on terminals with 21 columns or more.

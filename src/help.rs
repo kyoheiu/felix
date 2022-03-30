@@ -1,9 +1,8 @@
-pub const HELP: &str = "# felix v0.5.0
+pub const HELP: &str = "# felix v0.5.1
 A simple TUI file manager with vim-like keymapping.
 This program works on terminals with 21 columns or more.
 
 ## Usage
-
 `fx` => Show items in current directory.
 `fx <directory path>` => Show items in the path.
 Both relative and absolute available.
@@ -11,7 +10,6 @@ Both relative and absolute available.
 `fx -h` or `fx --help` => Print help.
 
 ### Manual
-
 j / Key Up            :Go up.
 k / Key Down          :Go down.
 h / Key Left          :Go to parent directory if exists.
@@ -36,7 +34,6 @@ Esc                   :Return to normal mode.
 :q / ZZ               :Exit the program.
 
 ## Configuration
-
 config file    : $XDG_CONFIG_HOME/felix/config.toml
 trash directory: $XDG_CONFIG_HOME/felix/trash
 
