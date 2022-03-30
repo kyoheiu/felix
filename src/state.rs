@@ -11,7 +11,7 @@ use std::fs;
 use std::fs::DirEntry;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitStatus};
+use std::process::{Command, ExitStatus, Stdio};
 use termion::{clear, color, cursor, style};
 
 pub const STARTING_POINT: u16 = 3;
@@ -63,6 +63,7 @@ pub struct State {
     pub trash_dir: PathBuf,
     pub colors: (Colorname, Colorname, Colorname),
     pub default: String,
+    pub editor: Option<String>,
     pub commands: HashMap<String, String>,
     pub sort_by: SortKey,
     pub layout: Layout,
@@ -112,6 +113,7 @@ impl Default for State {
                 config.color.symlink_fg,
             ),
             default: config.default,
+            editor: config.editor,
             commands: to_extension_map(&config.exec),
             sort_by: session.sort_by,
             layout: Layout {
@@ -157,6 +159,26 @@ impl State {
                     // Use xdg-open for opening files on Linux.
                     #[cfg(target_os = "linux")]
                     None => {
+                        let mimetype = Command::new("file")
+                            .arg("-bi")
+                            .arg(path)
+                            .stdin(Stdio::null())
+                            .stderr(Stdio::null())
+                            .output()
+                            .map_err(MyError::IoError)?
+                            .stdout;
+
+                        if let Ok(output) = String::from_utf8(mimetype) {
+                            if output.starts_with("text/") {
+                                if let Some(editor) = self.editor.as_ref() {
+                                    return Command::new(editor)
+                                        .arg(path)
+                                        .status()
+                                        .map_err(MyError::IoError);
+                                }
+                            }
+                        }
+
                         Command::new("xdg-open")
                             .arg(path)
                             .status()
