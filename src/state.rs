@@ -102,6 +102,13 @@ impl Default for State {
     fn default() -> Self {
         let config = read_config().unwrap();
         let session = read_session().unwrap();
+
+        let mut editor = config.editor;
+
+        if editor.is_none() {
+            editor = gitconfig_editor();
+        }
+
         State {
             list: Vec::new(),
             registered: Vec::new(),
@@ -113,7 +120,7 @@ impl Default for State {
                 config.color.symlink_fg,
             ),
             default: config.default,
-            editor: config.editor,
+            editor,
             commands: to_extension_map(&config.exec),
             sort_by: session.sort_by,
             layout: Layout {
@@ -855,4 +862,23 @@ pub fn push_items(p: &Path, key: &SortKey, show_hidden: bool) -> Result<Vec<Item
     result.append(&mut dir_v);
     result.append(&mut file_v);
     Ok(result)
+}
+
+/// Fetch the editor defined in `${HOME}/.gitconfig`.
+fn gitconfig_editor() -> Option<String> {
+    if let Some(mut git_dir) = dirs::home_dir() {
+        git_dir = git_dir.join(".gitconfig");
+        if git_dir.exists() {
+            if let Ok(conf) = std::fs::read_to_string(&git_dir) {
+                for mut line in conf.lines() {
+                    line = line.trim();
+                    if let Some(editor_) = line.strip_prefix("editor =") {
+                        return Some(editor_.trim().to_owned());
+                    }
+                }
+            }
+        }
+    }
+
+    None
 }
