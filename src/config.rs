@@ -12,7 +12,7 @@ pub const CONFIG_EXAMPLE: &str = "
 default = \"nvim\"
 
 # default text editor
-editor = \"nvim\"
+# editor = \"nvim\"
 
 # key(command you want to use) = values(extensions)
 [exec]

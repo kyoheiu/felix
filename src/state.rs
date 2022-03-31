@@ -105,8 +105,21 @@ impl Default for State {
 
         let mut editor = config.editor;
 
+        #[cfg(target_os = "linux")]
         if editor.is_none() {
-            editor = gitconfig_editor();
+            // Get editor from env var if set.
+            editor = std::env::var("EDITOR").ok();
+
+            // Get editor from debian alternatives if exists
+            const DEB_EDITOR: &str = "/usr/bin/editor";
+            if editor.is_none() && Path::new(DEB_EDITOR).exists() {
+                editor = Some(String::from(DEB_EDITOR));
+            }
+
+            // Get editor from gitconfig
+            if editor.is_none() {
+                editor = gitconfig_editor();
+            }
         }
 
         State {
