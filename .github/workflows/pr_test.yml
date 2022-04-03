@@ -1,0 +1,37 @@
+name: 'pull request install test'
+
+on:
+  pull_request:
+    types: [opened, reopened]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  ubuntu-install:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install
+      run: |
+        cargo install --path .
+  macos-install:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install
+      run: |
+        cargo install --path .
+  archlinux-install:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:base-devel
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install
+      run: |
+        pacman -Syu --noconfirm
+        pacman -S rustup --noconfirm
+        rustup install stable
+        rustup default stable
+        cargo install --path .
