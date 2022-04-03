@@ -1,7 +1,7 @@
-use super::errors::MyError;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::read_to_string;
+use super::errors::MyError;
 
 use crate::state::FX_CONFIG_DIR;
 
@@ -10,9 +10,6 @@ const CONFIG_FILE: &str = "config.toml";
 pub const CONFIG_EXAMPLE: &str = "
 # default exec command when open files
 default = \"nvim\"
-
-# default text editor
-# editor = \"nvim\"
 
 # key(command you want to use) = values(extensions)
 [exec]
@@ -49,7 +46,6 @@ symlink_fg = \"LightYellow\"
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config {
     pub default: String,
-    pub editor: Option<String>,
     pub exec: HashMap<String, Vec<String>>,
     pub color: Color,
 }
