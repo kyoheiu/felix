@@ -198,7 +198,7 @@ impl State {
 
                     #[cfg(not(target_os = "linux"))]
                     None => {
-                        return crate::open::that(path).map_err(MyError::IoError);
+                        return open::that(path).map_err(MyError::IoError);
                     }
                 }
             }
