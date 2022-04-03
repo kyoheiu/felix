@@ -1,5 +1,7 @@
 [![crates.io](https://img.shields.io/crates/v/felix)](https://crates.io/crates/felix) ![aur:felix-rs](https://img.shields.io/aur/version/felix-rs)
 
+pr test
+
 # *felix*
 v0.5.1
 
