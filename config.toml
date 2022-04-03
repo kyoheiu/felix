@@ -1,6 +1,9 @@
 # default exec command when open files
 default = "nvim"
 
+# default text editor
+# editor = "nvim"
+
 # key(command you want to use) = values(extensions)
 [exec]
 feh = ["jpg", "jpeg", "png", "gif", "svg"]

@@ -11,7 +11,7 @@ use std::fs;
 use std::fs::DirEntry;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitStatus};
+use std::process::{Command, ExitStatus, Stdio};
 use termion::{clear, color, cursor, style};
 
 pub const STARTING_POINT: u16 = 3;
@@ -63,6 +63,7 @@ pub struct State {
     pub trash_dir: PathBuf,
     pub colors: (Colorname, Colorname, Colorname),
     pub default: String,
+    pub editor: Option<String>,
     pub commands: HashMap<String, String>,
     pub sort_by: SortKey,
     pub layout: Layout,
@@ -101,6 +102,26 @@ impl Default for State {
     fn default() -> Self {
         let config = read_config().unwrap();
         let session = read_session().unwrap();
+
+        let mut editor = config.editor;
+
+        #[cfg(target_os = "linux")]
+        if editor.is_none() {
+            // Get editor from env var if set.
+            editor = std::env::var("EDITOR").ok();
+
+            // Get editor from debian alternatives if exists
+            const DEB_EDITOR: &str = "/usr/bin/editor";
+            if editor.is_none() && Path::new(DEB_EDITOR).exists() {
+                editor = Some(String::from(DEB_EDITOR));
+            }
+
+            // Get editor from gitconfig
+            if editor.is_none() {
+                editor = gitconfig_editor();
+            }
+        }
+
         State {
             list: Vec::new(),
             registered: Vec::new(),
@@ -112,6 +133,7 @@ impl Default for State {
                 config.color.symlink_fg,
             ),
             default: config.default,
+            editor,
             commands: to_extension_map(&config.exec),
             sort_by: session.sort_by,
             layout: Layout {
@@ -145,26 +167,49 @@ impl State {
         let map = &self.commands;
         let extention = path.extension();
 
-        match extention {
+        let cmd = match extention {
             Some(extention) => {
                 let ext = extention.to_ascii_lowercase().into_string().unwrap();
                 match map.get(&ext) {
-                    Some(command) => {
-                        let mut ex = Command::new(command);
-                        ex.arg(path).status().map_err(MyError::IoError)
-                    }
+                    Some(command) => command.as_str(),
+
+                    // Use xdg-open for opening files on Linux.
+                    #[cfg(target_os = "linux")]
                     None => {
-                        let mut ex = Command::new(&self.default);
-                        ex.arg(path).status().map_err(MyError::IoError)
+                        let mimetype = Command::new("file")
+                            .arg("-bi")
+                            .arg(path)
+                            .stdin(Stdio::null())
+                            .stderr(Stdio::null())
+                            .output()
+                            .map_err(MyError::IoError)?
+                            .stdout;
+
+                        let mut editor = None;
+
+                        if let Ok(output) = String::from_utf8(mimetype) {
+                            if output.starts_with("text/") {
+                                editor = self.editor.as_deref();
+                            }
+                        }
+
+                        editor.unwrap_or("xdg-open")
+                    }
+
+                    #[cfg(not(target_os = "linux"))]
+                    None => {
+                        return crate::open::that(path).map_err(MyError::IoError);
                     }
                 }
             }
 
-            None => {
-                let mut ex = Command::new(&self.default);
-                ex.arg(path).status().map_err(MyError::IoError)
-            }
-        }
+            None => &self.default,
+        };
+
+        Command::new(cmd)
+            .arg(path)
+            .status()
+            .map_err(MyError::IoError)
     }
 
     pub fn remove_and_yank_file(&mut self, item: ItemInfo) -> Result<(), MyError> {
@@ -832,4 +877,23 @@ pub fn push_items(p: &Path, key: &SortKey, show_hidden: bool) -> Result<Vec<Item
     result.append(&mut dir_v);
     result.append(&mut file_v);
     Ok(result)
+}
+
+/// Fetch the editor defined in `${HOME}/.gitconfig`.
+fn gitconfig_editor() -> Option<String> {
+    if let Some(mut git_dir) = dirs::home_dir() {
+        git_dir = git_dir.join(".gitconfig");
+        if git_dir.exists() {
+            if let Ok(conf) = std::fs::read_to_string(&git_dir) {
+                for mut line in conf.lines() {
+                    line = line.trim();
+                    if let Some(editor_) = line.strip_prefix("editor =") {
+                        return Some(editor_.trim().to_owned());
+                    }
+                }
+            }
+        }
+    }
+
+    None
 }
