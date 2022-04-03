@@ -30,9 +30,6 @@ log = "0.4.16"
 env_logger = "0.9.0"
 thiserror = "1.0.30"
 
-['cfg(not(target_os = "linux"))'.dependencies]
-open = "2.1.1"
-
 [dependencies.serde]
 features = ["derive"]
 version = "1.0.136"
