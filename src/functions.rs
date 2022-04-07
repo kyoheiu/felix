@@ -202,27 +202,3 @@ pub fn get_contents_r(path: PathBuf, vec: &mut Vec<PathBuf>) -> Result<Vec<PathB
     }
     Ok(vec.clone())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn get_contents_r_test() {
-        let path = PathBuf::from("/home/kyohei/nim/new");
-        let mut vec = vec![];
-        let result = get_contents_r(path.clone(), &mut vec).unwrap();
-        let mut bt = BTreeSet::new();
-        bt.insert(path.clone());
-        for p in result {
-            bt.insert(p);
-        }
-
-        let mut target = BTreeSet::new();
-        for entry in walkdir::WalkDir::new(path) {
-            let entry = entry.unwrap();
-            target.insert(entry.path().to_path_buf());
-        }
-        assert_eq!(bt, target);
-    }
-}
