@@ -1,7 +1,7 @@
+use super::errors::MyError;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::read_to_string;
-use super::errors::MyError;
 
 use crate::state::FX_CONFIG_DIR;
 
@@ -11,7 +11,11 @@ pub const CONFIG_EXAMPLE: &str = "
 # default exec command when open files
 default = \"nvim\"
 
-# key(command you want to use) = values(extensions)
+# Option: set the max length of item name to be displayed
+# if not set, it will be 29.
+# item_name_length = 29
+
+# key(command you want to use) = [values](extensions)
 [exec]
 feh = [\"jpg\", \"jpeg\", \"png\", \"gif\", \"svg\"]
 zathura = [\"pdf\"]
@@ -48,6 +52,7 @@ pub struct Config {
     pub default: String,
     pub exec: HashMap<String, Vec<String>>,
     pub color: Color,
+    pub item_name_length: Option<usize>,
 }
 
 #[derive(Deserialize, Debug, Clone)]

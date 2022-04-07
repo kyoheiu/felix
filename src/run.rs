@@ -17,6 +17,9 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::{clear, cursor, screen};
 
+pub const NAME_START_POS: u16 = 2;
+pub const TIME_WIDTH: u16 = 17;
+
 pub fn run(arg: PathBuf) -> Result<(), MyError> {
     env_logger::init();
     debug!("starts initial setup.");
@@ -38,23 +41,47 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
 
     let (column, row) = termion::terminal_size()?;
     if column < 21 {
-        error!("too small terminal size.");
-        panic!("panic due to terminal size (less than 21 column).")
+        error!("Too small terminal size.");
+        panic!("Panic due to terminal size (less than 21 columns).")
     };
 
     let mut state = State::new();
 
-    let time_start = if column >= 49 { 31 } else { column - 17 };
-    let name_max: usize = if column >= 49 {
-        29
-    } else {
-        (time_start - 2).into()
-    };
+    //caluclate name max width
+    let mut time_start: u16;
+    let mut name_max: usize;
+    match state.layout.option_name_len {
+        Some(option_max) => {
+            time_start = option_max as u16 + 2;
+            name_max = option_max;
+        }
+        None => {
+            time_start = if column >= 49 {
+                31
+            } else {
+                column - TIME_WIDTH
+            };
+            name_max = if column >= 49 {
+                29
+            } else {
+                (time_start - 2).into()
+            };
+        }
+    }
+
+    let required = name_max as u16 + TIME_WIDTH;
+    if required + NAME_START_POS > column {
+        let diff = required + NAME_START_POS - column;
+        name_max -= diff as usize;
+        time_start -= diff;
+    }
+
     state.layout = Layout {
         terminal_row: row,
         terminal_column: column,
         name_max_len: name_max,
         time_start_pos: time_start,
+        ..state.layout
     };
     state.current_dir = arg.canonicalize()?;
     state.update_list();

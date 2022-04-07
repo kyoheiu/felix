@@ -95,6 +95,7 @@ pub struct Layout {
     pub terminal_column: u16,
     pub name_max_len: usize,
     pub time_start_pos: u16,
+    pub option_name_len: Option<usize>,
 }
 
 impl Default for State {
@@ -119,6 +120,7 @@ impl Default for State {
                 terminal_column: 0,
                 name_max_len: 0,
                 time_start_pos: 0,
+                option_name_len: config.item_name_length,
             },
             show_hidden: session.show_hidden,
             rust_log: std::env::var("RUST_LOG").ok(),
@@ -701,8 +703,8 @@ impl State {
             }
             if self.rust_log == Some("debug".to_string()) {
                 print!(
-                    " index: {} skip: {} sym_path: {:?}",
-                    nums.index, nums.skip, item.symlink_dir_path
+                    " index: {} skip: {} name_max: {} column: {}",
+                    nums.index, nums.skip, self.layout.name_max_len, self.layout.terminal_column
                 );
             }
         }
