@@ -11,9 +11,10 @@ pub const CONFIG_EXAMPLE: &str = "
 # default exec command when open files
 default = \"nvim\"
 
-# Option: set the max length of item name to be displayed
-# if not set, it will be 29.
-# item_name_length = 29
+# Option: set the max length of item name to be displayed.
+# If the terminal size is not enough, the length will be changed to fit it.
+# If not set, it will be 30.
+# item_name_length = 30
 
 # key(command you want to use) = [values](extensions)
 [exec]
