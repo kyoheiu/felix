@@ -1,6 +1,11 @@
 # default exec command when open files
 default = "nvim"
 
+# Option: set the max length of item name to be displayed.
+# If the terminal size is not enough, the length will be changed to fit it.
+# If not set, it will be 30.
+# item_name_length = 30
+
 # key(command you want to use) = values(extensions)
 [exec]
 feh = ["jpg", "jpeg", "png", "gif", "svg"]
