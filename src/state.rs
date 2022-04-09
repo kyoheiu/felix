@@ -4,6 +4,7 @@ use super::functions::*;
 use super::nums::*;
 use super::session::*;
 use chrono::prelude::*;
+use log::error;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::ffi::OsString;
@@ -15,6 +16,7 @@ use std::process::{Command, ExitStatus};
 use termion::{clear, color, cursor, style};
 
 pub const STARTING_POINT: u16 = 3;
+pub const TIME_WIDTH: u16 = 17;
 pub const DOWN_ARROW: char = '\u{21D3}';
 pub const RIGHT_ARROW: char = '\u{21D2}';
 pub const FX_CONFIG_DIR: &str = "felix";
@@ -102,6 +104,39 @@ impl Default for State {
     fn default() -> Self {
         let config = read_config().unwrap();
         let session = read_session().unwrap();
+        let (column, row) = termion::terminal_size().unwrap();
+        if column < 21 {
+            error!("Too small terminal size.");
+            panic!("Panic due to terminal size (less than 21 columns).")
+        };
+        let mut time_start: u16;
+        let mut name_max: usize;
+        match config.item_name_length {
+            Some(option_max) => {
+                time_start = option_max as u16 + 3;
+                name_max = option_max;
+            }
+            None => {
+                time_start = if column >= 50 {
+                    33
+                } else {
+                    column - TIME_WIDTH
+                };
+                name_max = if column >= 50 {
+                    30
+                } else {
+                    (time_start - 3).into()
+                };
+            }
+        }
+
+        let required = time_start + TIME_WIDTH - 1;
+        if required > column {
+            let diff = required - column;
+            name_max -= diff as usize;
+            time_start -= diff;
+        }
+
         State {
             list: Vec::new(),
             registered: Vec::new(),
@@ -116,10 +151,10 @@ impl Default for State {
             commands: to_extension_map(&config.exec),
             sort_by: session.sort_by,
             layout: Layout {
-                terminal_row: 0,
-                terminal_column: 0,
-                name_max_len: 0,
-                time_start_pos: 0,
+                terminal_row: row,
+                terminal_column: column,
+                name_max_len: name_max,
+                time_start_pos: time_start,
                 option_name_len: config.item_name_length,
             },
             show_hidden: session.show_hidden,
@@ -424,7 +459,7 @@ impl State {
         let name = if chars.len() > self.layout.name_max_len {
             let mut result = chars
                 .iter()
-                .take(self.layout.name_max_len - 3)
+                .take(self.layout.name_max_len - 2)
                 .collect::<String>();
             result.push_str("..");
             result

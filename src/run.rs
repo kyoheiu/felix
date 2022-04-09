@@ -7,7 +7,6 @@ use crate::session::*;
 use std::ffi::OsStr;
 // use clipboard::{ClipboardContext, ClipboardProvider};
 use log::debug;
-use log::error;
 use std::io::{stdin, stdout, Write};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -17,12 +16,9 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::{clear, cursor, screen};
 
-pub const NAME_START_POS: u16 = 2;
-pub const TIME_WIDTH: u16 = 17;
-
 pub fn run(arg: PathBuf) -> Result<(), MyError> {
     env_logger::init();
-    debug!("starts initial setup.");
+    debug!("Initial setup starts.");
 
     let mut config_dir_path =
         dirs::config_dir().unwrap_or_else(|| panic!("Cannot read config dir."));
@@ -39,53 +35,9 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
         return Ok(());
     }
 
-    let (column, row) = termion::terminal_size()?;
-    if column < 21 {
-        error!("Too small terminal size.");
-        panic!("Panic due to terminal size (less than 21 columns).")
-    };
-
     let mut state = State::new();
-
-    //caluclate name max width
-    let mut time_start: u16;
-    let mut name_max: usize;
-    match state.layout.option_name_len {
-        Some(option_max) => {
-            time_start = option_max as u16 + 2;
-            name_max = option_max;
-        }
-        None => {
-            time_start = if column >= 49 {
-                31
-            } else {
-                column - TIME_WIDTH
-            };
-            name_max = if column >= 49 {
-                29
-            } else {
-                (time_start - 2).into()
-            };
-        }
-    }
-
-    let required = name_max as u16 + TIME_WIDTH;
-    if required + NAME_START_POS > column {
-        let diff = required + NAME_START_POS - column;
-        name_max -= diff as usize;
-        time_start -= diff;
-    }
-
-    state.layout = Layout {
-        terminal_row: row,
-        terminal_column: column,
-        name_max_len: name_max,
-        time_start_pos: time_start,
-        ..state.layout
-    };
-    state.current_dir = arg.canonicalize()?;
-    state.update_list();
     state.trash_dir = trash_dir_path;
+    state.current_dir = arg.canonicalize()?;
 
     let mut filtered = false;
 
@@ -95,6 +47,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
 
     print!("{}", cursor::Hide);
 
+    state.update_list();
     clear_and_show(&state.current_dir);
     state.list_up(nums.skip);
 
