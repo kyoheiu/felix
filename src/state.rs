@@ -25,7 +25,7 @@ pub const TRASH: &str = "trash";
 pub const WHEN_EMPTY: &str = "Are you sure to empty the trash directory? (if yes: y)";
 
 macro_rules! print_item {
-    ($color: expr, $name: expr, $time: expr, $selected: expr, $time_start_pos: expr, $column: expr) => {
+    ($color: expr, $name: expr, $time: expr, $selected: expr, $layout: expr) => {
         if *($selected) {
             print!(
                 "{}{}{}{}{}{} {}{}{}",
@@ -33,8 +33,8 @@ macro_rules! print_item {
                 style::Invert,
                 $name,
                 style::Reset,
-                cursor::Left(60),
-                cursor::Right($time_start_pos),
+                cursor::Left(100),
+                cursor::Right($layout.time_start_pos - 1),
                 style::Invert,
                 $time,
                 style::Reset
@@ -44,16 +44,19 @@ macro_rules! print_item {
                 "{}{}{}{} {}{}",
                 $color,
                 $name,
-                cursor::Left(60),
-                cursor::Right($time_start_pos),
+                cursor::Left(100),
+                cursor::Right($layout.time_start_pos - 1),
                 $time,
                 color::Fg(color::Reset)
             );
         }
-        if $column > 58 {
-            print!("{}", (0..8).map(|_| ' ').collect::<String>());
-        } else if $column > 49 {
-            print!("{}", (0..($column - 49)).map(|_| ' ').collect::<String>());
+        if $layout.terminal_column > $layout.time_start_pos + 16 {
+            print!(
+                "{}",
+                (0..($layout.terminal_column - $layout.time_start_pos - 16))
+                    .map(|_| ' ')
+                    .collect::<String>()
+            );
         }
     };
 }
@@ -480,49 +483,20 @@ impl State {
                     name,
                     time,
                     selected,
-                    self.layout.time_start_pos,
-                    self.layout.terminal_column
+                    self.layout
                 );
             }
             Colorname::Black => {
-                print_item!(
-                    color::Fg(color::Black),
-                    name,
-                    time,
-                    selected,
-                    self.layout.time_start_pos,
-                    self.layout.terminal_column
-                );
+                print_item!(color::Fg(color::Black), name, time, selected, self.layout);
             }
             Colorname::Blue => {
-                print_item!(
-                    color::Fg(color::Blue),
-                    name,
-                    time,
-                    selected,
-                    self.layout.time_start_pos,
-                    self.layout.terminal_column
-                );
+                print_item!(color::Fg(color::Blue), name, time, selected, self.layout);
             }
             Colorname::Cyan => {
-                print_item!(
-                    color::Fg(color::Cyan),
-                    name,
-                    time,
-                    selected,
-                    self.layout.time_start_pos,
-                    self.layout.terminal_column
-                );
+                print_item!(color::Fg(color::Cyan), name, time, selected, self.layout);
             }
             Colorname::Green => {
-                print_item!(
-                    color::Fg(color::Green),
-                    name,
-                    time,
-                    selected,
-                    self.layout.time_start_pos,
-                    self.layout.terminal_column
-                );
+                print_item!(color::Fg(color::Green), name, time, selected, self.layout);
             }
             Colorname::LightBlack => {
                 print_item!(
@@ -530,8 +504,7 @@ impl State {
                     name,
                     time,
                     selected,
-                    self.layout.time_start_pos,
-                    self.layout.terminal_column
+                    self.layout
                 );
             }
             Colorname::LightBlue => {
@@ -540,8 +513,7 @@ impl State {
                     name,
                     time,
                     selected,
-                    self.layout.time_start_pos,
-                    self.layout.terminal_column
+                    self.layout
                 );
             }
             Colorname::LightCyan => {
@@ -550,8 +522,7 @@ impl State {
                     name,
                     time,
                     selected,
-                    self.layout.time_start_pos,
-                    self.layout.terminal_column
+                    self.layout
                 );
             }
             Colorname::LightGreen => {
@@ -560,8 +531,7 @@ impl State {
                     name,
                     time,
                     selected,
-                    self.layout.time_start_pos,
-                    self.layout.terminal_column
+                    self.layout
                 );
             }
             Colorname::LightMagenta => {
@@ -570,8 +540,7 @@ impl State {
                     name,
                     time,
                     selected,
-                    self.layout.time_start_pos,
-                    self.layout.terminal_column
+                    self.layout
                 );
             }
             Colorname::LightRed => {
@@ -580,8 +549,7 @@ impl State {
                     name,
                     time,
                     selected,
-                    self.layout.time_start_pos,
-                    self.layout.terminal_column
+                    self.layout
                 );
             }
             Colorname::LightWhite => {
@@ -590,8 +558,7 @@ impl State {
                     name,
                     time,
                     selected,
-                    self.layout.time_start_pos,
-                    self.layout.terminal_column
+                    self.layout
                 );
             }
             Colorname::LightYellow => {
@@ -600,29 +567,14 @@ impl State {
                     name,
                     time,
                     selected,
-                    self.layout.time_start_pos,
-                    self.layout.terminal_column
+                    self.layout
                 );
             }
             Colorname::Magenta => {
-                print_item!(
-                    color::Fg(color::Magenta),
-                    name,
-                    time,
-                    selected,
-                    self.layout.time_start_pos,
-                    self.layout.terminal_column
-                );
+                print_item!(color::Fg(color::Magenta), name, time, selected, self.layout);
             }
             Colorname::Red => {
-                print_item!(
-                    color::Fg(color::Red),
-                    name,
-                    time,
-                    selected,
-                    self.layout.time_start_pos,
-                    self.layout.terminal_column
-                );
+                print_item!(color::Fg(color::Red), name, time, selected, self.layout);
             }
             Colorname::Rgb(x, y, z) => {
                 print_item!(
@@ -630,29 +582,14 @@ impl State {
                     name,
                     time,
                     selected,
-                    self.layout.time_start_pos,
-                    self.layout.terminal_column
+                    self.layout
                 );
             }
             Colorname::White => {
-                print_item!(
-                    color::Fg(color::White),
-                    name,
-                    time,
-                    selected,
-                    self.layout.time_start_pos,
-                    self.layout.terminal_column
-                );
+                print_item!(color::Fg(color::White), name, time, selected, self.layout);
             }
             Colorname::Yellow => {
-                print_item!(
-                    color::Fg(color::Yellow),
-                    name,
-                    time,
-                    selected,
-                    self.layout.time_start_pos,
-                    self.layout.terminal_column
-                );
+                print_item!(color::Fg(color::Yellow), name, time, selected, self.layout);
             }
         }
     }
