@@ -675,7 +675,7 @@ impl State {
             }
             if self.rust_log == Some("debug".to_string()) {
                 print!(
-                    " index: {} skip: {} name_max: {} column: {}",
+                    " index:{} skip:{} max:{} column:{}",
                     nums.index, nums.skip, self.layout.name_max_len, self.layout.terminal_column
                 );
             }
