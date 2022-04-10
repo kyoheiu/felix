@@ -1,7 +1,8 @@
 [![crates.io](https://img.shields.io/crates/v/felix)](https://crates.io/crates/felix) ![aur:felix-rs](https://img.shields.io/aur/version/felix-rs)
 
 # *felix*
-v0.5.1
+v0.5.2
+- New option for config: Now you can set the max length of the item name to be displayed (if the terminal size is not enough, it will be automatically adjusted). See `config.toml` for details.
 
 A tui file manager with vim-like key mapping, written in Rust.  
 Works on terminals with 21 columns or more.
