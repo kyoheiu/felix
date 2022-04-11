@@ -17,7 +17,6 @@ use termion::raw::IntoRawMode;
 use termion::{clear, cursor, screen};
 
 pub fn run(arg: PathBuf) -> Result<(), MyError> {
-    env_logger::init();
     debug!("Initial setup starts.");
 
     let mut config_dir_path =
@@ -47,7 +46,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
 
     print!("{}", cursor::Hide);
 
-    state.update_list();
+    state.update_list()?;
     clear_and_show(&state.current_dir);
     state.list_up(nums.skip);
 
@@ -204,7 +203,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                             print_warning(e, y);
                                             continue;
                                         }
-                                        state.update_list();
+                                        state.update_list()?;
                                         clear_and_show(&state.current_dir);
                                         nums.reset();
                                         state.list_up(nums.skip);
@@ -255,7 +254,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                             print_warning(e, y);
                                             continue;
                                         }
-                                        state.update_list();
+                                        state.update_list()?;
 
                                         match c_memo_v.pop() {
                                             Some(memo) => {
@@ -321,7 +320,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         print_warning(e, y);
                                         continue;
                                     }
-                                    state.update_list();
+                                    state.update_list()?;
                                     nums = memo.num;
                                     clear_and_show(&state.current_dir);
                                     state.list_up(nums.skip);
@@ -333,7 +332,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         print_warning(e, y);
                                         continue;
                                     }
-                                    state.update_list();
+                                    state.update_list()?;
                                     match pre.file_name() {
                                         Some(name) => {
                                             let mut new_pos = 0;
@@ -580,7 +579,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         count += 1;
                                     }
                                     clear_and_show(&state.current_dir);
-                                    state.update_list();
+                                    state.update_list()?;
                                     state.list_up(nums.skip);
 
                                     let duration = duration_to_string(start.elapsed());
@@ -654,7 +653,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                             state.sort_by = SortKey::Name;
                         }
                     }
-                    state.update_list();
+                    state.update_list()?;
                     clear_and_show(&state.current_dir);
                     state.list_up(0);
                     nums.reset();
@@ -706,7 +705,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         }
 
                                         clear_and_show(&state.current_dir);
-                                        state.update_list();
+                                        state.update_list()?;
                                         state.list_up(nums.skip);
                                         let cursor_pos = if state.list.is_empty() {
                                             STARTING_POINT
@@ -786,7 +785,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     }
 
                     clear_and_show(&state.current_dir);
-                    state.update_list();
+                    state.update_list()?;
                     state.list_up(nums.skip);
 
                     let duration = duration_to_string(start.elapsed());
@@ -838,7 +837,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                     }
 
                                     clear_and_show(&state.current_dir);
-                                    state.update_list();
+                                    state.update_list()?;
                                     state.list_up(nums.skip);
 
                                     print!("{}", cursor::Hide);
@@ -1137,7 +1136,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         );
                                         if state.current_dir == state.trash_dir {
                                             clear_and_show(&state.current_dir);
-                                            state.update_list();
+                                            state.update_list()?;
                                             state.list_up(nums.skip);
                                             state.move_cursor(&nums, STARTING_POINT);
                                         } else {
@@ -1156,7 +1155,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         print!("{}", screen::ToAlternateScreen);
 
                                         clear_and_show(&state.current_dir);
-                                        state.update_list();
+                                        state.update_list()?;
                                         state.list_up(nums.skip);
 
                                         print!("{}", cursor::Hide,);
@@ -1166,7 +1165,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                     print!("{}", screen::ToAlternateScreen);
 
                                     clear_and_show(&state.current_dir);
-                                    state.update_list();
+                                    state.update_list()?;
                                     state.list_up(nums.skip);
 
                                     print!("{}", cursor::Hide);
@@ -1271,7 +1270,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                 // Show/hide hidden files or directories
                 Key::Backspace => {
                     state.show_hidden = !state.show_hidden;
-                    state.update_list();
+                    state.update_list()?;
                     clear_and_show(&state.current_dir);
                     state.list_up(0);
                     nums.reset();
