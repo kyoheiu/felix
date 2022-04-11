@@ -277,7 +277,7 @@ impl State {
                 let file_name = entry.file_name().to_str();
                 if file_name == None {
                     return Err(MyError::UTF8Error {
-                        msg: "Cannot convert filename to UTF8.".to_string(),
+                        msg: "Cannot convert filename to UTF-8.".to_string(),
                     });
                 }
                 trash_name.push_str(file_name.unwrap());
@@ -618,8 +618,9 @@ impl State {
         }
     }
 
-    pub fn update_list(&mut self) {
-        self.list = push_items(&self.current_dir, &self.sort_by, self.show_hidden).unwrap();
+    pub fn update_list(&mut self) -> Result<(), MyError> {
+        self.list = push_items(&self.current_dir, &self.sort_by, self.show_hidden)?;
+        Ok(())
     }
 
     pub fn reset_selection(&mut self) {
