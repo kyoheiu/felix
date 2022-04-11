@@ -1053,12 +1053,26 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
 
                                     if command == vec!['q'] {
                                         break 'main;
-                                    } else if command == vec!['e'] {
-                                        state.update_list();
-                                        clear_and_show(&state.current_dir);
-                                        state.list_up(0);
-                                        print!("{}", cursor::Hide);
+                                    } else if command == vec!['c', 'd'] || command == vec!['z'] {
+                                        p_memo_v = Vec::new();
+                                        c_memo_v = Vec::new();
+                                        state.current_dir = dirs::home_dir().unwrap();
                                         nums.reset();
+                                        if let Err(e) = state.update_list() {
+                                            print_warning(e, y);
+                                            break 'command;
+                                        }
+                                        clear_and_show(&state.current_dir);
+                                        state.list_up(nums.skip);
+                                        print!("{}", cursor::Hide);
+                                        state.move_cursor(&nums, STARTING_POINT);
+                                        break 'command;
+                                    } else if command == vec!['e'] {
+                                        nums.reset();
+                                        state.update_list()?;
+                                        clear_and_show(&state.current_dir);
+                                        state.list_up(nums.skip);
+                                        print!("{}", cursor::Hide);
                                         state.move_cursor(&nums, STARTING_POINT);
                                         break 'command;
                                     } else if command == vec!['h'] {
@@ -1090,6 +1104,42 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                             i += 1;
                                         } else {
                                             args.push(s);
+                                        }
+                                    }
+
+                                    if c == "z" && args.len() == 1 {
+                                        let output = std::process::Command::new("zoxide")
+                                            .args(["query", args[0].trim()])
+                                            .output()?;
+                                        let output = output.stdout;
+                                        if !output.is_empty() {
+                                            let target_dir = std::str::from_utf8(&output);
+                                            match target_dir {
+                                                Err(e) => {
+                                                    print!("{}", cursor::Hide);
+                                                    print_warning(e, y);
+                                                    break 'command;
+                                                }
+                                                Ok(target_dir) => {
+                                                    let target_path =
+                                                        PathBuf::from(target_dir.trim());
+                                                    // print_warning(target_path.to_str().unwrap(), y);
+                                                    state.current_dir =
+                                                        target_path.canonicalize()?;
+                                                    nums.reset();
+                                                    if let Err(e) = state.update_list() {
+                                                        print_warning(e, y);
+                                                        break 'command;
+                                                    }
+                                                    p_memo_v = Vec::new();
+                                                    c_memo_v = Vec::new();
+                                                    clear_and_show(&state.current_dir);
+                                                    state.list_up(nums.skip);
+                                                    print!("{}", cursor::Hide);
+                                                    state.move_cursor(&nums, STARTING_POINT);
+                                                    break 'command;
+                                                }
+                                            }
                                         }
                                     }
 
@@ -1287,4 +1337,21 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
     print!("{}", cursor::Restore);
     state.write_session(session_file_path)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn zoxide_test() {
+        let output = std::process::Command::new("zoxide")
+            .args(["query", "dotfiles"])
+            .output()
+            .unwrap();
+        let stdout = std::str::from_utf8(&output.stdout).unwrap().trim();
+        println!("{stdout}");
+        let path = PathBuf::from(stdout);
+        println!("{:?}", path.canonicalize());
+    }
 }
