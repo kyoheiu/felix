@@ -1107,6 +1107,19 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         }
                                     }
 
+                                    if (c == "cd" || c == "z") && args.is_empty() {
+                                        p_memo_v = Vec::new();
+                                        c_memo_v = Vec::new();
+                                        state.current_dir = dirs::home_dir().unwrap();
+                                        nums.reset();
+                                        state.update_list()?;
+                                        clear_and_show(&state.current_dir);
+                                        state.list_up(nums.skip);
+                                        print!("{}", cursor::Hide);
+                                        state.move_cursor(&nums, STARTING_POINT);
+                                        break 'command;
+                                    }
+
                                     if c == "z" && args.len() == 1 {
                                         let output = std::process::Command::new("zoxide")
                                             .args(["query", args[0].trim()])
@@ -1123,14 +1136,11 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                                 Ok(target_dir) => {
                                                     let target_path =
                                                         PathBuf::from(target_dir.trim());
-                                                    // print_warning(target_path.to_str().unwrap(), y);
+                                                    print_warning(target_path.to_str().unwrap(), y);
                                                     state.current_dir =
                                                         target_path.canonicalize()?;
                                                     nums.reset();
-                                                    if let Err(e) = state.update_list() {
-                                                        print_warning(e, y);
-                                                        break 'command;
-                                                    }
+                                                    state.update_list()?;
                                                     p_memo_v = Vec::new();
                                                     c_memo_v = Vec::new();
                                                     clear_and_show(&state.current_dir);
