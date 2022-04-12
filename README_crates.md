@@ -1,6 +1,6 @@
 # *felix*
-v0.5.2
-- New option for config: Now you can set the max length of the item name to be displayed (if the terminal size is not enough, it will be automatically adjusted). See `config.toml` for details.
+v0.6.0
+- New command: If you have [zoxide](https://github.com/ajeetdsouza/zoxide) installed, `:z <keyword>` lets you jump to a directory that matches the keyword! For more details, see Usage.
 
 A tui file manager with vim-like key mapping, written in Rust.  
 Works on terminals with 21 columns or more.
@@ -77,10 +77,12 @@ cargo install --path .
 | y (select mode)       | Yank selected items, and return to normal mode.                                                                                                                                                                                                        |
 | backspace                     | Toggle whether to show hidden items or not. This change remains after exit (stored in .session file in config directory).                                                                                                              |
 | t                     | Toggle sort order (by name <-> by modified time). This change remains after exit (same as above).                                                                                                              |
-| :                     | Switch to shell mode (***experimantal***). Type command and press Enter to execute it. You can use any command in the displayed directory, but it may fail to execute the command (e.g. `cd` doesn't work for now), and also the display of items may collapse during execution. |
+| :                     |  ***Experimantal.*** Switch to shell mode. Type command and press Enter to execute it. You can use any command in the displayed directory, but it may fail to execute the command (e.g. `cd` doesn't work for now), and also the display of items may collapse during execution. |
 | c                     | Switch to rename mode (enter new name and press Enter to rename the item).                                                                                                                                                                             |
 | /                     | Switch to filter mode (enter keyword and press Enter to go to filtered list).                                                                                                                                                                          |
 | Esc                   | Return to normal mode.                                                                                                                                                                                                                                 |
+| :cd \| :z                   |  Go to home directory.                                                                                                                                                                                                                                 |
+| :z \<keyword\>                  |  ***This command requires zoxide installed.*** Jump to a directory that matches the keyword. Internally, felix calls [`zoxide query <keyword>`](https://man.archlinux.org/man/zoxide-query.1.en), so if the keyword does not match the zoxide database, this command will fail.                                                                                                                                                                                                                                 |
 | :e                    | Reload the current directory. Useful when something goes wrong in filter mode (e.g. no matches) or shell mode.                                                                                                                                         |
 | :empty                | Empty the trash directory. **Please think twice before using this command.**                                                                                                                                                                           |
 | :h                    | Show help.                                                                                                                                                                                                                                             |
@@ -95,13 +97,14 @@ Note that items moved to the trash directory are prefixed with Unix time (like `
 | config file     | `$XDG_CONFIG_HOME/felix/config.toml` |
 | trash directory | `$XDG_CONFIG_HOME/felix/trash`       |
 
-Default config file, which is [here](config.toml), will be created automatically when you launch the program for the first time.
+Default config file will be created automatically when you launch the program for the first time.
 
 In config.toml, you can set:
 
-- color of directories, files, and symlinks separatively
-- default key for sorting item list ("Name" or "Time")
-- how to open files
+- how to open file
+- max length of item to be displayed (optional)
+- color of directory, file, and symlink separatively
+- default key to sort item list ("Name" or "Time")
 
 ### Command setting
 
