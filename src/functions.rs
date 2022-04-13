@@ -52,7 +52,8 @@ pub fn clear_and_show(dir: &Path) {
 
     let git = dir.join(".git");
     if git.exists() {
-        if let Ok(head) = std::fs::read(".git/HEAD") {
+        let head = git.join("HEAD");
+        if let Ok(head) = std::fs::read(head) {
             let branch: Vec<u8> = head.into_iter().skip(16).collect();
             let branch = std::str::from_utf8(&branch).unwrap();
             print!(
