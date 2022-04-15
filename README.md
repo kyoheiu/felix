@@ -65,6 +65,7 @@ cargo install --path .
 | --------------------- | ------------------------------------------------------------- |
 | `fx`                  | Show items in the current directory.                          |
 | `fx <directory path>` | Show items in the path. Both relative and absolute available. |
+| `fx -c` or `fx --check` |Check update. |
 | `fx -h` or `fx --help` |Print help. |
 
 ## Key manual
