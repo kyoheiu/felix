@@ -30,7 +30,10 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
     make_session(&session_file_path).unwrap_or_else(|_| panic!("Cannot make session file."));
 
     if !&arg.exists() {
-        println!("Invalid path: {}\n`fx -h` shows help.", &arg.display());
+        println!(
+            "Invalid path or argument: {}\n`fx -h` shows help.",
+            &arg.display()
+        );
         return Ok(());
     }
 
