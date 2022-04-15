@@ -17,7 +17,7 @@ fn main() -> Result<(), errors::MyError> {
                 std::env::current_dir()
                     .unwrap_or_else(|_| panic!("Cannot access current directoy.")),
             ) {
-                println!("{}", e);
+                eprintln!("{}", e);
             }
         }
 
@@ -27,7 +27,7 @@ fn main() -> Result<(), errors::MyError> {
             }
             _ => {
                 if let Err(e) = run::run(std::path::PathBuf::from(&args[1])) {
-                    println!("{}", e);
+                    eprintln!("{}", e);
                 }
             }
         },
