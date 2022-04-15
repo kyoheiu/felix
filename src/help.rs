@@ -3,11 +3,13 @@ A simple TUI file manager with vim-like keymapping.
 This program works on terminals with 21 columns or more.
 
 ## Usage
-`fx` => Show items in current directory.
+`fx` => Show items in the current directory.
 `fx <directory path>` => Show items in the path.
 Both relative and absolute available.
 
-`fx -h` or `fx --help` => Print help.
+## Arguments
+`fx -h` | `fx --help`  => Print help.
+`fx -c` | `fx --check` => Check update.
 
 ### Manual
 j / Up            :Go up.

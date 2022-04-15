@@ -61,7 +61,7 @@ cargo install --path .
 
 ## Usage
 
-| command               |                                                               |
+| command / arguments               |                                                               |
 | --------------------- | ------------------------------------------------------------- |
 | `fx`                  | Show items in the current directory.                          |
 | `fx <directory path>` | Show items in the path. Both relative and absolute available. |
