@@ -1,7 +1,13 @@
 # *felix*
-v0.6.0
+
+## Release
+v0.6.1 (2022-04-15)
+- New configuration: You can now use the full width of terminal by setting `use_full_width` to true (default). I hope this wil lead to a better user experience. *For those who use <=0.6.0, felix can work without replacing config.toml because `use_full_width` is an option. If you feel unconfortable by using full width, please update config.toml!*
+
+v0.6.0 (2022-04-13)
 - New command: If you have [zoxide](https://github.com/ajeetdsouza/zoxide) installed, `:z <keyword>` lets you jump to a directory that matches the keyword! For more details, see Usage.
 
+## About
 A tui file manager with vim-like key mapping, written in Rust.  
 Works on terminals with 21 columns or more.
 
