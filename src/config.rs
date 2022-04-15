@@ -12,12 +12,13 @@ pub const CONFIG_EXAMPLE: &str = "
 default = \"nvim\"
 
 # Whether to use the full width of terminal.
+# If not set, this will be true.
 use_full_width = true
 
 # Option: Set the max length of item name to be displayed.
 # This works only when use_full_width is set to false.
 # If the terminal size is not enough, the length will be changed to fit it.
-# If not set, it will be 30.
+# If not set, this will be 30.
 # item_name_length = 30
 
 # key(command you want to use) = [values](extensions)
@@ -57,7 +58,7 @@ pub struct Config {
     pub default: String,
     pub exec: HashMap<String, Vec<String>>,
     pub color: Color,
-    pub use_full_width: bool,
+    pub use_full_width: Option<bool>,
     pub item_name_length: Option<usize>,
 }
 

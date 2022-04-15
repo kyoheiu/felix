@@ -115,11 +115,11 @@ impl Default for State {
         let mut time_start: u16;
         let mut name_max: usize;
         match config.use_full_width {
-            true => {
+            Some(true) | None => {
                 time_start = column - 16;
                 name_max = (time_start - 3).into();
             }
-            false => match config.item_name_length {
+            Some(false) => match config.item_name_length {
                 Some(option_max) => {
                     time_start = option_max as u16 + 3;
                     name_max = option_max;
