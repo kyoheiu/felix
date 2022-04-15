@@ -114,23 +114,29 @@ impl Default for State {
         };
         let mut time_start: u16;
         let mut name_max: usize;
-        match config.item_name_length {
-            Some(option_max) => {
-                time_start = option_max as u16 + 3;
-                name_max = option_max;
+        match config.use_full_width {
+            true => {
+                time_start = column - 16;
+                name_max = (time_start - 3).into();
             }
-            None => {
-                time_start = if column >= 50 {
-                    33
-                } else {
-                    column - TIME_WIDTH
-                };
-                name_max = if column >= 50 {
-                    30
-                } else {
-                    (time_start - 3).into()
-                };
-            }
+            false => match config.item_name_length {
+                Some(option_max) => {
+                    time_start = option_max as u16 + 3;
+                    name_max = option_max;
+                }
+                None => {
+                    time_start = if column >= 49 {
+                        33
+                    } else {
+                        column - TIME_WIDTH
+                    };
+                    name_max = if column >= 49 {
+                        30
+                    } else {
+                        (time_start - 3).into()
+                    };
+                }
+            },
         }
 
         let required = time_start + TIME_WIDTH - 1;
