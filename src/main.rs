@@ -25,6 +25,27 @@ fn main() -> Result<(), errors::MyError> {
             "-h" | "--help" => {
                 print!("{}", help::HELP);
             }
+            "-c" | "--check" => {
+                let output = std::process::Command::new("cargo")
+                    .args(["search", "felix", "--limit", "1"])
+                    .output()?
+                    .stdout;
+                if !output.is_empty() {
+                    if let Ok(ver) = std::str::from_utf8(&output) {
+                        let latest: String =
+                            ver.chars().skip(9).take_while(|x| *x != '\"').collect();
+                        if let Ok(current) = std::env::var("CARGO_PKG_VERSION") {
+                            if latest != current {
+                                println!("felix {current}: Latest version is {latest}.");
+                            } else {
+                                println!("felix {current}: Up to date.");
+                            }
+                        }
+                    }
+                } else {
+                    println!("Cannot fetch the latest version: Check your internet connection.");
+                }
+            }
             _ => {
                 if let Err(e) = run::run(std::path::PathBuf::from(&args[1])) {
                     eprintln!("{}", e);
