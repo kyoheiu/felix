@@ -172,6 +172,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                 }
                                 print!("{}", screen::ToAlternateScreen);
                                 clear_and_show(&state.current_dir);
+                                state.update_list()?;
                                 state.list_up(nums.skip);
                                 print!("{}", cursor::Hide);
                                 state.move_cursor(&nums, y);
