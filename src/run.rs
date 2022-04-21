@@ -1211,6 +1211,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
 
                                     print!("{}", screen::ToAlternateScreen);
                                     if std::env::set_current_dir(&state.current_dir).is_err() {
+                                        print!("{}", screen::ToAlternateScreen);
                                         print!("{}", cursor::Hide,);
                                         print_warning("Cannot execute command", y);
                                         break 'command;
