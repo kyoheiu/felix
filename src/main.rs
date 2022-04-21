@@ -34,12 +34,11 @@ fn main() -> Result<(), errors::MyError> {
                     if let Ok(ver) = std::str::from_utf8(&output) {
                         let latest: String =
                             ver.chars().skip(9).take_while(|x| *x != '\"').collect();
-                        if let Ok(current) = std::env::var("CARGO_PKG_VERSION") {
-                            if latest != current {
-                                println!("felix v{current}: Latest version is {latest}.");
-                            } else {
-                                println!("felix v{current}: Up to date.");
-                            }
+                        let current = env!("CARGO_PKG_VERSION");
+                        if latest != current {
+                            println!("felix v{current}: Latest version is {latest}.");
+                        } else {
+                            println!("felix v{current}: Up to date.");
                         }
                     }
                 } else {
