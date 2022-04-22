@@ -100,6 +100,7 @@ pub struct Layout {
     pub terminal_column: u16,
     pub name_max_len: usize,
     pub time_start_pos: u16,
+    pub use_full: Option<bool>,
     pub option_name_len: Option<usize>,
 }
 
@@ -112,39 +113,8 @@ impl Default for State {
             error!("Too small terminal size.");
             panic!("Panic due to terminal size (less than 21 columns).")
         };
-        let mut time_start: u16;
-        let mut name_max: usize;
-        match config.use_full_width {
-            Some(true) => {
-                time_start = column - 16;
-                name_max = (time_start - 3).into();
-            }
-            Some(false) | None => match config.item_name_length {
-                Some(option_max) => {
-                    time_start = option_max as u16 + 3;
-                    name_max = option_max;
-                }
-                None => {
-                    time_start = if column >= 49 {
-                        33
-                    } else {
-                        column - TIME_WIDTH
-                    };
-                    name_max = if column >= 49 {
-                        30
-                    } else {
-                        (time_start - 3).into()
-                    };
-                }
-            },
-        }
-
-        let required = time_start + TIME_WIDTH - 1;
-        if required > column {
-            let diff = required - column;
-            name_max -= diff as usize;
-            time_start -= diff;
-        }
+        let (time_start, name_max) =
+            make_layout(column, config.use_full_width, config.item_name_length);
 
         State {
             list: Vec::new(),
@@ -164,6 +134,7 @@ impl Default for State {
                 terminal_column: column,
                 name_max_len: name_max,
                 time_start_pos: time_start,
+                use_full: config.use_full_width,
                 option_name_len: config.item_name_length,
             },
             show_hidden: session.show_hidden,
@@ -176,6 +147,29 @@ impl State {
     pub fn new() -> Self {
         Default::default()
     }
+
+    pub fn refresh(&mut self, nums: &Num, cursor_pos: u16) {
+        let (column, row) = termion::terminal_size().unwrap();
+        if column != self.layout.terminal_column || row != self.layout.terminal_row {
+            let (time_start, name_max) =
+                make_layout(column, self.layout.use_full, self.layout.option_name_len);
+
+            *self = State {
+                layout: Layout {
+                    terminal_row: row,
+                    terminal_column: column,
+                    name_max_len: name_max,
+                    time_start_pos: time_start,
+                    ..self.layout
+                },
+                ..self.to_owned()
+            };
+            clear_and_show(&self.current_dir);
+            self.list_up(nums.skip);
+            self.move_cursor(nums, cursor_pos);
+        }
+    }
+
     pub fn get_item(&self, index: usize) -> Result<&ItemInfo, MyError> {
         self.list.get(index).ok_or_else(|| {
             MyError::IoError(std::io::Error::new(

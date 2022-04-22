@@ -63,8 +63,10 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
     'main: loop {
         let len = state.list.len();
         let (_, y) = screen.cursor_pos()?;
-        let input = stdin.next();
+        state.refresh(&nums, y);
+        screen.flush()?;
 
+        let input = stdin.next();
         if let Some(Ok(key)) = input {
             match key {
                 //Go up. If lists exceed max-row, lists "scrolls" before the top of the list
