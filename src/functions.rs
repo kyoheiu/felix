@@ -187,6 +187,47 @@ pub fn duration_to_string(duration: Duration) -> String {
     result
 }
 
+pub fn make_layout(
+    column: u16,
+    use_full: Option<bool>,
+    name_length: Option<usize>,
+) -> (u16, usize) {
+    let mut time_start: u16;
+    let mut name_max: usize;
+    match use_full {
+        Some(true) => {
+            time_start = column - 16;
+            name_max = (time_start - 3).into();
+        }
+        Some(false) | None => match name_length {
+            Some(option_max) => {
+                time_start = option_max as u16 + 3;
+                name_max = option_max;
+            }
+            None => {
+                time_start = if column >= 49 {
+                    33
+                } else {
+                    column - TIME_WIDTH
+                };
+                name_max = if column >= 49 {
+                    30
+                } else {
+                    (time_start - 3).into()
+                };
+            }
+        },
+    }
+    let required = time_start + TIME_WIDTH - 1;
+    if required > column {
+        let diff = required - column;
+        name_max -= diff as usize;
+        time_start -= diff;
+    }
+
+    (time_start, name_max)
+}
+
 #[allow(dead_code)]
 pub fn get_contents_r(path: PathBuf, vec: &mut Vec<PathBuf>) -> Result<Vec<PathBuf>, MyError> {
     for entry in fs::read_dir(path)? {
