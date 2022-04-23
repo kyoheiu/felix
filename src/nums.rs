@@ -9,7 +9,7 @@ pub struct ChildMemo {
     pub num: Num,
     pub cursor_pos: u16,
 }
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct Num {
     pub index: usize,
     pub skip: u16,
