@@ -104,6 +104,16 @@ pub struct Layout {
     pub option_name_len: Option<usize>,
 }
 
+pub struct History {
+    pub kind: Kind,
+}
+
+pub enum Kind {
+    Delete,
+    Put,
+    ChangeName,
+}
+
 impl Default for State {
     fn default() -> Self {
         let config = read_config().unwrap();
@@ -231,7 +241,7 @@ impl State {
                 });
             }
 
-            self.to_registered_mut(&item, to, rename);
+            self.push_to_registered(&item, to, rename);
 
             //remove original
             if std::fs::remove_file(from).is_err() {
@@ -307,7 +317,7 @@ impl State {
             }
         }
 
-        self.to_registered_mut(&item, trash_path, trash_name);
+        self.push_to_registered(&item, trash_path, trash_name);
 
         //remove original
         if std::fs::remove_dir_all(&item.file_path).is_err() {
@@ -319,7 +329,7 @@ impl State {
         Ok(())
     }
 
-    fn to_registered_mut(&mut self, item: &ItemInfo, file_path: PathBuf, file_name: String) {
+    fn push_to_registered(&mut self, item: &ItemInfo, file_path: PathBuf, file_name: String) {
         let mut buf = item.clone();
         buf.file_path = file_path;
         buf.file_name = file_name;
