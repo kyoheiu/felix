@@ -104,16 +104,6 @@ pub struct Layout {
     pub option_name_len: Option<usize>,
 }
 
-pub struct History {
-    pub kind: Kind,
-}
-
-pub enum Kind {
-    Delete,
-    Put,
-    ChangeName,
-}
-
 impl Default for State {
     fn default() -> Self {
         let config = read_config().unwrap();
@@ -158,26 +148,23 @@ impl State {
         Default::default()
     }
 
-    pub fn refresh(&mut self, nums: &Num, cursor_pos: u16) {
-        let (column, row) = termion::terminal_size().unwrap();
-        if column != self.layout.terminal_column || row != self.layout.terminal_row {
-            let (time_start, name_max) =
-                make_layout(column, self.layout.use_full, self.layout.option_name_len);
+    pub fn refresh(&mut self, column: u16, row: u16, nums: &Num, cursor_pos: u16) {
+        let (time_start, name_max) =
+            make_layout(column, self.layout.use_full, self.layout.option_name_len);
 
-            *self = State {
-                layout: Layout {
-                    terminal_row: row,
-                    terminal_column: column,
-                    name_max_len: name_max,
-                    time_start_pos: time_start,
-                    ..self.layout
-                },
-                ..self.to_owned()
-            };
-            clear_and_show(&self.current_dir);
-            self.list_up(nums.skip);
-            self.move_cursor(nums, cursor_pos);
-        }
+        *self = State {
+            layout: Layout {
+                terminal_row: row,
+                terminal_column: column,
+                name_max_len: name_max,
+                time_start_pos: time_start,
+                ..self.layout
+            },
+            ..self.to_owned()
+        };
+        clear_and_show(&self.current_dir);
+        self.list_up(nums.skip);
+        self.move_cursor(nums, cursor_pos);
     }
 
     pub fn get_item(&self, index: usize) -> Result<&ItemInfo, MyError> {

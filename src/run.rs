@@ -9,6 +9,9 @@ use std::ffi::OsStr;
 use log::debug;
 use std::io::{stdin, stdout, Write};
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::Duration;
 use std::time::Instant;
 use termion::cursor::DetectCursorPos;
 use termion::event::Key;
@@ -45,7 +48,9 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
 
     let mut nums = Num::new();
 
-    let mut screen = screen::AlternateScreen::from(stdout().into_raw_mode().unwrap());
+    let screen = screen::AlternateScreen::from(stdout().into_raw_mode().unwrap());
+    let screen1 = Arc::new(Mutex::new(screen));
+    let screen2 = screen1.clone();
 
     print!("{}", cursor::Hide);
 
@@ -54,19 +59,37 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
     state.list_up(nums.skip);
 
     state.move_cursor(&nums, STARTING_POINT);
-    screen.flush()?;
+    let mut init_screen = screen1.lock().unwrap();
+    init_screen.flush()?;
+    drop(init_screen);
 
     let mut p_memo_v: Vec<ParentMemo> = Vec::new();
     let mut c_memo_v: Vec<ChildMemo> = Vec::new();
+    let shared_state = Arc::new(Mutex::new(state));
+    let mutex = shared_state.clone();
     let mut stdin = stdin().keys();
 
+    let interval = Duration::from_millis(500);
+    //Detect terminal window change
+    thread::spawn(move || loop {
+        thread::sleep(interval);
+        let (column, row) = termion::terminal_size().unwrap();
+        let mut state = mutex.lock().unwrap();
+        if column != state.layout.terminal_column || row != state.layout.terminal_row {
+            let mut screen = screen2.lock().unwrap();
+            nums.reset();
+            state.refresh(column, row, &nums, STARTING_POINT);
+            print!("{}", screen::ToAlternateScreen);
+            screen.flush().unwrap();
+        }
+    });
+
     'main: loop {
+        let input = stdin.next();
+        let mut state = shared_state.lock().unwrap();
+        let mut screen = screen1.lock().unwrap();
         let len = state.list.len();
         let (_, y) = screen.cursor_pos()?;
-        state.refresh(&nums, y);
-        screen.flush()?;
-
-        let input = stdin.next();
         if let Some(Ok(key)) = input {
             match key {
                 //Go up. If lists exceed max-row, lists "scrolls" before the top of the list
@@ -189,7 +212,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         let cursor_memo = if !filtered {
                                             ParentMemo {
                                                 to_sym_dir: Some(state.current_dir.clone()),
-                                                num: nums.clone(),
+                                                num: nums,
                                                 cursor_pos: y,
                                             }
                                         } else {
@@ -240,7 +263,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         let cursor_memo = if !filtered {
                                             ParentMemo {
                                                 to_sym_dir: None,
-                                                num: nums.clone(),
+                                                num: nums,
                                                 cursor_pos: y,
                                             }
                                         } else {
@@ -299,7 +322,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                             let cursor_memo = if !filtered {
                                 ChildMemo {
                                     dir_path: pre.clone(),
-                                    num: nums.clone(),
+                                    num: nums,
                                     cursor_pos: y,
                                 }
                             } else {
@@ -1352,7 +1375,10 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
     }
     //When exits, restore the cursor
     print!("{}", cursor::Restore);
-    state.write_session(session_file_path)?;
+    shared_state
+        .lock()
+        .unwrap()
+        .write_session(session_file_path)?;
     Ok(())
 }
 
