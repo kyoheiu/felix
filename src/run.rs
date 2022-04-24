@@ -50,9 +50,6 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
     let shared_nums = Arc::new(Mutex::new(nums));
     let nums2 = shared_nums.clone();
 
-    let shared_y = Arc::new(Mutex::new(STARTING_POINT));
-    let shared_y2 = shared_y.clone();
-
     let screen = screen::AlternateScreen::from(stdout().into_raw_mode().unwrap());
     let screen1 = Arc::new(Mutex::new(screen));
     let screen2 = screen1.clone();
