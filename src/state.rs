@@ -16,7 +16,6 @@ use std::process::{Command, ExitStatus};
 use termion::{clear, color, cursor, style};
 
 pub const STARTING_POINT: u16 = 3;
-pub const TIME_WIDTH: u16 = 17;
 pub const DOWN_ARROW: char = '\u{21D3}';
 pub const RIGHT_ARROW: char = '\u{21D2}';
 pub const FX_CONFIG_DIR: &str = "felix";
