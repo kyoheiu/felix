@@ -9,6 +9,10 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 use termion::{clear, color, cursor, style};
 
+pub const TIME_WIDTH: u16 = 16;
+pub const DEFAULT_NAME_LENGTH: u16 = 30;
+pub const SPACES: u16 = 3;
+
 pub fn make_config(config_file: &Path, trash_dir: &Path) -> Result<(), MyError> {
     if !trash_dir.exists() {
         fs::create_dir_all(trash_dir)?;
@@ -196,24 +200,24 @@ pub fn make_layout(
     let mut name_max: usize;
     match use_full {
         Some(true) => {
-            time_start = column - 16;
-            name_max = (time_start - 3).into();
+            time_start = column - TIME_WIDTH;
+            name_max = (time_start - SPACES).into();
         }
         Some(false) | None => match name_length {
             Some(option_max) => {
-                time_start = option_max as u16 + 3;
+                time_start = option_max as u16 + SPACES;
                 name_max = option_max;
             }
             None => {
-                time_start = if column >= 49 {
-                    33
+                time_start = if column >= DEFAULT_NAME_LENGTH + TIME_WIDTH + SPACES {
+                    DEFAULT_NAME_LENGTH + SPACES
                 } else {
                     column - TIME_WIDTH
                 };
-                name_max = if column >= 49 {
-                    30
+                name_max = if column >= DEFAULT_NAME_LENGTH + TIME_WIDTH + SPACES {
+                    DEFAULT_NAME_LENGTH.into()
                 } else {
-                    (time_start - 3).into()
+                    (time_start - SPACES).into()
                 };
             }
         },
