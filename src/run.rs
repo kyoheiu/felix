@@ -19,6 +19,8 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::{clear, cursor, screen};
 
+const DETECTION_INTERVAL: u64 = 500;
+
 pub fn run(arg: PathBuf) -> Result<(), MyError> {
     debug!("Initial setup starts.");
 
@@ -71,7 +73,8 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
     let mutex = shared_state.clone();
     let mut stdin = stdin().keys();
 
-    let interval = Duration::from_millis(500);
+    let interval = Duration::from_millis(DETECTION_INTERVAL);
+
     //Detect terminal window change
     thread::spawn(move || loop {
         thread::sleep(interval);
@@ -83,8 +86,9 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                 let cursor_pos = state.layout.y;
                 state.refresh(column, row, &nums, cursor_pos);
             } else {
-                nums.reset();
-                state.refresh(column, row, &nums, STARTING_POINT);
+                let diff = state.layout.y + 1 - row;
+                nums.index -= diff as usize;
+                state.refresh(column, row, &nums, row - 1);
             }
             let mut screen = screen2.lock().unwrap();
             screen.flush().unwrap();
