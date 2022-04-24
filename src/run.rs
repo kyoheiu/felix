@@ -125,14 +125,14 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
 
                 //Go down. If lists exceed max-row, lists "scrolls" before the bottom of the list
                 Key::Char('k') | Key::Up => {
-                    if y == STARTING_POINT {
+                    if nums.index == 0 {
                         continue;
-                    } else if y == STARTING_POINT + 3 && nums.skip != 0 {
+                    } else if y <= STARTING_POINT + 3 && nums.skip != 0 {
                         nums.go_up();
                         nums.dec_skip();
                         clear_and_show(&state.current_dir);
                         state.list_up(nums.skip);
-                        state.move_cursor(&nums, STARTING_POINT + 3);
+                        state.move_cursor(&nums, y);
                     } else {
                         nums.go_up();
                         print!(" ");
