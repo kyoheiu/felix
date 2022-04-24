@@ -96,6 +96,7 @@ pub enum FileType {
 
 #[derive(Clone)]
 pub struct Layout {
+    pub y: u16,
     pub terminal_row: u16,
     pub terminal_column: u16,
     pub name_max_len: usize,
@@ -130,6 +131,7 @@ impl Default for State {
             commands: to_extension_map(&config.exec),
             sort_by: session.sort_by,
             layout: Layout {
+                y: STARTING_POINT,
                 terminal_row: row,
                 terminal_column: column,
                 name_max_len: name_max,
@@ -646,7 +648,7 @@ impl State {
         }
     }
 
-    pub fn move_cursor(&self, nums: &Num, y: u16) {
+    pub fn move_cursor(&mut self, nums: &Num, y: u16) {
         print!("{}", cursor::Goto(1, self.layout.terminal_row));
         print!("{}", clear::CurrentLine);
 
@@ -679,6 +681,7 @@ impl State {
             }
         }
         print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+        self.layout.y = y;
     }
 
     pub fn write_session(&self, session_path: PathBuf) -> Result<(), MyError> {

@@ -46,7 +46,12 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
 
     let mut filtered = false;
 
-    let mut nums = Num::new();
+    let nums = Num::new();
+    let shared_nums = Arc::new(Mutex::new(nums));
+    let nums2 = shared_nums.clone();
+
+    let shared_y = Arc::new(Mutex::new(STARTING_POINT));
+    let shared_y2 = shared_y.clone();
 
     let screen = screen::AlternateScreen::from(stdout().into_raw_mode().unwrap());
     let screen1 = Arc::new(Mutex::new(screen));
@@ -75,11 +80,16 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
         thread::sleep(interval);
         let (column, row) = termion::terminal_size().unwrap();
         let mut state = mutex.lock().unwrap();
+        let mut nums = nums2.lock().unwrap();
         if column != state.layout.terminal_column || row != state.layout.terminal_row {
+            if state.layout.y < row {
+                let cursor_pos = state.layout.y;
+                state.refresh(column, row, &nums, cursor_pos);
+            } else {
+                nums.reset();
+                state.refresh(column, row, &nums, STARTING_POINT);
+            }
             let mut screen = screen2.lock().unwrap();
-            nums.reset();
-            state.refresh(column, row, &nums, STARTING_POINT);
-            print!("{}", screen::ToAlternateScreen);
             screen.flush().unwrap();
         }
     });
@@ -88,8 +98,9 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
         let input = stdin.next();
         let mut state = shared_state.lock().unwrap();
         let mut screen = screen1.lock().unwrap();
+        let mut nums = shared_nums.lock().unwrap();
         let len = state.list.len();
-        let (_, y) = screen.cursor_pos()?;
+        let y = state.layout.y;
         if let Some(Ok(key)) = input {
             match key {
                 //Go up. If lists exceed max-row, lists "scrolls" before the top of the list
@@ -175,7 +186,8 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                         nums.go_bottom(len - 1);
                         clear_and_show(&state.current_dir);
                         state.list_up(nums.skip);
-                        state.move_cursor(&nums, state.layout.terminal_row - 1);
+                        let cursor_pos = state.layout.terminal_row - 1;
+                        state.move_cursor(&nums, cursor_pos);
                     } else {
                         nums.reset();
                         nums.go_bottom(len - 1);
@@ -212,7 +224,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         let cursor_memo = if !filtered {
                                             ParentMemo {
                                                 to_sym_dir: Some(state.current_dir.clone()),
-                                                num: nums,
+                                                num: *nums,
                                                 cursor_pos: y,
                                             }
                                         } else {
@@ -263,7 +275,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         let cursor_memo = if !filtered {
                                             ParentMemo {
                                                 to_sym_dir: None,
-                                                num: nums,
+                                                num: *nums,
                                                 cursor_pos: y,
                                             }
                                         } else {
@@ -288,7 +300,8 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         match c_memo_v.pop() {
                                             Some(memo) => {
                                                 if state.current_dir == memo.dir_path {
-                                                    nums = memo.num;
+                                                    nums.index = memo.num.index;
+                                                    nums.skip = memo.num.skip;
                                                     clear_and_show(&state.current_dir);
                                                     state.list_up(nums.skip);
                                                     state.move_cursor(&nums, memo.cursor_pos);
@@ -322,7 +335,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                             let cursor_memo = if !filtered {
                                 ChildMemo {
                                     dir_path: pre.clone(),
-                                    num: nums,
+                                    num: *nums,
                                     cursor_pos: y,
                                 }
                             } else {
@@ -350,7 +363,8 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         continue;
                                     }
                                     state.update_list()?;
-                                    nums = memo.num;
+                                    nums.index = memo.num.index;
+                                    nums.skip = memo.num.skip;
                                     clear_and_show(&state.current_dir);
                                     state.list_up(nums.skip);
                                     state.move_cursor(&nums, memo.cursor_pos);
@@ -559,7 +573,8 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         state.select_to_bottom(start_pos);
                                         clear_and_show(&state.current_dir);
                                         state.list_up(nums.skip);
-                                        state.move_cursor(&nums, state.layout.terminal_row - 1);
+                                        let cursor_pos = state.layout.terminal_row - 1;
+                                        state.move_cursor(&nums, cursor_pos);
                                     } else {
                                         nums.go_bottom(len - 1);
                                         state.select_to_bottom(start_pos);
@@ -1373,12 +1388,16 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
         }
         screen.flush()?;
     }
+
     //When exits, restore the cursor
     print!("{}", cursor::Restore);
-    shared_state
-        .lock()
-        .unwrap()
-        .write_session(session_file_path)?;
+    let state = shared_state.lock().unwrap();
+    //If layout was refreshed, go back to main screen to restore the previous state
+    state.write_session(session_file_path)?;
+    let mut screen = screen1.lock().unwrap();
+    write!(screen, "{}", screen::ToMainScreen)?;
+    screen.suspend_raw_mode()?;
+    screen.flush()?;
     Ok(())
 }
 
