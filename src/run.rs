@@ -1166,35 +1166,48 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                     }
 
                                     if c == "z" && args.len() == 1 {
-                                        let output = std::process::Command::new("zoxide")
+                                        if let Ok(output) = std::process::Command::new("zoxide")
                                             .args(["query", args[0].trim()])
-                                            .output()?;
-                                        let output = output.stdout;
-                                        if !output.is_empty() {
-                                            let target_dir = std::str::from_utf8(&output);
-                                            match target_dir {
-                                                Err(e) => {
-                                                    print!("{}", cursor::Hide);
-                                                    print_warning(e, y);
-                                                    break 'command;
-                                                }
-                                                Ok(target_dir) => {
-                                                    let target_path =
-                                                        PathBuf::from(target_dir.trim());
-                                                    print_warning(target_path.to_str().unwrap(), y);
-                                                    state.current_dir =
-                                                        target_path.canonicalize()?;
-                                                    nums.reset();
-                                                    state.update_list()?;
-                                                    p_memo_v = Vec::new();
-                                                    c_memo_v = Vec::new();
-                                                    clear_and_show(&state.current_dir);
-                                                    state.list_up(nums.skip);
-                                                    print!("{}", cursor::Hide);
-                                                    state.move_cursor(&nums, STARTING_POINT);
-                                                    break 'command;
+                                            .output()
+                                        {
+                                            let output = output.stdout;
+                                            if output.is_empty() {
+                                                print_warning(
+                                                    "Keyword cannot match the database.",
+                                                    y,
+                                                );
+                                                break 'command;
+                                            } else {
+                                                let target_dir = std::str::from_utf8(&output);
+                                                match target_dir {
+                                                    Err(e) => {
+                                                        print!("{}", cursor::Hide);
+                                                        print_warning(e, y);
+                                                        break 'command;
+                                                    }
+                                                    Ok(target_dir) => {
+                                                        let target_path =
+                                                            PathBuf::from(target_dir.trim());
+                                                        print_warning(
+                                                            target_path.to_str().unwrap(),
+                                                            y,
+                                                        );
+                                                        state.current_dir =
+                                                            target_path.canonicalize()?;
+                                                        nums.reset();
+                                                        state.update_list()?;
+                                                        p_memo_v = Vec::new();
+                                                        c_memo_v = Vec::new();
+                                                        clear_and_show(&state.current_dir);
+                                                        state.list_up(nums.skip);
+                                                        print!("{}", cursor::Hide);
+                                                        state.move_cursor(&nums, STARTING_POINT);
+                                                        break 'command;
+                                                    }
                                                 }
                                             }
+                                        } else {
+                                            print_warning("zoxide not installed?", y);
                                         }
                                     }
 
