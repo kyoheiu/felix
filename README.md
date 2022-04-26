@@ -2,6 +2,17 @@
 
 # *felix*
 
+## About
+A tui file manager with vim-like key mapping, written in Rust.  
+Works on terminals with 21 columns or more.
+
+![sample](https://github.com/kyoheiu/felix/blob/main/screenshots/sample.gif)
+
+While heavliy inspired by the great `vifm` and trying to implement its pleasant experience in Rust, at the same time this project focuses on the following points:
+
+- simple and fast
+- easy to configure how to open files
+
 ## Release
 v0.7.0 (2022-04-26)
 - New feature: Terminal size changes are now automatically detected and the layout is fixed.
@@ -13,17 +24,6 @@ v0.6.1 (2022-04-15)
 
 v0.6.0 (2022-04-13)
 - New command: If you have [zoxide](https://github.com/ajeetdsouza/zoxide) installed, `:z <keyword>` lets you jump to a directory that matches the keyword! For more details, see Usage.
-
-## About
-A tui file manager with vim-like key mapping, written in Rust.  
-Works on terminals with 21 columns or more.
-
-![sample](https://github.com/kyoheiu/felix/blob/main/screenshots/sample.gif)
-
-While heavliy inspired by the great `vifm` and trying to implement its pleasant experience in Rust, at the same time this project focuses on the following points:
-
-- simple and fast
-- easy to configure how to open files
 
 ## Status
 

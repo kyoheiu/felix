@@ -1,15 +1,5 @@
 # *felix*
 
-## Release
-v0.7.0 (2022-04-26)
-- New feature: Terminal size changes are now automatically detected and the layout is fixed.
-
-v0.6.1 (2022-04-15)
-- New configuration: You can now use the full width of terminal by setting `use_full_width` to true (false by default). I hope this wil lead to a better user experience. *For those who use <=0.6.0, felix can work without replacing config.toml because `use_full_width` is an option.*
-
-v0.6.0 (2022-04-13)
-- New command: If you have [zoxide](https://github.com/ajeetdsouza/zoxide) installed, `:z <keyword>` lets you jump to a directory that matches the keyword! For more details, see Usage.
-
 ## About
 A tui file manager with vim-like key mapping, written in Rust.  
 Works on terminals with 21 columns or more.
@@ -20,6 +10,16 @@ While heavliy inspired by the great `vifm` and trying to implement its pleasant 
 
 - simple and fast
 - easy to configure how to open files
+
+## Release
+v0.7.0 (2022-04-26)
+- New feature: Terminal size changes are now automatically detected and the layout is fixed.
+
+v0.6.1 (2022-04-15)
+- New configuration: You can now use the full width of terminal by setting `use_full_width` to true (false by default). I hope this wil lead to a better user experience. *For those who use <=0.6.0, felix can work without replacing config.toml because `use_full_width` is an option.*
+
+v0.6.0 (2022-04-13)
+- New command: If you have [zoxide](https://github.com/ajeetdsouza/zoxide) installed, `:z <keyword>` lets you jump to a directory that matches the keyword! For more details, see Usage.
 
 ## Status
 
