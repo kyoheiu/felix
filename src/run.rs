@@ -42,45 +42,48 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
         return Ok(());
     }
 
+    //Initialize app state
     let mut state = State::new();
     state.trash_dir = trash_dir_path;
     state.current_dir = arg.canonicalize()?;
 
     let mut filtered = false;
 
+    //Initialize num as Arc
     let nums = Num::new();
-    let shared_nums = Arc::new(Mutex::new(nums));
-    let nums2 = shared_nums.clone();
+    let nums_run = Arc::new(Mutex::new(nums));
+    let nums_detect = nums_run.clone();
 
+    //Initialize screen as Arc
     let screen = screen::AlternateScreen::from(stdout().into_raw_mode().unwrap());
-    let screen1 = Arc::new(Mutex::new(screen));
-    let screen2 = screen1.clone();
+    let screen_run = Arc::new(Mutex::new(screen));
+    let screen_detect = screen_run.clone();
 
+    //Update list, print and flush
     print!("{}", cursor::Hide);
-
     state.update_list()?;
     clear_and_show(&state.current_dir);
     state.list_up(nums.skip);
-
     state.move_cursor(&nums, STARTING_POINT);
-    let mut init_screen = screen1.lock().unwrap();
+    let mut init_screen = screen_run.lock().unwrap();
     init_screen.flush()?;
     drop(init_screen);
 
+    //Initialize cursor move memo
     let mut p_memo_v: Vec<ParentMemo> = Vec::new();
     let mut c_memo_v: Vec<ChildMemo> = Vec::new();
-    let shared_state = Arc::new(Mutex::new(state));
-    let mutex = shared_state.clone();
-    let mut stdin = stdin().keys();
 
-    let interval = Duration::from_millis(DETECTION_INTERVAL);
+    //Prepare state as Arc
+    let state_run = Arc::new(Mutex::new(state));
+    let state_detect = state_run.clone();
 
     //Detect terminal window change
+    let interval = Duration::from_millis(DETECTION_INTERVAL);
     thread::spawn(move || loop {
         thread::sleep(interval);
         let (column, row) = termion::terminal_size().unwrap();
-        let mut state = mutex.lock().unwrap();
-        let mut nums = nums2.lock().unwrap();
+        let mut state = state_detect.lock().unwrap();
+        let mut nums = nums_detect.lock().unwrap();
         if column != state.layout.terminal_column || row != state.layout.terminal_row {
             if state.layout.y < row {
                 let cursor_pos = state.layout.y;
@@ -90,16 +93,18 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                 nums.index -= diff as usize;
                 state.refresh(column, row, &nums, row - 1);
             }
-            let mut screen = screen2.lock().unwrap();
+            let mut screen = screen_detect.lock().unwrap();
             screen.flush().unwrap();
         }
     });
 
+    let mut stdin = stdin().keys();
+
     'main: loop {
         let input = stdin.next();
-        let mut state = shared_state.lock().unwrap();
-        let mut screen = screen1.lock().unwrap();
-        let mut nums = shared_nums.lock().unwrap();
+        let mut state = state_run.lock().unwrap();
+        let mut screen = screen_run.lock().unwrap();
+        let mut nums = nums_run.lock().unwrap();
         let len = state.list.len();
         let y = state.layout.y;
         if let Some(Ok(key)) = input {
@@ -1405,10 +1410,10 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
 
     //When exits, restore the cursor
     print!("{}", cursor::Restore);
-    let state = shared_state.lock().unwrap();
+    let state = state_run.lock().unwrap();
     //If layout was refreshed, go back to main screen to restore the previous state
     state.write_session(session_file_path)?;
-    let mut screen = screen1.lock().unwrap();
+    let mut screen = screen_run.lock().unwrap();
     write!(screen, "{}", screen::ToMainScreen)?;
     screen.suspend_raw_mode()?;
     screen.flush()?;
