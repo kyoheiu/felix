@@ -3,6 +3,9 @@
 # *felix*
 
 ## Release
+v0.7.0 (2022-04-26)
+- New feature: If terminal window size is changed, felix automatically detects it and changes layout.
+
 v0.6.1 (2022-04-15)
 - New configuration: You can now use the full width of terminal by setting `use_full_width` to true (false by default). I hope this wil lead to a better user experience. *For those who use <=0.6.0, felix can work without replacing config.toml because `use_full_width` is an option.*
 
