@@ -1408,15 +1408,17 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
         screen.flush()?;
     }
 
-    //When exits, restore the cursor
-    print!("{}", cursor::Restore);
     let state = state_run.lock().unwrap();
-    //If layout was refreshed, go back to main screen to restore the previous state
-    state.write_session(session_file_path)?;
     let mut screen = screen_run.lock().unwrap();
+
+    //Save session, restore screen state and cursor
+    state.write_session(session_file_path)?;
     write!(screen, "{}", screen::ToMainScreen)?;
-    screen.suspend_raw_mode()?;
+    write!(screen, "{}", cursor::Restore)?;
     screen.flush()?;
+
+    //Back to normal mode
+    screen.suspend_raw_mode()?;
     Ok(())
 }
 
