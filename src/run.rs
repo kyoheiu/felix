@@ -9,7 +9,7 @@ use std::ffi::OsStr;
 // use clipboard::{ClipboardContext, ClipboardProvider};
 use log::debug;
 use std::io::{stdin, stdout, Write};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -895,11 +895,10 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         }),
                                     });
 
+                                    print!("{}", cursor::Hide);
                                     clear_and_show(&state.current_dir);
                                     state.update_list()?;
                                     state.list_up(nums.skip);
-
-                                    print!("{}", cursor::Hide);
                                     state.move_cursor(&nums, y);
                                     break;
                                 }
@@ -1363,13 +1362,39 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                 }
 
                 Key::Char('u') => {
-                    if manipulation_v.is_empty() {
+                    let mani_len = manipulation_v.len();
+                    if mani_len == 0 || mani_len < revert_count + 1 {
                         continue;
+                    }
+                    if let Some(manipulation) = manipulation_v.get(mani_len - revert_count - 1) {
+                        let manipulation = manipulation.clone();
+                        match manipulation.kind {
+                            ManipulationKind::Rename => {
+                                let rename = manipulation.rename.unwrap();
+                                if let Err(e) =
+                                    std::fs::rename(&rename.new_name, &rename.original_name)
+                                {
+                                    print_warning(e, y);
+                                    continue;
+                                }
+                                revert_count += 1;
+                                clear_and_show(&state.current_dir);
+                                state.update_list()?;
+                                state.list_up(nums.skip);
+                                state.move_cursor(&nums, y);
+                            }
+                            _ => continue,
+                        }
                     }
                 }
 
+                Key::Ctrl('r') => {
+                    continue;
+                }
+
+                //debug print for undo/redo
                 Key::Char('P') => {
-                    print_info(format!("{:?}", manipulation_v), y);
+                    print_info(format!("{:?} count: {}", manipulation_v, revert_count), y);
                 }
 
                 Key::Char('Z') => {
