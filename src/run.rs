@@ -72,7 +72,6 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
     //Initialize cursor move memo
     let mut p_memo_v: Vec<ParentMemo> = Vec::new();
     let mut c_memo_v: Vec<ChildMemo> = Vec::new();
-    let mut revert_count: usize = 0;
 
     //Prepare state as Arc
     let state_run = Arc::new(Mutex::new(state));
@@ -830,7 +829,8 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     let start = Instant::now();
                     screen.flush()?;
 
-                    if let Err(e) = state.put_items() {
+                    let targets = state.registered.clone();
+                    if let Err(e) = state.put_items(&targets, true) {
                         print_warning(e, y);
                         continue;
                     }
@@ -885,7 +885,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         break;
                                     }
 
-                                    state.manipulations.push(Manipulation {
+                                    state.manipulations.manipulation_v.push(Manipulations {
                                         kind: ManipulationKind::Rename,
                                         rename: Some(Renamed {
                                             original_name: item.file_path.clone(),
@@ -893,6 +893,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         }),
                                         put: None,
                                     });
+                                    state.manipulations.count = 0;
 
                                     print!("{}", cursor::Hide);
                                     clear_and_show(&state.current_dir);
@@ -1362,11 +1363,14 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
 
                 //undo
                 Key::Char('u') => {
-                    let mani_len = state.manipulations.len();
-                    if mani_len < revert_count + 1 {
+                    let mani_len = state.manipulations.manipulation_v.len();
+                    if mani_len < state.manipulations.count + 1 {
                         continue;
                     }
-                    if let Some(manipulation) = state.manipulations.get(mani_len - revert_count - 1)
+                    if let Some(manipulation) = state
+                        .manipulations
+                        .manipulation_v
+                        .get(mani_len - state.manipulations.count - 1)
                     {
                         let manipulation = manipulation.clone();
                         match manipulation.kind {
@@ -1380,7 +1384,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                 }
                             }
                             ManipulationKind::Put => {
-                                for x in manipulation.put.unwrap() {
+                                for x in manipulation.put.unwrap().put {
                                     //todo: should not use remove_file actually
                                     if let Err(e) = std::fs::remove_file(&x) {
                                         print_warning(e, y);
@@ -1390,21 +1394,38 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                             }
                             _ => continue,
                         }
-                        revert_count += 1;
+                        state.manipulations.count += 1;
                         clear_and_show(&state.current_dir);
                         state.update_list()?;
                         state.list_up(nums.skip);
-                        state.move_cursor(&nums, y);
+                        let new_len = state.list.len();
+                        if new_len == 0 {
+                            nums.reset();
+                            state.move_cursor(&nums, STARTING_POINT);
+                        } else if nums.index > new_len - 1 {
+                            let new_y = y - (nums.index - (new_len - 1)) as u16;
+                            nums.index = new_len - 1;
+                            state.move_cursor(&nums, new_y)
+                        } else {
+                            state.move_cursor(&nums, y);
+                        }
                     }
                 }
 
                 //redo
                 Key::Ctrl('r') => {
-                    let mani_len = state.manipulations.len();
-                    if mani_len == 0 || revert_count == 0 || mani_len < revert_count {
+                    let mani_len = state.manipulations.manipulation_v.len();
+                    if mani_len == 0
+                        || state.manipulations.count == 0
+                        || mani_len < state.manipulations.count
+                    {
                         continue;
                     }
-                    if let Some(manipulation) = state.manipulations.get(mani_len - revert_count) {
+                    if let Some(manipulation) = state
+                        .manipulations
+                        .manipulation_v
+                        .get(mani_len - state.manipulations.count)
+                    {
                         let manipulation = manipulation.clone();
                         match manipulation.kind {
                             ManipulationKind::Rename => {
@@ -1415,21 +1436,32 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                     print_warning(e, y);
                                     continue;
                                 }
-                                revert_count -= 1;
-                                clear_and_show(&state.current_dir);
-                                state.update_list()?;
-                                state.list_up(nums.skip);
-                                state.move_cursor(&nums, y);
+                            }
+                            ManipulationKind::Put => {
+                                if let Err(e) =
+                                    state.put_items(&manipulation.put.unwrap().original, false)
+                                {
+                                    print_warning(e, y);
+                                    continue;
+                                }
                             }
                             _ => continue,
                         }
+                        state.manipulations.count -= 1;
+                        clear_and_show(&state.current_dir);
+                        state.update_list()?;
+                        state.list_up(nums.skip);
+                        state.move_cursor(&nums, y);
                     }
                 }
 
                 //debug print for undo/redo
                 Key::Char('P') => {
                     print_info(
-                        format!("{:?} count: {}", state.manipulations, revert_count),
+                        format!(
+                            "{:?} count: {}",
+                            state.manipulations, state.manipulations.count
+                        ),
                         y,
                     );
                 }

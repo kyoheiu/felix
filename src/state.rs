@@ -63,7 +63,7 @@ macro_rules! print_item {
 pub struct State {
     pub list: Vec<ItemInfo>,
     pub registered: Vec<ItemInfo>,
-    pub manipulations: Vec<Manipulation>,
+    pub manipulations: Manipulation,
     pub current_dir: PathBuf,
     pub trash_dir: PathBuf,
     pub colors: (Colorname, Colorname, Colorname),
@@ -107,9 +107,14 @@ pub struct Layout {
 
 #[derive(Debug, Clone)]
 pub struct Manipulation {
+    pub count: usize,
+    pub manipulation_v: Vec<Manipulations>,
+}
+#[derive(Debug, Clone)]
+pub struct Manipulations {
     pub kind: ManipulationKind,
     pub rename: Option<Renamed>,
-    pub put: Option<Vec<PathBuf>>,
+    pub put: Option<PutFiles>,
 }
 
 #[derive(Debug, Clone)]
@@ -123,6 +128,12 @@ pub enum ManipulationKind {
 pub struct Renamed {
     pub original_name: PathBuf,
     pub new_name: PathBuf,
+}
+
+#[derive(Debug, Clone)]
+pub struct PutFiles {
+    pub original: Vec<ItemInfo>,
+    pub put: Vec<PathBuf>,
 }
 
 impl Default for State {
@@ -140,7 +151,10 @@ impl Default for State {
         State {
             list: Vec::new(),
             registered: Vec::new(),
-            manipulations: Vec::new(),
+            manipulations: Manipulation {
+                count: 0,
+                manipulation_v: Vec::new(),
+            },
             current_dir: PathBuf::new(),
             trash_dir: PathBuf::new(),
             colors: (
@@ -359,7 +373,7 @@ impl State {
         }
     }
 
-    pub fn put_items(&mut self) -> Result<(), MyError> {
+    pub fn put_items(&mut self, targets: &[ItemInfo], reset_count: bool) -> Result<(), MyError> {
         //make HashSet<String> of file_name
         let mut name_set = HashSet::new();
         for item in self.list.iter() {
@@ -369,8 +383,8 @@ impl State {
         //prepare for manipulations.push
         let mut put_v = Vec::new();
 
-        let total_selected = self.registered.len();
-        for (i, item) in self.registered.clone().into_iter().enumerate() {
+        let total_selected = targets.len();
+        for (i, item) in targets.iter().enumerate() {
             print!(
                 " {}{}{}",
                 cursor::Goto(2, 2),
@@ -379,23 +393,29 @@ impl State {
             );
             match item.file_type {
                 FileType::Directory => {
-                    if let Ok(p) = self.put_dir(&item, &mut name_set) {
+                    if let Ok(p) = self.put_dir(item, &mut name_set) {
                         put_v.push(p);
                     }
                 }
                 FileType::File | FileType::Symlink => {
-                    if let Ok(q) = self.put_file(&item, &mut name_set) {
+                    if let Ok(q) = self.put_file(item, &mut name_set) {
                         put_v.push(q);
                     }
                 }
             }
         }
         //push put item information to manipulations
-        self.manipulations.push(Manipulation {
+        self.manipulations.manipulation_v.push(Manipulations {
             kind: ManipulationKind::Put,
             rename: None,
-            put: Some(put_v),
+            put: Some(PutFiles {
+                original: targets.to_owned(),
+                put: put_v,
+            }),
         });
+        if reset_count {
+            self.manipulations.count = 0;
+        }
         Ok(())
     }
 
