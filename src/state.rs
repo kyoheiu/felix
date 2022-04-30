@@ -106,16 +106,17 @@ pub struct Layout {
 }
 
 #[derive(Debug, Clone)]
+pub struct Manipulation {
+    pub kind: ManipulationKind,
+    pub rename: Option<Renamed>,
+    pub put: Option<Vec<PathBuf>>,
+}
+
+#[derive(Debug, Clone)]
 pub enum ManipulationKind {
     Delete,
     Put,
     Rename,
-}
-
-#[derive(Debug, Clone)]
-pub struct Manipulation {
-    pub kind: ManipulationKind,
-    pub rename: Option<Renamed>,
 }
 
 #[derive(Debug, Clone)]
@@ -365,6 +366,9 @@ impl State {
             name_set.insert(item.file_name.clone());
         }
 
+        //prepare for manipulations.push
+        let mut put_v = Vec::new();
+
         let total_selected = self.registered.len();
         for (i, item) in self.registered.clone().into_iter().enumerate() {
             print!(
@@ -375,41 +379,62 @@ impl State {
             );
             match item.file_type {
                 FileType::Directory => {
-                    self.put_dir(&item, &mut name_set)?;
+                    if let Ok(p) = self.put_dir(&item, &mut name_set) {
+                        put_v.push(p);
+                    }
                 }
                 FileType::File | FileType::Symlink => {
-                    self.put_file(&item, &mut name_set)?;
+                    if let Ok(q) = self.put_file(&item, &mut name_set) {
+                        put_v.push(q);
+                    }
                 }
             }
         }
+        //push put item information to manipulations
+        self.manipulations.push(Manipulation {
+            kind: ManipulationKind::Put,
+            rename: None,
+            put: Some(put_v),
+        });
         Ok(())
     }
 
-    fn put_file(&mut self, item: &ItemInfo, name_set: &mut HashSet<String>) -> Result<(), MyError> {
+    fn put_file(
+        &mut self,
+        item: &ItemInfo,
+        name_set: &mut HashSet<String>,
+    ) -> Result<PathBuf, MyError> {
         if item.file_path.parent() == Some(&self.trash_dir) {
             let mut item = item.clone();
             let rename = item.file_name.chars().skip(11).collect();
             item.file_name = rename;
             let rename = rename_file(&item, name_set);
-            if std::fs::copy(&item.file_path, &self.current_dir.join(&rename)).is_err() {
+            let to = &self.current_dir.join(&rename);
+            if std::fs::copy(&item.file_path, to).is_err() {
                 return Err(MyError::FileCopyError {
                     msg: format!("Cannot copy item: {:?}", &item.file_path),
                 });
             }
             name_set.insert(rename);
+            Ok(to.to_path_buf())
         } else {
             let rename = rename_file(item, name_set);
-            if std::fs::copy(&item.file_path, &self.current_dir.join(&rename)).is_err() {
+            let to = &self.current_dir.join(&rename);
+            if std::fs::copy(&item.file_path, to).is_err() {
                 return Err(MyError::FileCopyError {
                     msg: format!("Cannot copy item: {:?}", &item.file_path),
                 });
             }
             name_set.insert(rename);
+            Ok(to.to_path_buf())
         }
-        Ok(())
     }
 
-    fn put_dir(&mut self, buf: &ItemInfo, name_set: &mut HashSet<String>) -> Result<(), MyError> {
+    fn put_dir(
+        &mut self,
+        buf: &ItemInfo,
+        name_set: &mut HashSet<String>,
+    ) -> Result<PathBuf, MyError> {
         let mut base: usize = 0;
         let mut target: PathBuf = PathBuf::new();
         let original_path = &(buf).file_path;
@@ -472,7 +497,7 @@ impl State {
                 }
             }
         }
-        Ok(())
+        Ok(target)
     }
 
     pub fn print(&self, index: usize) {

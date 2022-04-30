@@ -891,6 +891,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                             original_name: item.file_path.clone(),
                                             new_name: to,
                                         }),
+                                        put: None,
                                     });
 
                                     print!("{}", cursor::Hide);
@@ -1377,14 +1378,23 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                     print_warning(e, y);
                                     continue;
                                 }
-                                revert_count += 1;
-                                clear_and_show(&state.current_dir);
-                                state.update_list()?;
-                                state.list_up(nums.skip);
-                                state.move_cursor(&nums, y);
+                            }
+                            ManipulationKind::Put => {
+                                for x in manipulation.put.unwrap() {
+                                    //todo: should not use remove_file actually
+                                    if let Err(e) = std::fs::remove_file(&x) {
+                                        print_warning(e, y);
+                                        continue;
+                                    }
+                                }
                             }
                             _ => continue,
                         }
+                        revert_count += 1;
+                        clear_and_show(&state.current_dir);
+                        state.update_list()?;
+                        state.list_up(nums.skip);
+                        state.move_cursor(&nums, y);
                     }
                 }
 
