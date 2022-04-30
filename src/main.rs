@@ -2,6 +2,7 @@ mod config;
 mod errors;
 mod functions;
 mod help;
+mod manipulation;
 mod nums;
 mod run;
 mod session;
