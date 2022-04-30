@@ -1361,6 +1361,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     }
                 }
 
+                //undo
                 Key::Char('u') => {
                     let mani_len = manipulation_v.len();
                     if mani_len == 0 || mani_len < revert_count + 1 {
@@ -1388,8 +1389,32 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     }
                 }
 
+                //redo
                 Key::Ctrl('r') => {
-                    continue;
+                    let mani_len = manipulation_v.len();
+                    if mani_len == 0 || revert_count == 0 || mani_len < revert_count {
+                        continue;
+                    }
+                    if let Some(manipulation) = manipulation_v.get(mani_len - revert_count) {
+                        let manipulation = manipulation.clone();
+                        match manipulation.kind {
+                            ManipulationKind::Rename => {
+                                let rename = manipulation.rename.unwrap();
+                                if let Err(e) =
+                                    std::fs::rename(&rename.original_name, &rename.new_name)
+                                {
+                                    print_warning(e, y);
+                                    continue;
+                                }
+                                revert_count -= 1;
+                                clear_and_show(&state.current_dir);
+                                state.update_list()?;
+                                state.list_up(nums.skip);
+                                state.move_cursor(&nums, y);
+                            }
+                            _ => continue,
+                        }
+                    }
                 }
 
                 //debug print for undo/redo
