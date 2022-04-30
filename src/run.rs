@@ -1,6 +1,7 @@
 use super::errors::MyError;
 use super::functions::*;
 use super::help::HELP;
+use super::manipulation::{Manipulation, ManipulationKind, Renamed};
 use super::nums::*;
 use super::state::*;
 use crate::session::*;
@@ -72,6 +73,8 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
     //Initialize cursor move memo
     let mut p_memo_v: Vec<ParentMemo> = Vec::new();
     let mut c_memo_v: Vec<ChildMemo> = Vec::new();
+    let mut manipulation_v: Vec<Manipulation> = Vec::new();
+    let mut revert_count: usize = 0;
 
     //Prepare state as Arc
     let state_run = Arc::new(Mutex::new(state));
@@ -878,13 +881,19 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                     let rename = rename.iter().collect::<String>();
                                     let mut to = state.current_dir.clone();
                                     to.push(rename);
-                                    if let Err(e) =
-                                        std::fs::rename(Path::new(&item.file_path), Path::new(&to))
-                                    {
+                                    if let Err(e) = std::fs::rename(&item.file_path, &to) {
                                         print!("{}", cursor::Hide);
                                         print_warning(e, y);
                                         break;
                                     }
+
+                                    manipulation_v.push(Manipulation {
+                                        kind: ManipulationKind::Rename,
+                                        rename: Some(Renamed {
+                                            original_name: item.file_path.clone(),
+                                            new_name: to,
+                                        }),
+                                    });
 
                                     clear_and_show(&state.current_dir);
                                     state.update_list()?;
@@ -1351,6 +1360,16 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                             screen.flush()?;
                         }
                     }
+                }
+
+                Key::Char('u') => {
+                    if manipulation_v.is_empty() {
+                        continue;
+                    }
+                }
+
+                Key::Char('P') => {
+                    print_info(format!("{:?}", manipulation_v), y);
                 }
 
                 Key::Char('Z') => {
