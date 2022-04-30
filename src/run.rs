@@ -1,7 +1,6 @@
 use super::errors::MyError;
 use super::functions::*;
 use super::help::HELP;
-use super::manipulation::{Manipulation, ManipulationKind, Renamed};
 use super::nums::*;
 use super::state::*;
 use crate::session::*;
@@ -73,7 +72,6 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
     //Initialize cursor move memo
     let mut p_memo_v: Vec<ParentMemo> = Vec::new();
     let mut c_memo_v: Vec<ChildMemo> = Vec::new();
-    let mut manipulation_v: Vec<Manipulation> = Vec::new();
     let mut revert_count: usize = 0;
 
     //Prepare state as Arc
@@ -858,7 +856,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                         continue;
                     }
                     print!("{}", cursor::Show);
-                    let item = state.get_item(nums.index).unwrap();
+                    let item = state.get_item(nums.index).unwrap().clone();
 
                     let mut rename = item.file_name.chars().collect::<Vec<char>>();
                     print!(
@@ -887,7 +885,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         break;
                                     }
 
-                                    manipulation_v.push(Manipulation {
+                                    state.manipulations.push(Manipulation {
                                         kind: ManipulationKind::Rename,
                                         rename: Some(Renamed {
                                             original_name: item.file_path.clone(),
@@ -1363,11 +1361,12 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
 
                 //undo
                 Key::Char('u') => {
-                    let mani_len = manipulation_v.len();
-                    if mani_len == 0 || mani_len < revert_count + 1 {
+                    let mani_len = state.manipulations.len();
+                    if mani_len < revert_count + 1 {
                         continue;
                     }
-                    if let Some(manipulation) = manipulation_v.get(mani_len - revert_count - 1) {
+                    if let Some(manipulation) = state.manipulations.get(mani_len - revert_count - 1)
+                    {
                         let manipulation = manipulation.clone();
                         match manipulation.kind {
                             ManipulationKind::Rename => {
@@ -1391,11 +1390,11 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
 
                 //redo
                 Key::Ctrl('r') => {
-                    let mani_len = manipulation_v.len();
+                    let mani_len = state.manipulations.len();
                     if mani_len == 0 || revert_count == 0 || mani_len < revert_count {
                         continue;
                     }
-                    if let Some(manipulation) = manipulation_v.get(mani_len - revert_count) {
+                    if let Some(manipulation) = state.manipulations.get(mani_len - revert_count) {
                         let manipulation = manipulation.clone();
                         match manipulation.kind {
                             ManipulationKind::Rename => {
@@ -1419,7 +1418,10 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
 
                 //debug print for undo/redo
                 Key::Char('P') => {
-                    print_info(format!("{:?} count: {}", manipulation_v, revert_count), y);
+                    print_info(
+                        format!("{:?} count: {}", state.manipulations, revert_count),
+                        y,
+                    );
                 }
 
                 Key::Char('Z') => {

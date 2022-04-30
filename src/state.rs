@@ -63,6 +63,7 @@ macro_rules! print_item {
 pub struct State {
     pub list: Vec<ItemInfo>,
     pub registered: Vec<ItemInfo>,
+    pub manipulations: Vec<Manipulation>,
     pub current_dir: PathBuf,
     pub trash_dir: PathBuf,
     pub colors: (Colorname, Colorname, Colorname),
@@ -104,6 +105,25 @@ pub struct Layout {
     pub option_name_len: Option<usize>,
 }
 
+#[derive(Debug, Clone)]
+pub enum ManipulationKind {
+    Delete,
+    Put,
+    Rename,
+}
+
+#[derive(Debug, Clone)]
+pub struct Manipulation {
+    pub kind: ManipulationKind,
+    pub rename: Option<Renamed>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Renamed {
+    pub original_name: PathBuf,
+    pub new_name: PathBuf,
+}
+
 impl Default for State {
     fn default() -> Self {
         let config = read_config().unwrap();
@@ -119,6 +139,7 @@ impl Default for State {
         State {
             list: Vec::new(),
             registered: Vec::new(),
+            manipulations: Vec::new(),
             current_dir: PathBuf::new(),
             trash_dir: PathBuf::new(),
             colors: (
