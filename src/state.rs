@@ -252,7 +252,7 @@ impl State {
 
     pub fn remove_and_yank(
         &mut self,
-        targets: Vec<ItemInfo>,
+        targets: &[ItemInfo],
         cursor_pos: u16,
         reset_count: bool,
     ) -> Result<(), MyError> {
@@ -268,21 +268,22 @@ impl State {
                 display_count(i, total_selected)
             );
             match item.file_type {
-                FileType::Directory => match self.remove_and_yank_dir(item.clone()) {
+                FileType::Directory => match self.remove_and_yank_dir(item.clone(), reset_count) {
                     Err(e) => {
                         print_warning(e, cursor_pos);
                         break;
                     }
                     Ok(path) => trash_vec.push(path),
                 },
-                FileType::File | FileType::Symlink => match self.remove_and_yank_file(item.clone())
-                {
-                    Err(e) => {
-                        print_warning(e, cursor_pos);
-                        break;
+                FileType::File | FileType::Symlink => {
+                    match self.remove_and_yank_file(item.clone(), reset_count) {
+                        Err(e) => {
+                            print_warning(e, cursor_pos);
+                            break;
+                        }
+                        Ok(path) => trash_vec.push(path),
                     }
-                    Ok(path) => trash_vec.push(path),
-                },
+                }
             }
         }
         //push deleted item information to manipulations
@@ -292,7 +293,7 @@ impl State {
             put: None,
             delete: Some(DeletedFiles {
                 trash: trash_vec,
-                original: targets,
+                original: targets.to_vec(),
                 dir: self.current_dir.clone(),
             }),
         });
@@ -303,9 +304,14 @@ impl State {
         Ok(())
     }
 
-    pub fn remove_and_yank_file(&mut self, item: ItemInfo) -> Result<PathBuf, MyError> {
+    pub fn remove_and_yank_file(
+        &mut self,
+        item: ItemInfo,
+        reset_count: bool,
+    ) -> Result<PathBuf, MyError> {
         //prepare from and to for copy
         let from = &item.file_path;
+        let mut to = PathBuf::new();
 
         if item.file_type == FileType::Symlink && !from.exists() {
             match Command::new("rm").arg(from).status() {
@@ -318,16 +324,18 @@ impl State {
             rename.push('_');
             rename.push_str(name);
 
-            let to = self.trash_dir.join(&rename);
+            if reset_count {
+                to = self.trash_dir.join(&rename);
 
-            //copy
-            if std::fs::copy(from, &to).is_err() {
-                return Err(MyError::FileCopyError {
-                    msg: format!("Cannot copy item: {:?}", from),
-                });
+                //copy
+                if std::fs::copy(from, &to).is_err() {
+                    return Err(MyError::FileCopyError {
+                        msg: format!("Cannot copy item: {:?}", from),
+                    });
+                }
+
+                self.push_to_registered(&item, to.clone(), rename);
             }
-
-            self.push_to_registered(&item, to.clone(), rename);
 
             //remove original
             if std::fs::remove_file(from).is_err() {
@@ -340,71 +348,76 @@ impl State {
         }
     }
 
-    pub fn remove_and_yank_dir(&mut self, item: ItemInfo) -> Result<PathBuf, MyError> {
+    pub fn remove_and_yank_dir(
+        &mut self,
+        item: ItemInfo,
+        reset_count: bool,
+    ) -> Result<PathBuf, MyError> {
         let mut trash_name = String::new();
         let mut base: usize = 0;
         let mut trash_path: std::path::PathBuf = PathBuf::new();
         let mut target: PathBuf;
 
-        let len = walkdir::WalkDir::new(&item.file_path).into_iter().count();
-        let unit = len / 5;
-        for (i, entry) in walkdir::WalkDir::new(&item.file_path)
-            .into_iter()
-            .enumerate()
-        {
-            if i > unit * 4 {
-                print_process("[»»»»-]");
-            } else if i > unit * 3 {
-                print_process("[»»»--]");
-            } else if i > unit * 2 {
-                print_process("[»»---]");
-            } else if i > unit {
-                print_process("[»----]");
-            } else if i == 0 {
-                print_process(" [-----]");
-            }
-            let entry = entry?;
-            let entry_path = entry.path();
-            if i == 0 {
-                base = entry_path.iter().count();
-
-                trash_name = chrono::Local::now().timestamp().to_string();
-                trash_name.push('_');
-                let file_name = entry.file_name().to_str();
-                if file_name == None {
-                    return Err(MyError::UTF8Error {
-                        msg: "Cannot convert filename to UTF-8.".to_string(),
-                    });
+        if reset_count {
+            let len = walkdir::WalkDir::new(&item.file_path).into_iter().count();
+            let unit = len / 5;
+            for (i, entry) in walkdir::WalkDir::new(&item.file_path)
+                .into_iter()
+                .enumerate()
+            {
+                if i > unit * 4 {
+                    print_process("[»»»»-]");
+                } else if i > unit * 3 {
+                    print_process("[»»»--]");
+                } else if i > unit * 2 {
+                    print_process("[»»---]");
+                } else if i > unit {
+                    print_process("[»----]");
+                } else if i == 0 {
+                    print_process(" [-----]");
                 }
-                trash_name.push_str(file_name.unwrap());
-                trash_path = self.trash_dir.join(&trash_name);
-                std::fs::create_dir(&self.trash_dir.join(&trash_path))?;
+                let entry = entry?;
+                let entry_path = entry.path();
+                if i == 0 {
+                    base = entry_path.iter().count();
 
-                continue;
-            } else {
-                target = entry_path.iter().skip(base).collect();
-                target = trash_path.join(target);
-                if entry.file_type().is_dir() {
-                    std::fs::create_dir_all(&target)?;
+                    trash_name = chrono::Local::now().timestamp().to_string();
+                    trash_name.push('_');
+                    let file_name = entry.file_name().to_str();
+                    if file_name == None {
+                        return Err(MyError::UTF8Error {
+                            msg: "Cannot convert filename to UTF-8.".to_string(),
+                        });
+                    }
+                    trash_name.push_str(file_name.unwrap());
+                    trash_path = self.trash_dir.join(&trash_name);
+                    std::fs::create_dir(&self.trash_dir.join(&trash_path))?;
+
                     continue;
-                }
+                } else {
+                    target = entry_path.iter().skip(base).collect();
+                    target = trash_path.join(target);
+                    if entry.file_type().is_dir() {
+                        std::fs::create_dir_all(&target)?;
+                        continue;
+                    }
 
-                if let Some(parent) = entry_path.parent() {
-                    if !parent.exists() {
-                        std::fs::create_dir(parent)?;
+                    if let Some(parent) = entry_path.parent() {
+                        if !parent.exists() {
+                            std::fs::create_dir(parent)?;
+                        }
+                    }
+
+                    if std::fs::copy(entry_path, &target).is_err() {
+                        return Err(MyError::FileCopyError {
+                            msg: format!("Cannot copy item: {:?}", entry_path),
+                        });
                     }
                 }
-
-                if std::fs::copy(entry_path, &target).is_err() {
-                    return Err(MyError::FileCopyError {
-                        msg: format!("Cannot copy item: {:?}", entry_path),
-                    });
-                }
             }
+
+            self.push_to_registered(&item, trash_path.clone(), trash_name);
         }
-
-        self.push_to_registered(&item, trash_path.clone(), trash_name);
-
         //remove original
         if std::fs::remove_dir_all(&item.file_path).is_err() {
             return Err(MyError::FileRemoveError {

@@ -602,7 +602,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         clone.into_iter().filter(|item| item.selected).collect();
                                     let total = selected.len();
 
-                                    state.remove_and_yank(selected, y, true)?;
+                                    state.remove_and_yank(&selected, y, true)?;
 
                                     clear_and_show(&state.current_dir);
                                     state.update_list()?;
@@ -708,7 +708,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         let target = state.get_item(nums.index)?.clone();
                                         let target = vec![target];
 
-                                        state.remove_and_yank(target, y, true)?;
+                                        state.remove_and_yank(&target, y, true)?;
 
                                         clear_and_show(&state.current_dir);
                                         state.update_list()?;
@@ -1373,6 +1373,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                         } else {
                             state.move_cursor(&nums, y);
                         }
+                        screen.flush()?;
                     }
                 }
 
@@ -1408,13 +1409,30 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                     continue;
                                 }
                             }
-                            ManipulationKind::Delete => {}
+                            ManipulationKind::Delete => {
+                                let m = &manipulation.delete.unwrap();
+                                if let Err(e) = state.remove_and_yank(&m.original, y, false) {
+                                    print_warning(e, y);
+                                    continue;
+                                }
+                            }
                         }
                         state.manipulations.count -= 1;
                         clear_and_show(&state.current_dir);
                         state.update_list()?;
                         state.list_up(nums.skip);
-                        state.move_cursor(&nums, y);
+                        let new_len = state.list.len();
+                        if new_len == 0 {
+                            nums.reset();
+                            state.move_cursor(&nums, STARTING_POINT);
+                        } else if nums.index > new_len - 1 {
+                            let new_y = y - (nums.index - (new_len - 1)) as u16;
+                            nums.index = new_len - 1;
+                            state.move_cursor(&nums, new_y)
+                        } else {
+                            state.move_cursor(&nums, y);
+                        }
+                        screen.flush()?;
                     }
                 }
 
