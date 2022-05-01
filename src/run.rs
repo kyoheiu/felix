@@ -426,6 +426,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     }
                 }
 
+                //select mode
                 Key::Char('V') => {
                     if len == 0 {
                         continue;
@@ -670,6 +671,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     }
                 }
 
+                //toggle sortkey
                 Key::Char('t') => {
                     match state.sort_by {
                         SortKey::Name => {
@@ -686,6 +688,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     state.move_cursor(&nums, STARTING_POINT);
                 }
 
+                //delete
                 Key::Char('d') => {
                     if len == 0 {
                         continue;
@@ -742,6 +745,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     }
                 }
 
+                //yank
                 Key::Char('y') => {
                     if len == 0 {
                         continue;
@@ -777,6 +781,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     }
                 }
 
+                //put
                 Key::Char('p') => {
                     if state.registered.is_empty() {
                         continue;
@@ -807,6 +812,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     state.move_cursor(&nums, y);
                 }
 
+                //rename
                 Key::Char('c') => {
                     if len == 0 {
                         continue;
@@ -918,6 +924,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     }
                 }
 
+                //filter mode
                 Key::Char('/') => {
                     if len == 0 {
                         continue;
@@ -1041,6 +1048,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     print!("{}", cursor::Hide);
                 }
 
+                //shell mode
                 Key::Char(':') => {
                     print!(" {}{}:", cursor::Goto(2, 2), clear::CurrentLine,);
                     print!("{}", cursor::Show);
@@ -1326,13 +1334,17 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                         .manipulation_v
                         .get(mani_len - state.manipulations.count - 1)
                     {
-                        let manipulation = manipulation.clone();
-                        match manipulation {
+                        match manipulation.clone() {
                             ManipulationKind::Rename(m) => {
                                 if let Err(e) = std::fs::rename(&m.new_name, &m.original_name) {
                                     print_warning(e, y);
                                     continue;
                                 }
+                                state.manipulations.count += 1;
+                                clear_and_show(&state.current_dir);
+                                state.update_list()?;
+                                state.list_up(nums.skip);
+                                print_info("Undone: rename", y);
                             }
                             ManipulationKind::Put(m) => {
                                 for x in m.put {
@@ -1342,6 +1354,11 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         continue;
                                     }
                                 }
+                                state.manipulations.count += 1;
+                                clear_and_show(&state.current_dir);
+                                state.update_list()?;
+                                state.list_up(nums.skip);
+                                print_info("Undone: put", y);
                             }
                             ManipulationKind::Delete(m) => {
                                 let targets = trash_to_info(&state.trash_dir, m.trash)?;
@@ -1349,12 +1366,14 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                     print_warning(e, y);
                                     continue;
                                 }
+                                state.manipulations.count += 1;
+                                clear_and_show(&state.current_dir);
+                                state.update_list()?;
+                                state.list_up(nums.skip);
+                                print_info("Undone: delete", y);
                             }
                         }
-                        state.manipulations.count += 1;
-                        clear_and_show(&state.current_dir);
-                        state.update_list()?;
-                        state.list_up(nums.skip);
+
                         let new_len = state.list.len();
                         if new_len == 0 {
                             nums.reset();
@@ -1391,24 +1410,36 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                     print_warning(e, y);
                                     continue;
                                 }
+                                state.manipulations.count -= 1;
+                                clear_and_show(&state.current_dir);
+                                state.update_list()?;
+                                state.list_up(nums.skip);
+                                print_info("Redone: rename", y);
                             }
                             ManipulationKind::Put(m) => {
                                 if let Err(e) = state.put_items(&m.original, Some(m.dir.clone())) {
                                     print_warning(e, y);
                                     continue;
                                 }
+                                state.manipulations.count -= 1;
+                                clear_and_show(&state.current_dir);
+                                state.update_list()?;
+                                state.list_up(nums.skip);
+                                print_info("Redone: put", y);
                             }
                             ManipulationKind::Delete(m) => {
                                 if let Err(e) = state.remove_and_yank(&m.original, y, false) {
                                     print_warning(e, y);
                                     continue;
                                 }
+                                state.manipulations.count -= 1;
+                                clear_and_show(&state.current_dir);
+                                state.update_list()?;
+                                state.list_up(nums.skip);
+                                print_info("Redone: delete", y);
                             }
                         }
-                        state.manipulations.count -= 1;
-                        clear_and_show(&state.current_dir);
-                        state.update_list()?;
-                        state.list_up(nums.skip);
+
                         let new_len = state.list.len();
                         if new_len == 0 {
                             nums.reset();
@@ -1435,6 +1466,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     );
                 }
 
+                //exit by ZZ
                 Key::Char('Z') => {
                     print!(" {}{}Z", cursor::Goto(2, 2), clear::CurrentLine,);
                     print!("{}", cursor::Show);

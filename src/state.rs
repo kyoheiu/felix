@@ -279,15 +279,15 @@ impl State {
                 }
             }
         }
-        //push deleted item information to manipulations
-        self.manipulations
-            .manipulation_v
-            .push(ManipulationKind::Delete(DeletedFiles {
-                trash: trash_vec,
-                original: targets.to_vec(),
-                dir: self.current_dir.clone(),
-            }));
         if reset_count {
+            //push deleted item information to manipulations
+            self.manipulations
+                .manipulation_v
+                .push(ManipulationKind::Delete(DeletedFiles {
+                    trash: trash_vec,
+                    original: targets.to_vec(),
+                    dir: self.current_dir.clone(),
+                }));
             self.manipulations.count = 0;
         }
 
@@ -408,6 +408,7 @@ impl State {
 
             self.push_to_registered(&item, trash_path.clone(), trash_name);
         }
+
         //remove original
         if std::fs::remove_dir_all(&item.file_path).is_err() {
             return Err(MyError::FileRemoveError {
