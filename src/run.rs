@@ -597,47 +597,23 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                     screen.flush()?;
 
                                     state.registered.clear();
-                                    let mut count: usize = 0;
                                     let clone = state.list.clone();
-                                    let iter = clone.iter().filter(|item| item.selected);
-                                    let total_selected = iter.clone().count();
-                                    for (i, item) in iter.enumerate() {
-                                        print!(
-                                            " {}{}{}",
-                                            cursor::Goto(2, 2),
-                                            clear::CurrentLine,
-                                            display_count(i, total_selected)
-                                        );
-                                        match item.file_type {
-                                            FileType::Directory => {
-                                                if let Err(e) =
-                                                    state.remove_and_yank_dir(item.clone())
-                                                {
-                                                    print_warning(e, y);
-                                                    break;
-                                                }
-                                            }
-                                            FileType::File | FileType::Symlink => {
-                                                if let Err(e) =
-                                                    state.remove_and_yank_file(item.clone())
-                                                {
-                                                    print_warning(e, y);
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                        count += 1;
-                                    }
+                                    let selected: Vec<ItemInfo> =
+                                        clone.into_iter().filter(|item| item.selected).collect();
+                                    let total = selected.len();
+
+                                    state.remove_and_yank(selected, y)?;
+
                                     clear_and_show(&state.current_dir);
                                     state.update_list()?;
                                     state.list_up(nums.skip);
 
                                     let duration = duration_to_string(start.elapsed());
                                     let delete_message: String = {
-                                        if count == 1 {
+                                        if total == 1 {
                                             format!("1 item deleted [{}]", duration)
                                         } else {
-                                            let mut count = count.to_string();
+                                            let mut count = total.to_string();
                                             count.push_str(&format!(
                                                 " items deleted [{}]",
                                                 duration
@@ -729,30 +705,10 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         let start = Instant::now();
                                         screen.flush()?;
 
-                                        state.registered.clear();
-                                        let item = state.get_item(nums.index)?.clone();
-                                        match item.file_type {
-                                            FileType::Directory => {
-                                                print!(
-                                                    " {}{}1/1",
-                                                    cursor::Goto(2, 2),
-                                                    clear::CurrentLine
-                                                );
-                                                if let Err(e) = state.remove_and_yank_dir(item) {
-                                                    print_warning(e, y);
-                                                    state.move_cursor(&nums, y);
-                                                    break 'delete;
-                                                }
-                                            }
-                                            FileType::File | FileType::Symlink => {
-                                                if let Err(e) = state.remove_and_yank_file(item) {
-                                                    clear_and_show(&state.current_dir);
-                                                    print_warning(e, y);
-                                                    state.move_cursor(&nums, y);
-                                                    break 'delete;
-                                                }
-                                            }
-                                        }
+                                        let target = state.get_item(nums.index)?.clone();
+                                        let target = vec![target];
+
+                                        state.remove_and_yank(target, y)?;
 
                                         clear_and_show(&state.current_dir);
                                         state.update_list()?;

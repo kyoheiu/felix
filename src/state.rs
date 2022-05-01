@@ -250,9 +250,34 @@ impl State {
 
     pub fn remove_and_yank(
         &mut self,
-        targets: &[ItemInfo],
-        reset_count: bool,
+        targets: Vec<ItemInfo>,
+        cursor_pos: u16,
     ) -> Result<(), MyError> {
+        self.registered.clear();
+        let total_selected = targets.len();
+        for (i, item) in targets.iter().enumerate() {
+            let item = item.clone();
+            print!(
+                " {}{}{}",
+                cursor::Goto(2, 2),
+                clear::CurrentLine,
+                display_count(i, total_selected)
+            );
+            match item.file_type {
+                FileType::Directory => {
+                    if let Err(e) = self.remove_and_yank_dir(item.clone()) {
+                        print_warning(e, cursor_pos);
+                        break;
+                    }
+                }
+                FileType::File | FileType::Symlink => {
+                    if let Err(e) = self.remove_and_yank_file(item.clone()) {
+                        print_warning(e, cursor_pos);
+                        break;
+                    }
+                }
+            }
+        }
         Ok(())
     }
 
