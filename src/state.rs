@@ -115,6 +115,7 @@ pub struct Manipulations {
     pub kind: ManipulationKind,
     pub rename: Option<Renamed>,
     pub put: Option<PutFiles>,
+    pub delete: Option<DeletedFiles>,
 }
 
 #[derive(Debug, Clone)]
@@ -134,6 +135,12 @@ pub struct Renamed {
 pub struct PutFiles {
     pub original: Vec<ItemInfo>,
     pub put: Vec<PathBuf>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DeletedFiles {
+    pub trash: Vec<PathBuf>,
+    pub original: Vec<ItemInfo>,
 }
 
 impl Default for State {
@@ -239,6 +246,14 @@ impl State {
                 ex.arg(path).status().map_err(MyError::IoError)
             }
         }
+    }
+
+    pub fn remove_and_yank(
+        &mut self,
+        targets: &[ItemInfo],
+        reset_count: bool,
+    ) -> Result<(), MyError> {
+        Ok(())
     }
 
     pub fn remove_and_yank_file(&mut self, item: ItemInfo) -> Result<(), MyError> {
@@ -412,6 +427,7 @@ impl State {
                 original: targets.to_owned(),
                 put: put_v,
             }),
+            delete: None,
         });
         if reset_count {
             self.manipulations.count = 0;

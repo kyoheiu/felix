@@ -892,6 +892,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                             new_name: to,
                                         }),
                                         put: None,
+                                        delete: None,
                                     });
                                     state.manipulations.count = 0;
 
