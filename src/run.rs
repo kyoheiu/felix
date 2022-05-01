@@ -841,15 +841,12 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         break;
                                     }
 
-                                    state.manipulations.manipulation_v.push(Manipulations {
-                                        kind: ManipulationKind::Rename,
-                                        rename: Some(Renamed {
+                                    state.manipulations.manipulation_v.push(
+                                        ManipulationKind::Rename(RenamedFile {
                                             original_name: item.file_path.clone(),
                                             new_name: to,
                                         }),
-                                        put: None,
-                                        delete: None,
-                                    });
+                                    );
                                     state.manipulations.count = 0;
 
                                     print!("{}", cursor::Hide);
@@ -1330,18 +1327,15 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                         .get(mani_len - state.manipulations.count - 1)
                     {
                         let manipulation = manipulation.clone();
-                        match manipulation.kind {
-                            ManipulationKind::Rename => {
-                                let rename = manipulation.rename.unwrap();
-                                if let Err(e) =
-                                    std::fs::rename(&rename.new_name, &rename.original_name)
-                                {
+                        match manipulation {
+                            ManipulationKind::Rename(m) => {
+                                if let Err(e) = std::fs::rename(&m.new_name, &m.original_name) {
                                     print_warning(e, y);
                                     continue;
                                 }
                             }
-                            ManipulationKind::Put => {
-                                for x in manipulation.put.unwrap().put {
+                            ManipulationKind::Put(m) => {
+                                for x in m.put {
                                     //todo: should not use remove_file actually
                                     if let Err(e) = std::fs::remove_file(&x) {
                                         print_warning(e, y);
@@ -1349,8 +1343,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                     }
                                 }
                             }
-                            ManipulationKind::Delete => {
-                                let m = manipulation.delete.unwrap();
+                            ManipulationKind::Delete(m) => {
                                 let targets = trash_to_info(&state.trash_dir, m.trash)?;
                                 if let Err(e) = state.put_items(&targets, Some(m.dir)) {
                                     print_warning(e, y);
@@ -1392,25 +1385,20 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                         .get(mani_len - state.manipulations.count)
                     {
                         let manipulation = manipulation.clone();
-                        match manipulation.kind {
-                            ManipulationKind::Rename => {
-                                let rename = manipulation.rename.unwrap();
-                                if let Err(e) =
-                                    std::fs::rename(&rename.original_name, &rename.new_name)
-                                {
+                        match manipulation {
+                            ManipulationKind::Rename(m) => {
+                                if let Err(e) = std::fs::rename(&m.original_name, &m.new_name) {
                                     print_warning(e, y);
                                     continue;
                                 }
                             }
-                            ManipulationKind::Put => {
-                                let m = &manipulation.put.unwrap();
+                            ManipulationKind::Put(m) => {
                                 if let Err(e) = state.put_items(&m.original, Some(m.dir.clone())) {
                                     print_warning(e, y);
                                     continue;
                                 }
                             }
-                            ManipulationKind::Delete => {
-                                let m = &manipulation.delete.unwrap();
+                            ManipulationKind::Delete(m) => {
                                 if let Err(e) = state.remove_and_yank(&m.original, y, false) {
                                     print_warning(e, y);
                                     continue;

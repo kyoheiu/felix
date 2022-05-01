@@ -108,25 +108,18 @@ pub struct Layout {
 #[derive(Debug, Clone)]
 pub struct Manipulation {
     pub count: usize,
-    pub manipulation_v: Vec<Manipulations>,
-}
-#[derive(Debug, Clone)]
-pub struct Manipulations {
-    pub kind: ManipulationKind,
-    pub rename: Option<Renamed>,
-    pub put: Option<PutFiles>,
-    pub delete: Option<DeletedFiles>,
+    pub manipulation_v: Vec<ManipulationKind>,
 }
 
 #[derive(Debug, Clone)]
 pub enum ManipulationKind {
-    Delete,
-    Put,
-    Rename,
+    Delete(DeletedFiles),
+    Put(PutFiles),
+    Rename(RenamedFile),
 }
 
 #[derive(Debug, Clone)]
-pub struct Renamed {
+pub struct RenamedFile {
     pub original_name: PathBuf,
     pub new_name: PathBuf,
 }
@@ -287,16 +280,13 @@ impl State {
             }
         }
         //push deleted item information to manipulations
-        self.manipulations.manipulation_v.push(Manipulations {
-            kind: ManipulationKind::Delete,
-            rename: None,
-            put: None,
-            delete: Some(DeletedFiles {
+        self.manipulations
+            .manipulation_v
+            .push(ManipulationKind::Delete(DeletedFiles {
                 trash: trash_vec,
                 original: targets.to_vec(),
                 dir: self.current_dir.clone(),
-            }),
-        });
+            }));
         if reset_count {
             self.manipulations.count = 0;
         }
@@ -495,16 +485,13 @@ impl State {
         }
         if target_dir.is_none() {
             //push put item information to manipulations
-            self.manipulations.manipulation_v.push(Manipulations {
-                kind: ManipulationKind::Put,
-                rename: None,
-                put: Some(PutFiles {
+            self.manipulations
+                .manipulation_v
+                .push(ManipulationKind::Put(PutFiles {
                     original: targets.to_owned(),
                     put: put_v,
                     dir: self.current_dir.clone(),
-                }),
-                delete: None,
-            });
+                }));
             self.manipulations.count = 0;
         }
 
