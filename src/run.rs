@@ -602,7 +602,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         clone.into_iter().filter(|item| item.selected).collect();
                                     let total = selected.len();
 
-                                    state.remove_and_yank(selected, y)?;
+                                    state.remove_and_yank(selected, y, true)?;
 
                                     clear_and_show(&state.current_dir);
                                     state.update_list()?;
@@ -708,7 +708,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         let target = state.get_item(nums.index)?.clone();
                                         let target = vec![target];
 
-                                        state.remove_and_yank(target, y)?;
+                                        state.remove_and_yank(target, y, true)?;
 
                                         clear_and_show(&state.current_dir);
                                         state.update_list()?;
@@ -786,7 +786,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     screen.flush()?;
 
                     let targets = state.registered.clone();
-                    if let Err(e) = state.put_items(&targets, true) {
+                    if let Err(e) = state.put_items(&targets, None) {
                         print_warning(e, y);
                         continue;
                     }
@@ -1349,7 +1349,14 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                     }
                                 }
                             }
-                            _ => continue,
+                            ManipulationKind::Delete => {
+                                let m = manipulation.delete.unwrap();
+                                let targets = trash_to_info(&state.trash_dir, m.trash)?;
+                                if let Err(e) = state.put_items(&targets, Some(m.dir)) {
+                                    print_warning(e, y);
+                                    continue;
+                                }
+                            }
                         }
                         state.manipulations.count += 1;
                         clear_and_show(&state.current_dir);
@@ -1395,14 +1402,13 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                 }
                             }
                             ManipulationKind::Put => {
-                                if let Err(e) =
-                                    state.put_items(&manipulation.put.unwrap().original, false)
-                                {
+                                let m = &manipulation.put.unwrap();
+                                if let Err(e) = state.put_items(&m.original, Some(m.dir.clone())) {
                                     print_warning(e, y);
                                     continue;
                                 }
                             }
-                            _ => continue,
+                            ManipulationKind::Delete => {}
                         }
                         state.manipulations.count -= 1;
                         clear_and_show(&state.current_dir);
