@@ -247,7 +247,7 @@ impl State {
         &mut self,
         targets: &[ItemInfo],
         cursor_pos: u16,
-        reset_count: bool,
+        new_manip: bool,
     ) -> Result<(), MyError> {
         self.registered.clear();
         let total_selected = targets.len();
@@ -261,7 +261,7 @@ impl State {
                 display_count(i, total_selected)
             );
             match item.file_type {
-                FileType::Directory => match self.remove_and_yank_dir(item.clone(), reset_count) {
+                FileType::Directory => match self.remove_and_yank_dir(item.clone(), new_manip) {
                     Err(e) => {
                         print_warning(e, cursor_pos);
                         break;
@@ -269,7 +269,7 @@ impl State {
                     Ok(path) => trash_vec.push(path),
                 },
                 FileType::File | FileType::Symlink => {
-                    match self.remove_and_yank_file(item.clone(), reset_count) {
+                    match self.remove_and_yank_file(item.clone(), new_manip) {
                         Err(e) => {
                             print_warning(e, cursor_pos);
                             break;
@@ -279,11 +279,11 @@ impl State {
                 }
             }
         }
-        if reset_count {
+        if new_manip {
             //push deleted item information to manipulations
             self.manipulations
-                .manipulation_v
-                .push(ManipulationKind::Delete(DeletedFiles {
+                .manip_list
+                .push(ManipKind::Delete(DeletedFiles {
                     trash: trash_vec,
                     original: targets.to_vec(),
                     dir: self.current_dir.clone(),
@@ -297,7 +297,7 @@ impl State {
     pub fn remove_and_yank_file(
         &mut self,
         item: ItemInfo,
-        reset_count: bool,
+        new_manip: bool,
     ) -> Result<PathBuf, MyError> {
         //prepare from and to for copy
         let from = &item.file_path;
@@ -314,7 +314,7 @@ impl State {
             rename.push('_');
             rename.push_str(name);
 
-            if reset_count {
+            if new_manip {
                 to = self.trash_dir.join(&rename);
 
                 //copy
@@ -341,14 +341,14 @@ impl State {
     pub fn remove_and_yank_dir(
         &mut self,
         item: ItemInfo,
-        reset_count: bool,
+        new_manip: bool,
     ) -> Result<PathBuf, MyError> {
         let mut trash_name = String::new();
         let mut base: usize = 0;
         let mut trash_path: std::path::PathBuf = PathBuf::new();
         let mut target: PathBuf;
 
-        if reset_count {
+        if new_manip {
             let len = walkdir::WalkDir::new(&item.file_path).into_iter().count();
             let unit = len / 5;
             for (i, entry) in walkdir::WalkDir::new(&item.file_path)
@@ -829,7 +829,7 @@ impl State {
     }
 
     pub fn move_cursor(&mut self, nums: &Num, y: u16) {
-        print!("{}", cursor::Goto(1, self.layout.terminal_row));
+        print!(" {}", cursor::Goto(1, self.layout.terminal_row));
         print!("{}", clear::CurrentLine);
 
         let item = self.get_item(nums.index);
