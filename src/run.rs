@@ -1344,9 +1344,9 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                 clear_and_show(&state.current_dir);
                                 state.update_list()?;
                                 state.list_up(nums.skip);
-                                print_info("Undone: rename", y);
+                                print_info("Undone [rename]", y);
                             }
-                            ManipulationKind::Put(m) => {
+                            ManipKind::Put(m) => {
                                 for x in m.put {
                                     //todo: should not use remove_file actually
                                     if let Err(e) = std::fs::remove_file(&x) {
@@ -1358,9 +1358,9 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                 clear_and_show(&state.current_dir);
                                 state.update_list()?;
                                 state.list_up(nums.skip);
-                                print_info("Undone: put", y);
+                                print_info("Undone [put]", y);
                             }
-                            ManipulationKind::Delete(m) => {
+                            ManipKind::Delete(m) => {
                                 let targets = trash_to_info(&state.trash_dir, m.trash)?;
                                 if let Err(e) = state.put_items(&targets, Some(m.dir)) {
                                     print_warning(e, y);
@@ -1370,7 +1370,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                 clear_and_show(&state.current_dir);
                                 state.update_list()?;
                                 state.list_up(nums.skip);
-                                print_info("Undone: delete", y);
+                                print_info("Undone [delete]", y);
                             }
                         }
 
@@ -1414,9 +1414,9 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                 clear_and_show(&state.current_dir);
                                 state.update_list()?;
                                 state.list_up(nums.skip);
-                                print_info("Redone: rename", y);
+                                print_info("Redone [rename]", y);
                             }
-                            ManipulationKind::Put(m) => {
+                            ManipKind::Put(m) => {
                                 if let Err(e) = state.put_items(&m.original, Some(m.dir.clone())) {
                                     print_warning(e, y);
                                     continue;
@@ -1425,9 +1425,9 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                 clear_and_show(&state.current_dir);
                                 state.update_list()?;
                                 state.list_up(nums.skip);
-                                print_info("Redone: put", y);
+                                print_info("Redone [put]", y);
                             }
-                            ManipulationKind::Delete(m) => {
+                            ManipKind::Delete(m) => {
                                 if let Err(e) = state.remove_and_yank(&m.original, y, false) {
                                     print_warning(e, y);
                                     continue;
@@ -1436,7 +1436,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                 clear_and_show(&state.current_dir);
                                 state.update_list()?;
                                 state.list_up(nums.skip);
-                                print_info("Redone: delete", y);
+                                print_info("Redone [delete]", y);
                             }
                         }
 
