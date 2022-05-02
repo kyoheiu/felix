@@ -8,7 +8,7 @@ use std::ffi::OsStr;
 // use clipboard::{ClipboardContext, ClipboardProvider};
 use log::debug;
 use std::io::{stdin, stdout, Write};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -426,6 +426,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     }
                 }
 
+                //select mode
                 Key::Char('V') => {
                     if len == 0 {
                         continue;
@@ -597,47 +598,23 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                     screen.flush()?;
 
                                     state.registered.clear();
-                                    let mut count: usize = 0;
                                     let clone = state.list.clone();
-                                    let iter = clone.iter().filter(|item| item.selected);
-                                    let total_selected = iter.clone().count();
-                                    for (i, item) in iter.enumerate() {
-                                        print!(
-                                            " {}{}{}",
-                                            cursor::Goto(2, 2),
-                                            clear::CurrentLine,
-                                            display_count(i, total_selected)
-                                        );
-                                        match item.file_type {
-                                            FileType::Directory => {
-                                                if let Err(e) =
-                                                    state.remove_and_yank_dir(item.clone())
-                                                {
-                                                    print_warning(e, y);
-                                                    break;
-                                                }
-                                            }
-                                            FileType::File | FileType::Symlink => {
-                                                if let Err(e) =
-                                                    state.remove_and_yank_file(item.clone())
-                                                {
-                                                    print_warning(e, y);
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                        count += 1;
-                                    }
+                                    let selected: Vec<ItemInfo> =
+                                        clone.into_iter().filter(|item| item.selected).collect();
+                                    let total = selected.len();
+
+                                    state.remove_and_yank(&selected, y, true)?;
+
                                     clear_and_show(&state.current_dir);
                                     state.update_list()?;
                                     state.list_up(nums.skip);
 
                                     let duration = duration_to_string(start.elapsed());
                                     let delete_message: String = {
-                                        if count == 1 {
+                                        if total == 1 {
                                             format!("1 item deleted [{}]", duration)
                                         } else {
-                                            let mut count = count.to_string();
+                                            let mut count = total.to_string();
                                             count.push_str(&format!(
                                                 " items deleted [{}]",
                                                 duration
@@ -694,6 +671,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     }
                 }
 
+                //toggle sortkey
                 Key::Char('t') => {
                     match state.sort_by {
                         SortKey::Name => {
@@ -710,6 +688,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     state.move_cursor(&nums, STARTING_POINT);
                 }
 
+                //delete
                 Key::Char('d') => {
                     if len == 0 {
                         continue;
@@ -729,30 +708,10 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         let start = Instant::now();
                                         screen.flush()?;
 
-                                        state.registered.clear();
-                                        let item = state.get_item(nums.index)?.clone();
-                                        match item.file_type {
-                                            FileType::Directory => {
-                                                print!(
-                                                    " {}{}1/1",
-                                                    cursor::Goto(2, 2),
-                                                    clear::CurrentLine
-                                                );
-                                                if let Err(e) = state.remove_and_yank_dir(item) {
-                                                    print_warning(e, y);
-                                                    state.move_cursor(&nums, y);
-                                                    break 'delete;
-                                                }
-                                            }
-                                            FileType::File | FileType::Symlink => {
-                                                if let Err(e) = state.remove_and_yank_file(item) {
-                                                    clear_and_show(&state.current_dir);
-                                                    print_warning(e, y);
-                                                    state.move_cursor(&nums, y);
-                                                    break 'delete;
-                                                }
-                                            }
-                                        }
+                                        let target = state.get_item(nums.index)?.clone();
+                                        let target = vec![target];
+
+                                        state.remove_and_yank(&target, y, true)?;
 
                                         clear_and_show(&state.current_dir);
                                         state.update_list()?;
@@ -786,6 +745,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     }
                 }
 
+                //yank
                 Key::Char('y') => {
                     if len == 0 {
                         continue;
@@ -821,6 +781,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     }
                 }
 
+                //put
                 Key::Char('p') => {
                     if state.registered.is_empty() {
                         continue;
@@ -829,7 +790,8 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     let start = Instant::now();
                     screen.flush()?;
 
-                    if let Err(e) = state.put_items() {
+                    let targets = state.registered.clone();
+                    if let Err(e) = state.put_items(&targets, None) {
                         print_warning(e, y);
                         continue;
                     }
@@ -850,12 +812,13 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     state.move_cursor(&nums, y);
                 }
 
+                //rename
                 Key::Char('c') => {
                     if len == 0 {
                         continue;
                     }
                     print!("{}", cursor::Show);
-                    let item = state.get_item(nums.index).unwrap();
+                    let item = state.get_item(nums.index).unwrap().clone();
 
                     let mut rename = item.file_name.chars().collect::<Vec<char>>();
                     print!(
@@ -878,19 +841,24 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                     let rename = rename.iter().collect::<String>();
                                     let mut to = state.current_dir.clone();
                                     to.push(rename);
-                                    if let Err(e) =
-                                        std::fs::rename(Path::new(&item.file_path), Path::new(&to))
-                                    {
+                                    if let Err(e) = std::fs::rename(&item.file_path, &to) {
                                         print!("{}", cursor::Hide);
                                         print_warning(e, y);
                                         break;
                                     }
 
+                                    state.manipulations.manip_list.push(ManipKind::Rename(
+                                        RenamedFile {
+                                            original_name: item.file_path.clone(),
+                                            new_name: to,
+                                        },
+                                    ));
+                                    state.manipulations.count = 0;
+
+                                    print!("{}", cursor::Hide);
                                     clear_and_show(&state.current_dir);
                                     state.update_list()?;
                                     state.list_up(nums.skip);
-
-                                    print!("{}", cursor::Hide);
                                     state.move_cursor(&nums, y);
                                     break;
                                 }
@@ -956,6 +924,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     }
                 }
 
+                //filter mode
                 Key::Char('/') => {
                     if len == 0 {
                         continue;
@@ -1079,6 +1048,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     print!("{}", cursor::Hide);
                 }
 
+                //shell mode
                 Key::Char(':') => {
                     print!(" {}{}:", cursor::Goto(2, 2), clear::CurrentLine,);
                     print!("{}", cursor::Show);
@@ -1353,6 +1323,150 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     }
                 }
 
+                //undo
+                Key::Char('u') => {
+                    let mani_len = state.manipulations.manip_list.len();
+                    if mani_len < state.manipulations.count + 1 {
+                        continue;
+                    }
+                    if let Some(manipulation) = state
+                        .manipulations
+                        .manip_list
+                        .get(mani_len - state.manipulations.count - 1)
+                    {
+                        match manipulation.clone() {
+                            ManipKind::Rename(m) => {
+                                if let Err(e) = std::fs::rename(&m.new_name, &m.original_name) {
+                                    print_warning(e, y);
+                                    continue;
+                                }
+                                state.manipulations.count += 1;
+                                clear_and_show(&state.current_dir);
+                                state.update_list()?;
+                                state.list_up(nums.skip);
+                                print_info("Undone [rename]", y);
+                            }
+                            ManipKind::Put(m) => {
+                                for x in m.put {
+                                    //todo: should not use remove_file actually
+                                    if let Err(e) = std::fs::remove_file(&x) {
+                                        print_warning(e, y);
+                                        continue;
+                                    }
+                                }
+                                state.manipulations.count += 1;
+                                clear_and_show(&state.current_dir);
+                                state.update_list()?;
+                                state.list_up(nums.skip);
+                                print_info("Undone [put]", y);
+                            }
+                            ManipKind::Delete(m) => {
+                                let targets = trash_to_info(&state.trash_dir, m.trash)?;
+                                if let Err(e) = state.put_items(&targets, Some(m.dir)) {
+                                    print_warning(e, y);
+                                    continue;
+                                }
+                                state.manipulations.count += 1;
+                                clear_and_show(&state.current_dir);
+                                state.update_list()?;
+                                state.list_up(nums.skip);
+                                print_info("Undone [delete]", y);
+                            }
+                        }
+
+                        let new_len = state.list.len();
+                        if new_len == 0 {
+                            nums.reset();
+                            state.move_cursor(&nums, STARTING_POINT);
+                        } else if nums.index > new_len - 1 {
+                            let new_y = y - (nums.index - (new_len - 1)) as u16;
+                            nums.index = new_len - 1;
+                            state.move_cursor(&nums, new_y)
+                        } else {
+                            state.move_cursor(&nums, y);
+                        }
+                        screen.flush()?;
+                    }
+                }
+
+                //redo
+                Key::Ctrl('r') => {
+                    let mani_len = state.manipulations.manip_list.len();
+                    if mani_len == 0
+                        || state.manipulations.count == 0
+                        || mani_len < state.manipulations.count
+                    {
+                        continue;
+                    }
+                    if let Some(manipulation) = state
+                        .manipulations
+                        .manip_list
+                        .get(mani_len - state.manipulations.count)
+                    {
+                        let manipulation = manipulation.clone();
+                        match manipulation {
+                            ManipKind::Rename(m) => {
+                                if let Err(e) = std::fs::rename(&m.original_name, &m.new_name) {
+                                    print_warning(e, y);
+                                    continue;
+                                }
+                                state.manipulations.count -= 1;
+                                clear_and_show(&state.current_dir);
+                                state.update_list()?;
+                                state.list_up(nums.skip);
+                                print_info("Redone [rename]", y);
+                            }
+                            ManipKind::Put(m) => {
+                                if let Err(e) = state.put_items(&m.original, Some(m.dir.clone())) {
+                                    print_warning(e, y);
+                                    continue;
+                                }
+                                state.manipulations.count -= 1;
+                                clear_and_show(&state.current_dir);
+                                state.update_list()?;
+                                state.list_up(nums.skip);
+                                print_info("Redone [put]", y);
+                            }
+                            ManipKind::Delete(m) => {
+                                if let Err(e) = state.remove_and_yank(&m.original, y, false) {
+                                    print_warning(e, y);
+                                    continue;
+                                }
+                                state.manipulations.count -= 1;
+                                clear_and_show(&state.current_dir);
+                                state.update_list()?;
+                                state.list_up(nums.skip);
+                                print_info("Redone [delete]", y);
+                            }
+                        }
+
+                        let new_len = state.list.len();
+                        if new_len == 0 {
+                            nums.reset();
+                            state.move_cursor(&nums, STARTING_POINT);
+                        } else if nums.index > new_len - 1 {
+                            let new_y = y - (nums.index - (new_len - 1)) as u16;
+                            nums.index = new_len - 1;
+                            state.move_cursor(&nums, new_y)
+                        } else {
+                            state.move_cursor(&nums, y);
+                        }
+                        screen.flush()?;
+                    }
+                }
+
+                //debug print for undo/redo
+                Key::Char('P') => {
+                    print_info(
+                        format!(
+                            "{:?} count: {}",
+                            state.manipulations, state.manipulations.count
+                        ),
+                        y,
+                    );
+                }
+
+                //exit by ZZ
                 Key::Char('Z') => {
                     print!(" {}{}Z", cursor::Goto(2, 2), clear::CurrentLine,);
                     print!("{}", cursor::Show);
@@ -1408,15 +1522,17 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
         screen.flush()?;
     }
 
-    //When exits, restore the cursor
-    print!("{}", cursor::Restore);
     let state = state_run.lock().unwrap();
-    //If layout was refreshed, go back to main screen to restore the previous state
-    state.write_session(session_file_path)?;
     let mut screen = screen_run.lock().unwrap();
+
+    //Save session, restore screen state and cursor
+    state.write_session(session_file_path)?;
     write!(screen, "{}", screen::ToMainScreen)?;
-    screen.suspend_raw_mode()?;
+    write!(screen, "{}", cursor::Restore)?;
     screen.flush()?;
+
+    //Back to normal mode
+    screen.suspend_raw_mode()?;
     Ok(())
 }
 
