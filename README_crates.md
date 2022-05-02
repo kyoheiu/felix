@@ -12,6 +12,9 @@ While heavliy inspired by the great `vifm` and trying to implement its pleasant 
 - easy to configure how to open files
 
 ## Release
+v0.8.0 (2022-05-02)
+- New command: `u` to undo and `Crtl + r` to redo. put/delete/rename are the target.
+
 v0.7.0 (2022-04-26)
 - New feature: Terminal size changes are now automatically detected and the layout is fixed.
 
@@ -85,6 +88,8 @@ cargo install --path .
 | V                     | Switch to select mode, where you can move cursor to select items.                                                                                                                                                                                      |
 | d (select mode)       | Delete and yank selected items, and return to normal mode.                                                                                                                                                                                             |
 | y (select mode)       | Yank selected items, and return to normal mode.                                                                                                                                                                                                        |
+| u       | Undo put/delete/rename.                                                                                                                                                                                                        |
+| Ctrl + r       | Redo put/delete/rename. ***Both undo and redo are experimental: They may not work as intended, because item name may be changed to avoid name conflict when put (See `p`).***                                                                                                                                                                                                       |
 | backspace                     | Toggle whether to show hidden items or not. This change remains after exit (stored in .session file in config directory).                                                                                                              |
 | t                     | Toggle sort order (by name <-> by modified time). This change remains after exit (same as above).                                                                                                              |
 | :                     |  ***Experimantal.*** Switch to shell mode. Type command and press Enter to execute it. You can use any command in the displayed directory, but it may fail to execute the command (e.g. `cd` doesn't work for now), and also the display of items may collapse during execution. |
