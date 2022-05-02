@@ -847,12 +847,12 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         break;
                                     }
 
-                                    state.manipulations.manipulation_v.push(
-                                        ManipulationKind::Rename(RenamedFile {
+                                    state.manipulations.manip_list.push(ManipKind::Rename(
+                                        RenamedFile {
                                             original_name: item.file_path.clone(),
                                             new_name: to,
-                                        }),
-                                    );
+                                        },
+                                    ));
                                     state.manipulations.count = 0;
 
                                     print!("{}", cursor::Hide);
@@ -1325,17 +1325,17 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
 
                 //undo
                 Key::Char('u') => {
-                    let mani_len = state.manipulations.manipulation_v.len();
+                    let mani_len = state.manipulations.manip_list.len();
                     if mani_len < state.manipulations.count + 1 {
                         continue;
                     }
                     if let Some(manipulation) = state
                         .manipulations
-                        .manipulation_v
+                        .manip_list
                         .get(mani_len - state.manipulations.count - 1)
                     {
                         match manipulation.clone() {
-                            ManipulationKind::Rename(m) => {
+                            ManipKind::Rename(m) => {
                                 if let Err(e) = std::fs::rename(&m.new_name, &m.original_name) {
                                     print_warning(e, y);
                                     continue;
@@ -1391,7 +1391,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
 
                 //redo
                 Key::Ctrl('r') => {
-                    let mani_len = state.manipulations.manipulation_v.len();
+                    let mani_len = state.manipulations.manip_list.len();
                     if mani_len == 0
                         || state.manipulations.count == 0
                         || mani_len < state.manipulations.count
@@ -1400,12 +1400,12 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     }
                     if let Some(manipulation) = state
                         .manipulations
-                        .manipulation_v
+                        .manip_list
                         .get(mani_len - state.manipulations.count)
                     {
                         let manipulation = manipulation.clone();
                         match manipulation {
-                            ManipulationKind::Rename(m) => {
+                            ManipKind::Rename(m) => {
                                 if let Err(e) = std::fs::rename(&m.original_name, &m.new_name) {
                                     print_warning(e, y);
                                     continue;

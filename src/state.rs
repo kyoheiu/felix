@@ -108,11 +108,11 @@ pub struct Layout {
 #[derive(Debug, Clone)]
 pub struct Manipulation {
     pub count: usize,
-    pub manipulation_v: Vec<ManipulationKind>,
+    pub manip_list: Vec<ManipKind>,
 }
 
 #[derive(Debug, Clone)]
-pub enum ManipulationKind {
+pub enum ManipKind {
     Delete(DeletedFiles),
     Put(PutFiles),
     Rename(RenamedFile),
@@ -155,7 +155,7 @@ impl Default for State {
             registered: Vec::new(),
             manipulations: Manipulation {
                 count: 0,
-                manipulation_v: Vec::new(),
+                manip_list: Vec::new(),
             },
             current_dir: PathBuf::new(),
             trash_dir: PathBuf::new(),
@@ -486,13 +486,11 @@ impl State {
         }
         if target_dir.is_none() {
             //push put item information to manipulations
-            self.manipulations
-                .manipulation_v
-                .push(ManipulationKind::Put(PutFiles {
-                    original: targets.to_owned(),
-                    put: put_v,
-                    dir: self.current_dir.clone(),
-                }));
+            self.manipulations.manip_list.push(ManipKind::Put(PutFiles {
+                original: targets.to_owned(),
+                put: put_v,
+                dir: self.current_dir.clone(),
+            }));
             self.manipulations.count = 0;
         }
 
