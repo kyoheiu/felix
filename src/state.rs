@@ -244,6 +244,16 @@ impl State {
         }
     }
 
+    //Discard undone manipulations when new manipulation is pushed.
+    pub fn branch_manip(&mut self) {
+        if self.manipulations.count == 0 {
+            return;
+        }
+        for _i in 0..self.manipulations.count {
+            self.manipulations.manip_list.pop();
+        }
+    }
+
     pub fn remove_and_yank(
         &mut self,
         targets: &[ItemInfo],
@@ -278,6 +288,7 @@ impl State {
             }
         }
         if new_manip {
+            self.branch_manip();
             //push deleted item information to manipulations
             self.manipulations
                 .manip_list
@@ -483,6 +494,7 @@ impl State {
             }
         }
         if target_dir.is_none() {
+            self.branch_manip();
             //push put item information to manipulations
             self.manipulations.manip_list.push(ManipKind::Put(PutFiles {
                 original: targets.to_owned(),
