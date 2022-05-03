@@ -105,6 +105,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
         let input = stdin.next();
         let mut state = state_run.lock().unwrap();
         let mut screen = screen_run.lock().unwrap();
+        screen.flush()?;
         let mut nums = nums_run.lock().unwrap();
         let len = state.list.len();
         let y = state.layout.y;
@@ -212,6 +213,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                 print!("{}", screen::ToAlternateScreen);
                                 if let Err(e) = state.open_file(nums.index) {
                                     print_warning(e, y);
+                                    screen.flush()?;
                                     continue;
                                 }
                                 print!("{}", screen::ToAlternateScreen);
@@ -225,6 +227,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                 Some(true_path) => match std::fs::File::open(true_path) {
                                     Err(e) => {
                                         print_warning(e, y);
+                                        screen.flush()?;
                                         continue;
                                     }
                                     Ok(_) => {
@@ -249,6 +252,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                             std::env::set_current_dir(&state.current_dir)
                                         {
                                             print_warning(e, y);
+                                            screen.flush()?;
                                             continue;
                                         }
                                         state.update_list()?;
@@ -262,6 +266,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                     print!("{}", screen::ToAlternateScreen);
                                     if let Err(e) = state.open_file(nums.index) {
                                         print_warning(e, y);
+                                        screen.flush()?;
                                         continue;
                                     }
                                     print!("{}", screen::ToAlternateScreen);
@@ -275,6 +280,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                 match std::fs::File::open(&item.file_path) {
                                     Err(e) => {
                                         print_warning(e, y);
+                                        screen.flush()?;
                                         continue;
                                     }
                                     Ok(_) => {
@@ -300,6 +306,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                             std::env::set_current_dir(&state.current_dir)
                                         {
                                             print_warning(e, y);
+                                            screen.flush()?;
                                             continue;
                                         }
                                         state.update_list()?;
@@ -367,6 +374,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                     }
                                     if let Err(e) = std::env::set_current_dir(&state.current_dir) {
                                         print_warning(e, y);
+                                        screen.flush()?;
                                         continue;
                                     }
                                     state.update_list()?;
@@ -380,6 +388,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                     state.current_dir = parent_p.to_path_buf();
                                     if let Err(e) = std::env::set_current_dir(&state.current_dir) {
                                         print_warning(e, y);
+                                        screen.flush()?;
                                         continue;
                                     }
                                     state.update_list()?;
@@ -794,6 +803,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                     let targets = state.registered.clone();
                     if let Err(e) = state.put_items(&targets, None) {
                         print_warning(e, y);
+                        screen.flush()?;
                         continue;
                     }
 
@@ -1184,6 +1194,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                             }
                                         } else {
                                             print_warning("zoxide not installed?", y);
+                                            break 'command;
                                         }
                                     }
 
@@ -1204,6 +1215,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                                         ) {
                                                             print!("{}", cursor::Hide);
                                                             print_warning(e, y);
+                                                            screen.flush()?;
                                                             continue 'main;
                                                         }
                                                         if let Err(e) =
@@ -1211,6 +1223,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                                         {
                                                             print!("{}", cursor::Hide);
                                                             print_warning(e, y);
+                                                            screen.flush()?;
                                                             continue 'main;
                                                         }
                                                         break 'empty;
@@ -1339,6 +1352,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                             ManipKind::Rename(m) => {
                                 if let Err(e) = std::fs::rename(&m.new_name, &m.original_name) {
                                     print_warning(e, y);
+                                    screen.flush()?;
                                     continue;
                                 }
                                 state.manipulations.count += 1;
@@ -1352,6 +1366,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                     //todo: should not use remove_file actually
                                     if let Err(e) = std::fs::remove_file(&x) {
                                         print_warning(e, y);
+                                        screen.flush()?;
                                         continue;
                                     }
                                 }
@@ -1365,6 +1380,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                 let targets = trash_to_info(&state.trash_dir, m.trash)?;
                                 if let Err(e) = state.put_items(&targets, Some(m.dir)) {
                                     print_warning(e, y);
+                                    screen.flush()?;
                                     continue;
                                 }
                                 state.manipulations.count += 1;
@@ -1409,6 +1425,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                             ManipKind::Rename(m) => {
                                 if let Err(e) = std::fs::rename(&m.original_name, &m.new_name) {
                                     print_warning(e, y);
+                                    screen.flush()?;
                                     continue;
                                 }
                                 state.manipulations.count -= 1;
@@ -1420,6 +1437,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                             ManipKind::Put(m) => {
                                 if let Err(e) = state.put_items(&m.original, Some(m.dir.clone())) {
                                     print_warning(e, y);
+                                    screen.flush()?;
                                     continue;
                                 }
                                 state.manipulations.count -= 1;
@@ -1431,6 +1449,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                             ManipKind::Delete(m) => {
                                 if let Err(e) = state.remove_and_yank(&m.original, y, false) {
                                     print_warning(e, y);
+                                    screen.flush()?;
                                     continue;
                                 }
                                 state.manipulations.count -= 1;
