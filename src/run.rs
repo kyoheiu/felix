@@ -872,6 +872,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         break;
                                     }
 
+                                    state.branch_manip();
                                     state.manipulations.manip_list.push(ManipKind::Rename(
                                         RenamedFile {
                                             original_name: item.file_path.clone(),
@@ -1490,15 +1491,15 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                 }
 
                 //debug print for undo/redo
-                // Key::Char('P') => {
-                //     print_info(
-                //         format!(
-                //             "{:?} count: {}",
-                //             state.manipulations, state.manipulations.count
-                //         ),
-                //         y,
-                //     );
-                // }
+                Key::Char('P') => {
+                    print_info(
+                        format!(
+                            "{:?} count: {}",
+                            state.manipulations, state.manipulations.count
+                        ),
+                        y,
+                    );
+                }
 
                 //exit by ZZ
                 Key::Char('Z') => {
