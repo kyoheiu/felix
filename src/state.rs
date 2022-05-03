@@ -49,13 +49,8 @@ macro_rules! print_item {
                 color::Fg(color::Reset)
             );
         }
-        if $layout.terminal_column > $layout.time_start_pos + 16 {
-            print!(
-                "{}",
-                (0..($layout.terminal_column - $layout.time_start_pos - 16))
-                    .map(|_| ' ')
-                    .collect::<String>()
-            );
+        if $layout.terminal_column > $layout.time_start_pos + TIME_WIDTH {
+            print!("{}", clear::AfterCursor);
         }
     };
 }
