@@ -135,9 +135,11 @@ pub struct DeletedFiles {
 
 impl Default for State {
     fn default() -> Self {
-        let config = read_config().unwrap();
-        let session = read_session().unwrap();
-        let (column, row) = termion::terminal_size().unwrap();
+        let config = read_config().unwrap_or_else(|_| panic!("Something wrong with config file."));
+        let session =
+            read_session().unwrap_or_else(|_| panic!("Something wrong with session file."));
+        let (column, row) =
+            termion::terminal_size().unwrap_or_else(|_| panic!("Cannot detect terminal size."));
         if column < 21 {
             error!("Too small terminal size.");
             panic!("Panic due to terminal size (less than 21 columns).")
