@@ -406,18 +406,21 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
 
                                             if nums.index
                                                 >= (state.layout.terminal_row
-                                                    - (STARTING_POINT + 3))
+                                                    - (STARTING_POINT + 1))
                                                     .into()
                                             {
-                                                nums.skip = (nums.index - 3) as u16;
+                                                nums.skip = (nums.index - 1) as u16;
                                                 clear_and_show(&state.current_dir);
                                                 state.list_up(nums.skip);
-                                                state.move_cursor(&nums, STARTING_POINT + 3);
+                                                state.move_cursor(&nums, STARTING_POINT + 1);
                                             } else {
                                                 nums.skip = 0;
                                                 clear_and_show(&state.current_dir);
                                                 state.list_up(0);
-                                                state.move_cursor(&nums, (nums.index + 3) as u16);
+                                                state.move_cursor(
+                                                    &nums,
+                                                    (nums.index as u16) + STARTING_POINT,
+                                                );
                                             }
                                         }
                                         None => {
@@ -457,20 +460,20 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                         if let Some(Ok(key)) = input {
                             match key {
                                 Key::Char('j') | Key::Down => {
-                                    if nums.index == len - 1 {
+                                    if len == 0 || nums.index == len - 1 {
                                         continue;
-                                    } else if y == state.layout.terminal_row - 4
+                                    } else if y >= state.layout.terminal_row - 4
                                         && len
                                             > (state.layout.terminal_row - STARTING_POINT) as usize
                                                 - 1
                                     {
-                                        nums.inc_skip();
                                         nums.go_down();
+                                        nums.inc_skip();
 
                                         if nums.index > start_pos {
                                             let mut item = state.list.get_mut(nums.index).unwrap();
                                             item.selected = true;
-                                        } else if nums.index < start_pos {
+                                        } else {
                                             let mut item =
                                                 state.list.get_mut(nums.index - 1).unwrap();
                                             item.selected = false;
@@ -495,30 +498,28 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         clear_and_show(&state.current_dir);
                                         state.list_up(nums.skip);
                                         state.move_cursor(&nums, y + 1);
-                                        screen.flush()?;
                                     }
                                 }
 
                                 Key::Char('k') | Key::Up => {
-                                    if y == STARTING_POINT {
+                                    if nums.index == 0 {
                                         continue;
-                                    } else if y == STARTING_POINT + 3 && nums.skip != 0 {
-                                        nums.dec_skip();
+                                    } else if y <= STARTING_POINT + 3 && nums.skip != 0 {
                                         nums.go_up();
+                                        nums.dec_skip();
 
                                         if nums.index >= start_pos {
                                             let mut item =
                                                 state.list.get_mut(nums.index + 1).unwrap();
                                             item.selected = false;
-                                        } else if nums.index < start_pos {
+                                        } else {
                                             let mut item = state.list.get_mut(nums.index).unwrap();
                                             item.selected = true;
                                         }
 
                                         clear_and_show(&state.current_dir);
                                         state.list_up(nums.skip);
-                                        state.move_cursor(&nums, STARTING_POINT + 3);
-                                        screen.flush()?;
+                                        state.move_cursor(&nums, y);
                                     } else {
                                         nums.go_up();
 
@@ -534,7 +535,6 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         clear_and_show(&state.current_dir);
                                         state.list_up(nums.skip);
                                         state.move_cursor(&nums, y - 1);
-                                        screen.flush().unwrap();
                                     }
                                 }
 
@@ -613,10 +613,18 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         clone.into_iter().filter(|item| item.selected).collect();
                                     let total = selected.len();
 
-                                    state.remove_and_yank(&selected, y, true)?;
+                                    if let Err(e) = state.remove_and_yank(&selected, true) {
+                                        print_warning(e, y);
+                                        screen.flush()?;
+                                        break;
+                                    }
 
                                     clear_and_show(&state.current_dir);
                                     state.update_list()?;
+                                    let new_len = state.list.len();
+                                    if usize::from(nums.skip) >= new_len {
+                                        nums.reset();
+                                    }
                                     state.list_up(nums.skip);
 
                                     let duration = duration_to_string(start.elapsed());
@@ -635,12 +643,14 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                     print_info(delete_message, y);
                                     print!(" ");
 
-                                    let new_len = state.list.len();
                                     if new_len == 0 {
                                         nums.reset();
                                         state.move_cursor(&nums, STARTING_POINT);
                                     } else if nums.index > new_len - 1 {
-                                        let new_y = y - (nums.index - (new_len - 1)) as u16;
+                                        let mut new_y = y - (nums.index - (new_len - 1)) as u16;
+                                        if new_y < 3 {
+                                            new_y = 3;
+                                        }
                                         nums.index = new_len - 1;
                                         state.move_cursor(&nums, new_y)
                                     } else {
@@ -721,7 +731,11 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                         let target = state.get_item(nums.index)?.clone();
                                         let target = vec![target];
 
-                                        state.remove_and_yank(&target, y, true)?;
+                                        if let Err(e) = state.remove_and_yank(&target, true) {
+                                            print_warning(e, y);
+                                            screen.flush()?;
+                                            continue;
+                                        }
 
                                         clear_and_show(&state.current_dir);
                                         state.update_list()?;
@@ -1447,7 +1461,7 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                                 print_info("Redone [put]", y);
                             }
                             ManipKind::Delete(m) => {
-                                if let Err(e) = state.remove_and_yank(&m.original, y, false) {
+                                if let Err(e) = state.remove_and_yank(&m.original, false) {
                                     print_warning(e, y);
                                     screen.flush()?;
                                     continue;
