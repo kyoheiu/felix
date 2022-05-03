@@ -1,17 +1,17 @@
 pub const HELP: &str = "# felix v0.8.0
 A simple TUI file manager with vim-like keymapping.
-This program works on terminals with 21 columns or more.
+Works on terminals with 21 columns or more.
 
 ## Usage
 `fx` => Show items in the current directory.
 `fx <directory path>` => Show items in the path.
-Both relative and absolute available.
+Both relative and absolute path available.
 
 ## Arguments
 `fx -h` | `fx --help`  => Print help.
 `fx -c` | `fx --check` => Check update.
 
-### Manual
+## Manual
 j / Up            :Go up.
 k / Down          :Go down.
 h / Left          :Go to parent directory if exists.
@@ -26,8 +26,8 @@ V                 :Switch to select mode.
   - y             :In select mode, yank selected items.
 u                 :Undo put/delete/rename.
 Ctrl + r          :Redo put/delete/rename.
-t                 :Toggle sort order (name <-> modified time).
 backspace         :Toggle whether to show hidden items.
+t                 :Toggle sort order (name <-> modified time).
 :                 :Switch to shell mode.
 c                 :Switch to rename mode.
 /                 :Switch to filter mode.
@@ -43,6 +43,5 @@ Esc               :Return to normal mode.
 config file    : $XDG_CONFIG_HOME/felix/config.toml
 trash directory: $XDG_CONFIG_HOME/felix/trash
 
-For more detail, visit:
-https://github.com/kyoheiu/felix
+For more detail, visit https://github.com/kyoheiu/felix
 ";
