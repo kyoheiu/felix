@@ -987,11 +987,17 @@ pub fn push_items(p: &Path, key: &SortKey, show_hidden: bool) -> Result<Vec<Item
 }
 
 pub fn trash_to_info(trash_dir: &PathBuf, vec: Vec<PathBuf>) -> Result<Vec<ItemInfo>, MyError> {
+    let total = vec.len();
+    let mut count = 0;
     let mut result = Vec::new();
     for entry in fs::read_dir(trash_dir)? {
         let entry = entry?;
         if vec.contains(&entry.path()) {
             result.push(make_item(entry));
+            count += 1;
+            if count == total {
+                break;
+            }
         }
     }
     Ok(result)
