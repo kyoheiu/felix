@@ -144,6 +144,10 @@ impl Default for State {
             error!("Too small terminal size.");
             panic!("Panic due to terminal size (less than 21 columns).")
         };
+        if row < 4 {
+            error!("Too small terminal size.");
+            panic!("Panic due to terminal size (less than 4 rows).")
+        };
         let (time_start, name_max) =
             make_layout(column, config.use_full_width, config.item_name_length);
 
@@ -243,7 +247,6 @@ impl State {
     pub fn remove_and_yank(
         &mut self,
         targets: &[ItemInfo],
-        cursor_pos: u16,
         new_manip: bool,
     ) -> Result<(), MyError> {
         self.registered.clear();
@@ -260,16 +263,14 @@ impl State {
             match item.file_type {
                 FileType::Directory => match self.remove_and_yank_dir(item.clone(), new_manip) {
                     Err(e) => {
-                        print_warning(e, cursor_pos);
-                        break;
+                        return Err(e);
                     }
                     Ok(path) => trash_vec.push(path),
                 },
                 FileType::File | FileType::Symlink => {
                     match self.remove_and_yank_file(item.clone(), new_manip) {
                         Err(e) => {
-                            print_warning(e, cursor_pos);
-                            break;
+                            return Err(e);
                         }
                         Ok(path) => trash_vec.push(path),
                     }
@@ -850,10 +851,10 @@ impl State {
                     );
                 }
             }
-            if self.rust_log == Some("debug".to_string()) {
+            if self.rust_log.is_some() {
                 print!(
-                    " index:{} skip:{} max:{} column:{}",
-                    nums.index, nums.skip, self.layout.name_max_len, self.layout.terminal_column
+                    " index:{} skip:{} column:{} row:{}",
+                    nums.index, nums.skip, self.layout.terminal_column, self.layout.terminal_row
                 );
             }
         }
