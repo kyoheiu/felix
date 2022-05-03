@@ -4,7 +4,7 @@
 
 ## About
 A tui file manager with vim-like key mapping, written in Rust.  
-Works on terminals with 21 columns or more.
+Works with terminal size of 21 (columns) x 4 (rows) or more.
 
 ![sample](https://github.com/kyoheiu/felix/blob/main/screenshots/sample.gif)
 
@@ -15,7 +15,7 @@ While heavliy inspired by the great `vifm` and trying to implement its pleasant 
 
 ## Release
 v0.8.0 (2022-05-02)
-- New command: `u` to undo and `Crtl + r` to redo. put/delete/rename are the target.
+- New command: `u` to undo and `Crtl + r` to redo. `put/delete/rename` are the target.
 
 v0.7.0 (2022-04-26)
 - New feature: Terminal size changes are now automatically detected and the layout is fixed.
