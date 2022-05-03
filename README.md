@@ -14,7 +14,10 @@ While heavliy inspired by the great `vifm` and trying to implement its pleasant 
 - easy to configure how to open files
 
 ## Release
-v0.8.0 (2022-05-02)
+v0.8.1 (2022-05-04)
+- Fixed undo/redo order.
+
+v0.8.0 (2022-05-03)
 - New command: `u` to undo and `Crtl + r` to redo. put/delete/rename are the target.
 
 v0.7.0 (2022-04-26)
