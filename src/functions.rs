@@ -1,10 +1,6 @@
-use super::config::CONFIG_EXAMPLE;
-use super::errors::MyError;
-use super::session::*;
 use super::state::*;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use termion::{clear, color, cursor, style};
@@ -12,28 +8,6 @@ use termion::{clear, color, cursor, style};
 pub const TIME_WIDTH: u16 = 16;
 pub const DEFAULT_NAME_LENGTH: u16 = 30;
 pub const SPACES: u16 = 3;
-
-pub fn make_config(config_file: &Path, trash_dir: &Path) -> Result<(), MyError> {
-    if !trash_dir.exists() {
-        fs::create_dir_all(trash_dir)?;
-    }
-
-    if !config_file.exists() {
-        fs::write(&config_file, CONFIG_EXAMPLE)
-            .unwrap_or_else(|_| panic!("cannot write new config file."));
-    }
-
-    Ok(())
-}
-
-pub fn make_session(session_file: &Path) -> Result<(), MyError> {
-    if !session_file.exists() {
-        fs::write(&session_file, SESSION_EXAMPLE)
-            .unwrap_or_else(|_| panic!("cannot write new session file."));
-    }
-
-    Ok(())
-}
 
 pub fn format_time(time: &Option<String>) -> String {
     match time {
@@ -145,7 +119,7 @@ pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
 }
 
 pub fn print_process<T: std::fmt::Display>(message: T) {
-    print!("{}{}", message, cursor::Left(7));
+    print!("{}{}", message, cursor::Left(10));
 }
 
 pub fn display_count(i: usize, all: usize) -> String {
@@ -232,20 +206,36 @@ pub fn make_layout(
     (time_start, name_max)
 }
 
-#[allow(dead_code)]
-pub fn get_contents_r(path: PathBuf, vec: &mut Vec<PathBuf>) -> Result<Vec<PathBuf>, MyError> {
-    for entry in fs::read_dir(path)? {
-        let entry = entry?;
-        if entry.file_type()?.is_dir() {
-            let dir_path = entry.path();
-            vec.push(entry.path());
-            let childs = get_contents_r(dir_path, vec)?;
-            for child in childs {
-                vec.push(child.to_path_buf());
-            }
-        } else {
-            vec.push(entry.path());
-        }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_format_time() {
+        let time1 = Some("1970-01-01 00:00:00".to_string());
+        let time2 = None;
+        assert_eq!(format_time(&time1), "1970-01-01 00:00".to_string());
+        assert_eq!(format_time(&time2), "".to_string());
     }
-    Ok(vec.clone())
+
+    #[test]
+    fn test_display_count() {
+        assert_eq!(display_count(1, 4), "2/4".to_string());
+    }
+
+    #[test]
+    fn test_proper_size() {
+        assert_eq!(to_proper_size(50), "50B".to_string());
+        assert_eq!(to_proper_size(2000), "2KB".to_string());
+        assert_eq!(to_proper_size(3000000), "3MB".to_string());
+        assert_eq!(to_proper_size(6000000000), "6GB".to_string());
+    }
+
+    #[test]
+    fn test_duration_to_string() {
+        assert_eq!(
+            duration_to_string(Duration::from_millis(5432)),
+            "5.43s".to_string()
+        );
+    }
 }
