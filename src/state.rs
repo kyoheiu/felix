@@ -61,7 +61,7 @@ pub struct State {
     pub manipulations: Manipulation,
     pub current_dir: PathBuf,
     pub trash_dir: PathBuf,
-    pub colors: (Colorname, Colorname, Colorname),
+    pub colors: Color,
     pub default: String,
     pub commands: HashMap<String, String>,
     pub sort_by: SortKey,
@@ -160,11 +160,11 @@ impl Default for State {
             },
             current_dir: PathBuf::new(),
             trash_dir: PathBuf::new(),
-            colors: (
-                config.color.dir_fg,
-                config.color.file_fg,
-                config.color.symlink_fg,
-            ),
+            colors: Color {
+                dir_fg: config.color.dir_fg,
+                file_fg: config.color.file_fg,
+                symlink_fg: config.color.symlink_fg,
+            },
             default: config.default,
             commands: to_extension_map(&config.exec),
             sort_by: session.sort_by,
@@ -661,9 +661,9 @@ impl State {
         let time = format_time(&item.modified);
         let selected = &item.selected;
         let color = match item.file_type {
-            FileType::Directory => &self.colors.0,
-            FileType::File => &self.colors.1,
-            FileType::Symlink => &self.colors.2,
+            FileType::Directory => &self.colors.dir_fg,
+            FileType::File => &self.colors.file_fg,
+            FileType::Symlink => &self.colors.symlink_fg,
         };
         match color {
             Colorname::AnsiValue(n) => {
