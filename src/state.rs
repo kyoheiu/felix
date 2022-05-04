@@ -61,7 +61,6 @@ pub struct State {
     pub manipulations: Manipulation,
     pub current_dir: PathBuf,
     pub trash_dir: PathBuf,
-    pub colors: Color,
     pub default: String,
     pub commands: HashMap<String, String>,
     pub sort_by: SortKey,
@@ -98,6 +97,7 @@ pub struct Layout {
     pub time_start_pos: u16,
     pub use_full: Option<bool>,
     pub option_name_len: Option<usize>,
+    pub colors: Color,
 }
 
 #[derive(Debug, Clone)]
@@ -160,11 +160,6 @@ impl Default for State {
             },
             current_dir: PathBuf::new(),
             trash_dir: PathBuf::new(),
-            colors: Color {
-                dir_fg: config.color.dir_fg,
-                file_fg: config.color.file_fg,
-                symlink_fg: config.color.symlink_fg,
-            },
             default: config.default,
             commands: to_extension_map(&config.exec),
             sort_by: session.sort_by,
@@ -176,6 +171,11 @@ impl Default for State {
                 time_start_pos: time_start,
                 use_full: config.use_full_width,
                 option_name_len: config.item_name_length,
+                colors: Color {
+                    dir_fg: config.color.dir_fg,
+                    file_fg: config.color.file_fg,
+                    symlink_fg: config.color.symlink_fg,
+                },
             },
             show_hidden: session.show_hidden,
             rust_log: std::env::var("RUST_LOG").ok(),
@@ -192,16 +192,11 @@ impl State {
         let (time_start, name_max) =
             make_layout(column, self.layout.use_full, self.layout.option_name_len);
 
-        *self = State {
-            layout: Layout {
-                terminal_row: row,
-                terminal_column: column,
-                name_max_len: name_max,
-                time_start_pos: time_start,
-                ..self.layout
-            },
-            ..self.to_owned()
-        };
+        self.layout.terminal_row = row;
+        self.layout.terminal_column = column;
+        self.layout.name_max_len = name_max;
+        self.layout.time_start_pos = time_start;
+
         clear_and_show(&self.current_dir);
         self.list_up(nums.skip);
         self.move_cursor(nums, cursor_pos);
@@ -661,9 +656,9 @@ impl State {
         let time = format_time(&item.modified);
         let selected = &item.selected;
         let color = match item.file_type {
-            FileType::Directory => &self.colors.dir_fg,
-            FileType::File => &self.colors.file_fg,
-            FileType::Symlink => &self.colors.symlink_fg,
+            FileType::Directory => &self.layout.colors.dir_fg,
+            FileType::File => &self.layout.colors.file_fg,
+            FileType::Symlink => &self.layout.colors.symlink_fg,
         };
         match color {
             Colorname::AnsiValue(n) => {
