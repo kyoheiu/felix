@@ -2,6 +2,7 @@ use super::errors::MyError;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::read_to_string;
+use std::path::Path;
 
 use crate::state::FX_CONFIG_DIR;
 
@@ -102,4 +103,17 @@ pub fn read_config() -> Result<Config, MyError> {
     } else {
         panic!("Cannot deserialize config file.");
     }
+}
+
+pub fn make_config(config_file: &Path, trash_dir: &Path) -> Result<(), MyError> {
+    if !trash_dir.exists() {
+        std::fs::create_dir_all(trash_dir)?;
+    }
+
+    if !config_file.exists() {
+        std::fs::write(&config_file, CONFIG_EXAMPLE)
+            .unwrap_or_else(|_| panic!("cannot write new config file."));
+    }
+
+    Ok(())
 }
