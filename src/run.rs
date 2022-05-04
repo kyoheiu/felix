@@ -1545,9 +1545,9 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                 Key::Backspace => {
                     state.show_hidden = !state.show_hidden;
                     state.update_list()?;
-                    clear_and_show(&state.current_dir);
-                    state.list_up(0);
                     nums.reset();
+                    clear_and_show(&state.current_dir);
+                    state.list_up(nums.skip);
                     state.move_cursor(&nums, STARTING_POINT);
                 }
                 _ => {

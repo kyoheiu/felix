@@ -78,6 +78,7 @@ pub struct ItemInfo {
     pub file_size: u64,
     pub file_ext: Option<OsString>,
     pub modified: Option<String>,
+    pub is_hidden: bool,
     pub selected: bool,
 }
 
@@ -783,8 +784,8 @@ impl State {
 
         //if list exceeds max-row
         let mut row_count = 0;
-        for (i, _) in self.list.iter().enumerate() {
-            if i < skip_number as usize {
+        for (i, item) in self.list.iter().enumerate() {
+            if i < skip_number as usize || (!self.show_hidden && item.is_hidden) {
                 continue;
             }
 
@@ -889,6 +890,8 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
         .into_string()
         .unwrap_or_else(|_| "Invalid unicode name".to_string());
 
+    let hidden = matches!(name.chars().next(), Some('.'));
+
     let ext = path.extension().map(|s| s.to_os_string());
 
     match metadata {
@@ -938,6 +941,7 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
                 file_ext: ext,
                 modified: time,
                 selected: false,
+                is_hidden: hidden,
             }
         }
         Err(_) => ItemInfo {
@@ -949,16 +953,9 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
             file_ext: ext,
             modified: None,
             selected: false,
+            is_hidden: false,
         },
     }
-}
-
-fn is_not_hidden(entry: &DirEntry) -> bool {
-    entry
-        .file_name()
-        .to_str()
-        .map(|s| !s.starts_with('.'))
-        .unwrap_or(false)
 }
 
 pub fn push_items(p: &Path, key: &SortKey, show_hidden: bool) -> Result<Vec<ItemInfo>, MyError> {
@@ -968,9 +965,6 @@ pub fn push_items(p: &Path, key: &SortKey, show_hidden: bool) -> Result<Vec<Item
 
     for entry in fs::read_dir(p)? {
         let e = entry?;
-        if !show_hidden && !is_not_hidden(&e) {
-            continue;
-        }
         let entry = make_item(e);
         match entry.file_type {
             FileType::Directory => dir_v.push(entry),
@@ -991,6 +985,11 @@ pub fn push_items(p: &Path, key: &SortKey, show_hidden: bool) -> Result<Vec<Item
 
     result.append(&mut dir_v);
     result.append(&mut file_v);
+
+    if !show_hidden {
+        result = result.into_iter().filter(|x| !x.is_hidden).collect();
+    }
+
     Ok(result)
 }
 
