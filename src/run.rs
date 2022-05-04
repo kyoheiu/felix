@@ -1,3 +1,4 @@
+use super::config::make_config;
 use super::errors::MyError;
 use super::functions::*;
 use super::help::HELP;
