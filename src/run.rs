@@ -1492,15 +1492,15 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                 }
 
                 //debug print for undo/redo
-                Key::Char('P') => {
-                    print_info(
-                        format!(
-                            "{:?} count: {}",
-                            state.manipulations, state.manipulations.count
-                        ),
-                        y,
-                    );
-                }
+                // Key::Char('P') => {
+                //     print_info(
+                //         format!(
+                //             "{:?} count: {}",
+                //             state.manipulations, state.manipulations.count
+                //         ),
+                //         y,
+                //     );
+                // }
 
                 //exit by ZZ
                 Key::Char('Z') => {
