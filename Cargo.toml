@@ -13,7 +13,7 @@ categories = ["command-line-utilities", "filesystem"]
 [[bin]]
 name = "fx"
 path = "src/main.rs"
-test = false
+test = true
 bench = false
 
 [profile.release]
