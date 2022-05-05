@@ -22,37 +22,6 @@ pub const CONFIG_FILE: &str = "config.toml";
 pub const TRASH: &str = "trash";
 pub const WHEN_EMPTY: &str = "Are you sure to empty the trash directory? (if yes: y)";
 
-macro_rules! print_item {
-    ($color: expr, $name: expr, $time: expr, $selected: expr, $layout: expr) => {
-        if *($selected) {
-            print!(
-                "{}{}{}{}{}{} {}{}{}",
-                $color,
-                style::Invert,
-                $name,
-                style::Reset,
-                cursor::Left(100),
-                cursor::Right($layout.time_start_pos - 1),
-                style::Invert,
-                $time,
-                style::Reset
-            );
-        } else {
-            print!(
-                "{}{}{}{} {}{}",
-                $color,
-                $name,
-                cursor::Left(100),
-                cursor::Right($layout.time_start_pos - 1),
-                $time,
-                color::Fg(color::Reset)
-            );
-        }
-        if $layout.terminal_column > $layout.time_start_pos + TIME_WIDTH {
-            print!("{}", clear::AfterCursor);
-        }
-    };
-}
 #[derive(Clone)]
 pub struct State {
     pub list: Vec<ItemInfo>,
@@ -183,6 +152,38 @@ impl Default for State {
     }
 }
 
+macro_rules! print_item {
+    ($color: expr, $name: expr, $time: expr, $selected: expr, $layout: expr) => {
+        if *($selected) {
+            print!(
+                "{}{}{}{}{}{} {}{}{}",
+                $color,
+                style::Invert,
+                $name,
+                style::Reset,
+                cursor::Left(100),
+                cursor::Right($layout.time_start_pos - 1),
+                style::Invert,
+                $time,
+                style::Reset
+            );
+        } else {
+            print!(
+                "{}{}{}{} {}{}",
+                $color,
+                $name,
+                cursor::Left(100),
+                cursor::Right($layout.time_start_pos - 1),
+                $time,
+                color::Fg(color::Reset)
+            );
+        }
+        if $layout.terminal_column > $layout.time_start_pos + TIME_WIDTH {
+            print!("{}", clear::AfterCursor);
+        }
+    };
+}
+
 impl State {
     pub fn new() -> Self {
         Default::default()
@@ -215,27 +216,26 @@ impl State {
         let item = self.get_item(index)?;
         let path = &item.file_path;
         let map = &self.commands;
-        let extention = path.extension();
+        let extention = &item.file_ext;
+
+        let mut default = Command::new(&self.default);
 
         match extention {
             Some(extention) => {
-                let ext = extention.to_ascii_lowercase().into_string().unwrap();
+                let ext = extention
+                    .to_ascii_lowercase()
+                    .into_string()
+                    .unwrap_or_else(|_| "".to_string());
                 match map.get(&ext) {
                     Some(command) => {
                         let mut ex = Command::new(command);
                         ex.arg(path).status().map_err(FxError::IoError)
                     }
-                    None => {
-                        let mut ex = Command::new(&self.default);
-                        ex.arg(path).status().map_err(FxError::IoError)
-                    }
+                    None => default.arg(path).status().map_err(FxError::IoError),
                 }
             }
 
-            None => {
-                let mut ex = Command::new(&self.default);
-                ex.arg(path).status().map_err(FxError::IoError)
-            }
+            None => default.arg(path).status().map_err(FxError::IoError),
         }
     }
 
