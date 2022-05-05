@@ -1543,8 +1543,16 @@ pub fn run(arg: PathBuf) -> Result<(), MyError> {
                 }
                 // Show/hide hidden files or directories
                 Key::Backspace => {
-                    state.show_hidden = !state.show_hidden;
-                    state.update_list()?;
+                    match state.show_hidden {
+                        true => {
+                            state.list.retain(|x| !x.is_hidden);
+                            state.show_hidden = false;
+                        }
+                        false => {
+                            state.show_hidden = true;
+                            state.update_list()?;
+                        }
+                    }
                     nums.reset();
                     clear_and_show(&state.current_dir);
                     state.list_up(nums.skip);
