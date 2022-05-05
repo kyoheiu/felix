@@ -10,7 +10,7 @@ use std::collections::HashSet;
 use std::ffi::OsString;
 use std::fs;
 use std::io::ErrorKind;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{Command, ExitStatus};
 use termion::{clear, color, cursor, style};
 
@@ -458,8 +458,14 @@ impl State {
                 }
             }
             Some(path) => {
-                for item in push_items(&path, &SortKey::Name, true)? {
-                    name_set.insert(item.file_name);
+                for entry in std::fs::read_dir(path)? {
+                    let entry = entry?;
+                    name_set.insert(
+                        entry
+                            .file_name()
+                            .into_string()
+                            .unwrap_or_else(|_| "".to_string()),
+                    );
                 }
             }
         }
@@ -802,8 +808,39 @@ impl State {
         }
     }
 
-    pub fn update_list(&mut self) -> Result<(), MyError> {
-        self.list = push_items(&self.current_dir, &self.sort_by, self.show_hidden)?;
+    pub fn update_list(&mut self) -> Result<(), FxError> {
+        let mut result = Vec::new();
+        let mut dir_v = Vec::new();
+        let mut file_v = Vec::new();
+
+        for entry in fs::read_dir(&self.current_dir)? {
+            let e = entry?;
+            let entry = make_item(e);
+            match entry.file_type {
+                FileType::Directory => dir_v.push(entry),
+                FileType::File | FileType::Symlink => file_v.push(entry),
+            }
+        }
+
+        match self.sort_by {
+            SortKey::Name => {
+                dir_v.sort_by(|a, b| natord::compare(&a.file_name, &b.file_name));
+                file_v.sort_by(|a, b| natord::compare(&a.file_name, &b.file_name));
+            }
+            SortKey::Time => {
+                dir_v.sort_by(|a, b| b.modified.partial_cmp(&a.modified).unwrap());
+                file_v.sort_by(|a, b| b.modified.partial_cmp(&a.modified).unwrap());
+            }
+        }
+
+        result.append(&mut dir_v);
+        result.append(&mut file_v);
+
+        if !self.show_hidden {
+            result.retain(|x| !x.is_hidden);
+        }
+
+        self.list = result;
         Ok(())
     }
 
@@ -957,42 +994,7 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
     }
 }
 
-pub fn push_items(p: &Path, key: &SortKey, show_hidden: bool) -> Result<Vec<ItemInfo>, MyError> {
-    let mut result = Vec::new();
-    let mut dir_v = Vec::new();
-    let mut file_v = Vec::new();
-
-    for entry in fs::read_dir(p)? {
-        let e = entry?;
-        let entry = make_item(e);
-        match entry.file_type {
-            FileType::Directory => dir_v.push(entry),
-            FileType::File | FileType::Symlink => file_v.push(entry),
-        }
-    }
-
-    match key {
-        SortKey::Name => {
-            dir_v.sort_by(|a, b| natord::compare(&a.file_name, &b.file_name));
-            file_v.sort_by(|a, b| natord::compare(&a.file_name, &b.file_name));
-        }
-        SortKey::Time => {
-            dir_v.sort_by(|a, b| b.modified.partial_cmp(&a.modified).unwrap());
-            file_v.sort_by(|a, b| b.modified.partial_cmp(&a.modified).unwrap());
-        }
-    }
-
-    result.append(&mut dir_v);
-    result.append(&mut file_v);
-
-    if !show_hidden {
-        result.retain(|x| !x.is_hidden);
-    }
-
-    Ok(result)
-}
-
-pub fn trash_to_info(trash_dir: &PathBuf, vec: Vec<PathBuf>) -> Result<Vec<ItemInfo>, MyError> {
+pub fn trash_to_info(trash_dir: &PathBuf, vec: Vec<PathBuf>) -> Result<Vec<ItemInfo>, FxError> {
     let total = vec.len();
     let mut count = 0;
     let mut result = Vec::new();
