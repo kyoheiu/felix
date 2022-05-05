@@ -1,5 +1,5 @@
 use super::config::make_config;
-use super::errors::MyError;
+use super::errors::FxError;
 use super::functions::*;
 use super::help::HELP;
 use super::nums::*;
@@ -23,7 +23,7 @@ use termion::{clear, cursor, screen};
 //frequency to detect terminal size change
 const DETECTION_INTERVAL: u64 = 500;
 
-pub fn run(arg: PathBuf) -> Result<(), MyError> {
+pub fn run(arg: PathBuf) -> Result<(), FxError> {
     debug!("Initial setup starts.");
 
     let mut config_dir_path =

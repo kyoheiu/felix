@@ -1,4 +1,4 @@
-use super::errors::MyError;
+use super::errors::FxError;
 use super::state::FX_CONFIG_DIR;
 use serde::{Deserialize, Serialize};
 use std::fs::read_to_string;
@@ -21,7 +21,7 @@ pub enum SortKey {
     Time,
 }
 
-pub fn read_session() -> Result<Session, MyError> {
+pub fn read_session() -> Result<Session, FxError> {
     let mut session = dirs::config_dir().unwrap_or_else(|| panic!("Cannot read config dir."));
     session.push(FX_CONFIG_DIR);
     session.push(SESSION_FILE);
@@ -34,7 +34,7 @@ pub fn read_session() -> Result<Session, MyError> {
     }
 }
 
-pub fn make_session(session_file: &Path) -> Result<(), MyError> {
+pub fn make_session(session_file: &Path) -> Result<(), FxError> {
     if !session_file.exists() {
         std::fs::write(&session_file, SESSION_EXAMPLE)
             .unwrap_or_else(|_| panic!("cannot write new session file."));

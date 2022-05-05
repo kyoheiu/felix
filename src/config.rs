@@ -1,4 +1,4 @@
-use super::errors::MyError;
+use super::errors::FxError;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::read_to_string;
@@ -92,7 +92,7 @@ pub enum Colorname {
     Yellow,
 }
 
-pub fn read_config() -> Result<Config, MyError> {
+pub fn read_config() -> Result<Config, FxError> {
     let mut config = dirs::config_dir().unwrap_or_else(|| panic!("Cannot read config dir."));
     config.push(FX_CONFIG_DIR);
     config.push(CONFIG_FILE);
@@ -105,7 +105,7 @@ pub fn read_config() -> Result<Config, MyError> {
     }
 }
 
-pub fn make_config(config_file: &Path, trash_dir: &Path) -> Result<(), MyError> {
+pub fn make_config(config_file: &Path, trash_dir: &Path) -> Result<(), FxError> {
     if !trash_dir.exists() {
         std::fs::create_dir_all(trash_dir)?;
     }

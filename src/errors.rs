@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum MyError {
+pub enum FxError {
     #[error(transparent)]
     IoError(#[from] std::io::Error),
     #[error(transparent)]
