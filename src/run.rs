@@ -83,8 +83,12 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
     let interval = Duration::from_millis(DETECTION_INTERVAL);
     thread::spawn(move || loop {
         thread::sleep(interval);
-        let (column, row) = termion::terminal_size().unwrap();
+        let (mut column, row) = termion::terminal_size().unwrap();
         let mut state = state_detect.lock().unwrap();
+        column = match state.layout.preview {
+            true => column / 2,
+            false => column,
+        };
         let mut nums = nums_detect.lock().unwrap();
         if column != state.layout.terminal_column || row != state.layout.terminal_row {
             if state.layout.y < row {
@@ -707,6 +711,14 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
                     state.list_up(0);
                     nums.reset();
                     state.move_cursor(&nums, STARTING_POINT);
+                }
+
+                //toggle whether to show preview of text file
+                Key::Char('v') => {
+                    state.layout.preview = !state.layout.preview;
+                    clear_and_show(&state.current_dir);
+                    state.list_up(nums.skip);
+                    state.move_cursor(&nums, y);
                 }
 
                 //delete
