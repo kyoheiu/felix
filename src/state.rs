@@ -903,8 +903,40 @@ impl State {
                     nums.index, nums.skip, self.layout.terminal_column, self.layout.terminal_row
                 );
             }
+
+            if self.layout.preview {
+                print!("{}", cursor::Goto(self.layout.terminal_column + 2, 3));
+                if let Ok(content) = fs::read_to_string(&item.file_path) {
+                    let whitespaces = (" ").repeat((self.layout.terminal_column - 1).into());
+                    for i in 0..self.layout.terminal_row {
+                        print!(
+                            "{}",
+                            cursor::Goto(self.layout.terminal_column + 2, 3 + i as u16)
+                        );
+                        print!("{}", whitespaces);
+                    }
+                    for (i, line) in content.lines().enumerate() {
+                        print!(
+                            "{}",
+                            cursor::Goto(self.layout.terminal_column + 2, 3 + i as u16)
+                        );
+                        print!(
+                            "{}{}{}",
+                            color::Fg(color::LightBlack),
+                            line.chars()
+                                .take((self.layout.terminal_column - 1).into())
+                                .collect::<String>(),
+                            color::Fg(color::Reset)
+                        );
+                        if 3 + i == (self.layout.terminal_row - 1) as usize {
+                            break;
+                        }
+                    }
+                }
+            }
         }
         print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+
         self.layout.y = y;
     }
 
