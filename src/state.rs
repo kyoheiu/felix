@@ -67,6 +67,7 @@ pub struct Layout {
     pub use_full: Option<bool>,
     pub option_name_len: Option<usize>,
     pub colors: Color,
+    pub preview: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -145,6 +146,7 @@ impl Default for State {
                     file_fg: config.color.file_fg,
                     symlink_fg: config.color.symlink_fg,
                 },
+                preview: false,
             },
             show_hidden: session.show_hidden,
             rust_log: std::env::var("RUST_LOG").ok(),
