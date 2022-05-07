@@ -917,6 +917,27 @@ impl State {
                     print!("{}", clear::UntilNewline);
                 }
 
+                if item.file_type == FileType::Directory {
+                    if let Ok(contents) = list_up_contents(item.file_path.clone()) {
+                        if let Ok(contents) = make_tree(contents) {
+                            for (i, line) in contents.lines().enumerate() {
+                                print!("{}", cursor::Goto(preview_start, BEGINNING_ROW + i as u16));
+                                print!(
+                                    "{}{}{}",
+                                    color::Fg(color::LightBlack),
+                                    format_preview_line(
+                                        line,
+                                        (self.layout.terminal_column - 1).into()
+                                    ),
+                                    color::Fg(color::Reset)
+                                );
+                                if BEGINNING_ROW + i as u16 == self.layout.terminal_row - 1 {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
                 //Print preview (no-wrapping)
                 if let Ok(content) = content.join().unwrap() {
                     for (i, line) in content.lines().enumerate() {

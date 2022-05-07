@@ -1,3 +1,5 @@
+use crate::errors::FxError;
+
 use super::state::*;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -213,6 +215,43 @@ pub fn format_preview_line(line: &str, preview_column: usize) -> String {
         .collect()
 }
 
+pub fn list_up_contents(path: PathBuf) -> Result<Vec<String>, FxError> {
+    let mut file_v = Vec::new();
+    let mut dir_v = Vec::new();
+    let mut result = Vec::new();
+    for item in std::fs::read_dir(path)? {
+        let item = item?;
+        if item.file_type()?.is_dir() {
+            dir_v.push(item.file_name().into_string().unwrap_or_default());
+        } else {
+            file_v.push(item.file_name().into_string().unwrap_or_default());
+        }
+    }
+    dir_v.sort_by(|a, b| natord::compare(a, b));
+    file_v.sort_by(|a, b| natord::compare(a, b));
+    result.append(&mut dir_v);
+    result.append(&mut file_v);
+    Ok(result)
+}
+
+pub fn make_tree(v: Vec<String>) -> Result<String, FxError> {
+    let len = v.len();
+    let mut result = String::new();
+    for (i, path) in v.iter().enumerate() {
+        if i == len - 1 {
+            let mut line = "└ ".to_string();
+            line.push_str(path);
+            result.push_str(&line);
+        } else {
+            let mut line = "├ ".to_string();
+            line.push_str(path);
+            line.push('\n');
+            result.push_str(&line);
+        }
+    }
+    Ok(result)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -252,5 +291,21 @@ mod tests {
             format_preview_line("The\tquick brown fox jumps over the lazy dog", 20),
             "The    quick brown f".to_string()
         );
+    }
+
+    #[test]
+    fn test_make_tree() {
+        let v = vec![
+            "data".to_string(),
+            "01.txt".to_string(),
+            "2.txt".to_string(),
+            "a.txt".to_string(),
+            "b.txt".to_string(),
+        ];
+        assert_eq!(
+            make_tree(v.clone()).unwrap(),
+            ("├ data\n├ 01.txt\n├ 2.txt\n├ a.txt\n└ b.txt").to_string()
+        );
+        println!("{}", make_tree(v).unwrap());
     }
 }
