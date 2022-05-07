@@ -791,7 +791,6 @@ impl State {
     pub fn list_up(&self, skip_number: u16) {
         let row = self.layout.terminal_row;
 
-        //if list exceeds max-row
         let mut row_count = 0;
         for (i, item) in self.list.iter().enumerate() {
             if i < skip_number as usize || (!self.show_hidden && item.is_hidden) {
@@ -908,6 +907,8 @@ impl State {
 
             // If preview enabled, print text file contents
             if self.layout.preview {
+                let path = item.file_path.clone();
+                let content = std::thread::spawn(move || fs::read_to_string(path));
                 let preview_start: u16 = self.layout.terminal_column + 2;
 
                 print!("{}{}", cursor::Goto(preview_start, 1), clear::UntilNewline);
@@ -921,7 +922,7 @@ impl State {
                 }
 
                 //Print preview (no-wrapping)
-                if let Ok(content) = fs::read_to_string(&item.file_path) {
+                if let Ok(content) = content.join().unwrap() {
                     for (i, line) in content.lines().enumerate() {
                         print!("{}", cursor::Goto(preview_start, BEGINNING_ROW + i as u16));
                         print!(
