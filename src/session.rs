@@ -35,10 +35,7 @@ pub fn read_session() -> Result<Session, FxError> {
 }
 
 pub fn make_session(session_file: &Path) -> Result<(), FxError> {
-    if !session_file.exists() {
-        std::fs::write(&session_file, SESSION_EXAMPLE)
-            .unwrap_or_else(|_| panic!("cannot write new session file."));
-    }
-
+    std::fs::write(&session_file, SESSION_EXAMPLE)
+        .unwrap_or_else(|_| panic!("Cannot write new session file."));
     Ok(())
 }
