@@ -208,7 +208,7 @@ impl State {
 
     pub fn get_item(&self, index: usize) -> Result<&ItemInfo, FxError> {
         self.list.get(index).ok_or_else(|| {
-            FxError::IoError(std::io::Error::new(
+            FxError::Io(std::io::Error::new(
                 ErrorKind::NotFound,
                 "Cannot choose item.",
             ))
@@ -229,13 +229,13 @@ impl State {
                 match map.get(&ext) {
                     Some(command) => {
                         let mut ex = Command::new(command);
-                        ex.arg(path).status().map_err(FxError::IoError)
+                        ex.arg(path).status().map_err(FxError::Io)
                     }
-                    None => default.arg(path).status().map_err(FxError::IoError),
+                    None => default.arg(path).status().map_err(FxError::Io),
                 }
             }
 
-            None => default.arg(path).status().map_err(FxError::IoError),
+            None => default.arg(path).status().map_err(FxError::Io),
         }
     }
 
@@ -310,7 +310,7 @@ impl State {
         if item.file_type == FileType::Symlink && !from.exists() {
             match Command::new("rm").arg(from).status() {
                 Ok(_) => Ok(PathBuf::new()),
-                Err(e) => Err(FxError::IoError(e)),
+                Err(e) => Err(FxError::Io(e)),
             }
         } else {
             let name = &item.file_name;
@@ -323,7 +323,7 @@ impl State {
 
                 //copy
                 if std::fs::copy(from, &to).is_err() {
-                    return Err(FxError::FileCopyError {
+                    return Err(FxError::FileCopy {
                         msg: format!("Cannot copy item: {:?}", from),
                     });
                 }
@@ -333,7 +333,7 @@ impl State {
 
             //remove original
             if std::fs::remove_file(from).is_err() {
-                return Err(FxError::FileRemoveError {
+                return Err(FxError::FileRemove {
                     msg: format!("Cannot Remove item: {:?}", from),
                 });
             }
@@ -379,7 +379,7 @@ impl State {
                     trash_name.push('_');
                     let file_name = entry.file_name().to_str();
                     if file_name == None {
-                        return Err(FxError::UTF8Error {
+                        return Err(FxError::UTF8 {
                             msg: "Cannot convert filename to UTF-8.".to_string(),
                         });
                     }
@@ -403,7 +403,7 @@ impl State {
                     }
 
                     if std::fs::copy(entry_path, &target).is_err() {
-                        return Err(FxError::FileCopyError {
+                        return Err(FxError::FileCopy {
                             msg: format!("Cannot copy item: {:?}", entry_path),
                         });
                     }
@@ -415,7 +415,7 @@ impl State {
 
         //remove original
         if std::fs::remove_dir_all(&item.file_path).is_err() {
-            return Err(FxError::FileRemoveError {
+            return Err(FxError::FileRemove {
                 msg: format!("Cannot Remove directory: {:?}", item.file_name),
             });
         }
@@ -523,7 +523,7 @@ impl State {
                     let rename = rename_file(&item, name_set);
                     let to = &self.current_dir.join(&rename);
                     if std::fs::copy(&item.file_path, to).is_err() {
-                        return Err(FxError::FileCopyError {
+                        return Err(FxError::FileCopy {
                             msg: format!("Cannot copy item: {:?}", &item.file_path),
                         });
                     }
@@ -533,7 +533,7 @@ impl State {
                     let rename = rename_file(item, name_set);
                     let to = &self.current_dir.join(&rename);
                     if std::fs::copy(&item.file_path, to).is_err() {
-                        return Err(FxError::FileCopyError {
+                        return Err(FxError::FileCopy {
                             msg: format!("Cannot copy item: {:?}", &item.file_path),
                         });
                     }
@@ -549,7 +549,7 @@ impl State {
                     let rename = rename_file(&item, name_set);
                     let to = path.join(&rename);
                     if std::fs::copy(&item.file_path, to.clone()).is_err() {
-                        return Err(FxError::FileCopyError {
+                        return Err(FxError::FileCopy {
                             msg: format!("Cannot copy item: {:?}", &item.file_path),
                         });
                     }
@@ -559,7 +559,7 @@ impl State {
                     let rename = rename_file(item, name_set);
                     let to = &path.join(&rename);
                     if std::fs::copy(&item.file_path, to).is_err() {
-                        return Err(FxError::FileCopyError {
+                        return Err(FxError::FileCopy {
                             msg: format!("Cannot copy item: {:?}", &item.file_path),
                         });
                     }
@@ -637,7 +637,7 @@ impl State {
                 }
 
                 if std::fs::copy(entry_path, &child).is_err() {
-                    return Err(FxError::FileCopyError {
+                    return Err(FxError::FileCopy {
                         msg: format!("Cannot copy item: {:?}", entry_path),
                     });
                 }

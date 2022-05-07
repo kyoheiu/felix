@@ -3,17 +3,17 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum FxError {
     #[error(transparent)]
-    IoError(#[from] std::io::Error),
+    Io(#[from] std::io::Error),
     #[error(transparent)]
-    TomlDeError(#[from] toml::de::Error),
+    TomlDe(#[from] toml::de::Error),
     #[error(transparent)]
-    TomlSeError(#[from] toml::ser::Error),
+    TomlSer(#[from] toml::ser::Error),
     #[error(transparent)]
-    WalkDirError(#[from] walkdir::Error),
+    WalkDir(#[from] walkdir::Error),
     #[error("{msg}")]
-    UTF8Error { msg: String },
+    UTF8 { msg: String },
     #[error("{msg}")]
-    FileCopyError { msg: String },
+    FileCopy { msg: String },
     #[error("{msg}")]
-    FileRemoveError { msg: String },
+    FileRemove { msg: String },
 }
