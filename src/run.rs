@@ -5,9 +5,8 @@ use super::help::HELP;
 use super::nums::*;
 use super::state::*;
 use crate::session::*;
-use std::ffi::OsStr;
-// use clipboard::{ClipboardContext, ClipboardProvider};
 use log::debug;
+use std::ffi::OsStr;
 use std::io::{stdin, stdout, Write};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -715,9 +714,14 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
                 //toggle whether to show preview of text file
                 Key::Char('v') => {
                     state.layout.preview = !state.layout.preview;
-                    clear_and_show(&state.current_dir);
-                    state.list_up(nums.skip);
-                    state.move_cursor(&nums, y);
+                    if state.layout.preview {
+                        let new_column = state.layout.terminal_column / 2;
+                        let new_row = state.layout.terminal_row;
+                        state.refresh(new_column, new_row, &nums, y);
+                    } else {
+                        let (new_column, new_row) = termion::terminal_size().unwrap();
+                        state.refresh(new_column, new_row, &nums, y);
+                    }
                 }
 
                 //delete
@@ -1390,7 +1394,6 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
                             }
                             ManipKind::Put(m) => {
                                 for x in m.put {
-                                    //todo: should not use remove_file actually
                                     if let Err(e) = std::fs::remove_file(&x) {
                                         print_warning(e, y);
                                         screen.flush()?;
