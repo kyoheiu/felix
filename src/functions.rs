@@ -206,6 +206,13 @@ pub fn make_layout(
     (time_start, name_max)
 }
 
+pub fn format_preview_line(line: &str, preview_column: usize) -> String {
+    line.replace('\t', "    ")
+        .chars()
+        .take(preview_column)
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -236,6 +243,14 @@ mod tests {
         assert_eq!(
             duration_to_string(Duration::from_millis(5432)),
             "5.43s".to_string()
+        );
+    }
+
+    #[test]
+    fn test_format_preview_line() {
+        assert_eq!(
+            format_preview_line("The\tquick brown fox jumps over the lazy dog", 20),
+            "The    quick brown f".to_string()
         );
     }
 }
