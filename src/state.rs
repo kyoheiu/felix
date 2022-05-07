@@ -6,7 +6,6 @@ use super::session::*;
 use chrono::prelude::*;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::ffi::OsString;
 use std::fs;
 use std::io::ErrorKind;
 use std::path::PathBuf;
@@ -43,7 +42,7 @@ pub struct ItemInfo {
     pub file_path: std::path::PathBuf,
     pub symlink_dir_path: Option<PathBuf>,
     pub file_size: u64,
-    pub file_ext: Option<OsString>,
+    pub file_ext: Option<String>,
     pub modified: Option<String>,
     pub is_hidden: bool,
     pub selected: bool,
@@ -226,10 +225,7 @@ impl State {
 
         match extention {
             Some(extention) => {
-                let ext = extention
-                    .to_ascii_lowercase()
-                    .into_string()
-                    .unwrap_or_else(|_| "".to_string());
+                let ext = extention.to_ascii_lowercase();
                 match map.get(&ext) {
                     Some(command) => {
                         let mut ex = Command::new(command);
@@ -885,7 +881,7 @@ impl State {
                         "[{}/{}] {} {}",
                         nums.index + 1,
                         self.list.len(),
-                        ext.clone().into_string().unwrap_or_default(),
+                        ext.clone(),
                         to_proper_size(item.file_size)
                     );
                 }
@@ -912,7 +908,7 @@ impl State {
                 let preview_start: u16 = self.layout.terminal_column + 2;
 
                 print!("{}{}", cursor::Goto(preview_start, 1), clear::UntilNewline);
-                print!("{}", item.file_name);
+                print!("[{}]", item.file_name);
                 print!("{}", cursor::Goto(preview_start, BEGINNING_ROW));
 
                 //Clear preview space
@@ -940,6 +936,7 @@ impl State {
         }
         print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
 
+        //Store cursor position when cursor moves
         self.layout.y = y;
     }
 
@@ -965,7 +962,9 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
 
     let hidden = matches!(name.chars().next(), Some('.'));
 
-    let ext = path.extension().map(|s| s.to_os_string());
+    let ext = path
+        .extension()
+        .map(|s| s.to_os_string().into_string().unwrap_or_default());
 
     match metadata {
         Ok(metadata) => {
