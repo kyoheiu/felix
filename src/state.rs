@@ -788,8 +788,8 @@ impl State {
         let row = self.layout.terminal_row;
 
         let mut row_count = 0;
-        for (i, item) in self.list.iter().enumerate() {
-            if i < skip_number as usize || (!self.show_hidden && item.is_hidden) {
+        for (i, _) in self.list.iter().enumerate() {
+            if i < skip_number as usize {
                 continue;
             }
 
