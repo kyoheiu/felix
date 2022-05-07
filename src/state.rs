@@ -4,7 +4,6 @@ use super::functions::*;
 use super::nums::*;
 use super::session::*;
 use chrono::prelude::*;
-use log::error;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::ffi::OsString;
@@ -14,7 +13,7 @@ use std::path::PathBuf;
 use std::process::{Command, ExitStatus};
 use termion::{clear, color, cursor, style};
 
-pub const STARTING_POINT: u16 = 3;
+pub const BEGINNING_ROW: u16 = 3;
 pub const DOWN_ARROW: char = '\u{21D3}';
 pub const RIGHT_ARROW: char = '\u{21D2}';
 pub const FX_CONFIG_DIR: &str = "felix";
@@ -110,14 +109,17 @@ impl Default for State {
             read_session().unwrap_or_else(|_| panic!("Something wrong with session file."));
         let (column, row) =
             termion::terminal_size().unwrap_or_else(|_| panic!("Cannot detect terminal size."));
+
+        // Panic if terminal size is not enough to functionally work
         if column < 21 {
-            error!("Too small terminal size.");
+            log::error!("Too small terminal size.");
             panic!("Panic due to terminal size (less than 21 columns).")
         };
         if row < 4 {
-            error!("Too small terminal size.");
+            log::error!("Too small terminal size.");
             panic!("Panic due to terminal size (less than 4 rows).")
         };
+
         let (time_start, name_max) =
             make_layout(column, config.use_full_width, config.item_name_length);
 
@@ -134,7 +136,7 @@ impl Default for State {
             commands: to_extension_map(&config.exec),
             sort_by: session.sort_by,
             layout: Layout {
-                y: STARTING_POINT,
+                y: BEGINNING_ROW,
                 terminal_row: row,
                 terminal_column: column,
                 name_max_len: name_max,
@@ -798,10 +800,10 @@ impl State {
 
             print!(
                 "{}",
-                cursor::Goto(3, i as u16 + STARTING_POINT - skip_number)
+                cursor::Goto(3, i as u16 + BEGINNING_ROW - skip_number)
             );
 
-            if row_count == row - STARTING_POINT {
+            if row_count == row - BEGINNING_ROW {
                 break;
             } else {
                 self.print(i);
@@ -904,31 +906,31 @@ impl State {
                 );
             }
 
+            // If preview enabled, print text file contents
             if self.layout.preview {
-                print!("{}", cursor::Goto(self.layout.terminal_column + 2, 3));
+                let preview_start: u16 = self.layout.terminal_column + 2;
+
+                print!("{}{}", cursor::Goto(preview_start, 1), clear::UntilNewline);
+                print!("{}", item.file_name);
+                print!("{}", cursor::Goto(preview_start, BEGINNING_ROW));
+
+                //Clear preview space
+                for i in 0..self.layout.terminal_row {
+                    print!("{}", cursor::Goto(preview_start, BEGINNING_ROW + i as u16));
+                    print!("{}", clear::UntilNewline);
+                }
+
+                //Print preview (no-wrapping)
                 if let Ok(content) = fs::read_to_string(&item.file_path) {
-                    let whitespaces = (" ").repeat((self.layout.terminal_column - 1).into());
-                    for i in 0..self.layout.terminal_row {
-                        print!(
-                            "{}",
-                            cursor::Goto(self.layout.terminal_column + 2, 3 + i as u16)
-                        );
-                        print!("{}", whitespaces);
-                    }
                     for (i, line) in content.lines().enumerate() {
-                        print!(
-                            "{}",
-                            cursor::Goto(self.layout.terminal_column + 2, 3 + i as u16)
-                        );
+                        print!("{}", cursor::Goto(preview_start, BEGINNING_ROW + i as u16));
                         print!(
                             "{}{}{}",
                             color::Fg(color::LightBlack),
-                            line.chars()
-                                .take((self.layout.terminal_column - 1).into())
-                                .collect::<String>(),
+                            format_preview_line(line, (self.layout.terminal_column - 1).into()),
                             color::Fg(color::Reset)
                         );
-                        if 3 + i == (self.layout.terminal_row - 1) as usize {
+                        if BEGINNING_ROW + i as u16 == self.layout.terminal_row - 1 {
                             break;
                         }
                     }
