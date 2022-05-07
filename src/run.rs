@@ -1,4 +1,4 @@
-use super::config::make_config;
+use super::config::make_config_if_not_exist;
 use super::errors::FxError;
 use super::functions::*;
 use super::help::HELP;
@@ -25,15 +25,22 @@ const DETECTION_INTERVAL: u64 = 500;
 pub fn run(arg: PathBuf) -> Result<(), FxError> {
     debug!("Initial setup starts.");
 
+    //Prepare config file and trash directory path.
     let mut config_dir_path =
         dirs::config_dir().unwrap_or_else(|| panic!("Cannot read config dir."));
     config_dir_path.push(FX_CONFIG_DIR);
     let config_file_path = config_dir_path.join(PathBuf::from(CONFIG_FILE));
     let trash_dir_path = config_dir_path.join(PathBuf::from(TRASH));
-    make_config(&config_file_path, &trash_dir_path)
+
+    //Make config file and trash directory if not exist.
+    make_config_if_not_exist(&config_file_path, &trash_dir_path)
         .unwrap_or_else(|_| panic!("Cannot make config file or trash dir."));
+
+    //If session file, which stores sortkey and whether to show hidden items, does not exist (i.e. first launch), make it.
     let session_file_path = config_dir_path.join(PathBuf::from(SESSION_FILE));
-    make_session(&session_file_path).unwrap_or_else(|_| panic!("Cannot make session file."));
+    if !session_file_path.exists() {
+        make_session(&session_file_path).unwrap_or_else(|_| panic!("Cannot make session file."));
+    }
 
     if !&arg.exists() {
         println!(
@@ -48,6 +55,7 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
     state.trash_dir = trash_dir_path;
     state.current_dir = arg.canonicalize()?;
 
+    //filter mode or not
     let mut filtered = false;
 
     //Initialize num as Arc
@@ -78,7 +86,7 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
     let state_run = Arc::new(Mutex::new(state));
     let state_detect = state_run.clone();
 
-    //Detect terminal window size change
+    //Loop to detect terminal window size change
     let interval = Duration::from_millis(DETECTION_INTERVAL);
     thread::spawn(move || loop {
         thread::sleep(interval);
@@ -113,6 +121,7 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
         let mut nums = nums_run.lock().unwrap();
         let len = state.list.len();
         let y = state.layout.y;
+
         if let Some(Ok(key)) = input {
             match key {
                 //Go up. If lists exceed max-row, lists "scrolls" before the top of the list
