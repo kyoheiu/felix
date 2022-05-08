@@ -26,9 +26,11 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
     debug!("Initial setup starts.");
 
     //Prepare config file and trash directory path.
-    let mut config_dir_path =
-        dirs::config_dir().unwrap_or_else(|| panic!("Cannot read config dir."));
-    config_dir_path.push(FX_CONFIG_DIR);
+    let config_dir_path = {
+        let mut path = dirs::config_dir().unwrap_or_else(|| panic!("Cannot read config dir."));
+        path.push(FX_CONFIG_DIR);
+        path
+    };
     let config_file_path = config_dir_path.join(PathBuf::from(CONFIG_FILE));
     let trash_dir_path = config_dir_path.join(PathBuf::from(TRASH));
 
