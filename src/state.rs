@@ -298,7 +298,7 @@ impl State {
         Ok(())
     }
 
-    pub fn remove_and_yank_file(
+    fn remove_and_yank_file(
         &mut self,
         item: ItemInfo,
         new_manip: bool,
@@ -342,11 +342,7 @@ impl State {
         }
     }
 
-    pub fn remove_and_yank_dir(
-        &mut self,
-        item: ItemInfo,
-        new_manip: bool,
-    ) -> Result<PathBuf, FxError> {
+    fn remove_and_yank_dir(&mut self, item: ItemInfo, new_manip: bool) -> Result<PathBuf, FxError> {
         let mut trash_name = String::new();
         let mut base: usize = 0;
         let mut trash_path: std::path::PathBuf = PathBuf::new();
@@ -646,7 +642,7 @@ impl State {
         Ok(target)
     }
 
-    pub fn print(&self, index: usize) {
+    fn print(&self, index: usize) {
         let item = &self.get_item(index).unwrap();
         let chars: Vec<char> = item.file_name.chars().collect();
         let name = if chars.len() > self.layout.name_max_len {
@@ -870,77 +866,77 @@ impl State {
     }
 
     pub fn move_cursor(&mut self, nums: &Num, y: u16) {
+        if let Ok(item) = self.get_item(nums.index) {
+            //Print item information at the bottom
+            self.print_footer(nums, item);
+
+            //If preview enabled, print text file contents
+            if self.layout.preview {
+                self.print_preview(item);
+            }
+            print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+
+            //Store cursor position when cursor moves
+            self.layout.y = y;
+        }
+    }
+
+    fn print_footer(&self, nums: &Num, item: &ItemInfo) {
         print!(" {}", cursor::Goto(1, self.layout.terminal_row));
         print!("{}", clear::CurrentLine);
 
-        let item = self.get_item(nums.index);
-        if let Ok(item) = item {
-            match &item.file_ext {
-                Some(ext) => {
-                    print!(
-                        "[{}/{}] {} {}",
-                        nums.index + 1,
-                        self.list.len(),
-                        ext.clone(),
-                        to_proper_size(item.file_size)
-                    );
-                }
-                None => {
-                    print!(
-                        "[{}/{}] {}",
-                        nums.index + 1,
-                        self.list.len(),
-                        to_proper_size(item.file_size)
-                    );
-                }
-            }
-            if self.rust_log.is_some() {
+        match &item.file_ext {
+            Some(ext) => {
                 print!(
-                    " index:{} skip:{} column:{} row:{}",
-                    nums.index, nums.skip, self.layout.terminal_column, self.layout.terminal_row
+                    "[{}/{}] {} {}",
+                    nums.index + 1,
+                    self.list.len(),
+                    ext.clone(),
+                    to_proper_size(item.file_size)
                 );
             }
+            None => {
+                print!(
+                    "[{}/{}] {}",
+                    nums.index + 1,
+                    self.list.len(),
+                    to_proper_size(item.file_size)
+                );
+            }
+        }
 
-            // If preview enabled, print text file contents
-            if self.layout.preview {
-                let path = item.file_path.clone();
-                let content = std::thread::spawn(move || fs::read_to_string(path));
-                let preview_start: u16 = self.layout.terminal_column + 2;
+        //Debug mode
+        if self.rust_log.is_some() {
+            print!(
+                " index:{} skip:{} column:{} row:{}",
+                nums.index, nums.skip, self.layout.terminal_column, self.layout.terminal_row
+            );
+        }
+    }
 
-                print!("{}{}", cursor::Goto(preview_start, 1), clear::UntilNewline);
-                print!("[{}]", item.file_name);
-                print!("{}", cursor::Goto(preview_start, BEGINNING_ROW));
+    fn print_preview(&self, item: &ItemInfo) {
+        let content = {
+            let item = item.file_path.clone();
+            std::thread::spawn(move || fs::read_to_string(item))
+        };
 
-                //Clear preview space
-                for i in 0..self.layout.terminal_row {
-                    print!("{}", cursor::Goto(preview_start, BEGINNING_ROW + i as u16));
-                    print!("{}", clear::UntilNewline);
-                }
+        let preview_start: u16 = self.layout.terminal_column + 2;
 
-                if item.file_type == FileType::Directory {
-                    if let Ok(contents) = list_up_contents(item.file_path.clone()) {
-                        if let Ok(contents) = make_tree(contents) {
-                            for (i, line) in contents.lines().enumerate() {
-                                print!("{}", cursor::Goto(preview_start, BEGINNING_ROW + i as u16));
-                                print!(
-                                    "{}{}{}",
-                                    color::Fg(color::LightBlack),
-                                    format_preview_line(
-                                        line,
-                                        (self.layout.terminal_column - 1).into()
-                                    ),
-                                    color::Fg(color::Reset)
-                                );
-                                if BEGINNING_ROW + i as u16 == self.layout.terminal_row - 1 {
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-                //Print preview (no-wrapping)
-                if let Ok(content) = content.join().unwrap() {
-                    for (i, line) in content.lines().enumerate() {
+        //Print item name at the top
+        print!("{}{}", cursor::Goto(preview_start, 1), clear::UntilNewline);
+        print!("[{}]", item.file_name);
+        print!("{}", cursor::Goto(preview_start, BEGINNING_ROW));
+
+        //Clear preview space
+        for i in 0..self.layout.terminal_row {
+            print!("{}", cursor::Goto(preview_start, BEGINNING_ROW + i as u16));
+            print!("{}", clear::UntilNewline);
+        }
+
+        if item.file_type == FileType::Directory {
+            if let Ok(contents) = list_up_contents(item.file_path.clone()) {
+                if let Ok(contents) = make_tree(contents) {
+                    for (i, line) in contents.lines().enumerate() {
                         print!("{}", cursor::Goto(preview_start, BEGINNING_ROW + i as u16));
                         print!(
                             "{}{}{}",
@@ -955,10 +951,21 @@ impl State {
                 }
             }
         }
-        print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
-
-        //Store cursor position when cursor moves
-        self.layout.y = y;
+        //Print preview (no-wrapping)
+        if let Ok(content) = content.join().unwrap() {
+            for (i, line) in content.lines().enumerate() {
+                print!("{}", cursor::Goto(preview_start, BEGINNING_ROW + i as u16));
+                print!(
+                    "{}{}{}",
+                    color::Fg(color::LightBlack),
+                    format_preview_line(line, (self.layout.terminal_column - 1).into()),
+                    color::Fg(color::Reset)
+                );
+                if BEGINNING_ROW + i as u16 == self.layout.terminal_row - 1 {
+                    break;
+                }
+            }
+        }
     }
 
     pub fn write_session(&self, session_path: PathBuf) -> Result<(), FxError> {
