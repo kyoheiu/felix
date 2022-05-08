@@ -1147,15 +1147,62 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
                                         state.move_cursor(&nums, BEGINNING_ROW);
                                         break 'command;
                                     } else if command == vec!['h'] {
-                                        print!("{}", cursor::Hide);
-                                        print!("{}{}", clear::All, cursor::Goto(1, 1));
-                                        let mut i = 2;
-                                        for line in HELP.lines() {
-                                            println!("{}{}", line, cursor::Goto(1, i));
-                                            i += 1;
+                                        print!(
+                                            "{}{}{}",
+                                            cursor::Hide,
+                                            clear::All,
+                                            cursor::Goto(1, 1)
+                                        );
+                                        screen.flush()?;
+                                        let help = format_help(HELP, state.layout.terminal_column);
+                                        let help_len = help.clone().len();
+                                        print_help(&help, 0, state.layout.terminal_row);
+                                        screen.flush()?;
+
+                                        let mut skip = 0;
+                                        loop {
+                                            if let Some(Ok(key)) = stdin.next() {
+                                                match key {
+                                                    Key::Char('j') | Key::Down => {
+                                                        if skip
+                                                            == help_len + 1
+                                                                - state.layout.terminal_row as usize
+                                                        {
+                                                            continue;
+                                                        } else {
+                                                            print!("{}", clear::All);
+                                                            skip += 1;
+                                                            print_help(
+                                                                &help,
+                                                                skip,
+                                                                state.layout.terminal_row,
+                                                            );
+                                                            screen.flush()?;
+                                                            continue;
+                                                        }
+                                                    }
+                                                    Key::Char('k') | Key::Up => {
+                                                        if skip == 0 {
+                                                            continue;
+                                                        } else {
+                                                            print!("{}", clear::All);
+                                                            skip -= 1;
+                                                            print_help(
+                                                                &help,
+                                                                skip,
+                                                                state.layout.terminal_row,
+                                                            );
+                                                            screen.flush()?;
+                                                            continue;
+                                                        }
+                                                    }
+                                                    _ => {
+                                                        break;
+                                                    }
+                                                }
+                                            }
                                         }
-                                        println!("\nInput any key to go back.");
-                                        let _ = stdin.next();
+                                        print!("{}", cursor::Hide);
                                         clear_and_show(&state.current_dir);
                                         state.list_up(nums.skip);
                                         state.move_cursor(&nums, y);

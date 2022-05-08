@@ -252,6 +252,48 @@ pub fn make_tree(v: Vec<String>) -> Result<String, FxError> {
     Ok(result)
 }
 
+pub fn format_help(txt: &str, column: u16) -> Vec<String> {
+    let mut v = Vec::new();
+    let mut column_count = 0;
+    let mut line = String::new();
+    for c in txt.chars() {
+        if c == '\n' {
+            v.push(line.clone());
+            line = String::new();
+            column_count = 0;
+            continue;
+        }
+        line.push(c);
+        column_count += 1;
+        if column_count == column {
+            v.push(line.clone());
+            line = String::new();
+            column_count = 0;
+            continue;
+        }
+    }
+    v.push("Enter 'q' to go back.".to_string());
+    v
+}
+
+pub fn print_help(v: &[String], skip_number: usize, row: u16) {
+    let mut row_count = 0;
+    for (i, line) in v.iter().enumerate() {
+        if i < skip_number {
+            continue;
+        }
+
+        print!("{}", cursor::Goto(1, (i + 1 - skip_number) as u16));
+
+        if row_count == row - 1 {
+            print!("{}...{}", termion::style::Invert, termion::style::Reset);
+            break;
+        }
+        print!("{}", line);
+        row_count += 1;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -307,5 +349,72 @@ mod tests {
             ("├ data\n├ 01.txt\n├ 2.txt\n├ a.txt\n└ b.txt").to_string()
         );
         println!("{}", make_tree(v).unwrap());
+    }
+
+    #[test]
+    fn test_format_help() {
+        println!("{:#?}", format_help(crate::help::HELP, 50));
+        assert_eq!(
+            format_help(crate::help::HELP, 50),
+            vec![
+                String::from("# felix v0.8.1"),
+                String::from("A simple TUI file manager with vim-like keymapping"),
+                String::from("."),
+                String::from("Works on terminals with 21 columns or more."),
+                String::from(""),
+                String::from("## Usage"),
+                String::from("`fx` => Show items in the current directory."),
+                String::from("`fx <directory path>` => Show items in the path."),
+                String::from("Both relative and absolute path available."),
+                String::from(""),
+                String::from("## Arguments"),
+                String::from("`fx -h` | `fx --help`  => Print help."),
+                String::from("`fx -c` | `fx --check` => Check update."),
+                String::from(""),
+                String::from("## Manual"),
+                String::from("j / Up            :Go up."),
+                String::from("k / Down          :Go down."),
+                String::from("h / Left          :Go to parent directory if exist"),
+                String::from("s."),
+                String::from("l / Right / Enter :Open file or change directory."),
+                String::from("gg                :Go to the top."),
+                String::from("G                 :Go to the bottom."),
+                String::from("dd                :Delete and yank item."),
+                String::from("yy                :Yank item."),
+                String::from("p                 :Put yanked item in the current "),
+                String::from("directory."),
+                String::from("V                 :Switch to select mode."),
+                String::from("  - d             :In select mode, delete and yank"),
+                String::from(" selected items."),
+                String::from("  - y             :In select mode, yank selected i"),
+                String::from("tems."),
+                String::from("u                 :Undo put/delete/rename."),
+                String::from("Ctrl + r          :Redo put/delete/rename."),
+                String::from("backspace         :Toggle whether to show hidden i"),
+                String::from("tems."),
+                String::from("t                 :Toggle sort order (name <-> mod"),
+                String::from("ified time)."),
+                String::from(":                 :Switch to shell mode."),
+                String::from("c                 :Switch to rename mode."),
+                String::from("/                 :Switch to filter mode."),
+                String::from("Esc               :Return to normal mode."),
+                String::from(":cd | :z          :Go to home directory."),
+                String::from(":z <keyword>      :*zoxide required* Jump to a dir"),
+                String::from("ectory that matches the keyword."),
+                String::from(":e                :Reload the current directory."),
+                String::from(":empty            :Empty the trash directory."),
+                String::from(":h                :Show help."),
+                String::from(":q / ZZ           :Exit the program."),
+                String::from(""),
+                String::from("## Configuration"),
+                String::from("config file    : $XDG_CONFIG_HOME/felix/config.tom"),
+                String::from("l"),
+                String::from("trash directory: $XDG_CONFIG_HOME/felix/trash"),
+                String::from(""),
+                String::from("For more detail, visit https://github.com/kyoheiu/"),
+                String::from("felix"),
+                String::from("Enter 'q' to go back.")
+            ]
+        );
     }
 }
