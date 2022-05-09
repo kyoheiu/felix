@@ -357,7 +357,7 @@ mod tests {
         assert_eq!(
             format_help(crate::help::HELP, 50),
             vec![
-                String::from("# felix v0.8.1"),
+                String::from("# felix v0.9.0"),
                 String::from("A simple TUI file manager with vim-like keymapping"),
                 String::from("."),
                 String::from("Works on terminals with 21 columns or more."),
@@ -390,6 +390,8 @@ mod tests {
                 String::from("tems."),
                 String::from("u                 :Undo put/delete/rename."),
                 String::from("Ctrl + r          :Redo put/delete/rename."),
+                String::from("v                 :Toggle whether to show preview."),
+                String::from(""),
                 String::from("backspace         :Toggle whether to show hidden i"),
                 String::from("tems."),
                 String::from("t                 :Toggle sort order (name <-> mod"),
