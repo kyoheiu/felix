@@ -31,7 +31,5 @@ env_logger = "0.9.0"
 thiserror = "1.0.30"
 
 [dependencies.serde]
-features = ["derive"]
 version = "1.0.136"
-
-[features]
+features = ["derive"]

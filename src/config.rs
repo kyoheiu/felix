@@ -105,7 +105,7 @@ pub fn read_config() -> Result<Config, FxError> {
     }
 }
 
-pub fn make_config(config_file: &Path, trash_dir: &Path) -> Result<(), FxError> {
+pub fn make_config_if_not_exist(config_file: &Path, trash_dir: &Path) -> Result<(), FxError> {
     if !trash_dir.exists() {
         std::fs::create_dir_all(trash_dir)?;
     }
