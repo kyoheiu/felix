@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+### Added
+- Trying to make felix user guide (just to show how to use each commands) by mdbook.
+
+### Notes
+- Text preview color needs to be readable enough, so it's worth rethinking.
+
 ## v0.9.0 (2022-05-09)
 ### Added
 - New command: 'v' to toggle whether to show i) preview for text item, or ii) contents for directory. Note that this preview feature may not work effectively with small terminal.
