@@ -11,21 +11,11 @@ While heavliy inspired by the great `vifm` and trying to implement its pleasant 
 - simple and fast
 - easy to configure how to open files
 
-## Release
-v0.8.1 (2022-05-04)
-- Fixed undo/redo order.
+## New Release
+v0.9.0 (2022-05-09)
+- New command: 'v' to toggle whether to show i) preview for text item, or ii) contents for directory. Note that this preview feature may not work effectively with small terminal.
 
-v0.8.0 (2022-05-03)
-- New command: `u` to undo and `Crtl + r` to redo. put/delete/rename are the target.
-
-v0.7.0 (2022-04-26)
-- New feature: Terminal size changes are now automatically detected and the layout is fixed.
-
-v0.6.1 (2022-04-15)
-- New configuration: You can now use the full width of terminal by setting `use_full_width` to true (false by default). I hope this wil lead to a better user experience. *For those who use <=0.6.0, felix can work without replacing config.toml because `use_full_width` is an option.*
-
-v0.6.0 (2022-04-13)
-- New command: If you have [zoxide](https://github.com/ajeetdsouza/zoxide) installed, `:z <keyword>` lets you jump to a directory that matches the keyword! For more details, see Key Manual.
+For more detail, see `CHANGELOG.md`.
 
 ## Status
 
