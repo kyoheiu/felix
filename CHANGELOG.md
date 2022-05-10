@@ -21,6 +21,7 @@
   - in `open_files` method, use `ItemInfo`'s existing field to get extension
   - `Iteminfo.ext` to `Option<String>`
   - split `move_cursor` method to multiple methods
+- Inverted color on the last row (to show distinctively)
 
 ### Fixed
 - Show help text correctly in small window size (scrollable with `j` | `k` | `Up` | `Down`)
