@@ -93,6 +93,17 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
     thread::spawn(move || loop {
         thread::sleep(interval);
         let (mut column, row) = termion::terminal_size().unwrap();
+
+        // Return error if terminal size may cause panic
+        if column < 4 {
+            log::error!("Too small terminal size.");
+            panic!("Error: too small terminal size (less than 4 columns)");
+        };
+        if row < 4 {
+            log::error!("Too small terminal size.");
+            panic!("Error: too small terminal size (less than 4 columns)");
+        };
+
         let mut state = state_detect.lock().unwrap();
         column = match state.layout.preview {
             true => column / 2,
