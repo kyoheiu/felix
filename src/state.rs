@@ -198,45 +198,7 @@ impl State {
             },
             show_hidden: session.show_hidden,
             rust_log: std::env::var("RUST_LOG").ok(),
-        }
-    }
-}
-
-macro_rules! print_item {
-    ($color: expr, $name: expr, $time: expr, $selected: expr, $layout: expr) => {
-        if *($selected) {
-            print!(
-                "{}{}{}{}{}{} {}{}{}",
-                $color,
-                style::Invert,
-                $name,
-                style::Reset,
-                cursor::Left(100),
-                cursor::Right($layout.time_start_pos - 1),
-                style::Invert,
-                $time,
-                style::Reset
-            );
-        } else {
-            print!(
-                "{}{}{}{} {}{}",
-                $color,
-                $name,
-                cursor::Left(100),
-                cursor::Right($layout.time_start_pos - 1),
-                $time,
-                color::Fg(color::Reset)
-            );
-        }
-        if $layout.terminal_column > $layout.time_start_pos + TIME_WIDTH {
-            print!("{}", clear::AfterCursor);
-        }
-    };
-}
-
-impl State {
-    pub fn new() -> Self {
-        Default::default()
+        })
     }
 
     pub fn refresh(&mut self, column: u16, row: u16, nums: &Num, cursor_pos: u16) {
@@ -934,31 +896,78 @@ impl State {
 
         match &item.file_ext {
             Some(ext) => {
+                print!("{}", style::Invert);
                 print!(
+                    "{}{}",
+                    " ".repeat(self.layout.terminal_column.into()),
+                    cursor::Left(self.layout.terminal_column),
+                );
+                let mut footer = format!(
                     "[{}/{}] {} {}",
                     nums.index + 1,
                     self.list.len(),
                     ext.clone(),
-                    to_proper_size(item.file_size)
+                    to_proper_size(item.file_size),
                 );
+                if self.rust_log.is_some() {
+                    footer.push_str(&format!(
+                        " index:{} skip:{} column:{} row:{}",
+                        nums.index,
+                        nums.skip,
+                        self.layout.terminal_column,
+                        self.layout.terminal_row
+                    ));
+                }
+                let footer: String = footer
+                    .chars()
+                    .take(self.layout.terminal_column.into())
+                    .collect();
+                print!("{}", footer);
+                print!("{}", style::Reset);
             }
             None => {
+                print!("{}", style::Invert);
                 print!(
+                    "{}{}",
+                    " ".repeat(self.layout.terminal_column.into()),
+                    cursor::Left(self.layout.terminal_column),
+                );
+                let mut footer = format!(
                     "[{}/{}] {}",
                     nums.index + 1,
                     self.list.len(),
-                    to_proper_size(item.file_size)
+                    to_proper_size(item.file_size),
                 );
+                if self.rust_log.is_some() {
+                    footer.push_str(&format!(
+                        " index:{} skip:{} column:{} row:{}",
+                        nums.index,
+                        nums.skip,
+                        self.layout.terminal_column,
+                        self.layout.terminal_row
+                    ));
+                }
+                let footer: String = footer
+                    .chars()
+                    .take(self.layout.terminal_column.into())
+                    .collect();
+                print!("{}", footer);
+                print!("{}", style::Reset);
             }
         }
 
         //Debug mode
-        if self.rust_log.is_some() {
-            print!(
-                " index:{} skip:{} column:{} row:{}",
-                nums.index, nums.skip, self.layout.terminal_column, self.layout.terminal_row
-            );
-        }
+        // if self.rust_log.is_some() {
+        //     print!(
+        //         "{} index:{} skip:{} column:{} row:{}{}",
+        //         style::Invert,
+        //         nums.index,
+        //         nums.skip,
+        //         self.layout.terminal_column,
+        //         self.layout.terminal_row,
+        //         style::Reset
+        //     );
+        // }
     }
 
     fn print_preview(&self, item: &ItemInfo) {
