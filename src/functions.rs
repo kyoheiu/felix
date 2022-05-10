@@ -47,7 +47,12 @@ pub fn clear_and_show(dir: &Path) {
         }
     }
     //Show arrow
-    print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
+    print!(
+        "{}{} {}",
+        cursor::Goto(1, 2),
+        clear::UntilNewline,
+        DOWN_ARROW
+    );
 }
 
 pub fn rename_file(item: &ItemInfo, name_set: &HashSet<String>) -> String {
