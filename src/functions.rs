@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 use termion::{clear, color, cursor, style};
 
+pub const PROPER_WIDTH: u16 = 28;
 pub const TIME_WIDTH: u16 = 16;
 pub const DEFAULT_NAME_LENGTH: u16 = 30;
 pub const SPACES: u16 = 3;
@@ -20,6 +21,7 @@ pub fn format_time(time: &Option<String>) -> String {
 
 pub fn clear_and_show(dir: &Path) {
     print!("{}{}", clear::All, cursor::Goto(1, 1));
+
     //Show current directory path
     print!(
         " {}{}{}{}{}",
@@ -179,38 +181,45 @@ pub fn make_layout(
 ) -> (u16, usize) {
     let mut time_start: u16;
     let mut name_max: usize;
-    match use_full {
-        Some(true) => {
-            time_start = column - TIME_WIDTH;
-            name_max = (time_start - SPACES).into();
-        }
-        Some(false) | None => match name_length {
-            Some(option_max) => {
-                time_start = option_max as u16 + SPACES;
-                name_max = option_max;
-            }
-            None => {
-                time_start = if column >= DEFAULT_NAME_LENGTH + TIME_WIDTH + SPACES {
-                    DEFAULT_NAME_LENGTH + SPACES
-                } else {
-                    column - TIME_WIDTH
-                };
-                name_max = if column >= DEFAULT_NAME_LENGTH + TIME_WIDTH + SPACES {
-                    DEFAULT_NAME_LENGTH.into()
-                } else {
-                    (time_start - SPACES).into()
-                };
-            }
-        },
-    }
-    let required = time_start + TIME_WIDTH - 1;
-    if required > column {
-        let diff = required - column;
-        name_max -= diff as usize;
-        time_start -= diff;
-    }
 
-    (time_start, name_max)
+    if column < PROPER_WIDTH {
+        time_start = column;
+        name_max = (column - 2).into();
+        (time_start, name_max)
+    } else {
+        match use_full {
+            Some(true) => {
+                time_start = column - TIME_WIDTH;
+                name_max = (time_start - SPACES).into();
+            }
+            Some(false) | None => match name_length {
+                Some(option_max) => {
+                    time_start = option_max as u16 + SPACES;
+                    name_max = option_max;
+                }
+                None => {
+                    time_start = if column >= DEFAULT_NAME_LENGTH + TIME_WIDTH + SPACES {
+                        DEFAULT_NAME_LENGTH + SPACES
+                    } else {
+                        column - TIME_WIDTH
+                    };
+                    name_max = if column >= DEFAULT_NAME_LENGTH + TIME_WIDTH + SPACES {
+                        DEFAULT_NAME_LENGTH.into()
+                    } else {
+                        (time_start - SPACES).into()
+                    };
+                }
+            },
+        }
+        let required = time_start + TIME_WIDTH - 1;
+        if required > column {
+            let diff = required - column;
+            name_max -= diff as usize;
+            time_start -= diff;
+        }
+
+        (time_start, name_max)
+    }
 }
 
 pub fn format_preview_line(line: &str, preview_column: usize) -> String {
