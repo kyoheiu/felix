@@ -3,7 +3,6 @@
 ## About
 
 A tui file manager with vim-like key mapping, written in Rust.  
-Works with terminal size of 21 (columns) x 4 (rows) or more.
 
 [sample gif](https://github.com/kyoheiu/felix/blob/main/screenshots/sample.gif)
 
@@ -14,7 +13,7 @@ While heavliy inspired by the great `vifm` and trying to implement its pleasant 
 
 ## New Release
 
-v0.9.0 (2022-05-09)
+v0.9.0 (2022-05-11)
 
 - New command: 'v' to toggle whether to show i) preview for text item, or ii) contents for directory. Note that this preview feature may not work effectively with small terminal.
 
