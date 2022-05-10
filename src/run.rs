@@ -53,7 +53,7 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
     }
 
     //Initialize app state
-    let mut state = State::new();
+    let mut state = State::new()?;
     state.trash_dir = trash_dir_path;
     state.current_dir = arg.canonicalize()?;
 
