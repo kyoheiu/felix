@@ -16,4 +16,6 @@ pub enum FxError {
     FileCopy { msg: String },
     #[error("{msg}")]
     FileRemove { msg: String },
+    #[error("{msg}")]
+    SmallSize { msg: String },
 }
