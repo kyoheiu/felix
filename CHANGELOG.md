@@ -2,27 +2,30 @@
 
 ## [Unreleased]
 ### Added
-- CHANGELOG.md
-- New command: 'v' to toggle whether to show i) preview for text item, or ii) contents for directory. Note that this preview feature may not work effectively with small terminal.
 - trying to make felix user guide (just to show how to use each commands) by mdbook
-
-### Changed
-- Now felix works in smaller terminal size (4 rows and 4 columns are minimum). If column is fewer than 28, modified time is not displayed.
-- Huge refactoring overall.
-  - use struct colors for state.layout.colors
-  - is_hidden moved to ItemInfo's field, make it easier to toggle show/hidden items
-  - in open_files method, use ItemInfo's existing field to get extension
-  - Iteminfo.ext to Option<String>
-  - split move_cursor method to multiple methods
-
-### Fixed
-- Show help text properly in small window size (scroll by j | k | Up | Down)
-
-### Removed
-- 'P' to print manipulation lists (put/delete/rename) is changed to work only when RUST_LOG has a value.
 
 ### Notes
 - Text preview color needs to be readable enough, so it's worth rethinking (Now LightBlack).
+
+## v0.9.0 (2022-05-11)
+### Added
+- CHANGELOG.md
+- New command: `v` to toggle whether to show i) part of the content for text file (no wrapping and static), or ii) contents tree for directory. Note that this preview feature may not work effectively with small terminal.
+- trying to make felix user guide (just to show how to use each commands) by mdbook
+
+### Changed
+- felix now works with smaller terminal size (4 rows and 4 columns is the minimum). If column is fewer than 28, modified time is not displayed.
+- Huge refactoring overall.
+  - use `struct colors` for `state.layout.colors`
+  - `is_hidden` moved to `ItemInfo`'s field, make it easier to toggle show/hidden items
+  - in `open_files` method, use `ItemInfo`'s existing field to get extension
+  - `Iteminfo.ext` to `Option<String>`
+  - split `move_cursor` method to multiple methods
+
+### Fixed
+- Show help text correctly in small window size (scrollable with `j` | `k` | `Up` | `Down`)
+- 'P' to print manipulation lists (put/delete/rename) is changed to work only when RUST_LOG has a value.
+
 
 ## v0.8.1 (2022-05-04)
 ### Fixed
