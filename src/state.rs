@@ -1,21 +1,18 @@
 use super::config::*;
-use super::errors::MyError;
+use super::errors::FxError;
 use super::functions::*;
 use super::nums::*;
 use super::session::*;
 use chrono::prelude::*;
-use log::error;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::ffi::OsString;
 use std::fs;
-use std::fs::DirEntry;
 use std::io::ErrorKind;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{Command, ExitStatus};
 use termion::{clear, color, cursor, style};
 
-pub const STARTING_POINT: u16 = 3;
+pub const BEGINNING_ROW: u16 = 3;
 pub const DOWN_ARROW: char = '\u{21D3}';
 pub const RIGHT_ARROW: char = '\u{21D2}';
 pub const FX_CONFIG_DIR: &str = "felix";
@@ -23,37 +20,6 @@ pub const CONFIG_FILE: &str = "config.toml";
 pub const TRASH: &str = "trash";
 pub const WHEN_EMPTY: &str = "Are you sure to empty the trash directory? (if yes: y)";
 
-macro_rules! print_item {
-    ($color: expr, $name: expr, $time: expr, $selected: expr, $layout: expr) => {
-        if *($selected) {
-            print!(
-                "{}{}{}{}{}{} {}{}{}",
-                $color,
-                style::Invert,
-                $name,
-                style::Reset,
-                cursor::Left(100),
-                cursor::Right($layout.time_start_pos - 1),
-                style::Invert,
-                $time,
-                style::Reset
-            );
-        } else {
-            print!(
-                "{}{}{}{} {}{}",
-                $color,
-                $name,
-                cursor::Left(100),
-                cursor::Right($layout.time_start_pos - 1),
-                $time,
-                color::Fg(color::Reset)
-            );
-        }
-        if $layout.terminal_column > $layout.time_start_pos + TIME_WIDTH {
-            print!("{}", clear::AfterCursor);
-        }
-    };
-}
 #[derive(Clone)]
 pub struct State {
     pub list: Vec<ItemInfo>,
@@ -61,7 +27,6 @@ pub struct State {
     pub manipulations: Manipulation,
     pub current_dir: PathBuf,
     pub trash_dir: PathBuf,
-    pub colors: (Colorname, Colorname, Colorname),
     pub default: String,
     pub commands: HashMap<String, String>,
     pub sort_by: SortKey,
@@ -77,8 +42,9 @@ pub struct ItemInfo {
     pub file_path: std::path::PathBuf,
     pub symlink_dir_path: Option<PathBuf>,
     pub file_size: u64,
-    pub file_ext: Option<OsString>,
+    pub file_ext: Option<String>,
     pub modified: Option<String>,
+    pub is_hidden: bool,
     pub selected: bool,
 }
 
@@ -98,6 +64,8 @@ pub struct Layout {
     pub time_start_pos: u16,
     pub use_full: Option<bool>,
     pub option_name_len: Option<usize>,
+    pub colors: Color,
+    pub preview: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -133,25 +101,75 @@ pub struct DeletedFiles {
     pub dir: PathBuf,
 }
 
-impl Default for State {
-    fn default() -> Self {
+macro_rules! print_item {
+    ($color: expr, $name: expr, $time: expr, $selected: expr, $layout: expr) => {
+        if $layout.terminal_column < PROPER_WIDTH {
+            if *($selected) {
+                print!("{}{}{}{}", $color, style::Invert, $name, style::Reset,);
+            } else {
+                print!("{}{}{}", $color, $name, color::Fg(color::Reset));
+            }
+            if $layout.terminal_column > $layout.time_start_pos + TIME_WIDTH {
+                print!("{}", clear::AfterCursor);
+            }
+        } else {
+            if *($selected) {
+                print!(
+                    "{}{}{}{}{}{} {}{}{}",
+                    $color,
+                    style::Invert,
+                    $name,
+                    style::Reset,
+                    cursor::Left(100),
+                    cursor::Right($layout.time_start_pos - 1),
+                    style::Invert,
+                    $time,
+                    style::Reset
+                );
+            } else {
+                print!(
+                    "{}{}{}{} {}{}",
+                    $color,
+                    $name,
+                    cursor::Left(100),
+                    cursor::Right($layout.time_start_pos - 1),
+                    $time,
+                    color::Fg(color::Reset)
+                );
+            }
+            if $layout.terminal_column > $layout.time_start_pos + TIME_WIDTH {
+                print!("{}", clear::AfterCursor);
+            }
+        }
+    };
+}
+
+impl State {
+    pub fn new() -> Result<Self, FxError> {
         let config = read_config().unwrap_or_else(|_| panic!("Something wrong with config file."));
         let session =
             read_session().unwrap_or_else(|_| panic!("Something wrong with session file."));
         let (column, row) =
             termion::terminal_size().unwrap_or_else(|_| panic!("Cannot detect terminal size."));
-        if column < 21 {
-            error!("Too small terminal size.");
-            panic!("Panic due to terminal size (less than 21 columns).")
+
+        // Return error if terminal size may cause panic
+        if column < 4 {
+            log::error!("Too small terminal size.");
+            return Err(FxError::SmallSize {
+                msg: "Error: too small terminal size (less than 4 columns)".to_string(),
+            });
         };
         if row < 4 {
-            error!("Too small terminal size.");
-            panic!("Panic due to terminal size (less than 4 rows).")
+            log::error!("Too small terminal size.");
+            return Err(FxError::SmallSize {
+                msg: "Error: too small terminal size (less than 4 rows)".to_string(),
+            });
         };
+
         let (time_start, name_max) =
             make_layout(column, config.use_full_width, config.item_name_length);
 
-        State {
+        Ok(State {
             list: Vec::new(),
             registered: Vec::new(),
             manipulations: Manipulation {
@@ -160,87 +178,73 @@ impl Default for State {
             },
             current_dir: PathBuf::new(),
             trash_dir: PathBuf::new(),
-            colors: (
-                config.color.dir_fg,
-                config.color.file_fg,
-                config.color.symlink_fg,
-            ),
             default: config.default,
             commands: to_extension_map(&config.exec),
             sort_by: session.sort_by,
             layout: Layout {
-                y: STARTING_POINT,
+                y: BEGINNING_ROW,
                 terminal_row: row,
                 terminal_column: column,
                 name_max_len: name_max,
                 time_start_pos: time_start,
                 use_full: config.use_full_width,
                 option_name_len: config.item_name_length,
+                colors: Color {
+                    dir_fg: config.color.dir_fg,
+                    file_fg: config.color.file_fg,
+                    symlink_fg: config.color.symlink_fg,
+                },
+                preview: false,
             },
             show_hidden: session.show_hidden,
             rust_log: std::env::var("RUST_LOG").ok(),
-        }
-    }
-}
-
-impl State {
-    pub fn new() -> Self {
-        Default::default()
+        })
     }
 
     pub fn refresh(&mut self, column: u16, row: u16, nums: &Num, cursor_pos: u16) {
         let (time_start, name_max) =
             make_layout(column, self.layout.use_full, self.layout.option_name_len);
 
-        *self = State {
-            layout: Layout {
-                terminal_row: row,
-                terminal_column: column,
-                name_max_len: name_max,
-                time_start_pos: time_start,
-                ..self.layout
-            },
-            ..self.to_owned()
-        };
+        self.layout.terminal_row = row;
+        self.layout.terminal_column = column;
+        self.layout.name_max_len = name_max;
+        self.layout.time_start_pos = time_start;
+
         clear_and_show(&self.current_dir);
         self.list_up(nums.skip);
         self.move_cursor(nums, cursor_pos);
     }
 
-    pub fn get_item(&self, index: usize) -> Result<&ItemInfo, MyError> {
+    pub fn get_item(&self, index: usize) -> Result<&ItemInfo, FxError> {
         self.list.get(index).ok_or_else(|| {
-            MyError::IoError(std::io::Error::new(
+            FxError::Io(std::io::Error::new(
                 ErrorKind::NotFound,
                 "Cannot choose item.",
             ))
         })
     }
 
-    pub fn open_file(&self, index: usize) -> Result<ExitStatus, MyError> {
+    pub fn open_file(&self, index: usize) -> Result<ExitStatus, FxError> {
         let item = self.get_item(index)?;
         let path = &item.file_path;
         let map = &self.commands;
-        let extention = path.extension();
+        let extention = &item.file_ext;
+
+        let mut default = Command::new(&self.default);
 
         match extention {
             Some(extention) => {
-                let ext = extention.to_ascii_lowercase().into_string().unwrap();
+                let ext = extention.to_ascii_lowercase();
                 match map.get(&ext) {
                     Some(command) => {
                         let mut ex = Command::new(command);
-                        ex.arg(path).status().map_err(MyError::IoError)
+                        ex.arg(path).status().map_err(FxError::Io)
                     }
-                    None => {
-                        let mut ex = Command::new(&self.default);
-                        ex.arg(path).status().map_err(MyError::IoError)
-                    }
+                    None => default.arg(path).status().map_err(FxError::Io),
                 }
             }
 
-            None => {
-                let mut ex = Command::new(&self.default);
-                ex.arg(path).status().map_err(MyError::IoError)
-            }
+            None => default.arg(path).status().map_err(FxError::Io),
         }
     }
 
@@ -258,7 +262,7 @@ impl State {
         &mut self,
         targets: &[ItemInfo],
         new_manip: bool,
-    ) -> Result<(), MyError> {
+    ) -> Result<(), FxError> {
         self.registered.clear();
         let total_selected = targets.len();
         let mut trash_vec = Vec::new();
@@ -303,11 +307,11 @@ impl State {
         Ok(())
     }
 
-    pub fn remove_and_yank_file(
+    fn remove_and_yank_file(
         &mut self,
         item: ItemInfo,
         new_manip: bool,
-    ) -> Result<PathBuf, MyError> {
+    ) -> Result<PathBuf, FxError> {
         //prepare from and to for copy
         let from = &item.file_path;
         let mut to = PathBuf::new();
@@ -315,7 +319,7 @@ impl State {
         if item.file_type == FileType::Symlink && !from.exists() {
             match Command::new("rm").arg(from).status() {
                 Ok(_) => Ok(PathBuf::new()),
-                Err(e) => Err(MyError::IoError(e)),
+                Err(e) => Err(FxError::Io(e)),
             }
         } else {
             let name = &item.file_name;
@@ -328,7 +332,7 @@ impl State {
 
                 //copy
                 if std::fs::copy(from, &to).is_err() {
-                    return Err(MyError::FileCopyError {
+                    return Err(FxError::FileCopy {
                         msg: format!("Cannot copy item: {:?}", from),
                     });
                 }
@@ -338,7 +342,7 @@ impl State {
 
             //remove original
             if std::fs::remove_file(from).is_err() {
-                return Err(MyError::FileRemoveError {
+                return Err(FxError::FileRemove {
                     msg: format!("Cannot Remove item: {:?}", from),
                 });
             }
@@ -347,11 +351,7 @@ impl State {
         }
     }
 
-    pub fn remove_and_yank_dir(
-        &mut self,
-        item: ItemInfo,
-        new_manip: bool,
-    ) -> Result<PathBuf, MyError> {
+    fn remove_and_yank_dir(&mut self, item: ItemInfo, new_manip: bool) -> Result<PathBuf, FxError> {
         let mut trash_name = String::new();
         let mut base: usize = 0;
         let mut trash_path: std::path::PathBuf = PathBuf::new();
@@ -384,7 +384,7 @@ impl State {
                     trash_name.push('_');
                     let file_name = entry.file_name().to_str();
                     if file_name == None {
-                        return Err(MyError::UTF8Error {
+                        return Err(FxError::UTF8 {
                             msg: "Cannot convert filename to UTF-8.".to_string(),
                         });
                     }
@@ -408,7 +408,7 @@ impl State {
                     }
 
                     if std::fs::copy(entry_path, &target).is_err() {
-                        return Err(MyError::FileCopyError {
+                        return Err(FxError::FileCopy {
                             msg: format!("Cannot copy item: {:?}", entry_path),
                         });
                     }
@@ -420,7 +420,7 @@ impl State {
 
         //remove original
         if std::fs::remove_dir_all(&item.file_path).is_err() {
-            return Err(MyError::FileRemoveError {
+            return Err(FxError::FileRemove {
                 msg: format!("Cannot Remove directory: {:?}", item.file_name),
             });
         }
@@ -452,7 +452,7 @@ impl State {
         &mut self,
         targets: &[ItemInfo],
         target_dir: Option<PathBuf>,
-    ) -> Result<(), MyError> {
+    ) -> Result<(), FxError> {
         //make HashSet<String> of file_name
         let mut name_set = HashSet::new();
         let target_dir_clone = target_dir.clone();
@@ -463,8 +463,14 @@ impl State {
                 }
             }
             Some(path) => {
-                for item in push_items(&path, &SortKey::Name, true)? {
-                    name_set.insert(item.file_name);
+                for entry in std::fs::read_dir(path)? {
+                    let entry = entry?;
+                    name_set.insert(
+                        entry
+                            .file_name()
+                            .into_string()
+                            .unwrap_or_else(|_| "".to_string()),
+                    );
                 }
             }
         }
@@ -512,7 +518,7 @@ impl State {
         item: &ItemInfo,
         target_dir: Option<PathBuf>,
         name_set: &mut HashSet<String>,
-    ) -> Result<PathBuf, MyError> {
+    ) -> Result<PathBuf, FxError> {
         match target_dir {
             None => {
                 if item.file_path.parent() == Some(&self.trash_dir) {
@@ -522,7 +528,7 @@ impl State {
                     let rename = rename_file(&item, name_set);
                     let to = &self.current_dir.join(&rename);
                     if std::fs::copy(&item.file_path, to).is_err() {
-                        return Err(MyError::FileCopyError {
+                        return Err(FxError::FileCopy {
                             msg: format!("Cannot copy item: {:?}", &item.file_path),
                         });
                     }
@@ -532,7 +538,7 @@ impl State {
                     let rename = rename_file(item, name_set);
                     let to = &self.current_dir.join(&rename);
                     if std::fs::copy(&item.file_path, to).is_err() {
-                        return Err(MyError::FileCopyError {
+                        return Err(FxError::FileCopy {
                             msg: format!("Cannot copy item: {:?}", &item.file_path),
                         });
                     }
@@ -548,7 +554,7 @@ impl State {
                     let rename = rename_file(&item, name_set);
                     let to = path.join(&rename);
                     if std::fs::copy(&item.file_path, to.clone()).is_err() {
-                        return Err(MyError::FileCopyError {
+                        return Err(FxError::FileCopy {
                             msg: format!("Cannot copy item: {:?}", &item.file_path),
                         });
                     }
@@ -558,7 +564,7 @@ impl State {
                     let rename = rename_file(item, name_set);
                     let to = &path.join(&rename);
                     if std::fs::copy(&item.file_path, to).is_err() {
-                        return Err(MyError::FileCopyError {
+                        return Err(FxError::FileCopy {
                             msg: format!("Cannot copy item: {:?}", &item.file_path),
                         });
                     }
@@ -574,7 +580,7 @@ impl State {
         buf: &ItemInfo,
         target_dir: Option<PathBuf>,
         name_set: &mut HashSet<String>,
-    ) -> Result<PathBuf, MyError> {
+    ) -> Result<PathBuf, FxError> {
         let mut base: usize = 0;
         let mut target: PathBuf = PathBuf::new();
         let original_path = &(buf).file_path;
@@ -636,7 +642,7 @@ impl State {
                 }
 
                 if std::fs::copy(entry_path, &child).is_err() {
-                    return Err(MyError::FileCopyError {
+                    return Err(FxError::FileCopy {
                         msg: format!("Cannot copy item: {:?}", entry_path),
                     });
                 }
@@ -645,7 +651,7 @@ impl State {
         Ok(target)
     }
 
-    pub fn print(&self, index: usize) {
+    fn print(&self, index: usize) {
         let item = &self.get_item(index).unwrap();
         let chars: Vec<char> = item.file_name.chars().collect();
         let name = if chars.len() > self.layout.name_max_len {
@@ -661,9 +667,9 @@ impl State {
         let time = format_time(&item.modified);
         let selected = &item.selected;
         let color = match item.file_type {
-            FileType::Directory => &self.colors.0,
-            FileType::File => &self.colors.1,
-            FileType::Symlink => &self.colors.2,
+            FileType::Directory => &self.layout.colors.dir_fg,
+            FileType::File => &self.layout.colors.file_fg,
+            FileType::Symlink => &self.layout.colors.symlink_fg,
         };
         match color {
             Colorname::AnsiValue(n) => {
@@ -786,7 +792,6 @@ impl State {
     pub fn list_up(&self, skip_number: u16) {
         let row = self.layout.terminal_row;
 
-        //if list exceeds max-row
         let mut row_count = 0;
         for (i, _) in self.list.iter().enumerate() {
             if i < skip_number as usize {
@@ -795,10 +800,10 @@ impl State {
 
             print!(
                 "{}",
-                cursor::Goto(3, i as u16 + STARTING_POINT - skip_number)
+                cursor::Goto(3, i as u16 + BEGINNING_ROW - skip_number)
             );
 
-            if row_count == row - STARTING_POINT {
+            if row_count == row - BEGINNING_ROW {
                 break;
             } else {
                 self.print(i);
@@ -807,8 +812,39 @@ impl State {
         }
     }
 
-    pub fn update_list(&mut self) -> Result<(), MyError> {
-        self.list = push_items(&self.current_dir, &self.sort_by, self.show_hidden)?;
+    pub fn update_list(&mut self) -> Result<(), FxError> {
+        let mut result = Vec::new();
+        let mut dir_v = Vec::new();
+        let mut file_v = Vec::new();
+
+        for entry in fs::read_dir(&self.current_dir)? {
+            let e = entry?;
+            let entry = make_item(e);
+            match entry.file_type {
+                FileType::Directory => dir_v.push(entry),
+                FileType::File | FileType::Symlink => file_v.push(entry),
+            }
+        }
+
+        match self.sort_by {
+            SortKey::Name => {
+                dir_v.sort_by(|a, b| natord::compare(&a.file_name, &b.file_name));
+                file_v.sort_by(|a, b| natord::compare(&a.file_name, &b.file_name));
+            }
+            SortKey::Time => {
+                dir_v.sort_by(|a, b| b.modified.partial_cmp(&a.modified).unwrap());
+                file_v.sort_by(|a, b| b.modified.partial_cmp(&a.modified).unwrap());
+            }
+        }
+
+        result.append(&mut dir_v);
+        result.append(&mut file_v);
+
+        if !self.show_hidden {
+            result.retain(|x| !x.is_hidden);
+        }
+
+        self.list = result;
         Ok(())
     }
 
@@ -839,42 +875,156 @@ impl State {
     }
 
     pub fn move_cursor(&mut self, nums: &Num, y: u16) {
+        if let Ok(item) = self.get_item(nums.index) {
+            //Print item information at the bottom
+            self.print_footer(nums, item);
+
+            //If preview enabled, print text file contents
+            if self.layout.preview {
+                self.print_preview(item);
+            }
+            print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+
+            //Store cursor position when cursor moves
+            self.layout.y = y;
+        }
+    }
+
+    fn print_footer(&self, nums: &Num, item: &ItemInfo) {
         print!(" {}", cursor::Goto(1, self.layout.terminal_row));
         print!("{}", clear::CurrentLine);
 
-        let item = self.get_item(nums.index);
-        if let Ok(item) = item {
-            match &item.file_ext {
-                Some(ext) => {
-                    print!(
-                        "[{}/{}] {} {}",
-                        nums.index + 1,
-                        self.list.len(),
-                        ext.clone().into_string().unwrap_or_default(),
-                        to_proper_size(item.file_size)
-                    );
-                }
-                None => {
-                    print!(
-                        "[{}/{}] {}",
-                        nums.index + 1,
-                        self.list.len(),
-                        to_proper_size(item.file_size)
-                    );
-                }
-            }
-            if self.rust_log.is_some() {
+        match &item.file_ext {
+            Some(ext) => {
+                print!("{}", style::Invert);
                 print!(
-                    " index:{} skip:{} column:{} row:{}",
-                    nums.index, nums.skip, self.layout.terminal_column, self.layout.terminal_row
+                    "{}{}",
+                    " ".repeat(self.layout.terminal_column.into()),
+                    cursor::Left(self.layout.terminal_column),
                 );
+                let mut footer = format!(
+                    "[{}/{}] {} {}",
+                    nums.index + 1,
+                    self.list.len(),
+                    ext.clone(),
+                    to_proper_size(item.file_size),
+                );
+                if self.rust_log.is_some() {
+                    footer.push_str(&format!(
+                        " index:{} skip:{} column:{} row:{}",
+                        nums.index,
+                        nums.skip,
+                        self.layout.terminal_column,
+                        self.layout.terminal_row
+                    ));
+                }
+                let footer: String = footer
+                    .chars()
+                    .take(self.layout.terminal_column.into())
+                    .collect();
+                print!("{}", footer);
+                print!("{}", style::Reset);
+            }
+            None => {
+                print!("{}", style::Invert);
+                print!(
+                    "{}{}",
+                    " ".repeat(self.layout.terminal_column.into()),
+                    cursor::Left(self.layout.terminal_column),
+                );
+                let mut footer = format!(
+                    "[{}/{}] {}",
+                    nums.index + 1,
+                    self.list.len(),
+                    to_proper_size(item.file_size),
+                );
+                if self.rust_log.is_some() {
+                    footer.push_str(&format!(
+                        " index:{} skip:{} column:{} row:{}",
+                        nums.index,
+                        nums.skip,
+                        self.layout.terminal_column,
+                        self.layout.terminal_row
+                    ));
+                }
+                let footer: String = footer
+                    .chars()
+                    .take(self.layout.terminal_column.into())
+                    .collect();
+                print!("{}", footer);
+                print!("{}", style::Reset);
             }
         }
-        print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
-        self.layout.y = y;
+
+        //Debug mode
+        // if self.rust_log.is_some() {
+        //     print!(
+        //         "{} index:{} skip:{} column:{} row:{}{}",
+        //         style::Invert,
+        //         nums.index,
+        //         nums.skip,
+        //         self.layout.terminal_column,
+        //         self.layout.terminal_row,
+        //         style::Reset
+        //     );
+        // }
     }
 
-    pub fn write_session(&self, session_path: PathBuf) -> Result<(), MyError> {
+    fn print_preview(&self, item: &ItemInfo) {
+        let content = {
+            let item = item.file_path.clone();
+            std::thread::spawn(move || fs::read_to_string(item))
+        };
+
+        let preview_start: u16 = self.layout.terminal_column + 2;
+
+        //Print item name at the top
+        print!("{}{}", cursor::Goto(preview_start, 1), clear::UntilNewline);
+        print!("[{}]", item.file_name);
+        print!("{}", cursor::Goto(preview_start, BEGINNING_ROW));
+
+        //Clear preview space
+        for i in 0..self.layout.terminal_row {
+            print!("{}", cursor::Goto(preview_start, BEGINNING_ROW + i as u16));
+            print!("{}", clear::UntilNewline);
+        }
+
+        if item.file_type == FileType::Directory {
+            if let Ok(contents) = list_up_contents(item.file_path.clone()) {
+                if let Ok(contents) = make_tree(contents) {
+                    for (i, line) in contents.lines().enumerate() {
+                        print!("{}", cursor::Goto(preview_start, BEGINNING_ROW + i as u16));
+                        print!(
+                            "{}{}{}",
+                            color::Fg(color::LightBlack),
+                            format_preview_line(line, (self.layout.terminal_column - 1).into()),
+                            color::Fg(color::Reset)
+                        );
+                        if BEGINNING_ROW + i as u16 == self.layout.terminal_row - 1 {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        //Print preview (no-wrapping)
+        if let Ok(content) = content.join().unwrap() {
+            for (i, line) in content.lines().enumerate() {
+                print!("{}", cursor::Goto(preview_start, BEGINNING_ROW + i as u16));
+                print!(
+                    "{}{}{}",
+                    color::Fg(color::LightBlack),
+                    format_preview_line(line, (self.layout.terminal_column - 1).into()),
+                    color::Fg(color::Reset)
+                );
+                if BEGINNING_ROW + i as u16 == self.layout.terminal_row - 1 {
+                    break;
+                }
+            }
+        }
+    }
+
+    pub fn write_session(&self, session_path: PathBuf) -> Result<(), FxError> {
         let session = Session {
             sort_by: self.sort_by.clone(),
             show_hidden: self.show_hidden,
@@ -894,7 +1044,11 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
         .into_string()
         .unwrap_or_else(|_| "Invalid unicode name".to_string());
 
-    let ext = path.extension().map(|s| s.to_os_string());
+    let hidden = matches!(name.chars().next(), Some('.'));
+
+    let ext = path
+        .extension()
+        .map(|s| s.to_os_string().into_string().unwrap_or_default());
 
     match metadata {
         Ok(metadata) => {
@@ -943,6 +1097,7 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
                 file_ext: ext,
                 modified: time,
                 selected: false,
+                is_hidden: hidden,
             }
         }
         Err(_) => ItemInfo {
@@ -954,52 +1109,12 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
             file_ext: ext,
             modified: None,
             selected: false,
+            is_hidden: false,
         },
     }
 }
 
-fn is_not_hidden(entry: &DirEntry) -> bool {
-    entry
-        .file_name()
-        .to_str()
-        .map(|s| !s.starts_with('.'))
-        .unwrap_or(false)
-}
-
-pub fn push_items(p: &Path, key: &SortKey, show_hidden: bool) -> Result<Vec<ItemInfo>, MyError> {
-    let mut result = Vec::new();
-    let mut dir_v = Vec::new();
-    let mut file_v = Vec::new();
-
-    for entry in fs::read_dir(p)? {
-        let e = entry?;
-        if !show_hidden && !is_not_hidden(&e) {
-            continue;
-        }
-        let entry = make_item(e);
-        match entry.file_type {
-            FileType::Directory => dir_v.push(entry),
-            FileType::File | FileType::Symlink => file_v.push(entry),
-        }
-    }
-
-    match key {
-        SortKey::Name => {
-            dir_v.sort_by(|a, b| natord::compare(&a.file_name, &b.file_name));
-            file_v.sort_by(|a, b| natord::compare(&a.file_name, &b.file_name));
-        }
-        SortKey::Time => {
-            dir_v.sort_by(|a, b| b.modified.partial_cmp(&a.modified).unwrap());
-            file_v.sort_by(|a, b| b.modified.partial_cmp(&a.modified).unwrap());
-        }
-    }
-
-    result.append(&mut dir_v);
-    result.append(&mut file_v);
-    Ok(result)
-}
-
-pub fn trash_to_info(trash_dir: &PathBuf, vec: Vec<PathBuf>) -> Result<Vec<ItemInfo>, MyError> {
+pub fn trash_to_info(trash_dir: &PathBuf, vec: Vec<PathBuf>) -> Result<Vec<ItemInfo>, FxError> {
     let total = vec.len();
     let mut count = 0;
     let mut result = Vec::new();

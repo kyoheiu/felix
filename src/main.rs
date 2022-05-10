@@ -7,7 +7,7 @@ mod run;
 mod session;
 mod state;
 
-fn main() -> Result<(), errors::MyError> {
+fn main() -> Result<(), errors::FxError> {
     env_logger::init();
     let args: Vec<String> = std::env::args().collect();
     let len = args.len();

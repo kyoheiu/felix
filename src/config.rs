@@ -1,7 +1,8 @@
-use super::errors::MyError;
+use super::errors::FxError;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::read_to_string;
+use std::path::Path;
 
 use crate::state::FX_CONFIG_DIR;
 
@@ -91,7 +92,7 @@ pub enum Colorname {
     Yellow,
 }
 
-pub fn read_config() -> Result<Config, MyError> {
+pub fn read_config() -> Result<Config, FxError> {
     let mut config = dirs::config_dir().unwrap_or_else(|| panic!("Cannot read config dir."));
     config.push(FX_CONFIG_DIR);
     config.push(CONFIG_FILE);
@@ -102,4 +103,17 @@ pub fn read_config() -> Result<Config, MyError> {
     } else {
         panic!("Cannot deserialize config file.");
     }
+}
+
+pub fn make_config_if_not_exist(config_file: &Path, trash_dir: &Path) -> Result<(), FxError> {
+    if !trash_dir.exists() {
+        std::fs::create_dir_all(trash_dir)?;
+    }
+
+    if !config_file.exists() {
+        std::fs::write(&config_file, CONFIG_EXAMPLE)
+            .unwrap_or_else(|_| panic!("cannot write new config file."));
+    }
+
+    Ok(())
 }
