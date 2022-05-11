@@ -7,7 +7,14 @@
 ### Notes
 - Text preview color needs to be readable enough, so it's worth rethinking (Now LightBlack).
 
-## v0.9.0 (2022-05-11)
+## v0.9.1 (2022-05-11)
+### Fixed
+- Fix bug that after `:h`, cursor move can cause unexpected panic.
+
+### Changed
+- Wrap preview text.
+
+## v0.9.0 (2022-05-10)
 ### Added
 - CHANGELOG.md
 - New command: `v` to toggle whether to show i) part of the content for text file (no wrapping and static), or ii) contents tree for directory. Note that this preview feature may not work effectively with small terminal.
