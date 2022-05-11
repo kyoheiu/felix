@@ -1167,7 +1167,8 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
                                             cursor::Goto(1, 1)
                                         );
                                         screen.flush()?;
-                                        let help = format_help(HELP, state.layout.terminal_column);
+                                        let help =
+                                            format_txt(HELP, state.layout.terminal_column, true);
                                         let help_len = help.clone().len();
                                         print_help(&help, 0, state.layout.terminal_row);
                                         screen.flush()?;
@@ -1177,9 +1178,12 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
                                             if let Some(Ok(key)) = stdin.next() {
                                                 match key {
                                                     Key::Char('j') | Key::Down => {
-                                                        if skip
-                                                            == help_len + 1
-                                                                - state.layout.terminal_row as usize
+                                                        if help_len
+                                                            < state.layout.terminal_row.into()
+                                                            || skip
+                                                                == help_len + 1
+                                                                    - state.layout.terminal_row
+                                                                        as usize
                                                         {
                                                             continue;
                                                         } else {

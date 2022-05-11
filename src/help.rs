@@ -1,4 +1,4 @@
-pub const HELP: &str = "# felix v0.9.0
+pub const HELP: &str = "# felix v0.9.1
 A simple TUI file manager with vim-like keymapping.
 Works on terminals with 21 columns or more.
 
