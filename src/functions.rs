@@ -373,7 +373,7 @@ mod tests {
         assert_eq!(
             format_txt(crate::help::HELP, 50, true),
             vec![
-                String::from("# felix v0.9.0"),
+                String::from("# felix v0.9.1"),
                 String::from("A simple TUI file manager with vim-like keymapping"),
                 String::from("."),
                 String::from("Works on terminals with 21 columns or more."),
