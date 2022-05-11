@@ -15,9 +15,9 @@ While heavliy inspired by the great `vifm` and trying to implement its pleasant 
 
 ## New Release
 
-v0.9.0 (2022-05-11)
-
-- New command: 'v' to toggle whether to show i) preview for text item, or ii) contents for directory. Note that this preview feature may not work effectively with small terminal.
+v0.9.1 (2022-05-11)
+- Fix bug that after `:h`, cursor move can cause unexpected panic.
+- Wrap preview text.
 
 For more detail, see `CHANGELOG.md`.
 
