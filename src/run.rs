@@ -1167,7 +1167,7 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
                                             cursor::Goto(1, 1)
                                         );
                                         screen.flush()?;
-                                        let help = format_help(HELP, state.layout.terminal_column);
+                                        let help = format_txt(HELP, state.layout.terminal_column);
                                         let help_len = help.clone().len();
                                         print_help(&help, 0, state.layout.terminal_row);
                                         screen.flush()?;

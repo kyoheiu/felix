@@ -266,7 +266,7 @@ pub fn make_tree(v: Vec<String>) -> Result<String, FxError> {
     Ok(result)
 }
 
-pub fn format_help(txt: &str, column: u16) -> Vec<String> {
+pub fn format_txt(txt: &str, column: u16) -> Vec<String> {
     let mut v = Vec::new();
     let mut column_count = 0;
     let mut line = String::new();
@@ -366,10 +366,10 @@ mod tests {
     }
 
     #[test]
-    fn test_format_help() {
-        println!("{:#?}", format_help(crate::help::HELP, 50));
+    fn test_format_txt() {
+        println!("{:#?}", format_txt(crate::help::HELP, 50));
         assert_eq!(
-            format_help(crate::help::HELP, 50),
+            format_txt(crate::help::HELP, 50),
             vec![
                 String::from("# felix v0.9.0"),
                 String::from("A simple TUI file manager with vim-like keymapping"),
