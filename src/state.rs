@@ -973,7 +973,15 @@ impl State {
     fn print_preview(&self, item: &ItemInfo) {
         let content = {
             let item = item.file_path.clone();
-            std::thread::spawn(move || fs::read_to_string(item))
+            let column = self.layout.terminal_column;
+            std::thread::spawn(move || {
+                let content = fs::read_to_string(item);
+                if let Ok(content) = content {
+                    format_txt(&content, column - 1, false)
+                } else {
+                    vec![]
+                }
+            })
         };
 
         let preview_start: u16 = self.layout.terminal_column + 2;
@@ -1008,18 +1016,16 @@ impl State {
             }
         }
         //Print preview (no-wrapping)
-        if let Ok(content) = content.join().unwrap() {
-            for (i, line) in content.lines().enumerate() {
-                print!("{}", cursor::Goto(preview_start, BEGINNING_ROW + i as u16));
-                print!(
-                    "{}{}{}",
-                    color::Fg(color::LightBlack),
-                    format_preview_line(line, (self.layout.terminal_column - 1).into()),
-                    color::Fg(color::Reset)
-                );
-                if BEGINNING_ROW + i as u16 == self.layout.terminal_row - 1 {
-                    break;
-                }
+        for (i, line) in content.join().unwrap().iter().enumerate() {
+            print!("{}", cursor::Goto(preview_start, BEGINNING_ROW + i as u16));
+            print!(
+                "{}{}{}",
+                color::Fg(color::LightBlack),
+                line,
+                color::Fg(color::Reset)
+            );
+            if BEGINNING_ROW + i as u16 == self.layout.terminal_row - 1 {
+                break;
             }
         }
     }

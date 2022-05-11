@@ -266,7 +266,7 @@ pub fn make_tree(v: Vec<String>) -> Result<String, FxError> {
     Ok(result)
 }
 
-pub fn format_txt(txt: &str, column: u16) -> Vec<String> {
+pub fn format_txt(txt: &str, column: u16, is_help: bool) -> Vec<String> {
     let mut v = Vec::new();
     let mut column_count = 0;
     let mut line = String::new();
@@ -286,7 +286,9 @@ pub fn format_txt(txt: &str, column: u16) -> Vec<String> {
             continue;
         }
     }
-    v.push("Enter 'q' to go back.".to_string());
+    if is_help {
+        v.push("Enter 'q' to go back.".to_string());
+    }
     v
 }
 
@@ -367,9 +369,9 @@ mod tests {
 
     #[test]
     fn test_format_txt() {
-        println!("{:#?}", format_txt(crate::help::HELP, 50));
+        println!("{:#?}", format_txt(crate::help::HELP, 50, true));
         assert_eq!(
-            format_txt(crate::help::HELP, 50),
+            format_txt(crate::help::HELP, 50, true),
             vec![
                 String::from("# felix v0.9.0"),
                 String::from("A simple TUI file manager with vim-like keymapping"),
