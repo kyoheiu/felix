@@ -1021,7 +1021,7 @@ impl State {
             print!(
                 "{}{}{}",
                 color::Fg(color::LightBlack),
-                line,
+                format_preview_line(line, (self.layout.terminal_column - 1).into()),
                 color::Fg(color::Reset)
             );
             if BEGINNING_ROW + i as u16 == self.layout.terminal_row - 1 {
