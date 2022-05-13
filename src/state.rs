@@ -879,9 +879,17 @@ impl State {
             //Print item information at the bottom
             self.print_footer(nums, item);
 
-            //If preview enabled, print text file contents
+            //If preview enabled, print text preview or image preview.
+            //It would be more precise if image::guess_format could be used here
+            //(Interpretation by extension is not accurate),
+            //but it would have its own costs like reading every file,
+            //which I don't think is user-friendly.
             if self.layout.preview {
-                self.print_preview(item);
+                if image::ImageFormat::from_path(&item.file_path).is_ok() {
+                    self.preview_image(item);
+                } else {
+                    self.preview_text(item);
+                }
             }
             print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
 
@@ -955,22 +963,9 @@ impl State {
                 print!("{}", style::Reset);
             }
         }
-
-        //Debug mode
-        // if self.rust_log.is_some() {
-        //     print!(
-        //         "{} index:{} skip:{} column:{} row:{}{}",
-        //         style::Invert,
-        //         nums.index,
-        //         nums.skip,
-        //         self.layout.terminal_column,
-        //         self.layout.terminal_row,
-        //         style::Reset
-        //     );
-        // }
     }
 
-    fn print_preview(&self, item: &ItemInfo) {
+    fn preview_text(&self, item: &ItemInfo) {
         let content = {
             let item = item.file_path.clone();
             let column = self.layout.terminal_column;
@@ -1029,6 +1024,19 @@ impl State {
                 break;
             }
         }
+    }
+
+    fn preview_image(&self, item: &ItemInfo) {
+        let item = item.file_path.clone();
+        let conf = viuer::Config {
+            x: self.layout.terminal_column + 1,
+            y: BEGINNING_ROW as i16 - 1,
+            width: Some((self.layout.terminal_column - 1).into()),
+            height: Some((self.layout.terminal_row / 2).into()),
+            ..Default::default()
+        };
+        let image = image::io::Reader::open(item).unwrap().decode().unwrap();
+        viuer::print(&image, &conf).unwrap();
     }
 
     pub fn write_session(&self, session_path: PathBuf) -> Result<(), FxError> {
