@@ -234,7 +234,7 @@ impl State {
 
         match extention {
             Some(extention) => {
-                let ext = extention.to_ascii_lowercase();
+                let ext = extention.clone();
                 match map.get(&ext) {
                     Some(command) => {
                         let mut ex = Command::new(command);
@@ -1053,9 +1053,12 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
 
     let hidden = matches!(name.chars().next(), Some('.'));
 
-    let ext = path
-        .extension()
-        .map(|s| s.to_os_string().into_string().unwrap_or_default());
+    let ext = path.extension().map(|s| {
+        s.to_os_string()
+            .into_string()
+            .unwrap_or_default()
+            .to_ascii_lowercase()
+    });
 
     match metadata {
         Ok(metadata) => {
