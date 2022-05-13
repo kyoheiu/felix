@@ -977,6 +977,7 @@ impl State {
             std::thread::spawn(move || {
                 let content = fs::read_to_string(item);
                 if let Ok(content) = content {
+                    let content = content.replace('\t', "    ");
                     format_txt(&content, column - 1, false)
                 } else {
                     vec![]
@@ -1015,13 +1016,13 @@ impl State {
                 }
             }
         }
-        //Print preview (no-wrapping)
+        //Print preview (wrapping)
         for (i, line) in content.join().unwrap().iter().enumerate() {
             print!("{}", cursor::Goto(preview_start, BEGINNING_ROW + i as u16));
             print!(
                 "{}{}{}",
                 color::Fg(color::LightBlack),
-                format_preview_line(line, (self.layout.terminal_column - 1).into()),
+                line,
                 color::Fg(color::Reset)
             );
             if BEGINNING_ROW + i as u16 == self.layout.terminal_row - 1 {

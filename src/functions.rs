@@ -223,10 +223,7 @@ pub fn make_layout(
 }
 
 pub fn format_preview_line(line: &str, preview_column: usize) -> String {
-    line.replace('\t', "    ")
-        .chars()
-        .take(preview_column)
-        .collect()
+    line.chars().take(preview_column).collect()
 }
 
 pub fn list_up_contents(path: PathBuf) -> Result<Vec<String>, FxError> {
@@ -346,8 +343,8 @@ mod tests {
     #[test]
     fn test_format_preview_line() {
         assert_eq!(
-            format_preview_line("The\tquick brown fox jumps over the lazy dog", 20),
-            "The    quick brown f".to_string()
+            format_preview_line("The quick brown fox jumps over the lazy dog", 20),
+            "The quick brown fox ".to_string()
         );
     }
 
