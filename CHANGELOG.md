@@ -4,6 +4,9 @@
 ### Added
 - trying to make felix user guide (just to show how to use each commands) by mdbook
 
+### Fixed
+- Fix text preview bug around new line that occurs when it has tab.
+
 ### Notes
 - Text preview color needs to be readable enough, so it's worth rethinking (Now LightBlack).
 
@@ -12,7 +15,7 @@
 - Fix bug that after `:h`, cursor move can cause unexpected panic.
 
 ### Changed
-- Wrap preview text.
+- Text preview always wrapped (yet static).
 
 ## v0.9.0 (2022-05-10)
 ### Added
