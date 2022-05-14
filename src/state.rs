@@ -980,24 +980,28 @@ impl State {
             })
         };
 
-        let preview_start: u16 = self.layout.terminal_column + 2;
+        let preview_start_column: u16 = self.layout.terminal_column + 2;
 
         //Print item name at the top
-        print!("{}{}", cursor::Goto(preview_start, 1), clear::UntilNewline);
+        print!(
+            "{}{}",
+            cursor::Goto(preview_start_column, 1),
+            clear::UntilNewline
+        );
         print!("[{}]", item.file_name);
-        print!("{}", cursor::Goto(preview_start, BEGINNING_ROW));
+        print!("{}", cursor::Goto(preview_start_column, BEGINNING_ROW));
 
         //Clear preview space
-        for i in 0..self.layout.terminal_row {
-            print!("{}", cursor::Goto(preview_start, BEGINNING_ROW + i as u16));
-            print!("{}", clear::UntilNewline);
-        }
+        self.clear_preview(preview_start_column);
 
         if item.file_type == FileType::Directory {
             if let Ok(contents) = list_up_contents(item.file_path.clone()) {
                 if let Ok(contents) = make_tree(contents) {
                     for (i, line) in contents.lines().enumerate() {
-                        print!("{}", cursor::Goto(preview_start, BEGINNING_ROW + i as u16));
+                        print!(
+                            "{}",
+                            cursor::Goto(preview_start_column, BEGINNING_ROW + i as u16)
+                        );
                         print!(
                             "{}{}{}",
                             color::Fg(color::LightBlack),
@@ -1071,6 +1075,16 @@ impl State {
             }
         } else {
             (0, 0)
+        }
+    }
+
+    fn clear_preview(&self, preview_start_column: u16) {
+        for i in 0..self.layout.terminal_row {
+            print!(
+                "{}",
+                cursor::Goto(preview_start_column, BEGINNING_ROW + i as u16)
+            );
+            print!("{}", clear::UntilNewline);
         }
     }
 
