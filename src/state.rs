@@ -1017,7 +1017,10 @@ impl State {
         }
         //Print preview (wrapping)
         for (i, line) in content.join().unwrap().iter().enumerate() {
-            print!("{}", cursor::Goto(preview_start, BEGINNING_ROW + i as u16));
+            print!(
+                "{}",
+                cursor::Goto(preview_start_column, BEGINNING_ROW + i as u16)
+            );
             print!(
                 "{}{}{}",
                 color::Fg(color::LightBlack),
@@ -1031,25 +1034,26 @@ impl State {
     }
 
     fn preview_image(&self, item: &ItemInfo) {
-        let preview_start: u16 = self.layout.terminal_column + 2;
+        let preview_start_column: u16 = self.layout.terminal_column + 2;
         let (w, h) = self.get_image_preview_size(item);
         let conf = viuer::Config {
-            x: preview_start - 1,
+            x: preview_start_column - 1,
             y: BEGINNING_ROW as i16 - 1,
             width: Some(w.into()),
             height: Some(h.into()),
             ..Default::default()
         };
         //Print item name at the top
-        print!("{}{}", cursor::Goto(preview_start, 1), clear::UntilNewline);
+        print!(
+            "{}{}",
+            cursor::Goto(preview_start_column, 1),
+            clear::UntilNewline
+        );
         print!("[{}]", item.file_name);
-        print!("{}", cursor::Goto(preview_start, BEGINNING_ROW));
+        print!("{}", cursor::Goto(preview_start_column, BEGINNING_ROW));
 
         //Clear preview space
-        for i in 0..self.layout.terminal_row {
-            print!("{}", cursor::Goto(preview_start, BEGINNING_ROW + i as u16));
-            print!("{}", clear::UntilNewline);
-        }
+        self.clear_preview(preview_start_column);
 
         let image = image::io::Reader::open(&item.file_path)
             .unwrap()
@@ -1061,17 +1065,22 @@ impl State {
     fn get_image_preview_size(&self, item: &ItemInfo) -> (u16, u16) {
         let term_width = self.layout.terminal_column - 1;
         let term_height = self.layout.terminal_row - 3;
-        let term_ratio = term_width as f32 / ((term_height * 2) as f32);
+        //preview space ratio by actual resolution
+        let term_height_actual = (term_height * 2) as f32;
+        let term_ratio = term_width as f32 / term_height_actual;
+
         if let Ok((w, h)) = image::image_dimensions(&item.file_path) {
-            let image_ratio = w as f32 / h as f32;
+            let w_f32 = w as f32;
+            let h_f32 = h as f32;
+            let image_ratio = w_f32 / h_f32;
             if term_ratio <= image_ratio {
-                let factor = w as f32 / term_width as f32;
-                let height = (h as f32 / (factor * 2.0)) as u16;
-                (term_width, height)
+                let factor = w_f32 / term_width as f32;
+                let height = (h_f32 / factor) as u16;
+                (term_width, height / 2)
             } else {
-                let factor = h as f32 / term_height as f32;
-                let width = (w as f32 / factor) as u16;
-                (width, term_height / 2)
+                let factor = h_f32 / term_height_actual;
+                let width = (w_f32 / factor) as u16;
+                (width, term_height)
             }
         } else {
             (0, 0)
