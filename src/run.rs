@@ -151,7 +151,6 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
                         state.move_cursor(&nums, y);
                     } else {
                         nums.go_down();
-                        print!(" ");
                         state.move_cursor(&nums, y + 1);
                     }
                 }
@@ -168,7 +167,6 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
                         state.move_cursor(&nums, y);
                     } else {
                         nums.go_up();
-                        print!(" ");
                         state.move_cursor(&nums, y - 1);
                     }
                 }
