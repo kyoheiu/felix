@@ -1066,6 +1066,8 @@ impl State {
             y: BEGINNING_ROW as i16 - 1,
             width: Some(w.into()),
             height: Some(h.into()),
+            use_kitty: false,
+            use_iterm: false,
             ..Default::default()
         };
         //Print item name at the top
