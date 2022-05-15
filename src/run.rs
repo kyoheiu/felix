@@ -19,9 +19,10 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::{clear, cursor, screen};
 
-//frequency to detect terminal size change
+/// frequency to detect terminal size change
 const DETECTION_INTERVAL: u64 = 500;
 
+/// Run the app.
 pub fn run(arg: PathBuf) -> Result<(), FxError> {
     debug!("Initial setup starts.");
 
@@ -151,7 +152,6 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
                         state.move_cursor(&nums, y);
                     } else {
                         nums.go_down();
-                        print!(" ");
                         state.move_cursor(&nums, y + 1);
                     }
                 }
@@ -168,7 +168,6 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
                         state.move_cursor(&nums, y);
                     } else {
                         nums.go_up();
-                        print!(" ");
                         state.move_cursor(&nums, y - 1);
                     }
                 }
@@ -893,8 +892,8 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
                     );
                     screen.flush()?;
 
+                    let initial_pos = 4;
                     loop {
-                        let eow = rename.len() + 3;
                         let (x, _) = screen.cursor_pos()?;
                         let input = stdin.next();
                         if let Some(Ok(key)) = input {
@@ -937,22 +936,21 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
                                 }
 
                                 Key::Left => {
-                                    if x == 4 {
+                                    if x == initial_pos {
                                         continue;
                                     };
                                     print!("{}", cursor::Left(1));
                                 }
 
                                 Key::Right => {
-                                    if x as usize == eow + 1 {
+                                    if x as usize == rename.len() + initial_pos as usize {
                                         continue;
                                     };
                                     print!("{}", cursor::Right(1));
                                 }
 
                                 Key::Char(c) => {
-                                    let memo_x = x;
-                                    rename.insert((x - 4).into(), c);
+                                    rename.insert((x - initial_pos).into(), c);
 
                                     print!(
                                         "{}{}{} {}{}",
@@ -960,16 +958,15 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
                                         cursor::Goto(2, 2),
                                         RIGHT_ARROW,
                                         &rename.iter().collect::<String>(),
-                                        cursor::Goto(memo_x + 1, 2)
+                                        cursor::Goto(x + 1, 2)
                                     );
                                 }
 
                                 Key::Backspace => {
-                                    let memo_x = x;
-                                    if x == 4 {
+                                    if x == initial_pos {
                                         continue;
                                     };
-                                    rename.remove((x - 5).into());
+                                    rename.remove((x - initial_pos - 1).into());
 
                                     print!(
                                         "{}{}{} {}{}",
@@ -977,7 +974,7 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
                                         cursor::Goto(2, 2),
                                         RIGHT_ARROW,
                                         &rename.iter().collect::<String>(),
-                                        cursor::Goto(memo_x - 1, 2)
+                                        cursor::Goto(x - 1, 2)
                                     );
                                 }
 
@@ -993,18 +990,14 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
                     if len == 0 {
                         continue;
                     }
-                    print!(
-                        " {}{}{} ",
-                        cursor::Goto(2, 2),
-                        clear::CurrentLine,
-                        RIGHT_ARROW
-                    );
+                    print!(" {}{}/", cursor::Goto(2, 2), clear::CurrentLine,);
                     print!("{}", cursor::Show);
                     screen.flush()?;
 
                     let original_list = state.list.clone();
 
                     let mut keyword: Vec<char> = Vec::new();
+                    let initial_pos = 3;
                     loop {
                         let (x, _) = screen.cursor_pos()?;
                         let keyword_len = keyword.len();
@@ -1035,51 +1028,46 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
                                 }
 
                                 Key::Left => {
-                                    if x == 4 {
+                                    if x == initial_pos {
                                         continue;
                                     }
                                     print!("{}", cursor::Left(1));
                                 }
 
                                 Key::Right => {
-                                    if x as usize == keyword_len + 4 {
+                                    if x as usize == keyword_len + initial_pos as usize {
                                         continue;
                                     }
                                     print!("{}", cursor::Right(1));
                                 }
 
                                 Key::Char(c) => {
-                                    let memo_x = x;
-                                    keyword.insert((x - 4).into(), c);
+                                    keyword.insert((x - initial_pos).into(), c);
+
+                                    let result = &keyword.iter().collect::<String>();
 
                                     state.list = original_list
                                         .clone()
                                         .into_iter()
-                                        .filter(|entry| {
-                                            entry
-                                                .file_name
-                                                .contains(&keyword.iter().collect::<String>())
-                                        })
+                                        .filter(|entry| entry.file_name.contains(result))
                                         .collect();
 
                                     clear_and_show(&state.current_dir);
                                     state.list_up(0);
 
                                     print!(
-                                        "{}{} {}{}",
+                                        "{}/{}{}",
                                         cursor::Goto(2, 2),
-                                        RIGHT_ARROW,
-                                        &keyword.iter().collect::<String>(),
-                                        cursor::Goto(memo_x + 1, 2)
+                                        result,
+                                        cursor::Goto(x + 1, 2)
                                     );
                                 }
 
                                 Key::Backspace => {
-                                    let memo_x = x;
-                                    if x == 4 {
+                                    if x == initial_pos {
                                         continue;
                                     };
-                                    keyword.remove((x - 5).into());
+                                    keyword.remove((x - initial_pos - 1).into());
 
                                     state.list = original_list
                                         .clone()
@@ -1096,11 +1084,10 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
                                     state.list_up(nums.skip);
 
                                     print!(
-                                        "{}{} {}{}",
+                                        "{}/{}{}",
                                         cursor::Goto(2, 2),
-                                        RIGHT_ARROW,
                                         &keyword.iter().collect::<String>(),
-                                        cursor::Goto(memo_x - 1, 2)
+                                        cursor::Goto(x - 1, 2)
                                     );
                                 }
 
@@ -1120,12 +1107,49 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
                     let mut command: Vec<char> = Vec::new();
                     screen.flush()?;
 
+                    let initial_pos = 3;
                     'command: loop {
-                        let eow = command.len() + 2;
                         let (x, _) = screen.cursor_pos()?;
                         let input = stdin.next();
                         if let Some(Ok(key)) = input {
                             match key {
+                                Key::Esc => {
+                                    print!("{}", clear::CurrentLine);
+                                    print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
+                                    print!("{}", cursor::Hide);
+                                    state.move_cursor(&nums, y);
+                                    break 'command;
+                                }
+
+                                Key::Left => {
+                                    if x == initial_pos {
+                                        continue;
+                                    };
+                                    print!("{}", cursor::Left(1));
+                                }
+
+                                Key::Right => {
+                                    if x as usize == command.len() + initial_pos as usize {
+                                        continue;
+                                    };
+                                    print!("{}", cursor::Right(1));
+                                }
+
+                                Key::Backspace => {
+                                    if x == initial_pos {
+                                        continue;
+                                    };
+                                    command.remove((x - initial_pos - 1).into());
+
+                                    print!(
+                                        "{}{}:{}{}",
+                                        clear::CurrentLine,
+                                        cursor::Goto(2, 2),
+                                        &command.iter().collect::<String>(),
+                                        cursor::Goto(x - 1, 2)
+                                    );
+                                }
+
                                 Key::Char('\n') => {
                                     if command.is_empty() {
                                         print!("{}", clear::CurrentLine);
@@ -1385,30 +1409,8 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
                                     break 'command;
                                 }
 
-                                Key::Esc => {
-                                    print!("{}", clear::CurrentLine);
-                                    print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
-                                    print!("{}", cursor::Hide);
-                                    state.move_cursor(&nums, y);
-                                    break 'command;
-                                }
-
-                                Key::Left => {
-                                    if x == 4 {
-                                        continue;
-                                    };
-                                    print!("{}", cursor::Left(1));
-                                }
-
-                                Key::Right => {
-                                    if x as usize == eow + 1 {
-                                        continue;
-                                    };
-                                    print!("{}", cursor::Right(1));
-                                }
-
                                 Key::Char(c) => {
-                                    command.insert((x - 3).into(), c);
+                                    command.insert((x - initial_pos).into(), c);
 
                                     print!(
                                         "{}{}:{}{}",
@@ -1416,21 +1418,6 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
                                         cursor::Goto(2, 2),
                                         &command.iter().collect::<String>(),
                                         cursor::Goto(x + 1, 2)
-                                    );
-                                }
-
-                                Key::Backspace => {
-                                    if x == 3 {
-                                        continue;
-                                    };
-                                    command.remove((x - 4).into());
-
-                                    print!(
-                                        "{}{}:{}{}",
-                                        clear::CurrentLine,
-                                        cursor::Goto(2, 2),
-                                        &command.iter().collect::<String>(),
-                                        cursor::Goto(x - 1, 2)
                                     );
                                 }
 
@@ -1578,16 +1565,12 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
                     }
                 }
 
-                //debug print for undo/redo
-                // Key::Char('P') => {
-                //     print_info(
-                //         format!(
-                //             "{:?} count: {}",
-                //             state.manipulations, state.manipulations.count
-                //         ),
-                //         y,
-                //     );
-                // }
+                //Debug print for undo/redo
+                Key::Char('P') => {
+                    if state.rust_log.is_some() {
+                        print_info(format!("{:?}", state.manipulations), y);
+                    }
+                }
 
                 //exit by ZZ
                 Key::Char('Z') => {

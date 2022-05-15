@@ -25,7 +25,7 @@ fn main() -> Result<(), errors::FxError> {
             "-h" | "--help" => {
                 print!("{}", help::HELP);
             }
-            "-c" | "--check" => {
+            "-v" | "--version" => {
                 let output = std::process::Command::new("cargo")
                     .args(["search", "felix", "--limit", "1"])
                     .output()?

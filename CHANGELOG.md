@@ -3,6 +3,17 @@
 ## [Unreleased]
 ### Added
 - trying to make felix user guide (just to show how to use each commands) by mdbook
+- [Experimental] Image preview on the right half of the terminal (press `v`). This feature uses `viuer`, and high resolution preview, which can be used in kitty or terminals that support sixel, is disabled due to the clearance issues.
+- crate `viuer` and `image` to preview the image.
+
+### Fixed
+- Fix text preview bug around new line that occurs when it has tab character.
+- file_ext in ItemInfo is now always lowercased to speed up matching with the extension map.
+
+### Changed
+- Version check option now uses -v | --version, instead of -c | --check.
+- Refactor: Remove magic number and use variable with proper name in the filter and shell mode.
+- Restore debug print, which works in debug mode(RUST_LOG has some value).
 
 ### Notes
 - Text preview color needs to be readable enough, so it's worth rethinking (Now LightBlack).
@@ -12,7 +23,7 @@
 - Fix bug that after `:h`, cursor move can cause unexpected panic.
 
 ### Changed
-- Wrap preview text.
+- Text preview always wrapped (yet static).
 
 ## v0.9.0 (2022-05-10)
 ### Added
