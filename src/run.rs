@@ -1565,16 +1565,12 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
                     }
                 }
 
-                //debug print for undo/redo
-                // Key::Char('P') => {
-                //     print_info(
-                //         format!(
-                //             "{:?} count: {}",
-                //             state.manipulations, state.manipulations.count
-                //         ),
-                //         y,
-                //     );
-                // }
+                //Debug print for undo/redo
+                Key::Char('P') => {
+                    if state.rust_log.is_some() {
+                        print_info(format!("{:?}", state.manipulations), y);
+                    }
+                }
 
                 //exit by ZZ
                 Key::Char('Z') => {
