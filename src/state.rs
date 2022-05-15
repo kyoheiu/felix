@@ -145,6 +145,7 @@ macro_rules! print_item {
 }
 
 impl State {
+    /// Initialize state app.
     pub fn new() -> Result<Self, FxError> {
         let config = read_config().unwrap_or_else(|_| panic!("Something wrong with config file."));
         let session =
@@ -201,6 +202,7 @@ impl State {
         })
     }
 
+    /// Reload the app layout when terminal size changes.
     pub fn refresh(&mut self, column: u16, row: u16, nums: &Num, cursor_pos: u16) {
         let (time_start, name_max) =
             make_layout(column, self.layout.use_full, self.layout.option_name_len);
@@ -215,6 +217,7 @@ impl State {
         self.move_cursor(nums, cursor_pos);
     }
 
+    /// Select an item which the cursor points to.
     pub fn get_item(&self, index: usize) -> Result<&ItemInfo, FxError> {
         self.list.get(index).ok_or_else(|| {
             FxError::Io(std::io::Error::new(
@@ -224,6 +227,7 @@ impl State {
         })
     }
 
+    /// Open the selected file according to the config.
     pub fn open_file(&self, index: usize) -> Result<ExitStatus, FxError> {
         let item = self.get_item(index)?;
         let path = &item.file_path;
@@ -248,7 +252,7 @@ impl State {
         }
     }
 
-    //Discard undone manipulations when new manipulation is pushed.
+    /// Discard undone manipulations when new manipulation is pushed.
     pub fn branch_manip(&mut self) {
         if self.manipulations.count == 0 {
             return;
@@ -258,6 +262,9 @@ impl State {
         }
     }
 
+    /// Move items from the current directory to trash directory.
+    /// This does not acutually delete items.
+    /// If you'd like to delete, use `:empty` after this, or just `:rm`.  
     pub fn remove_and_yank(
         &mut self,
         targets: &[ItemInfo],
@@ -307,6 +314,7 @@ impl State {
         Ok(())
     }
 
+    /// Move single file to trash directory.
     fn remove_and_yank_file(
         &mut self,
         item: ItemInfo,
@@ -351,6 +359,7 @@ impl State {
         }
     }
 
+    /// Move single directory recursively to trash directory.
     fn remove_and_yank_dir(&mut self, item: ItemInfo, new_manip: bool) -> Result<PathBuf, FxError> {
         let mut trash_name = String::new();
         let mut base: usize = 0;
@@ -428,6 +437,7 @@ impl State {
         Ok(trash_path)
     }
 
+    /// Register removed items to the registory.
     fn push_to_registered(&mut self, item: &ItemInfo, file_path: PathBuf, file_name: String) {
         let mut buf = item.clone();
         buf.file_path = file_path;
@@ -436,6 +446,7 @@ impl State {
         self.registered.push(buf);
     }
 
+    /// Register selected items to the registory.
     pub fn yank_item(&mut self, index: usize, selected: bool) {
         self.registered.clear();
         if selected {
@@ -448,6 +459,8 @@ impl State {
         }
     }
 
+    /// Put items in registory to the current directory or target direcoty.
+    /// Only Redo command uses target directory.
     pub fn put_items(
         &mut self,
         targets: &[ItemInfo],
@@ -513,6 +526,7 @@ impl State {
         Ok(())
     }
 
+    /// Put single item to current or target directory.
     fn put_file(
         &mut self,
         item: &ItemInfo,
@@ -575,6 +589,7 @@ impl State {
         }
     }
 
+    /// Put single directory recursively to current or target directory.
     fn put_dir(
         &mut self,
         buf: &ItemInfo,
@@ -651,6 +666,7 @@ impl State {
         Ok(target)
     }
 
+    /// Print an item in the directory.
     fn print(&self, index: usize) {
         let item = &self.get_item(index).unwrap();
         let chars: Vec<char> = item.file_name.chars().collect();
@@ -789,6 +805,7 @@ impl State {
         }
     }
 
+    /// Print items in the directory.
     pub fn list_up(&self, skip_number: u16) {
         let row = self.layout.terminal_row;
 
@@ -812,6 +829,7 @@ impl State {
         }
     }
 
+    /// Update state's list of items.
     pub fn update_list(&mut self) -> Result<(), FxError> {
         let mut result = Vec::new();
         let mut dir_v = Vec::new();
@@ -848,12 +866,14 @@ impl State {
         Ok(())
     }
 
+    /// Reset all item's selected state and exit the select mode.
     pub fn reset_selection(&mut self) {
         for mut item in self.list.iter_mut() {
             item.selected = false;
         }
     }
 
+    /// Select items from the top to current position.
     pub fn select_from_top(&mut self, start_pos: usize) {
         for (i, item) in self.list.iter_mut().enumerate() {
             if i <= start_pos {
@@ -864,6 +884,7 @@ impl State {
         }
     }
 
+    /// Select items from the current position to bottom.
     pub fn select_to_bottom(&mut self, start_pos: usize) {
         for (i, item) in self.list.iter_mut().enumerate() {
             if i < start_pos {
@@ -874,16 +895,16 @@ impl State {
         }
     }
 
+    /// Change the cursor position, and print item information at the bottom.
+    /// If preview is enabled, print text preview, contents of the directory or image preview on the right half of the terminal.
+    /// Note that image preivew is experimental and if perfomance issues arise, this feature may be removed.
     pub fn move_cursor(&mut self, nums: &Num, y: u16) {
         if let Ok(item) = self.get_item(nums.index) {
             //Print item information at the bottom
             self.print_footer(nums, item);
 
-            //If preview enabled, print text preview or image preview.
-            //It would be more precise if image::guess_format could be used here
-            //(Interpretation by extension is not accurate),
-            //but it would have its own costs like reading every file,
-            //which I don't think is user-friendly.
+            //It would be more precise if image::guess_format could be used here(Interpretation by extension is not accurate).
+            //However it would have its own costs like reading every file, which I don't think is user-friendly.
             if self.layout.preview {
                 if image::ImageFormat::from_path(&item.file_path).is_ok() {
                     self.preview_image(item);
@@ -898,6 +919,7 @@ impl State {
         }
     }
 
+    /// Print item informatin at the bottom of the terminal.
     fn print_footer(&self, nums: &Num, item: &ItemInfo) {
         print!(" {}", cursor::Goto(1, self.layout.terminal_row));
         print!("{}", clear::CurrentLine);
@@ -965,7 +987,9 @@ impl State {
         }
     }
 
+    /// Print text preview on the right half of the terminal.
     fn preview_text(&self, item: &ItemInfo) {
+        //Spawn another thread and read the content if item is text file
         let content = {
             let item = item.file_path.clone();
             let column = self.layout.terminal_column;
@@ -1033,6 +1057,7 @@ impl State {
         }
     }
 
+    /// Print text preview on the right half of the terminal (Experimental).
     fn preview_image(&self, item: &ItemInfo) {
         let preview_start_column: u16 = self.layout.terminal_column + 2;
         let (w, h) = self.get_image_preview_size(item);
@@ -1062,6 +1087,7 @@ impl State {
         viuer::print(&image, &conf).unwrap();
     }
 
+    /// Get the proper aspect ratio of image to print.
     fn get_image_preview_size(&self, item: &ItemInfo) -> (u16, u16) {
         let term_width = self.layout.terminal_column - 1;
         let term_height = self.layout.terminal_row - 3;
@@ -1087,6 +1113,7 @@ impl State {
         }
     }
 
+    /// Clear the preview space.
     fn clear_preview(&self, preview_start_column: u16) {
         for i in 0..self.layout.terminal_row {
             print!(
@@ -1097,6 +1124,7 @@ impl State {
         }
     }
 
+    /// Store the sort key and whether to show hidden items to session file.
     pub fn write_session(&self, session_path: PathBuf) -> Result<(), FxError> {
         let session = Session {
             sort_by: self.sort_by.clone(),
@@ -1108,6 +1136,7 @@ impl State {
     }
 }
 
+/// Create item information from `std::fs::DirEntry`.
 fn make_item(entry: fs::DirEntry) -> ItemInfo {
     let path = entry.path();
     let metadata = fs::symlink_metadata(&path);
@@ -1190,6 +1219,7 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
     }
 }
 
+/// Generate item information from trash direcotry, in order to use when redo.
 pub fn trash_to_info(trash_dir: &PathBuf, vec: Vec<PathBuf>) -> Result<Vec<ItemInfo>, FxError> {
     let total = vec.len();
     let mut count = 0;
