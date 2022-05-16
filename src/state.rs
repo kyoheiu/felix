@@ -1059,6 +1059,10 @@ impl State {
 
     /// Print text preview on the right half of the terminal (Experimental).
     fn preview_image(&self, item: &ItemInfo) {
+        let content = {
+            let path = item.file_path.clone();
+            std::thread::spawn(move || image::io::Reader::open(path))
+        };
         let preview_start_column: u16 = self.layout.terminal_column + 2;
         let (w, h) = self.get_image_preview_size(item);
         let conf = viuer::Config {
