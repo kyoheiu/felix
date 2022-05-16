@@ -1086,11 +1086,16 @@ impl State {
         //Clear preview space
         self.clear_preview(preview_start_column);
 
-        let image = image::io::Reader::open(&item.file_path)
-            .unwrap()
-            .decode()
-            .unwrap();
-        viuer::print(&image, &conf).unwrap();
+        if let Ok(image) = content.join().unwrap() {
+            if let Ok(image) = image.decode() {
+                match viuer::print(&image, &conf) {
+                    Ok(_) => {}
+                    Err(_) => print_warning("Image printing failed.", BEGINNING_ROW),
+                }
+            } else {
+            }
+        } else {
+        }
     }
 
     /// Get the proper aspect ratio of image to print.
