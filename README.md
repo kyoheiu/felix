@@ -17,7 +17,7 @@ While heavliy inspired by the great `vifm` and trying to implement its pleasant 
 
 ### v0.9.2 (2022-05-18)
 #### Added
-- [Experimental] Image preview on the right half of the terminal (press `v`). This feature uses `viuer`, and high resolution preview, which can be used in kitty or terminals that support sixel, is disabled due to the clearance issues.
+- [Experimental] Image preview on the right half of the terminal (press `v`). This feature uses `viuer`: The high resolution preview, which can be used in kitty or terminals that support sixel, is disabled due to the clearance issues.
 - crate `viuer` and `image` to preview the image.
 
 previewed images are printed by blocks.
