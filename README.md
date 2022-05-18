@@ -23,6 +23,11 @@ While heavliy inspired by the great `vifm` and trying to implement its pleasant 
 previewed images are printed by blocks.
 ![preview_image](screenshots/preview_image.png)
 
+#### Fixed
+- Fix text preview bug around new line that occurs when it has tab character.
+- file_ext in ItemInfo is now always lowercased to speed up matching with the extension map.
+- Disable renaming non-ascii items: Wide characters such as CJK or characters that do not match our intuition caused panic, so before editing, item name is now checked if it contains only ascii characters.
+
 #### Changed
 - Version check option now uses -v | --version, instead of -c | --check.
 - Refactor: Remove magic number and use variable with proper name in the filter and shell mode.
