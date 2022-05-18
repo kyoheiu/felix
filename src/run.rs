@@ -930,11 +930,13 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         break;
                                     }
 
+                                    //Keep the log of rename
                                     let mut message = "RENAME: ".to_string();
                                     message.push_str(item.file_path.as_path().to_str().unwrap());
                                     message.push_str(" -> ");
                                     message.push_str(to.as_path().to_str().unwrap());
                                     info!("{}", message);
+
                                     state.branch_manip();
                                     state.manipulations.manip_list.push(ManipKind::Rename(
                                         RenamedFile {
