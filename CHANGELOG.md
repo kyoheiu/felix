@@ -2,7 +2,8 @@
 
 ## [Unreleased]
 ### Added
-- trying to make felix user guide (just to show how to use each commands) by mdbook
+- Trying to make felix user guide (just to show how to use each commands) by mdbook
+- Trying to create log files with `-l` option.
 
 ### Notes
 - Text preview color needs to be readable enough, so it's worth rethinking (Now LightBlack).
