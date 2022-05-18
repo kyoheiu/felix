@@ -325,6 +325,10 @@ pub fn print_help(v: &[String], skip_number: usize, row: u16) {
     }
 }
 
+pub fn is_editable(s: &str) -> bool {
+    s.is_ascii()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -383,71 +387,14 @@ mod tests {
     }
 
     #[test]
-    fn test_format_txt() {
-        println!("{:#?}", format_txt(crate::help::HELP, 50, true));
-        assert_eq!(
-            format_txt(crate::help::HELP, 50, true),
-            vec![
-                String::from("# felix v0.9.1"),
-                String::from("A simple TUI file manager with vim-like keymapping"),
-                String::from("."),
-                String::from("Works on terminals with 21 columns or more."),
-                String::from(""),
-                String::from("## Usage"),
-                String::from("`fx` => Show items in the current directory."),
-                String::from("`fx <directory path>` => Show items in the path."),
-                String::from("Both relative and absolute path available."),
-                String::from(""),
-                String::from("## Arguments"),
-                String::from("`fx -h` | `fx --help`  => Print help."),
-                String::from("`fx -c` | `fx --check` => Check update."),
-                String::from(""),
-                String::from("## Manual"),
-                String::from("j / Up            :Go up."),
-                String::from("k / Down          :Go down."),
-                String::from("h / Left          :Go to parent directory if exist"),
-                String::from("s."),
-                String::from("l / Right / Enter :Open file or change directory."),
-                String::from("gg                :Go to the top."),
-                String::from("G                 :Go to the bottom."),
-                String::from("dd                :Delete and yank item."),
-                String::from("yy                :Yank item."),
-                String::from("p                 :Put yanked item in the current "),
-                String::from("directory."),
-                String::from("V                 :Switch to select mode."),
-                String::from("  - d             :In select mode, delete and yank"),
-                String::from(" selected items."),
-                String::from("  - y             :In select mode, yank selected i"),
-                String::from("tems."),
-                String::from("u                 :Undo put/delete/rename."),
-                String::from("Ctrl + r          :Redo put/delete/rename."),
-                String::from("v                 :Toggle whether to show preview."),
-                String::from(""),
-                String::from("backspace         :Toggle whether to show hidden i"),
-                String::from("tems."),
-                String::from("t                 :Toggle sort order (name <-> mod"),
-                String::from("ified time)."),
-                String::from(":                 :Switch to shell mode."),
-                String::from("c                 :Switch to rename mode."),
-                String::from("/                 :Switch to filter mode."),
-                String::from("Esc               :Return to normal mode."),
-                String::from(":cd | :z          :Go to home directory."),
-                String::from(":z <keyword>      :*zoxide required* Jump to a dir"),
-                String::from("ectory that matches the keyword."),
-                String::from(":e                :Reload the current directory."),
-                String::from(":empty            :Empty the trash directory."),
-                String::from(":h                :Show help."),
-                String::from(":q / ZZ           :Exit the program."),
-                String::from(""),
-                String::from("## Configuration"),
-                String::from("config file    : $XDG_CONFIG_HOME/felix/config.tom"),
-                String::from("l"),
-                String::from("trash directory: $XDG_CONFIG_HOME/felix/trash"),
-                String::from(""),
-                String::from("For more detail, visit https://github.com/kyoheiu/"),
-                String::from("felix"),
-                String::from("Enter 'q' to go back.")
-            ]
-        );
+    fn test_is_editable() {
+        let s1 = "Hello, world!";
+        let s2 = "image.jpg";
+        let s3 = "a̐éö̲\r\n";
+        let s4 = "日本の首都は東京です";
+        assert!(is_editable(s1));
+        assert!(is_editable(s2));
+        assert!(!is_editable(s3));
+        assert!(!is_editable(s4));
     }
 }
