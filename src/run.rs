@@ -5,7 +5,8 @@ use super::help::HELP;
 use super::nums::*;
 use super::state::*;
 use crate::session::*;
-use log::debug;
+use log::info;
+use simplelog::{ConfigBuilder, LevelFilter, WriteLogger};
 use std::ffi::OsStr;
 use std::io::{stdin, stdout, Write};
 use std::path::PathBuf;
@@ -23,9 +24,7 @@ use termion::{clear, cursor, screen};
 const DETECTION_INTERVAL: u64 = 500;
 
 /// Run the app.
-pub fn run(arg: PathBuf) -> Result<(), FxError> {
-    debug!("Initial setup starts.");
-
+pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     //Prepare config file and trash directory path.
     let config_dir_path = {
         let mut path = dirs::config_dir().unwrap_or_else(|| panic!("Cannot read config dir."));
@@ -34,6 +33,23 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
     };
     let config_file_path = config_dir_path.join(PathBuf::from(CONFIG_FILE));
     let trash_dir_path = config_dir_path.join(PathBuf::from(TRASH));
+
+    if log {
+        let mut log_name = chrono::Local::now().format("%F-%H-%M-%S").to_string();
+        log_name.push_str(".log");
+        let config = ConfigBuilder::new()
+            .set_time_offset_to_local()
+            .unwrap()
+            .build();
+        let log_name = config_dir_path.join(log_name);
+        WriteLogger::init(
+            LevelFilter::Info,
+            config,
+            std::fs::File::create(log_name).unwrap(),
+        )
+        .unwrap();
+        info!("===START===");
+    }
 
     //Make config file and trash directory if not exist.
     make_config_if_not_exist(&config_file_path, &trash_dir_path)
@@ -914,6 +930,11 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
                                         break;
                                     }
 
+                                    let mut message = "RENAME: ".to_string();
+                                    message.push_str(item.file_path.as_path().to_str().unwrap());
+                                    message.push_str(" -> ");
+                                    message.push_str(to.as_path().to_str().unwrap());
+                                    info!("{}", message);
                                     state.branch_manip();
                                     state.manipulations.manip_list.push(ManipKind::Rename(
                                         RenamedFile {
