@@ -11,10 +11,16 @@ While heavliy inspired by the great `vifm` and trying to implement its pleasant 
 
 ## New Release
 
-v0.9.1 (2022-05-11)
+### v0.9.2 (2022-05-18)
+#### Added
+- [Experimental] Image preview on the right half of the terminal (press `v`). This feature uses `viuer`, and high resolution preview, which can be used in kitty or terminals that support sixel, is disabled due to the clearance issues.
+- crate `viuer` and `image` to preview the image.
 
-- Fix bug that after `:h`, cursor move can cause unexpected panic.
-- Wrap preview text.
+#### Changed
+- Version check option now uses -v | --version, instead of -c | --check.
+- Refactor: Remove magic number and use variable with proper name in the filter and shell mode.
+- Restore debug print (`P`), which works in debug mode(RUST_LOG has some value).
+- Use `simplelog` instead of `env_logger` to create the log file.
 
 For more detail, see `CHANGELOG.md`.
 
