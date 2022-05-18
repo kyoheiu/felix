@@ -3,22 +3,21 @@
 ## [Unreleased]
 ### Added
 - trying to make felix user guide (just to show how to use each commands) by mdbook
+
+### Notes
+- Text preview color needs to be readable enough, so it's worth rethinking (Now LightBlack).
+
+## v0.9.2 (2022-05-18)
+### Added
 - [Experimental] Image preview on the right half of the terminal (press `v`). This feature uses `viuer`, and high resolution preview, which can be used in kitty or terminals that support sixel, is disabled due to the clearance issues.
 - crate `viuer` and `image` to preview the image.
-
-### Fixed
-- Fix text preview bug around new line that occurs when it has tab character.
-- file_ext in ItemInfo is now always lowercased to speed up matching with the extension map.
-- Disable renaming non-ascii items: Wide characters such as CJK or characters that do not match our intuition caused panic, so before editing, item name is now checked if it contains only ascii characters.
 
 ### Changed
 - Version check option now uses -v | --version, instead of -c | --check.
 - Refactor: Remove magic number and use variable with proper name in the filter and shell mode.
 - Restore debug print, which works in debug mode(RUST_LOG has some value).
-- Use `simplelog` instead `env_logger` to create the log file.
+- Use `simplelog` instead of `env_logger` to create the log file.
 
-### Notes
-- Text preview color needs to be readable enough, so it's worth rethinking (Now LightBlack).
 
 ## v0.9.1 (2022-05-11)
 ### Fixed
