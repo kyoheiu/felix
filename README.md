@@ -21,7 +21,7 @@ While heavliy inspired by the great `vifm` and trying to implement its pleasant 
 - crate `viuer` and `image` to preview the image.
 
 previewed images are printed by blocks.
-![preview_image](screenshot/preview_image.png)
+![preview_image](https://github.com/kyoheiu/felix/blob/main/screenshot/preview_image.png)
 
 #### Changed
 - Version check option now uses -v | --version, instead of -c | --check.
