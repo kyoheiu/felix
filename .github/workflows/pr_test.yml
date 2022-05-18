@@ -14,14 +14,16 @@ jobs:
     - uses: actions/checkout@v2
     - name: Install
       run: |
-        cargo install --path .
+        cargo install --path . --root .
+        ./bin/fx
   macos-install:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v2
     - name: Install
       run: |
-        cargo install --path .
+        cargo install --path . --root .
+        ./bin/fx
   archlinux-install:
     runs-on: ubuntu-latest
     container:
@@ -34,4 +36,5 @@ jobs:
         pacman -S rustup --noconfirm
         rustup install stable
         rustup default stable
-        cargo install --path .
+        cargo install --path . --root .
+        ./bin/fx
