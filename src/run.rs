@@ -879,9 +879,14 @@ pub fn run(arg: PathBuf) -> Result<(), FxError> {
                     if len == 0 {
                         continue;
                     }
-                    print!("{}", cursor::Show);
-                    let item = state.get_item(nums.index).unwrap().clone();
+                    let item = state.get_item(nums.index)?.clone();
+                    if !is_editable(&item.file_name) {
+                        print_warning("Item name cannot be renamed due to character type.", y);
+                        screen.flush()?;
+                        continue;
+                    }
 
+                    print!("{}", cursor::Show);
                     let mut rename = item.file_name.chars().collect::<Vec<char>>();
                     print!(
                         "{}{}{} {}",
