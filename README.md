@@ -20,6 +20,9 @@ While heavliy inspired by the great `vifm` and trying to implement its pleasant 
 - [Experimental] Image preview on the right half of the terminal (press `v`). This feature uses `viuer`, and high resolution preview, which can be used in kitty or terminals that support sixel, is disabled due to the clearance issues.
 - crate `viuer` and `image` to preview the image.
 
+previewed images are printed by blocks.
+![preview_image](screenshot/preview_image.png)
+
 #### Changed
 - Version check option now uses -v | --version, instead of -c | --check.
 - Refactor: Remove magic number and use variable with proper name in the filter and shell mode.
