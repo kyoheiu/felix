@@ -9,11 +9,13 @@
 ### Fixed
 - Fix text preview bug around new line that occurs when it has tab character.
 - file_ext in ItemInfo is now always lowercased to speed up matching with the extension map.
+- Disable renaming non-ascii items: Wide characters such as CJK or characters that do not match our intuition caused panic, so before editing, item name is now checked if it contains only ascii characters.
 
 ### Changed
 - Version check option now uses -v | --version, instead of -c | --check.
 - Refactor: Remove magic number and use variable with proper name in the filter and shell mode.
 - Restore debug print, which works in debug mode(RUST_LOG has some value).
+- Use `simplelog` instead `env_logger` to create the log file.
 
 ### Notes
 - Text preview color needs to be readable enough, so it's worth rethinking (Now LightBlack).
