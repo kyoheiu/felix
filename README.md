@@ -6,7 +6,7 @@
 
 A tui file manager with vim-like key mapping, written in Rust.
 
-![sample](https://github.com/kyoheiu/felix/blob/main/screenshots/sample.gif)
+![sample](screenshots/sample.gif)
 
 While heavliy inspired by the great `vifm` and trying to implement its pleasant experience in Rust, at the same time this project focuses on the following points:
 
@@ -21,7 +21,7 @@ While heavliy inspired by the great `vifm` and trying to implement its pleasant 
 - crate `viuer` and `image` to preview the image.
 
 previewed images are printed by blocks.
-![preview_image](https://github.com/kyoheiu/felix/blob/main/screenshot/preview_image.png)
+![preview_image](screenshots/preview_image.png)
 
 #### Changed
 - Version check option now uses -v | --version, instead of -c | --check.
