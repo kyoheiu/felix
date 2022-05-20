@@ -1088,13 +1088,14 @@ impl State {
 
         if let Ok(image) = content.join().unwrap() {
             if let Ok(image) = image.decode() {
-                match viuer::print(&image, &conf) {
-                    Ok(_) => {}
-                    Err(_) => print_warning("Image printing failed.", BEGINNING_ROW),
+                if viuer::print(&image, &conf).is_err() {
+                    print_warning("Image printing failed.", BEGINNING_ROW);
                 }
             } else {
+                print_warning("Cannot decode the image.", BEGINNING_ROW);
             }
         } else {
+            print_warning("Cannot read the image.", BEGINNING_ROW);
         }
     }
 
