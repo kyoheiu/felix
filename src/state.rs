@@ -145,6 +145,7 @@ macro_rules! print_item {
 }
 
 impl State {
+    /// Initialize state app.
     pub fn new() -> Result<Self, FxError> {
         let config = read_config().unwrap_or_else(|_| panic!("Something wrong with config file."));
         let session =
@@ -201,6 +202,7 @@ impl State {
         })
     }
 
+    /// Reload the app layout when terminal size changes.
     pub fn refresh(&mut self, column: u16, row: u16, nums: &Num, cursor_pos: u16) {
         let (time_start, name_max) =
             make_layout(column, self.layout.use_full, self.layout.option_name_len);
@@ -215,6 +217,7 @@ impl State {
         self.move_cursor(nums, cursor_pos);
     }
 
+    /// Select an item which the cursor points to.
     pub fn get_item(&self, index: usize) -> Result<&ItemInfo, FxError> {
         self.list.get(index).ok_or_else(|| {
             FxError::Io(std::io::Error::new(
@@ -224,6 +227,7 @@ impl State {
         })
     }
 
+    /// Open the selected file according to the config.
     pub fn open_file(&self, index: usize) -> Result<ExitStatus, FxError> {
         let item = self.get_item(index)?;
         let path = &item.file_path;
@@ -234,7 +238,7 @@ impl State {
 
         match extention {
             Some(extention) => {
-                let ext = extention.to_ascii_lowercase();
+                let ext = extention.clone();
                 match map.get(&ext) {
                     Some(command) => {
                         let mut ex = Command::new(command);
@@ -248,7 +252,7 @@ impl State {
         }
     }
 
-    //Discard undone manipulations when new manipulation is pushed.
+    /// Discard undone manipulations when new manipulation is pushed.
     pub fn branch_manip(&mut self) {
         if self.manipulations.count == 0 {
             return;
@@ -258,6 +262,9 @@ impl State {
         }
     }
 
+    /// Move items from the current directory to trash directory.
+    /// This does not acutually delete items.
+    /// If you'd like to delete, use `:empty` after this, or just `:rm`.  
     pub fn remove_and_yank(
         &mut self,
         targets: &[ItemInfo],
@@ -307,6 +314,7 @@ impl State {
         Ok(())
     }
 
+    /// Move single file to trash directory.
     fn remove_and_yank_file(
         &mut self,
         item: ItemInfo,
@@ -351,6 +359,7 @@ impl State {
         }
     }
 
+    /// Move single directory recursively to trash directory.
     fn remove_and_yank_dir(&mut self, item: ItemInfo, new_manip: bool) -> Result<PathBuf, FxError> {
         let mut trash_name = String::new();
         let mut base: usize = 0;
@@ -428,6 +437,7 @@ impl State {
         Ok(trash_path)
     }
 
+    /// Register removed items to the registory.
     fn push_to_registered(&mut self, item: &ItemInfo, file_path: PathBuf, file_name: String) {
         let mut buf = item.clone();
         buf.file_path = file_path;
@@ -436,6 +446,7 @@ impl State {
         self.registered.push(buf);
     }
 
+    /// Register selected items to the registory.
     pub fn yank_item(&mut self, index: usize, selected: bool) {
         self.registered.clear();
         if selected {
@@ -448,6 +459,8 @@ impl State {
         }
     }
 
+    /// Put items in registory to the current directory or target direcoty.
+    /// Only Redo command uses target directory.
     pub fn put_items(
         &mut self,
         targets: &[ItemInfo],
@@ -513,6 +526,7 @@ impl State {
         Ok(())
     }
 
+    /// Put single item to current or target directory.
     fn put_file(
         &mut self,
         item: &ItemInfo,
@@ -575,6 +589,7 @@ impl State {
         }
     }
 
+    /// Put single directory recursively to current or target directory.
     fn put_dir(
         &mut self,
         buf: &ItemInfo,
@@ -651,6 +666,7 @@ impl State {
         Ok(target)
     }
 
+    /// Print an item in the directory.
     fn print(&self, index: usize) {
         let item = &self.get_item(index).unwrap();
         let chars: Vec<char> = item.file_name.chars().collect();
@@ -789,6 +805,7 @@ impl State {
         }
     }
 
+    /// Print items in the directory.
     pub fn list_up(&self, skip_number: u16) {
         let row = self.layout.terminal_row;
 
@@ -812,6 +829,7 @@ impl State {
         }
     }
 
+    /// Update state's list of items.
     pub fn update_list(&mut self) -> Result<(), FxError> {
         let mut result = Vec::new();
         let mut dir_v = Vec::new();
@@ -848,12 +866,14 @@ impl State {
         Ok(())
     }
 
+    /// Reset all item's selected state and exit the select mode.
     pub fn reset_selection(&mut self) {
         for mut item in self.list.iter_mut() {
             item.selected = false;
         }
     }
 
+    /// Select items from the top to current position.
     pub fn select_from_top(&mut self, start_pos: usize) {
         for (i, item) in self.list.iter_mut().enumerate() {
             if i <= start_pos {
@@ -864,6 +884,7 @@ impl State {
         }
     }
 
+    /// Select items from the current position to bottom.
     pub fn select_to_bottom(&mut self, start_pos: usize) {
         for (i, item) in self.list.iter_mut().enumerate() {
             if i < start_pos {
@@ -874,14 +895,22 @@ impl State {
         }
     }
 
+    /// Change the cursor position, and print item information at the bottom.
+    /// If preview is enabled, print text preview, contents of the directory or image preview on the right half of the terminal.
+    /// Note that image preivew is experimental and if perfomance issues arise, this feature may be removed.
     pub fn move_cursor(&mut self, nums: &Num, y: u16) {
         if let Ok(item) = self.get_item(nums.index) {
             //Print item information at the bottom
             self.print_footer(nums, item);
 
-            //If preview enabled, print text file contents
+            //It would be more precise if image::guess_format could be used here(Interpretation by extension is not accurate).
+            //However it would have its own costs like reading every file, which I don't think is user-friendly.
             if self.layout.preview {
-                self.print_preview(item);
+                if image::ImageFormat::from_path(&item.file_path).is_ok() {
+                    self.preview_image(item);
+                } else {
+                    self.preview_text(item);
+                }
             }
             print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
 
@@ -890,6 +919,7 @@ impl State {
         }
     }
 
+    /// Print item informatin at the bottom of the terminal.
     fn print_footer(&self, nums: &Num, item: &ItemInfo) {
         print!(" {}", cursor::Goto(1, self.layout.terminal_row));
         print!("{}", clear::CurrentLine);
@@ -955,28 +985,18 @@ impl State {
                 print!("{}", style::Reset);
             }
         }
-
-        //Debug mode
-        // if self.rust_log.is_some() {
-        //     print!(
-        //         "{} index:{} skip:{} column:{} row:{}{}",
-        //         style::Invert,
-        //         nums.index,
-        //         nums.skip,
-        //         self.layout.terminal_column,
-        //         self.layout.terminal_row,
-        //         style::Reset
-        //     );
-        // }
     }
 
-    fn print_preview(&self, item: &ItemInfo) {
+    /// Print text preview on the right half of the terminal.
+    fn preview_text(&self, item: &ItemInfo) {
+        //Spawn another thread and read the content if item is text file
         let content = {
             let item = item.file_path.clone();
             let column = self.layout.terminal_column;
             std::thread::spawn(move || {
                 let content = fs::read_to_string(item);
                 if let Ok(content) = content {
+                    let content = content.replace('\t', "    ");
                     format_txt(&content, column - 1, false)
                 } else {
                     vec![]
@@ -984,24 +1004,28 @@ impl State {
             })
         };
 
-        let preview_start: u16 = self.layout.terminal_column + 2;
+        let preview_start_column: u16 = self.layout.terminal_column + 2;
 
         //Print item name at the top
-        print!("{}{}", cursor::Goto(preview_start, 1), clear::UntilNewline);
+        print!(
+            "{}{}",
+            cursor::Goto(preview_start_column, 1),
+            clear::UntilNewline
+        );
         print!("[{}]", item.file_name);
-        print!("{}", cursor::Goto(preview_start, BEGINNING_ROW));
+        print!("{}", cursor::Goto(preview_start_column, BEGINNING_ROW));
 
         //Clear preview space
-        for i in 0..self.layout.terminal_row {
-            print!("{}", cursor::Goto(preview_start, BEGINNING_ROW + i as u16));
-            print!("{}", clear::UntilNewline);
-        }
+        self.clear_preview(preview_start_column);
 
         if item.file_type == FileType::Directory {
             if let Ok(contents) = list_up_contents(item.file_path.clone()) {
                 if let Ok(contents) = make_tree(contents) {
                     for (i, line) in contents.lines().enumerate() {
-                        print!("{}", cursor::Goto(preview_start, BEGINNING_ROW + i as u16));
+                        print!(
+                            "{}",
+                            cursor::Goto(preview_start_column, BEGINNING_ROW + i as u16)
+                        );
                         print!(
                             "{}{}{}",
                             color::Fg(color::LightBlack),
@@ -1015,9 +1039,12 @@ impl State {
                 }
             }
         }
-        //Print preview (no-wrapping)
+        //Print preview (wrapping)
         for (i, line) in content.join().unwrap().iter().enumerate() {
-            print!("{}", cursor::Goto(preview_start, BEGINNING_ROW + i as u16));
+            print!(
+                "{}",
+                cursor::Goto(preview_start_column, BEGINNING_ROW + i as u16)
+            );
             print!(
                 "{}{}{}",
                 color::Fg(color::LightBlack),
@@ -1030,6 +1057,86 @@ impl State {
         }
     }
 
+    /// Print text preview on the right half of the terminal (Experimental).
+    fn preview_image(&self, item: &ItemInfo) {
+        let content = {
+            let path = item.file_path.clone();
+            std::thread::spawn(move || image::io::Reader::open(path))
+        };
+        let preview_start_column: u16 = self.layout.terminal_column + 2;
+        let (w, h) = self.get_image_preview_size(item);
+        let conf = viuer::Config {
+            x: preview_start_column - 1,
+            y: BEGINNING_ROW as i16 - 1,
+            width: Some(w.into()),
+            height: Some(h.into()),
+            use_kitty: false,
+            use_iterm: false,
+            ..Default::default()
+        };
+        //Print item name at the top
+        print!(
+            "{}{}",
+            cursor::Goto(preview_start_column, 1),
+            clear::UntilNewline
+        );
+        print!("[{}]", item.file_name);
+        print!("{}", cursor::Goto(preview_start_column, BEGINNING_ROW));
+
+        //Clear preview space
+        self.clear_preview(preview_start_column);
+
+        if let Ok(image) = content.join().unwrap() {
+            if let Ok(image) = image.decode() {
+                if viuer::print(&image, &conf).is_err() {
+                    print_warning("Image printing failed.", BEGINNING_ROW);
+                }
+            } else {
+                print_warning("Cannot decode the image.", BEGINNING_ROW);
+            }
+        } else {
+            print_warning("Cannot read the image.", BEGINNING_ROW);
+        }
+    }
+
+    /// Get the proper aspect ratio of image to print.
+    fn get_image_preview_size(&self, item: &ItemInfo) -> (u16, u16) {
+        let term_width = self.layout.terminal_column - 1;
+        let term_height = self.layout.terminal_row - 3;
+        //preview space ratio by actual resolution
+        let term_height_actual = (term_height * 2) as f32;
+        let term_ratio = term_width as f32 / term_height_actual;
+
+        if let Ok((w, h)) = image::image_dimensions(&item.file_path) {
+            let w_f32 = w as f32;
+            let h_f32 = h as f32;
+            let image_ratio = w_f32 / h_f32;
+            if term_ratio <= image_ratio {
+                let factor = w_f32 / term_width as f32;
+                let height = (h_f32 / factor) as u16;
+                (term_width, height / 2)
+            } else {
+                let factor = h_f32 / term_height_actual;
+                let width = (w_f32 / factor) as u16;
+                (width, term_height)
+            }
+        } else {
+            (0, 0)
+        }
+    }
+
+    /// Clear the preview space.
+    fn clear_preview(&self, preview_start_column: u16) {
+        for i in 0..self.layout.terminal_row {
+            print!(
+                "{}",
+                cursor::Goto(preview_start_column, BEGINNING_ROW + i as u16)
+            );
+            print!("{}", clear::UntilNewline);
+        }
+    }
+
+    /// Store the sort key and whether to show hidden items to session file.
     pub fn write_session(&self, session_path: PathBuf) -> Result<(), FxError> {
         let session = Session {
             sort_by: self.sort_by.clone(),
@@ -1041,6 +1148,7 @@ impl State {
     }
 }
 
+/// Create item information from `std::fs::DirEntry`.
 fn make_item(entry: fs::DirEntry) -> ItemInfo {
     let path = entry.path();
     let metadata = fs::symlink_metadata(&path);
@@ -1052,9 +1160,12 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
 
     let hidden = matches!(name.chars().next(), Some('.'));
 
-    let ext = path
-        .extension()
-        .map(|s| s.to_os_string().into_string().unwrap_or_default());
+    let ext = path.extension().map(|s| {
+        s.to_os_string()
+            .into_string()
+            .unwrap_or_default()
+            .to_ascii_lowercase()
+    });
 
     match metadata {
         Ok(metadata) => {
@@ -1120,6 +1231,7 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
     }
 }
 
+/// Generate item information from trash direcotry, in order to use when redo.
 pub fn trash_to_info(trash_dir: &PathBuf, vec: Vec<PathBuf>) -> Result<Vec<ItemInfo>, FxError> {
     let total = vec.len();
     let mut count = 0;

@@ -8,7 +8,6 @@ mod session;
 mod state;
 
 fn main() -> Result<(), errors::FxError> {
-    env_logger::init();
     let args: Vec<String> = std::env::args().collect();
     let len = args.len();
     match len {
@@ -16,6 +15,7 @@ fn main() -> Result<(), errors::FxError> {
             if let Err(e) = run::run(
                 std::env::current_dir()
                     .unwrap_or_else(|_| panic!("Cannot access current directoy.")),
+                false,
             ) {
                 eprintln!("{}", e);
             }
@@ -25,7 +25,7 @@ fn main() -> Result<(), errors::FxError> {
             "-h" | "--help" => {
                 print!("{}", help::HELP);
             }
-            "-c" | "--check" => {
+            "-v" | "--version" => {
                 let output = std::process::Command::new("cargo")
                     .args(["search", "felix", "--limit", "1"])
                     .output()?
@@ -45,8 +45,17 @@ fn main() -> Result<(), errors::FxError> {
                     println!("Cannot fetch the latest version: Check your internet connection.");
                 }
             }
+            // "-l" | "--log" => {
+            //     if let Err(e) = run::run(
+            //         std::env::current_dir()
+            //             .unwrap_or_else(|_| panic!("Cannot access current directoy.")),
+            //         true,
+            //     ) {
+            //         eprintln!("{}", e);
+            //     }
+            // }
             _ => {
-                if let Err(e) = run::run(std::path::PathBuf::from(&args[1])) {
+                if let Err(e) = run::run(std::path::PathBuf::from(&args[1]), false) {
                     eprintln!("{}", e);
                 }
             }

@@ -1,6 +1,6 @@
-pub const HELP: &str = "# felix v0.9.1
+/// Help text.
+pub const HELP: &str = "# felix v0.9.2
 A simple TUI file manager with vim-like keymapping.
-Works on terminals with 21 columns or more.
 
 ## Usage
 `fx` => Show items in the current directory.
@@ -8,8 +8,8 @@ Works on terminals with 21 columns or more.
 Both relative and absolute path available.
 
 ## Arguments
-`fx -h` | `fx --help`  => Print help.
-`fx -c` | `fx --check` => Check update.
+`fx -h` | `fx --help`    => Print help.
+`fx -v` | `fx --version` => Check update.
 
 ## Manual
 j / Up            :Go up.
@@ -21,24 +21,24 @@ G                 :Go to the bottom.
 dd                :Delete and yank item.
 yy                :Yank item.
 p                 :Put yanked item in the current directory.
-V                 :Switch to select mode.
-  - d             :In select mode, delete and yank selected items.
-  - y             :In select mode, yank selected items.
+V                 :Switch to the select mode.
+  - d             :In the select mode, delete and yank selected items.
+  - y             :In the select mode, yank selected items.
 u                 :Undo put/delete/rename.
 Ctrl + r          :Redo put/delete/rename.
 v                 :Toggle whether to show preview.
 backspace         :Toggle whether to show hidden items.
 t                 :Toggle sort order (name <-> modified time).
-:                 :Switch to shell mode.
-c                 :Switch to rename mode.
-/                 :Switch to filter mode.
-Esc               :Return to normal mode.
-:cd | :z          :Go to home directory.
+:                 :Switch to the shell mode.
+c                 :Switch to the rename mode.
+/                 :Switch to the filter mode.
+Esc               :Return to the normal mode.
+:cd | :z          :Go to the home directory.
 :z <keyword>      :*zoxide required* Jump to a directory that matches the keyword.
 :e                :Reload the current directory.
 :empty            :Empty the trash directory.
 :h                :Show help.
-:q / ZZ           :Exit the program.
+:q / ZZ           :Exit.
 
 ## Configuration
 config file    : $XDG_CONFIG_HOME/felix/config.toml

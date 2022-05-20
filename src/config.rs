@@ -13,8 +13,8 @@ pub const CONFIG_EXAMPLE: &str = "
 default = \"nvim\"
 
 # Whether to use the full width of terminal.
-# If not set, this will be false.
-use_full_width = false
+# If not set, this will be true.
+use_full_width = true
 
 # Option: Set the max length of item name to be displayed.
 # This works only when use_full_width is set to false.

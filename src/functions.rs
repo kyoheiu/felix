@@ -12,6 +12,7 @@ pub const TIME_WIDTH: u16 = 16;
 pub const DEFAULT_NAME_LENGTH: u16 = 30;
 pub const SPACES: u16 = 3;
 
+/// Generate modified time as `String`.
 pub fn format_time(time: &Option<String>) -> String {
     match time {
         Some(datetime) => format!("{} {}", &datetime[0..10], &datetime[11..16]),
@@ -19,6 +20,7 @@ pub fn format_time(time: &Option<String>) -> String {
     }
 }
 
+/// Clear all and show the current directory information.
 pub fn clear_and_show(dir: &Path) {
     print!("{}{}", clear::All, cursor::Goto(1, 1));
 
@@ -32,6 +34,7 @@ pub fn clear_and_show(dir: &Path) {
         color::Fg(color::Reset),
     );
 
+    //If .git directory exists, get the branch information and print it.
     let git = dir.join(".git");
     if git.exists() {
         let head = git.join("HEAD");
@@ -57,6 +60,7 @@ pub fn clear_and_show(dir: &Path) {
     );
 }
 
+/// Rename file when put, in order to avoid the name conflict.
 pub fn rename_file(item: &ItemInfo, name_set: &HashSet<String>) -> String {
     let file_name = &item.file_name;
     if name_set.contains(file_name) {
@@ -83,6 +87,7 @@ pub fn rename_file(item: &ItemInfo, name_set: &HashSet<String>) -> String {
     }
 }
 
+/// Rename directory when put, in order to avoid the name conflict.
 pub fn rename_dir(item: &ItemInfo, name_set: &HashSet<String>) -> String {
     let dir_name = &item.file_name;
     if name_set.contains(dir_name) {
@@ -96,6 +101,7 @@ pub fn rename_dir(item: &ItemInfo, name_set: &HashSet<String>) -> String {
     }
 }
 
+/// When something goes wrong or does not work, print information about it.
 pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
     print!(
         " {}{}{}{}{}{}{}",
@@ -116,6 +122,7 @@ pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
     );
 }
 
+/// Print the result of operation, such as put/delete/redo/undo.
 pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
     print!(" {}{}{}", cursor::Goto(2, 2), clear::CurrentLine, message,);
 
@@ -127,10 +134,12 @@ pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
     );
 }
 
+/// Print process of put/delete.
 pub fn print_process<T: std::fmt::Display>(message: T) {
     print!("{}{}", message, cursor::Left(10));
 }
 
+/// Print the number of process (put/delete).
 pub fn display_count(i: usize, all: usize) -> String {
     let mut result = String::new();
     result.push_str(&(i + 1).to_string());
@@ -139,6 +148,7 @@ pub fn display_count(i: usize, all: usize) -> String {
     result
 }
 
+/// Convert extension setting in the config to HashMap.
 pub fn to_extension_map(config: &HashMap<String, Vec<String>>) -> HashMap<String, String> {
     let mut new_map = HashMap::new();
     for (command, extensions) in config.iter() {
@@ -149,6 +159,15 @@ pub fn to_extension_map(config: &HashMap<String, Vec<String>>) -> HashMap<String
     new_map
 }
 
+/// Create the duration as String. Used after print_process(put/delete).
+pub fn duration_to_string(duration: Duration) -> String {
+    let s = duration.as_secs_f32();
+    let mut result: String = s.to_string().chars().take(4).collect();
+    result.push('s');
+    result
+}
+
+/// Get the size format of item.
 pub fn to_proper_size(byte: u64) -> String {
     let mut result: String;
     if byte < 1000 {
@@ -167,13 +186,7 @@ pub fn to_proper_size(byte: u64) -> String {
     result
 }
 
-pub fn duration_to_string(duration: Duration) -> String {
-    let s = duration.as_secs_f32();
-    let mut result: String = s.to_string().chars().take(4).collect();
-    result.push('s');
-    result
-}
-
+/// Make app's layout according to terminal width and app's config.
 pub fn make_layout(
     column: u16,
     use_full: Option<bool>,
@@ -222,13 +235,12 @@ pub fn make_layout(
     }
 }
 
+/// Format a line of the text preview to fit the width.
 pub fn format_preview_line(line: &str, preview_column: usize) -> String {
-    line.replace('\t', "    ")
-        .chars()
-        .take(preview_column)
-        .collect()
+    line.chars().take(preview_column).collect()
 }
 
+/// Generate the contents of item to show as a preview.
 pub fn list_up_contents(path: PathBuf) -> Result<Vec<String>, FxError> {
     let mut file_v = Vec::new();
     let mut dir_v = Vec::new();
@@ -248,6 +260,7 @@ pub fn list_up_contents(path: PathBuf) -> Result<Vec<String>, FxError> {
     Ok(result)
 }
 
+/// Generate the contents tree.
 pub fn make_tree(v: Vec<String>) -> Result<String, FxError> {
     let len = v.len();
     let mut result = String::new();
@@ -266,6 +279,7 @@ pub fn make_tree(v: Vec<String>) -> Result<String, FxError> {
     Ok(result)
 }
 
+/// Format texts to print. Used when printing help or text preview.
 pub fn format_txt(txt: &str, column: u16, is_help: bool) -> Vec<String> {
     let mut v = Vec::new();
     let mut column_count = 0;
@@ -292,6 +306,7 @@ pub fn format_txt(txt: &str, column: u16, is_help: bool) -> Vec<String> {
     v
 }
 
+/// Print help text.
 pub fn print_help(v: &[String], skip_number: usize, row: u16) {
     let mut row_count = 0;
     for (i, line) in v.iter().enumerate() {
@@ -308,6 +323,10 @@ pub fn print_help(v: &[String], skip_number: usize, row: u16) {
         print!("{}", line);
         row_count += 1;
     }
+}
+
+pub fn is_editable(s: &str) -> bool {
+    s.is_ascii()
 }
 
 #[cfg(test)]
@@ -346,8 +365,8 @@ mod tests {
     #[test]
     fn test_format_preview_line() {
         assert_eq!(
-            format_preview_line("The\tquick brown fox jumps over the lazy dog", 20),
-            "The    quick brown f".to_string()
+            format_preview_line("The quick brown fox jumps over the lazy dog", 20),
+            "The quick brown fox ".to_string()
         );
     }
 
@@ -368,71 +387,14 @@ mod tests {
     }
 
     #[test]
-    fn test_format_txt() {
-        println!("{:#?}", format_txt(crate::help::HELP, 50, true));
-        assert_eq!(
-            format_txt(crate::help::HELP, 50, true),
-            vec![
-                String::from("# felix v0.9.1"),
-                String::from("A simple TUI file manager with vim-like keymapping"),
-                String::from("."),
-                String::from("Works on terminals with 21 columns or more."),
-                String::from(""),
-                String::from("## Usage"),
-                String::from("`fx` => Show items in the current directory."),
-                String::from("`fx <directory path>` => Show items in the path."),
-                String::from("Both relative and absolute path available."),
-                String::from(""),
-                String::from("## Arguments"),
-                String::from("`fx -h` | `fx --help`  => Print help."),
-                String::from("`fx -c` | `fx --check` => Check update."),
-                String::from(""),
-                String::from("## Manual"),
-                String::from("j / Up            :Go up."),
-                String::from("k / Down          :Go down."),
-                String::from("h / Left          :Go to parent directory if exist"),
-                String::from("s."),
-                String::from("l / Right / Enter :Open file or change directory."),
-                String::from("gg                :Go to the top."),
-                String::from("G                 :Go to the bottom."),
-                String::from("dd                :Delete and yank item."),
-                String::from("yy                :Yank item."),
-                String::from("p                 :Put yanked item in the current "),
-                String::from("directory."),
-                String::from("V                 :Switch to select mode."),
-                String::from("  - d             :In select mode, delete and yank"),
-                String::from(" selected items."),
-                String::from("  - y             :In select mode, yank selected i"),
-                String::from("tems."),
-                String::from("u                 :Undo put/delete/rename."),
-                String::from("Ctrl + r          :Redo put/delete/rename."),
-                String::from("v                 :Toggle whether to show preview."),
-                String::from(""),
-                String::from("backspace         :Toggle whether to show hidden i"),
-                String::from("tems."),
-                String::from("t                 :Toggle sort order (name <-> mod"),
-                String::from("ified time)."),
-                String::from(":                 :Switch to shell mode."),
-                String::from("c                 :Switch to rename mode."),
-                String::from("/                 :Switch to filter mode."),
-                String::from("Esc               :Return to normal mode."),
-                String::from(":cd | :z          :Go to home directory."),
-                String::from(":z <keyword>      :*zoxide required* Jump to a dir"),
-                String::from("ectory that matches the keyword."),
-                String::from(":e                :Reload the current directory."),
-                String::from(":empty            :Empty the trash directory."),
-                String::from(":h                :Show help."),
-                String::from(":q / ZZ           :Exit the program."),
-                String::from(""),
-                String::from("## Configuration"),
-                String::from("config file    : $XDG_CONFIG_HOME/felix/config.tom"),
-                String::from("l"),
-                String::from("trash directory: $XDG_CONFIG_HOME/felix/trash"),
-                String::from(""),
-                String::from("For more detail, visit https://github.com/kyoheiu/"),
-                String::from("felix"),
-                String::from("Enter 'q' to go back.")
-            ]
-        );
+    fn test_is_editable() {
+        let s1 = "Hello, world!";
+        let s2 = "image.jpg";
+        let s3 = "a̐éö̲\r\n";
+        let s4 = "日本の首都は東京です";
+        assert!(is_editable(s1));
+        assert!(is_editable(s2));
+        assert!(!is_editable(s3));
+        assert!(!is_editable(s4));
     }
 }
