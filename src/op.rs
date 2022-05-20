@@ -76,10 +76,30 @@ fn log(op: &OpKind) {
     info!("{}", result);
 }
 
+pub fn relog(op: &OpKind, undo: bool) {
+    let mut result = if undo {
+        "UNDO: ".to_string()
+    } else {
+        "REDO: ".to_string()
+    };
+    match op {
+        OpKind::Put(_) => {
+            result.push_str("PUT");
+        }
+        OpKind::Delete(_) => {
+            result.push_str("DELETE");
+        }
+        OpKind::Rename(_) => {
+            result.push_str("RENAME");
+        }
+    }
+    info!("{}", result);
+}
+
 fn item_to_string(v: &Vec<ItemInfo>) -> String {
     let mut result = String::new();
     for p in v {
-        result.push_str(&p.file_name);
+        result.push_str(p.file_path.as_path().to_str().unwrap());
         result.push(' ');
     }
     result

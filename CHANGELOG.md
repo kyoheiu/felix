@@ -4,6 +4,8 @@
 ### Added
 - trying to make a user guide (just to show and explain how to use each commands) by `mdbook`
 - Use struct `Operation` to express the manipulation within the app (put/delete/rename) and implement some methods.
+- Add message when there are no operations left to undo/redo.
+
 ### Notes
 - In the next release, logging by the `-l` option will be implemented (using `simplelog`).
 - Text preview color needs to be readable enough, so it's worth rethinking (Now LightBlack).
