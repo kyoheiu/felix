@@ -3,7 +3,7 @@
 ## [Unreleased]
 ### Added
 - trying to make a user guide (just to show and explain how to use each commands) by `mdbook`
-
+- Use struct `Operation` to express the manipulation within the app (put/delete/rename) and implement some methods.
 ### Notes
 - In the next release, logging by the `-l` option will be implemented (using `simplelog`).
 - Text preview color needs to be readable enough, so it's worth rethinking (Now LightBlack).
@@ -55,7 +55,7 @@
 
 ## v0.8.1 (2022-05-04)
 ### Fixed
-- undo/redo order when new manipulations occurs. Now manipulation list will be "branched", which means undone manipulations will be discarded when new manipulation is pushed, so that redo cannot lead to an error.
+- undo/redo order when new operations occurs. Now manipulation list will be "branched", which means undone operations will be discarded when new manipulation is pushed, so that redo cannot lead to an error.
 
 ## v0.8.0 (2022-05-03)
 ### Added

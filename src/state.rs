@@ -646,6 +646,37 @@ impl State {
         Ok(())
     }
 
+    /// Redo operations (put/delete/rename)
+    pub fn redo(&mut self, nums: &Num, op: OpKind) -> Result<(), FxError> {
+        match op {
+            OpKind::Rename(op) => {
+                std::fs::rename(&op.original_name, &op.new_name)?;
+                self.operations.pos -= 1;
+                clear_and_show(&self.current_dir);
+                self.update_list()?;
+                self.list_up(nums.skip);
+                print_info("Redone [rename]", BEGINNING_ROW);
+            }
+            OpKind::Put(op) => {
+                self.put_items(&op.original, Some(op.dir.clone()))?;
+                self.operations.pos -= 1;
+                clear_and_show(&self.current_dir);
+                self.update_list()?;
+                self.list_up(nums.skip);
+                print_info("Redone [put]", BEGINNING_ROW);
+            }
+            OpKind::Delete(op) => {
+                self.remove_and_yank(&op.original, false)?;
+                self.operations.pos -= 1;
+                clear_and_show(&self.current_dir);
+                self.update_list()?;
+                self.list_up(nums.skip);
+                print_info("Redone [delete]", BEGINNING_ROW);
+            }
+        }
+        Ok(())
+    }
+
     /// Print an item in the directory.
     fn print(&self, index: usize) {
         let item = &self.get_item(index).unwrap();

@@ -1487,49 +1487,16 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     {
                         continue;
                     }
-                    if let Some(manipulation) = state
+                    if let Some(op) = state
                         .operations
                         .op_list
                         .get(mani_len - state.operations.pos)
                     {
-                        let manipulation = manipulation.clone();
-                        match manipulation {
-                            OpKind::Rename(m) => {
-                                if let Err(e) = std::fs::rename(&m.original_name, &m.new_name) {
-                                    print_warning(e, y);
-                                    screen.flush()?;
-                                    continue;
-                                }
-                                state.operations.pos -= 1;
-                                clear_and_show(&state.current_dir);
-                                state.update_list()?;
-                                state.list_up(nums.skip);
-                                print_info("Redone [rename]", y);
-                            }
-                            OpKind::Put(m) => {
-                                if let Err(e) = state.put_items(&m.original, Some(m.dir.clone())) {
-                                    print_warning(e, y);
-                                    screen.flush()?;
-                                    continue;
-                                }
-                                state.operations.pos -= 1;
-                                clear_and_show(&state.current_dir);
-                                state.update_list()?;
-                                state.list_up(nums.skip);
-                                print_info("Redone [put]", y);
-                            }
-                            OpKind::Delete(m) => {
-                                if let Err(e) = state.remove_and_yank(&m.original, false) {
-                                    print_warning(e, y);
-                                    screen.flush()?;
-                                    continue;
-                                }
-                                state.operations.pos -= 1;
-                                clear_and_show(&state.current_dir);
-                                state.update_list()?;
-                                state.list_up(nums.skip);
-                                print_info("Redone [delete]", y);
-                            }
+                        let op = op.clone();
+                        if let Err(e) = state.redo(&nums, op) {
+                            print_warning(e, y);
+                            screen.flush()?;
+                            continue;
                         }
 
                         let new_len = state.list.len();
