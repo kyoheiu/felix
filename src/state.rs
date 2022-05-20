@@ -2,6 +2,7 @@ use super::config::*;
 use super::errors::FxError;
 use super::functions::*;
 use super::nums::*;
+use super::op::*;
 use super::session::*;
 use chrono::prelude::*;
 use std::collections::HashMap;
@@ -24,7 +25,7 @@ pub const WHEN_EMPTY: &str = "Are you sure to empty the trash directory? (if yes
 pub struct State {
     pub list: Vec<ItemInfo>,
     pub registered: Vec<ItemInfo>,
-    pub manipulations: Manipulation,
+    pub manipulations: Operation,
     pub current_dir: PathBuf,
     pub trash_dir: PathBuf,
     pub default: String,
@@ -66,39 +67,6 @@ pub struct Layout {
     pub option_name_len: Option<usize>,
     pub colors: Color,
     pub preview: bool,
-}
-
-#[derive(Debug, Clone)]
-pub struct Manipulation {
-    pub count: usize,
-    pub manip_list: Vec<ManipKind>,
-}
-
-#[derive(Debug, Clone)]
-pub enum ManipKind {
-    Delete(DeletedFiles),
-    Put(PutFiles),
-    Rename(RenamedFile),
-}
-
-#[derive(Debug, Clone)]
-pub struct RenamedFile {
-    pub original_name: PathBuf,
-    pub new_name: PathBuf,
-}
-
-#[derive(Debug, Clone)]
-pub struct PutFiles {
-    pub original: Vec<ItemInfo>,
-    pub put: Vec<PathBuf>,
-    pub dir: PathBuf,
-}
-
-#[derive(Debug, Clone)]
-pub struct DeletedFiles {
-    pub trash: Vec<PathBuf>,
-    pub original: Vec<ItemInfo>,
-    pub dir: PathBuf,
 }
 
 macro_rules! print_item {
@@ -173,9 +141,9 @@ impl State {
         Ok(State {
             list: Vec::new(),
             registered: Vec::new(),
-            manipulations: Manipulation {
+            manipulations: Operation {
                 count: 0,
-                manip_list: Vec::new(),
+                op_list: Vec::new(),
             },
             current_dir: PathBuf::new(),
             trash_dir: PathBuf::new(),
@@ -258,7 +226,7 @@ impl State {
             return;
         }
         for _i in 0..self.manipulations.count {
-            self.manipulations.manip_list.pop();
+            self.manipulations.op_list.pop();
         }
     }
 
@@ -302,8 +270,8 @@ impl State {
             self.branch_manip();
             //push deleted item information to manipulations
             self.manipulations
-                .manip_list
-                .push(ManipKind::Delete(DeletedFiles {
+                .op_list
+                .push(OpKind::Delete(DeletedFiles {
                     trash: trash_vec,
                     original: targets.to_vec(),
                     dir: self.current_dir.clone(),
@@ -515,7 +483,7 @@ impl State {
         if target_dir.is_none() {
             self.branch_manip();
             //push put item information to manipulations
-            self.manipulations.manip_list.push(ManipKind::Put(PutFiles {
+            self.manipulations.op_list.push(OpKind::Put(PutFiles {
                 original: targets.to_owned(),
                 put: put_v,
                 dir: self.current_dir.clone(),

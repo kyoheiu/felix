@@ -3,6 +3,7 @@ mod errors;
 mod functions;
 mod help;
 mod nums;
+mod op;
 mod run;
 mod session;
 mod state;

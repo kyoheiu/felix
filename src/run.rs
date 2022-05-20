@@ -3,6 +3,7 @@ use super::errors::FxError;
 use super::functions::*;
 use super::help::HELP;
 use super::nums::*;
+use super::op::*;
 use super::state::*;
 use crate::session::*;
 use log::info;
@@ -938,12 +939,13 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     info!("{}", message);
 
                                     state.branch_manip();
-                                    state.manipulations.manip_list.push(ManipKind::Rename(
-                                        RenamedFile {
+                                    state
+                                        .manipulations
+                                        .op_list
+                                        .push(OpKind::Rename(RenamedFile {
                                             original_name: item.file_path.clone(),
                                             new_name: to,
-                                        },
-                                    ));
+                                        }));
                                     state.manipulations.count = 0;
 
                                     print!("{}", cursor::Hide);
@@ -1458,17 +1460,17 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                 //undo
                 Key::Char('u') => {
-                    let mani_len = state.manipulations.manip_list.len();
+                    let mani_len = state.manipulations.op_list.len();
                     if mani_len < state.manipulations.count + 1 {
                         continue;
                     }
                     if let Some(manipulation) = state
                         .manipulations
-                        .manip_list
+                        .op_list
                         .get(mani_len - state.manipulations.count - 1)
                     {
                         match manipulation.clone() {
-                            ManipKind::Rename(m) => {
+                            OpKind::Rename(m) => {
                                 if let Err(e) = std::fs::rename(&m.new_name, &m.original_name) {
                                     print_warning(e, y);
                                     screen.flush()?;
@@ -1480,7 +1482,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 state.list_up(nums.skip);
                                 print_info("Undone [rename]", y);
                             }
-                            ManipKind::Put(m) => {
+                            OpKind::Put(m) => {
                                 for x in m.put {
                                     if let Err(e) = std::fs::remove_file(&x) {
                                         print_warning(e, y);
@@ -1494,7 +1496,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 state.list_up(nums.skip);
                                 print_info("Undone [put]", y);
                             }
-                            ManipKind::Delete(m) => {
+                            OpKind::Delete(m) => {
                                 let targets = trash_to_info(&state.trash_dir, m.trash)?;
                                 if let Err(e) = state.put_items(&targets, Some(m.dir)) {
                                     print_warning(e, y);
@@ -1526,7 +1528,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                 //redo
                 Key::Ctrl('r') => {
-                    let mani_len = state.manipulations.manip_list.len();
+                    let mani_len = state.manipulations.op_list.len();
                     if mani_len == 0
                         || state.manipulations.count == 0
                         || mani_len < state.manipulations.count
@@ -1535,12 +1537,12 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     }
                     if let Some(manipulation) = state
                         .manipulations
-                        .manip_list
+                        .op_list
                         .get(mani_len - state.manipulations.count)
                     {
                         let manipulation = manipulation.clone();
                         match manipulation {
-                            ManipKind::Rename(m) => {
+                            OpKind::Rename(m) => {
                                 if let Err(e) = std::fs::rename(&m.original_name, &m.new_name) {
                                     print_warning(e, y);
                                     screen.flush()?;
@@ -1552,7 +1554,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 state.list_up(nums.skip);
                                 print_info("Redone [rename]", y);
                             }
-                            ManipKind::Put(m) => {
+                            OpKind::Put(m) => {
                                 if let Err(e) = state.put_items(&m.original, Some(m.dir.clone())) {
                                     print_warning(e, y);
                                     screen.flush()?;
@@ -1564,7 +1566,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 state.list_up(nums.skip);
                                 print_info("Redone [put]", y);
                             }
-                            ManipKind::Delete(m) => {
+                            OpKind::Delete(m) => {
                                 if let Err(e) = state.remove_and_yank(&m.original, false) {
                                     print_warning(e, y);
                                     screen.flush()?;
