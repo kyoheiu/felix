@@ -18,14 +18,6 @@ A tui file manager with vim-like key mapping, written in Rust. Fast, simple, and
 
  For more details, see `CHANGELOG.md`.
 
-#### Changed
-- Version check option now uses -v | --version, instead of -c | --check.
-- Refactor: Remove magic number and use variable with proper name in the filter and shell mode.
-- Restore debug print (`P`), which works in debug mode(RUST_LOG has some value).
-- Use `simplelog` instead of `env_logger` to create the log file.
-
-For more detail, see `CHANGELOG.md`.
-
 ## Status
 
 | OS      | Status                                                   |
