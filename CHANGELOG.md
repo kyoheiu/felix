@@ -2,10 +2,10 @@
 
 ## [Unreleased]
 ### Added
-- Trying to make felix user guide (just to show how to use each commands) by mdbook
-- Trying to create log files with `-l` option.
+- trying to make a user guide (just to show and explain how to use each commands) by `mdbook`
 
 ### Notes
+- In the next release, logging by the `-l` option will be implemented (using `simplelog`).
 - Text preview color needs to be readable enough, so it's worth rethinking (Now LightBlack).
 
 ## v0.9.2 (2022-05-18)
