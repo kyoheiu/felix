@@ -25,7 +25,7 @@ pub const WHEN_EMPTY: &str = "Are you sure to empty the trash directory? (if yes
 pub struct State {
     pub list: Vec<ItemInfo>,
     pub registered: Vec<ItemInfo>,
-    pub manipulations: Operation,
+    pub operations: Operation,
     pub current_dir: PathBuf,
     pub trash_dir: PathBuf,
     pub default: String,
@@ -141,7 +141,7 @@ impl State {
         Ok(State {
             list: Vec::new(),
             registered: Vec::new(),
-            manipulations: Operation {
+            operations: Operation {
                 count: 0,
                 op_list: Vec::new(),
             },
@@ -220,24 +220,10 @@ impl State {
         }
     }
 
-    /// Discard undone manipulations when new manipulation is pushed.
-    pub fn branch_manip(&mut self) {
-        if self.manipulations.count == 0 {
-            return;
-        }
-        for _i in 0..self.manipulations.count {
-            self.manipulations.op_list.pop();
-        }
-    }
-
     /// Move items from the current directory to trash directory.
     /// This does not acutually delete items.
     /// If you'd like to delete, use `:empty` after this, or just `:rm`.  
-    pub fn remove_and_yank(
-        &mut self,
-        targets: &[ItemInfo],
-        new_manip: bool,
-    ) -> Result<(), FxError> {
+    pub fn remove_and_yank(&mut self, targets: &[ItemInfo], new_op: bool) -> Result<(), FxError> {
         self.registered.clear();
         let total_selected = targets.len();
         let mut trash_vec = Vec::new();
@@ -250,14 +236,14 @@ impl State {
                 display_count(i, total_selected)
             );
             match item.file_type {
-                FileType::Directory => match self.remove_and_yank_dir(item.clone(), new_manip) {
+                FileType::Directory => match self.remove_and_yank_dir(item.clone(), new_op) {
                     Err(e) => {
                         return Err(e);
                     }
                     Ok(path) => trash_vec.push(path),
                 },
                 FileType::File | FileType::Symlink => {
-                    match self.remove_and_yank_file(item.clone(), new_manip) {
+                    match self.remove_and_yank_file(item.clone(), new_op) {
                         Err(e) => {
                             return Err(e);
                         }
@@ -266,28 +252,21 @@ impl State {
                 }
             }
         }
-        if new_manip {
-            self.branch_manip();
-            //push deleted item information to manipulations
-            self.manipulations
-                .op_list
-                .push(OpKind::Delete(DeletedFiles {
-                    trash: trash_vec,
-                    original: targets.to_vec(),
-                    dir: self.current_dir.clone(),
-                }));
-            self.manipulations.count = 0;
+        if new_op {
+            self.operations.branch();
+            //push deleted item information to operations
+            self.operations.push(OpKind::Delete(DeletedFiles {
+                trash: trash_vec,
+                original: targets.to_vec(),
+                dir: self.current_dir.clone(),
+            }));
         }
 
         Ok(())
     }
 
     /// Move single file to trash directory.
-    fn remove_and_yank_file(
-        &mut self,
-        item: ItemInfo,
-        new_manip: bool,
-    ) -> Result<PathBuf, FxError> {
+    fn remove_and_yank_file(&mut self, item: ItemInfo, new_op: bool) -> Result<PathBuf, FxError> {
         //prepare from and to for copy
         let from = &item.file_path;
         let mut to = PathBuf::new();
@@ -303,7 +282,7 @@ impl State {
             rename.push('_');
             rename.push_str(name);
 
-            if new_manip {
+            if new_op {
                 to = self.trash_dir.join(&rename);
 
                 //copy
@@ -328,13 +307,13 @@ impl State {
     }
 
     /// Move single directory recursively to trash directory.
-    fn remove_and_yank_dir(&mut self, item: ItemInfo, new_manip: bool) -> Result<PathBuf, FxError> {
+    fn remove_and_yank_dir(&mut self, item: ItemInfo, new_op: bool) -> Result<PathBuf, FxError> {
         let mut trash_name = String::new();
         let mut base: usize = 0;
         let mut trash_path: std::path::PathBuf = PathBuf::new();
         let mut target: PathBuf;
 
-        if new_manip {
+        if new_op {
             let len = walkdir::WalkDir::new(&item.file_path).into_iter().count();
             let unit = len / 5;
             for (i, entry) in walkdir::WalkDir::new(&item.file_path)
@@ -456,7 +435,7 @@ impl State {
             }
         }
 
-        //prepare for manipulations.push
+        //prepare for operations.push
         let mut put_v = Vec::new();
 
         let total_selected = targets.len();
@@ -481,14 +460,13 @@ impl State {
             }
         }
         if target_dir.is_none() {
-            self.branch_manip();
-            //push put item information to manipulations
-            self.manipulations.op_list.push(OpKind::Put(PutFiles {
+            self.operations.branch();
+            //push put item information to operations
+            self.operations.push(OpKind::Put(PutFiles {
                 original: targets.to_owned(),
                 put: put_v,
                 dir: self.current_dir.clone(),
             }));
-            self.manipulations.count = 0;
         }
 
         Ok(())
