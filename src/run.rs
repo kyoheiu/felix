@@ -931,22 +931,11 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         break;
                                     }
 
-                                    //Keep the log of rename
-                                    let mut message = "RENAME: ".to_string();
-                                    message.push_str(item.file_path.as_path().to_str().unwrap());
-                                    message.push_str(" -> ");
-                                    message.push_str(to.as_path().to_str().unwrap());
-                                    info!("{}", message);
-
-                                    state.branch_manip();
-                                    state
-                                        .manipulations
-                                        .op_list
-                                        .push(OpKind::Rename(RenamedFile {
-                                            original_name: item.file_path.clone(),
-                                            new_name: to,
-                                        }));
-                                    state.manipulations.count = 0;
+                                    state.operations.branch();
+                                    state.operations.push(OpKind::Rename(RenamedFile {
+                                        original_name: item.file_path.clone(),
+                                        new_name: to,
+                                    }));
 
                                     print!("{}", cursor::Hide);
                                     clear_and_show(&state.current_dir);
@@ -1460,23 +1449,23 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                 //undo
                 Key::Char('u') => {
-                    let mani_len = state.manipulations.op_list.len();
-                    if mani_len < state.manipulations.count + 1 {
+                    let mani_len = state.operations.op_list.len();
+                    if mani_len < state.operations.count + 1 {
                         continue;
                     }
-                    if let Some(manipulation) = state
-                        .manipulations
+                    if let Some(op) = state
+                        .operations
                         .op_list
-                        .get(mani_len - state.manipulations.count - 1)
+                        .get(mani_len - state.operations.count - 1)
                     {
-                        match manipulation.clone() {
+                        match op.clone() {
                             OpKind::Rename(m) => {
                                 if let Err(e) = std::fs::rename(&m.new_name, &m.original_name) {
                                     print_warning(e, y);
                                     screen.flush()?;
                                     continue;
                                 }
-                                state.manipulations.count += 1;
+                                state.operations.count += 1;
                                 clear_and_show(&state.current_dir);
                                 state.update_list()?;
                                 state.list_up(nums.skip);
@@ -1490,7 +1479,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         continue;
                                     }
                                 }
-                                state.manipulations.count += 1;
+                                state.operations.count += 1;
                                 clear_and_show(&state.current_dir);
                                 state.update_list()?;
                                 state.list_up(nums.skip);
@@ -1503,7 +1492,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     screen.flush()?;
                                     continue;
                                 }
-                                state.manipulations.count += 1;
+                                state.operations.count += 1;
                                 clear_and_show(&state.current_dir);
                                 state.update_list()?;
                                 state.list_up(nums.skip);
@@ -1528,17 +1517,17 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                 //redo
                 Key::Ctrl('r') => {
-                    let mani_len = state.manipulations.op_list.len();
+                    let mani_len = state.operations.op_list.len();
                     if mani_len == 0
-                        || state.manipulations.count == 0
-                        || mani_len < state.manipulations.count
+                        || state.operations.count == 0
+                        || mani_len < state.operations.count
                     {
                         continue;
                     }
                     if let Some(manipulation) = state
-                        .manipulations
+                        .operations
                         .op_list
-                        .get(mani_len - state.manipulations.count)
+                        .get(mani_len - state.operations.count)
                     {
                         let manipulation = manipulation.clone();
                         match manipulation {
@@ -1548,7 +1537,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     screen.flush()?;
                                     continue;
                                 }
-                                state.manipulations.count -= 1;
+                                state.operations.count -= 1;
                                 clear_and_show(&state.current_dir);
                                 state.update_list()?;
                                 state.list_up(nums.skip);
@@ -1560,7 +1549,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     screen.flush()?;
                                     continue;
                                 }
-                                state.manipulations.count -= 1;
+                                state.operations.count -= 1;
                                 clear_and_show(&state.current_dir);
                                 state.update_list()?;
                                 state.list_up(nums.skip);
@@ -1572,7 +1561,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     screen.flush()?;
                                     continue;
                                 }
-                                state.manipulations.count -= 1;
+                                state.operations.count -= 1;
                                 clear_and_show(&state.current_dir);
                                 state.update_list()?;
                                 state.list_up(nums.skip);
@@ -1598,7 +1587,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 //Debug print for undo/redo
                 Key::Char('P') => {
                     if state.rust_log.is_some() {
-                        print_info(format!("{:?}", state.manipulations), y);
+                        print_info(format!("{:?}", state.operations), y);
                     }
                 }
 
@@ -1677,6 +1666,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
     //Back to normal mode
     screen.suspend_raw_mode()?;
+    info!("===FINISH===");
     Ok(())
 }
 
