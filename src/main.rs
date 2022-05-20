@@ -46,15 +46,15 @@ fn main() -> Result<(), errors::FxError> {
                     println!("Cannot fetch the latest version: Check your internet connection.");
                 }
             }
-            // "-l" | "--log" => {
-            //     if let Err(e) = run::run(
-            //         std::env::current_dir()
-            //             .unwrap_or_else(|_| panic!("Cannot access current directoy.")),
-            //         true,
-            //     ) {
-            //         eprintln!("{}", e);
-            //     }
-            // }
+            "-l" | "--log" => {
+                if let Err(e) = run::run(
+                    std::env::current_dir()
+                        .unwrap_or_else(|_| panic!("Cannot access current directoy.")),
+                    true,
+                ) {
+                    eprintln!("{}", e);
+                }
+            }
             _ => {
                 if let Err(e) = run::run(std::path::PathBuf::from(&args[1]), false) {
                     eprintln!("{}", e);
