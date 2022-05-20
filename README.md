@@ -4,29 +4,19 @@
 
 ## About
 
-A tui file manager with vim-like key mapping, written in Rust.
+A tui file manager with vim-like key mapping, written in Rust. Fast, simple, and easy to configure & use.
 
 ![sample](screenshots/sample.gif)
-
-While heavliy inspired by the great `vifm` and trying to implement its pleasant experience in Rust, at the same time this project focuses on the following points:
-
-- simple and fast
-- easy to configure how to open files
 
 ## New Release
 
 ### v0.9.2 (2022-05-18)
-#### Added
-- [Experimental] Image preview on the right half of the terminal (press `v`). This feature uses `viuer`: The high resolution preview, which can be used in kitty or terminals that support sixel, is disabled due to the clearance issues.
-- crate `viuer` and `image` to preview the image.
-
-previewed images are printed by blocks.
+- Image preview implemented.
 ![preview_image](screenshots/preview_image.png)
-
-#### Fixed
-- Fix text preview bug around new line that occurs when it has tab character.
-- file_ext in ItemInfo is now always lowercased to speed up matching with the extension map.
+- Fix text preview bug that occurs when it has tab characters.
 - Disable renaming non-ascii items: Wide characters such as CJK or characters that do not match our intuition caused panic, so before editing, item name is now checked if it contains only ascii characters.
+
+ For more details, see `CHANGELOG.md`.
 
 #### Changed
 - Version check option now uses -v | --version, instead of -c | --check.
