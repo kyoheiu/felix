@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 pub struct Operation {
-    pub count: usize,
+    pub pos: usize,
     pub op_list: Vec<OpKind>,
 }
 
@@ -38,10 +38,10 @@ pub struct RenamedFile {
 impl Operation {
     /// Discard undone operations when new one is pushed.
     pub fn branch(&mut self) {
-        if self.count == 0 {
+        if self.pos == 0 {
             return;
         }
-        for _i in 0..self.count {
+        for _i in 0..self.pos {
             self.op_list.pop();
         }
     }
@@ -49,7 +49,7 @@ impl Operation {
     pub fn push(&mut self, op: OpKind) {
         log(&op);
         self.op_list.push(op);
-        self.count = 0;
+        self.pos = 0;
     }
 }
 

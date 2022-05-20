@@ -142,7 +142,7 @@ impl State {
             list: Vec::new(),
             registered: Vec::new(),
             operations: Operation {
-                count: 0,
+                pos: 0,
                 op_list: Vec::new(),
             },
             current_dir: PathBuf::new(),
@@ -610,6 +610,40 @@ impl State {
             }
         }
         Ok(target)
+    }
+
+    /// Undo operations (put/delete/rename).
+    pub fn undo(&mut self, nums: &Num, op: OpKind) -> Result<(), FxError> {
+        match op {
+            OpKind::Rename(op) => {
+                std::fs::rename(&op.new_name, &op.original_name)?;
+                self.operations.pos += 1;
+                clear_and_show(&self.current_dir);
+                self.update_list()?;
+                self.list_up(nums.skip);
+                print_info("Undone [rename]", BEGINNING_ROW);
+            }
+            OpKind::Put(op) => {
+                for x in op.put {
+                    std::fs::remove_file(&x)?;
+                }
+                self.operations.pos += 1;
+                clear_and_show(&self.current_dir);
+                self.update_list()?;
+                self.list_up(nums.skip);
+                print_info("Undone [put]", BEGINNING_ROW);
+            }
+            OpKind::Delete(op) => {
+                let targets = trash_to_info(&self.trash_dir, op.trash)?;
+                self.put_items(&targets, Some(op.dir))?;
+                self.operations.pos += 1;
+                clear_and_show(&self.current_dir);
+                self.update_list()?;
+                self.list_up(nums.skip);
+                print_info("Undone [delete]", BEGINNING_ROW);
+            }
+        }
+        Ok(())
     }
 
     /// Print an item in the directory.
