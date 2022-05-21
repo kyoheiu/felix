@@ -56,7 +56,7 @@ impl Operation {
 fn log(op: &OpKind) {
     match op {
         OpKind::Put(op) => {
-            info!("PUT: {:?}", &op.put);
+            info!("PUT: {:?}", op.put);
         }
         OpKind::Delete(op) => {
             info!("DELETE: {:?}", item_to_pathvec(&op.original));
@@ -74,17 +74,19 @@ pub fn relog(op: &OpKind, undo: bool) {
         "REDO: ".to_string()
     };
     match op {
-        OpKind::Put(_) => {
+        OpKind::Put(op) => {
             result.push_str("PUT");
+            info!("{} {:?}", result, op.put);
         }
-        OpKind::Delete(_) => {
+        OpKind::Delete(op) => {
             result.push_str("DELETE");
+            info!("{} {:?}", result, item_to_pathvec(&op.original));
         }
-        OpKind::Rename(_) => {
+        OpKind::Rename(op) => {
             result.push_str("RENAME");
+            info!("{} {:?} -> {:?}", result, op.original_name, op.new_name);
         }
     }
-    info!("{}", result);
 }
 
 fn item_to_pathvec(v: &Vec<ItemInfo>) -> Vec<PathBuf> {
