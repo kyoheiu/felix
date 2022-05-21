@@ -415,8 +415,7 @@ impl State {
     ) -> Result<(), FxError> {
         //make HashSet<String> of file_name
         let mut name_set = HashSet::new();
-        let target_dir_clone = target_dir.clone();
-        match target_dir_clone {
+        match target_dir.clone() {
             None => {
                 for item in self.list.iter() {
                     name_set.insert(item.file_name.clone());
@@ -614,7 +613,7 @@ impl State {
 
     /// Undo operations (put/delete/rename).
     pub fn undo(&mut self, nums: &Num, op: OpKind) -> Result<(), FxError> {
-        match op.clone() {
+        match &op {
             OpKind::Rename(op) => {
                 std::fs::rename(&op.new_name, &op.original_name)?;
                 self.operations.pos += 1;
@@ -624,7 +623,7 @@ impl State {
                 print_info("Undone [rename]", BEGINNING_ROW);
             }
             OpKind::Put(op) => {
-                for x in op.put {
+                for x in &op.put {
                     std::fs::remove_file(&x)?;
                 }
                 self.operations.pos += 1;
@@ -634,8 +633,8 @@ impl State {
                 print_info("Undone [put]", BEGINNING_ROW);
             }
             OpKind::Delete(op) => {
-                let targets = trash_to_info(&self.trash_dir, op.trash)?;
-                self.put_items(&targets, Some(op.dir))?;
+                let targets = trash_to_info(&self.trash_dir, &op.trash)?;
+                self.put_items(&targets, Some(op.dir.clone()))?;
                 self.operations.pos += 1;
                 clear_and_show(&self.current_dir);
                 self.update_list()?;
@@ -649,7 +648,7 @@ impl State {
 
     /// Redo operations (put/delete/rename)
     pub fn redo(&mut self, nums: &Num, op: OpKind) -> Result<(), FxError> {
-        match op.clone() {
+        match &op {
             OpKind::Rename(op) => {
                 std::fs::rename(&op.original_name, &op.new_name)?;
                 self.operations.pos -= 1;
@@ -1245,7 +1244,7 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
 }
 
 /// Generate item information from trash direcotry, in order to use when redo.
-pub fn trash_to_info(trash_dir: &PathBuf, vec: Vec<PathBuf>) -> Result<Vec<ItemInfo>, FxError> {
+pub fn trash_to_info(trash_dir: &PathBuf, vec: &[PathBuf]) -> Result<Vec<ItemInfo>, FxError> {
     let total = vec.len();
     let mut count = 0;
     let mut result = Vec::new();
