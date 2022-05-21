@@ -54,26 +54,17 @@ impl Operation {
 }
 
 fn log(op: &OpKind) {
-    let mut result = String::new();
     match op {
         OpKind::Put(op) => {
-            result.push_str("PUT: ");
-            let put = path_to_string(&op.put);
-            result.push_str(&put);
+            info!("PUT: {:?}", &op.put);
         }
         OpKind::Delete(op) => {
-            result.push_str("DELETE: ");
-            let put = item_to_string(&op.original);
-            result.push_str(&put);
+            info!("DELETE: {:?}", item_to_pathvec(&op.original));
         }
         OpKind::Rename(op) => {
-            result.push_str("RENAME: ");
-            result.push_str(op.original_name.as_path().to_str().unwrap());
-            result.push_str(" -> ");
-            result.push_str(op.new_name.as_path().to_str().unwrap());
+            info!("RENAME: {:?} -> {:?}", op.original_name, op.new_name);
         }
     }
-    info!("{}", result);
 }
 
 pub fn relog(op: &OpKind, undo: bool) {
@@ -96,20 +87,10 @@ pub fn relog(op: &OpKind, undo: bool) {
     info!("{}", result);
 }
 
-fn item_to_string(v: &Vec<ItemInfo>) -> String {
-    let mut result = String::new();
+fn item_to_pathvec(v: &Vec<ItemInfo>) -> Vec<PathBuf> {
+    let mut result = Vec::new();
     for p in v {
-        result.push_str(p.file_path.as_path().to_str().unwrap());
-        result.push(' ');
-    }
-    result
-}
-
-fn path_to_string(v: &Vec<PathBuf>) -> String {
-    let mut result = String::new();
-    for p in v {
-        result.push_str(p.as_path().to_str().unwrap());
-        result.push(' ');
+        result.push(p.file_path.clone());
     }
     result
 }
