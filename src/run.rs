@@ -1335,38 +1335,34 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         print_warning(WHEN_EMPTY, y);
                                         screen.flush()?;
 
-                                        'empty: loop {
-                                            let input = stdin.next();
-                                            if let Some(Ok(key)) = input {
-                                                match key {
-                                                    Key::Char('y') | Key::Char('Y') => {
-                                                        print_info("Processing...", y);
-                                                        screen.flush()?;
+                                        let input = stdin.next();
+                                        if let Some(Ok(key)) = input {
+                                            match key {
+                                                Key::Char('y') | Key::Char('Y') => {
+                                                    print_info("Processing...", y);
+                                                    screen.flush()?;
 
-                                                        if let Err(e) = std::fs::remove_dir_all(
-                                                            &state.trash_dir,
-                                                        ) {
-                                                            print!("{}", cursor::Hide);
-                                                            print_warning(e, y);
-                                                            screen.flush()?;
-                                                            continue 'main;
-                                                        }
-                                                        if let Err(e) =
-                                                            std::fs::create_dir(&state.trash_dir)
-                                                        {
-                                                            print!("{}", cursor::Hide);
-                                                            print_warning(e, y);
-                                                            screen.flush()?;
-                                                            continue 'main;
-                                                        }
-                                                        break 'empty;
+                                                    if let Err(e) =
+                                                        std::fs::remove_dir_all(&state.trash_dir)
+                                                    {
+                                                        print!("{}", cursor::Hide);
+                                                        print_warning(e, y);
+                                                        screen.flush()?;
+                                                        continue 'main;
                                                     }
-                                                    _ => {
-                                                        break 'empty;
+                                                    if let Err(e) =
+                                                        std::fs::create_dir(&state.trash_dir)
+                                                    {
+                                                        print!("{}", cursor::Hide);
+                                                        print_warning(e, y);
+                                                        screen.flush()?;
+                                                        continue 'main;
                                                     }
                                                 }
+                                                _ => {}
                                             }
                                         }
+
                                         print!(
                                             "{}{}{}{}",
                                             cursor::Hide,
@@ -1382,6 +1378,8 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         } else {
                                             state.move_cursor(&nums, y);
                                         }
+                                        info!("The trash directory emptied.");
+                                        screen.flush()?;
                                         break 'command;
                                     }
 
@@ -1392,7 +1390,11 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         print_warning("Cannot execute command", y);
                                         break 'command;
                                     }
-                                    if std::process::Command::new(c).args(args).status().is_err() {
+                                    if std::process::Command::new(c)
+                                        .args(args.clone())
+                                        .status()
+                                        .is_err()
+                                    {
                                         print!("{}", screen::ToAlternateScreen);
 
                                         clear_and_show(&state.current_dir);
@@ -1404,6 +1406,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         break 'command;
                                     }
                                     print!("{}", screen::ToAlternateScreen);
+                                    info!("SHELL: {} {:?}", c, args);
 
                                     clear_and_show(&state.current_dir);
                                     state.update_list()?;
