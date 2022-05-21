@@ -7,7 +7,6 @@ use super::op::*;
 use super::state::*;
 use crate::session::*;
 use log::info;
-use simplelog::{ConfigBuilder, LevelFilter, WriteLogger};
 use std::ffi::OsStr;
 use std::io::{stdin, stdout, Write};
 use std::path::PathBuf;
@@ -35,21 +34,8 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     let config_file_path = config_dir_path.join(PathBuf::from(CONFIG_FILE));
     let trash_dir_path = config_dir_path.join(PathBuf::from(TRASH));
 
-    if log {
-        let mut log_name = chrono::Local::now().format("%F-%H-%M-%S").to_string();
-        log_name.push_str(".log");
-        let config = ConfigBuilder::new()
-            .set_time_offset_to_local()
-            .unwrap()
-            .build();
-        let log_name = config_dir_path.join(log_name);
-        WriteLogger::init(
-            LevelFilter::Info,
-            config,
-            std::fs::File::create(log_name).unwrap(),
-        )
-        .unwrap();
-        info!("===START===");
+    if log && init_log(&config_dir_path).is_err() {
+        panic!("Cannot initialize log file.");
     }
 
     //Make config file and trash directory if not exist.

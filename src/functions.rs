@@ -1,6 +1,7 @@
-use crate::errors::FxError;
-
 use super::state::*;
+use crate::errors::FxError;
+use log::info;
+use simplelog::{ConfigBuilder, LevelFilter, WriteLogger};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -327,6 +328,24 @@ pub fn print_help(v: &[String], skip_number: usize, row: u16) {
 
 pub fn is_editable(s: &str) -> bool {
     s.is_ascii()
+}
+
+pub fn init_log(config_dir_path: &Path) -> Result<(), FxError> {
+    let mut log_name = chrono::Local::now().format("%F-%H-%M-%S").to_string();
+    log_name.push_str(".log");
+    let config = ConfigBuilder::new()
+        .set_time_offset_to_local()
+        .unwrap()
+        .build();
+    let log_path = config_dir_path.join("log");
+    if !log_path.exists() {
+        std::fs::create_dir(&log_path)?;
+    }
+    let log_path = log_path.join(log_name);
+    WriteLogger::init(LevelFilter::Info, config, std::fs::File::create(log_path)?).unwrap();
+    info!("===START===");
+
+    Ok(())
 }
 
 #[cfg(test)]
