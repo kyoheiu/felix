@@ -5,6 +5,7 @@ use super::nums::*;
 use super::op::*;
 use super::session::*;
 use chrono::prelude::*;
+use log::info;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
@@ -203,6 +204,8 @@ impl State {
         let extention = &item.file_ext;
 
         let mut default = Command::new(&self.default);
+
+        info!("OPEN: {:?}", path);
 
         match extention {
             Some(extention) => {
@@ -1077,6 +1080,8 @@ impl State {
         };
         let preview_start_column: u16 = self.layout.terminal_column + 2;
         let (w, h) = self.get_image_preview_size(item);
+
+        //Use sixel if the terminal supports it.
         let conf = viuer::Config {
             x: preview_start_column - 1,
             y: BEGINNING_ROW as i16 - 1,
