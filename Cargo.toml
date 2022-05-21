@@ -28,10 +28,13 @@ toml = "0.5.8"
 walkdir = "2.3.2"
 log = "0.4.16"
 thiserror = "1.0.30"
-viuer = "0.6.1"
 image = "0.24.2"
 simplelog = "0.12.0"
 
 [dependencies.serde]
 version = "1.0.136"
 features = ["derive"]
+
+[dependencies.viuer]
+version = "0.6.1"
+features = ["sixel"]
