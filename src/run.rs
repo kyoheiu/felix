@@ -6,7 +6,7 @@ use super::nums::*;
 use super::op::*;
 use super::state::*;
 use crate::session::*;
-use log::info;
+use log::{error, info};
 use std::ffi::OsStr;
 use std::io::{stdin, stdout, Write};
 use std::path::PathBuf;

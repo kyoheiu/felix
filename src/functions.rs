@@ -348,6 +348,29 @@ pub fn init_log(config_dir_path: &Path) -> Result<(), FxError> {
     Ok(())
 }
 
+pub fn check_version() -> Result<(), FxError> {
+    let output = std::process::Command::new("cargo")
+        .args(["search", "felix", "--limit", "1"])
+        .output()?
+        .stdout;
+    if !output.is_empty() {
+        if let Ok(ver) = std::str::from_utf8(&output) {
+            let latest: String = ver.chars().skip(9).take_while(|x| *x != '\"').collect();
+            let current = env!("CARGO_PKG_VERSION");
+            if latest != current {
+                println!("felix v{}: Latest version is {}.", current, latest);
+            } else {
+                println!("felix v{}: Up to date.", current);
+            }
+        } else {
+            println!("Cannot read the version.");
+        }
+    } else {
+        println!("Cannot fetch the latest version: Check your internet connection.");
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
