@@ -8,17 +8,20 @@ mod run;
 mod session;
 mod state;
 
+use std::path::PathBuf;
+
 fn main() -> Result<(), errors::FxError> {
     let args: Vec<String> = std::env::args().collect();
     let len = args.len();
     match len {
         1 => {
-            if let Err(e) = run::run(
-                std::env::current_dir()
-                    .unwrap_or_else(|_| panic!("Cannot access current directoy.")),
+            if run::run(
+                std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
                 false,
-            ) {
-                eprintln!("{}", e);
+            )
+            .is_err()
+            {
+                eprintln!("Cannot read the current directory.");
             }
         }
 
