@@ -100,12 +100,12 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
         // Return error if terminal size may cause panic
         if column < 4 {
-            log::error!("Too small terminal size.");
-            panic!("Error: too small terminal size (less than 4 columns)");
+            error!("Too small terminal size (less than 4 columns).");
+            panic!("Error: Too small terminal size (less than 4 columns). Please restart.");
         };
         if row < 4 {
-            log::error!("Too small terminal size.");
-            panic!("Error: too small terminal size (less than 4 columns)");
+            error!("Too small terminal size (less than 4 rows).");
+            panic!("Error: Too small terminal size (less than 4 rows). Please restart.");
         };
 
         let mut state = state_detect.lock().unwrap();
