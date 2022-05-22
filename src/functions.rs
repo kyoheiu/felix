@@ -1,6 +1,6 @@
 use super::state::*;
 use crate::errors::FxError;
-use log::info;
+use log::{info, warn};
 use simplelog::{ConfigBuilder, LevelFilter, WriteLogger};
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -102,18 +102,14 @@ pub fn rename_dir(item: &ItemInfo, name_set: &HashSet<String>) -> String {
     }
 }
 
-/// When something goes wrong or does not work, print information about it.
-pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
-    print!(
-        " {}{}{}{}{}{}{}",
-        cursor::Goto(2, 2),
-        clear::CurrentLine,
-        color::Fg(color::LightWhite),
-        color::Bg(color::Red),
-        message,
-        color::Fg(color::Reset),
-        color::Bg(color::Reset),
-    );
+pub fn delete_cursor() {
+    print!(" {}", cursor::Left(1));
+}
+
+/// Print the result of operation, such as put/delete/redo/undo.
+pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
+    delete_cursor();
+    print!("{}{}{}", cursor::Goto(2, 2), clear::CurrentLine, message,);
 
     print!(
         "{}{}>{}",
@@ -123,9 +119,20 @@ pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
     );
 }
 
-/// Print the result of operation, such as put/delete/redo/undo.
-pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
-    print!(" {}{}{}", cursor::Goto(2, 2), clear::CurrentLine, message,);
+/// When something goes wrong or does not work, print information about it.
+pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
+    delete_cursor();
+    warn!("{}", message);
+    print!(
+        "{}{}{}{}{}{}{}",
+        cursor::Goto(2, 2),
+        clear::CurrentLine,
+        color::Fg(color::LightWhite),
+        color::Bg(color::Red),
+        message,
+        color::Fg(color::Reset),
+        color::Bg(color::Reset),
+    );
 
     print!(
         "{}{}>{}",
