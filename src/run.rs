@@ -23,6 +23,9 @@ use termion::{clear, cursor, screen};
 /// frequency to detect terminal size change
 const DETECTION_INTERVAL: u64 = 500;
 
+/// Where the item list starts to scroll.
+const SCROLL_POINT: u16 = 3;
+
 /// Run the app.
 pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     //Prepare config file and trash directory path.
@@ -145,7 +148,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 Key::Char('j') | Key::Down => {
                     if len == 0 || nums.index == len - 1 {
                         continue;
-                    } else if y >= state.layout.terminal_row - 4
+                    } else if y >= state.layout.terminal_row - 1 - SCROLL_POINT
                         && len > (state.layout.terminal_row - BEGINNING_ROW) as usize - 1
                     {
                         nums.go_down();
@@ -163,7 +166,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 Key::Char('k') | Key::Up => {
                     if nums.index == 0 {
                         continue;
-                    } else if y <= BEGINNING_ROW + 3 && nums.skip != 0 {
+                    } else if y <= BEGINNING_ROW + SCROLL_POINT && nums.skip != 0 {
                         nums.go_up();
                         nums.dec_skip();
                         clear_and_show(&state.current_dir);
@@ -185,27 +188,22 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                         screen.flush()?;
 
-                        'top: loop {
-                            let input = stdin.next();
-                            if let Some(Ok(key)) = input {
-                                match key {
-                                    Key::Char('g') => {
-                                        print!("{}", cursor::Hide);
-                                        nums.reset();
-                                        clear_and_show(&state.current_dir);
-                                        state.list_up(0);
-                                        print!(" ");
-                                        state.move_cursor(&nums, BEGINNING_ROW);
-                                        break 'top;
-                                    }
+                        let input = stdin.next();
+                        if let Some(Ok(key)) = input {
+                            match key {
+                                Key::Char('g') => {
+                                    print!("{}", cursor::Hide);
+                                    nums.reset();
+                                    clear_and_show(&state.current_dir);
+                                    state.list_up(nums.skip);
+                                    state.move_cursor(&nums, BEGINNING_ROW);
+                                }
 
-                                    _ => {
-                                        print!("{}", clear::CurrentLine);
-                                        print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
-                                        print!("{}", cursor::Hide);
-                                        state.move_cursor(&nums, y);
-                                        break 'top;
-                                    }
+                                _ => {
+                                    print!("{}", clear::CurrentLine);
+                                    print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
+                                    print!("{}", cursor::Hide);
+                                    state.move_cursor(&nums, y);
                                 }
                             }
                         }
@@ -348,16 +346,16 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                     state.list_up(nums.skip);
                                                     state.move_cursor(&nums, memo.cursor_pos);
                                                 } else {
-                                                    clear_and_show(&state.current_dir);
-                                                    state.list_up(0);
                                                     nums.reset();
+                                                    clear_and_show(&state.current_dir);
+                                                    state.list_up(nums.skip);
                                                     state.move_cursor(&nums, BEGINNING_ROW);
                                                 }
                                             }
                                             None => {
-                                                clear_and_show(&state.current_dir);
-                                                state.list_up(0);
                                                 nums.reset();
+                                                clear_and_show(&state.current_dir);
+                                                state.list_up(nums.skip);
                                                 state.move_cursor(&nums, BEGINNING_ROW);
                                             }
                                         }
@@ -443,7 +441,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             } else {
                                                 nums.skip = 0;
                                                 clear_and_show(&state.current_dir);
-                                                state.list_up(0);
+                                                state.list_up(nums.skip);
                                                 state.move_cursor(
                                                     &nums,
                                                     (nums.index as u16) + BEGINNING_ROW,
@@ -453,7 +451,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         None => {
                                             nums.reset();
                                             clear_and_show(&state.current_dir);
-                                            state.list_up(0);
+                                            state.list_up(nums.skip);
                                             state.move_cursor(&nums, BEGINNING_ROW);
                                         }
                                     }
@@ -583,7 +581,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                         nums.reset();
                                                         state.select_from_top(start_pos);
                                                         clear_and_show(&state.current_dir);
-                                                        state.list_up(0);
+                                                        state.list_up(nums.skip);
                                                         print!(
                                                             " {}>{}",
                                                             cursor::Goto(1, BEGINNING_ROW),
@@ -729,9 +727,9 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                         }
                     }
                     state.update_list()?;
-                    clear_and_show(&state.current_dir);
-                    state.list_up(0);
                     nums.reset();
+                    clear_and_show(&state.current_dir);
+                    state.list_up(nums.skip);
                     state.move_cursor(&nums, BEGINNING_ROW);
                 }
 

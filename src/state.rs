@@ -915,6 +915,8 @@ impl State {
     /// Note that image preivew is experimental and if perfomance issues arise, this feature may be removed.
     pub fn move_cursor(&mut self, nums: &Num, y: u16) {
         if let Ok(item) = self.get_item(nums.index) {
+            delete_cursor();
+
             //Print item information at the bottom
             self.print_footer(nums, item);
 
@@ -936,7 +938,7 @@ impl State {
 
     /// Print item informatin at the bottom of the terminal.
     fn print_footer(&self, nums: &Num, item: &ItemInfo) {
-        print!(" {}", cursor::Goto(1, self.layout.terminal_row));
+        print!("{}", cursor::Goto(1, self.layout.terminal_row));
         print!("{}", clear::CurrentLine);
 
         match &item.file_ext {
