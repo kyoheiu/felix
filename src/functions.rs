@@ -103,6 +103,7 @@ pub fn delete_cursor() {
 /// Print the result of operation, such as put/delete/redo/undo.
 pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
     delete_cursor();
+    info!("{}", message);
     print!("{}{}{}", cursor::Goto(2, 2), clear::CurrentLine, message,);
 
     print!(
