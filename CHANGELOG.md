@@ -2,13 +2,25 @@
 
 ## [Unreleased]
 ### Added
-- trying to make a user guide (just to show and explain how to use each commands) by `mdbook`
-- Use struct `Operation` to express the manipulation within the app (put/delete/rename) and implement some methods.
-- Add message when there are no operations left to undo/redo.
+- Trying to make a user guide (just to show and explain how to use each commands) by `mdbook`.
 
 ### Notes
-- In the next release, logging by the `-l` option will be implemented (using `simplelog`).
 - Text preview color needs to be readable enough, so it's worth rethinking (Now LightBlack).
+
+## v0.9.3 (2022-05-25)
+### Added
+- `viuer`'s `sixel` feature added, which means in a terminal that supports `sixel`, previewed images become high-res.
+- `-l` option creates a log file in `$XDG_CONFIG_HOME/felix/log`. Information such as put, delete, rename, emptying the trash directory, etc. will be recorded.
+- Add message when there are no operations left to undo/redo.
+
+### Changed
+- Simplify the info line(below the current directory information).
+- Make rename information more understandable("New name: " instead of "&#8658;").
+- Use struct `Operation` to express the manipulation within the app (put/delete/rename) and implement some methods.
+- Refactor overall.
+
+### Fixed
+- Fix put/delete process information.
 
 ## v0.9.2 (2022-05-18)
 ### Added
