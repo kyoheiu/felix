@@ -610,7 +610,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 }
 
                                 Key::Char('d') => {
-                                    print_info("Processing...", y);
+                                    print_info("DELETE: Processing...", y);
                                     let start = Instant::now();
                                     screen.flush()?;
 
@@ -741,7 +741,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 match key {
                                     Key::Char('d') => {
                                         print!("{}", cursor::Hide);
-                                        print_info("Processing...", y);
+                                        print_info("DELETE: Processing...", y);
                                         let start = Instant::now();
                                         screen.flush()?;
 
@@ -824,7 +824,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     if state.registered.is_empty() {
                         continue;
                     }
-                    print_info("Processing...", y);
+                    print_info("PUT: Processing...", y);
                     let start = Instant::now();
                     screen.flush()?;
 
@@ -1309,7 +1309,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         if let Some(Ok(key)) = input {
                                             match key {
                                                 Key::Char('y') | Key::Char('Y') => {
-                                                    print_info("Processing...", y);
+                                                    print_info("EMPTY: Processing...", y);
                                                     screen.flush()?;
 
                                                     if let Err(e) =
@@ -1339,11 +1339,12 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             clear_and_show(&state.current_dir);
                                             state.update_list()?;
                                             state.list_up(nums.skip);
+                                            print_info("Trash dir emptied", y);
                                             state.move_cursor(&nums, BEGINNING_ROW);
                                         } else {
+                                            print_info("Trash dir emptied", y);
                                             state.move_cursor(&nums, y);
                                         }
-                                        info!("The trash directory emptied.");
                                         screen.flush()?;
                                         break 'command;
                                     }

@@ -625,7 +625,7 @@ impl State {
                 clear_and_show(&self.current_dir);
                 self.update_list()?;
                 self.list_up(nums.skip);
-                print_info("Undone [rename]", BEGINNING_ROW);
+                print_info("UNDONE: RENAME", BEGINNING_ROW);
             }
             OpKind::Put(op) => {
                 for x in &op.put {
@@ -639,7 +639,7 @@ impl State {
                 clear_and_show(&self.current_dir);
                 self.update_list()?;
                 self.list_up(nums.skip);
-                print_info("Undone [put]", BEGINNING_ROW);
+                print_info("UNDONE: PUT", BEGINNING_ROW);
             }
             OpKind::Delete(op) => {
                 let targets = trash_to_info(&self.trash_dir, &op.trash)?;
@@ -648,7 +648,7 @@ impl State {
                 clear_and_show(&self.current_dir);
                 self.update_list()?;
                 self.list_up(nums.skip);
-                print_info("Undone [delete]", BEGINNING_ROW);
+                print_info("UNDONE: DELETE", BEGINNING_ROW);
             }
         }
         relog(&op, true);
@@ -664,7 +664,7 @@ impl State {
                 clear_and_show(&self.current_dir);
                 self.update_list()?;
                 self.list_up(nums.skip);
-                print_info("Redone [rename]", BEGINNING_ROW);
+                print_info("REDONE: RENAME", BEGINNING_ROW);
             }
             OpKind::Put(op) => {
                 self.put_items(&op.original, Some(op.dir.clone()))?;
@@ -672,7 +672,7 @@ impl State {
                 clear_and_show(&self.current_dir);
                 self.update_list()?;
                 self.list_up(nums.skip);
-                print_info("Redone [put]", BEGINNING_ROW);
+                print_info("REDONE: PUT", BEGINNING_ROW);
             }
             OpKind::Delete(op) => {
                 self.remove_and_yank(&op.original, false)?;
@@ -680,7 +680,7 @@ impl State {
                 clear_and_show(&self.current_dir);
                 self.update_list()?;
                 self.list_up(nums.skip);
-                print_info("Redone [delete]", BEGINNING_ROW);
+                print_info("REDONE DELETE", BEGINNING_ROW);
             }
         }
         relog(&op, false);
