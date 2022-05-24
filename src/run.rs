@@ -668,13 +668,11 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 Key::Char('y') => {
                                     state.yank_item(nums.index, true);
                                     state.reset_selection();
-                                    clear_and_show(&state.current_dir);
                                     state.list_up(nums.skip);
                                     let mut yank_message: String =
                                         state.registered.len().to_string();
                                     yank_message.push_str(" items yanked");
                                     print_info(yank_message, y);
-                                    state.move_cursor(&nums, y);
                                     break;
                                 }
 
