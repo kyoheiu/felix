@@ -49,10 +49,12 @@ fn main() -> Result<(), errors::FxError> {
             }
         },
         3 => {
-            if (args[1] == "-l" || args[1] == "--log")
-                && run::run(PathBuf::from(&args[2]), true).is_err()
-            {
-                eprintln!("Cannot read the current directory.");
+            if args[1] == "-l" || args[1] == "--log" {
+                if run::run(PathBuf::from(&args[2]), true).is_err() {
+                    eprintln!("Cannot read the target directory.");
+                }
+            } else {
+                print!("{}", help::HELP);
             }
         }
         _ => print!("{}", help::HELP),
