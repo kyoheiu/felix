@@ -54,12 +54,7 @@ pub fn clear_and_show(dir: &Path) {
         }
     }
     //Show arrow
-    print!(
-        "{}{} {}",
-        cursor::Goto(1, 2),
-        clear::UntilNewline,
-        DOWN_ARROW
-    );
+    reset_info_line();
 }
 
 /// Rename file when put, in order to avoid the name conflict.
@@ -101,6 +96,8 @@ pub fn rename_dir(item: &ItemInfo, name_set: &HashSet<String>) -> String {
     } else {
         dir_name.clone()
     }
+pub fn reset_info_line() {
+    print!("{}{}{}", cursor::Goto(2, 2), clear::CurrentLine, DOWN_ARROW);
 }
 
 pub fn delete_cursor() {
