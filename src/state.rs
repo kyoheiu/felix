@@ -70,6 +70,7 @@ pub struct Layout {
     pub preview: bool,
 }
 
+/// Print an item. modified time will be omitted if width is not enough.
 macro_rules! print_item {
     ($color: expr, $name: expr, $time: expr, $selected: expr, $layout: expr) => {
         if $layout.terminal_column < PROPER_WIDTH {
@@ -124,13 +125,13 @@ impl State {
 
         // Return error if terminal size may cause panic
         if column < 4 {
-            log::error!("Too small terminal size.");
+            log::error!("Too small terminal size (less than 4 columns).");
             return Err(FxError::SmallSize {
                 msg: "Error: too small terminal size (less than 4 columns)".to_string(),
             });
         };
         if row < 4 {
-            log::error!("Too small terminal size.");
+            log::error!("Too small terminal size. (less than 4 rows)");
             return Err(FxError::SmallSize {
                 msg: "Error: too small terminal size (less than 4 rows)".to_string(),
             });
@@ -186,7 +187,7 @@ impl State {
         self.move_cursor(nums, cursor_pos);
     }
 
-    /// Select an item which the cursor points to.
+    /// Select an item that the cursor points to.
     pub fn get_item(&self, index: usize) -> Result<&ItemInfo, FxError> {
         self.list.get(index).ok_or_else(|| {
             FxError::Io(std::io::Error::new(
@@ -196,28 +197,35 @@ impl State {
         })
     }
 
+    /// Select an item that the cursor points to, as mut.
+    pub fn get_item_mut(&mut self, index: usize) -> Result<&mut ItemInfo, FxError> {
+        self.list.get_mut(index).ok_or_else(|| {
+            FxError::Io(std::io::Error::new(
+                ErrorKind::NotFound,
+                "Cannot choose item as mut.",
+            ))
+        })
+    }
+
     /// Open the selected file according to the config.
     pub fn open_file(&self, index: usize) -> Result<ExitStatus, FxError> {
         let item = self.get_item(index)?;
         let path = &item.file_path;
         let map = &self.commands;
-        let extention = &item.file_ext;
+        let extension = &item.file_ext;
 
         let mut default = Command::new(&self.default);
 
         info!("OPEN: {:?}", path);
 
-        match extention {
-            Some(extention) => {
-                let ext = extention.clone();
-                match map.get(&ext) {
-                    Some(command) => {
-                        let mut ex = Command::new(command);
-                        ex.arg(path).status().map_err(FxError::Io)
-                    }
-                    None => default.arg(path).status().map_err(FxError::Io),
+        match extension {
+            Some(extension) => match map.get(extension) {
+                Some(command) => {
+                    let mut ex = Command::new(command);
+                    ex.arg(path).status().map_err(FxError::Io)
                 }
-            }
+                None => default.arg(path).status().map_err(FxError::Io),
+            },
 
             None => default.arg(path).status().map_err(FxError::Io),
         }
