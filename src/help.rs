@@ -10,6 +10,8 @@ Both relative and absolute path available.
 ## Arguments
 `fx -h` | `fx --help`    => Print help.
 `fx -v` | `fx --version` => Check update.
+`fx -l [dir path]` => Launch the app and create a log file
+in `$XDG_CONFIG_HOME/felix/log`.
 
 ## Manual
 j / Up            :Go up.
