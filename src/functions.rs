@@ -58,10 +58,9 @@ pub fn clear_and_show(dir: &Path) {
 }
 
 /// Rename file when put, in order to avoid the name conflict.
-pub fn rename_file(item: &ItemInfo, name_set: &HashSet<String>) -> String {
-    let file_name = &item.file_name;
+pub fn rename_file(file_name: &str, name_set: &HashSet<String>) -> String {
     if name_set.contains(file_name) {
-        let rename = PathBuf::from(&(item).file_name);
+        let rename = PathBuf::from(file_name);
         let extension = rename.extension();
 
         let mut rename = rename.file_stem().unwrap().to_os_string();
@@ -76,26 +75,23 @@ pub fn rename_file(item: &ItemInfo, name_set: &HashSet<String>) -> String {
             .into_string()
             .unwrap_or_else(|_| panic!("cannot rename item."));
 
-        let mut renamed_item = item.clone();
-        renamed_item.file_name = rename;
-        rename_file(&renamed_item, name_set)
+        rename_file(&rename, name_set)
     } else {
-        file_name.clone()
+        file_name.to_string()
     }
 }
 
 /// Rename directory when put, in order to avoid the name conflict.
-pub fn rename_dir(item: &ItemInfo, name_set: &HashSet<String>) -> String {
-    let dir_name = &item.file_name;
+pub fn rename_dir(dir_name: &str, name_set: &HashSet<String>) -> String {
     if name_set.contains(dir_name) {
-        let mut rename = dir_name.clone();
+        let mut rename = dir_name.to_string();
         rename.push_str("_copied");
-        let mut renamed_item = item.clone();
-        renamed_item.file_name = rename;
-        rename_dir(&renamed_item, name_set)
+        rename_dir(&rename, name_set)
     } else {
-        dir_name.clone()
+        dir_name.to_string()
     }
+}
+
 pub fn reset_info_line() {
     print!("{}{}{}", cursor::Goto(2, 2), clear::CurrentLine, DOWN_ARROW);
 }

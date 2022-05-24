@@ -418,7 +418,7 @@ impl State {
     ) -> Result<(), FxError> {
         //make HashSet<String> of file_name
         let mut name_set = HashSet::new();
-        match target_dir.clone() {
+        match &target_dir {
             None => {
                 for item in self.list.iter() {
                     name_set.insert(item.file_name.clone());
@@ -450,12 +450,12 @@ impl State {
             );
             match item.file_type {
                 FileType::Directory => {
-                    if let Ok(p) = self.put_dir(item, target_dir.clone(), &mut name_set) {
+                    if let Ok(p) = self.put_dir(item, &target_dir, &mut name_set) {
                         put_v.push(p);
                     }
                 }
                 FileType::File | FileType::Symlink => {
-                    if let Ok(q) = self.put_file(item, target_dir.clone(), &mut name_set) {
+                    if let Ok(q) = self.put_file(item, &target_dir, &mut name_set) {
                         put_v.push(q);
                     }
                 }
@@ -478,16 +478,14 @@ impl State {
     fn put_file(
         &mut self,
         item: &ItemInfo,
-        target_dir: Option<PathBuf>,
+        target_dir: &Option<PathBuf>,
         name_set: &mut HashSet<String>,
     ) -> Result<PathBuf, FxError> {
         match target_dir {
             None => {
                 if item.file_path.parent() == Some(&self.trash_dir) {
-                    let mut item = item.clone();
-                    let rename = item.file_name.chars().skip(11).collect();
-                    item.file_name = rename;
-                    let rename = rename_file(&item, name_set);
+                    let rename: String = item.file_name.chars().skip(11).collect();
+                    let rename = rename_file(&rename, name_set);
                     let to = &self.current_dir.join(&rename);
                     if std::fs::copy(&item.file_path, to).is_err() {
                         return Err(FxError::FileCopy {
@@ -497,7 +495,7 @@ impl State {
                     name_set.insert(rename);
                     Ok(to.to_path_buf())
                 } else {
-                    let rename = rename_file(item, name_set);
+                    let rename = rename_file(&item.file_name, name_set);
                     let to = &self.current_dir.join(&rename);
                     if std::fs::copy(&item.file_path, to).is_err() {
                         return Err(FxError::FileCopy {
@@ -510,10 +508,8 @@ impl State {
             }
             Some(path) => {
                 if item.file_path.parent() == Some(&self.trash_dir) {
-                    let mut item = item.clone();
-                    let rename = item.file_name.chars().skip(11).collect();
-                    item.file_name = rename;
-                    let rename = rename_file(&item, name_set);
+                    let rename: String = item.file_name.chars().skip(11).collect();
+                    let rename = rename_file(&rename, name_set);
                     let to = path.join(&rename);
                     if std::fs::copy(&item.file_path, to.clone()).is_err() {
                         return Err(FxError::FileCopy {
@@ -523,7 +519,7 @@ impl State {
                     name_set.insert(rename);
                     Ok(to)
                 } else {
-                    let rename = rename_file(item, name_set);
+                    let rename = rename_file(&item.file_name, name_set);
                     let to = &path.join(&rename);
                     if std::fs::copy(&item.file_path, to).is_err() {
                         return Err(FxError::FileCopy {
@@ -541,12 +537,12 @@ impl State {
     fn put_dir(
         &mut self,
         buf: &ItemInfo,
-        target_dir: Option<PathBuf>,
+        target_dir: &Option<PathBuf>,
         name_set: &mut HashSet<String>,
     ) -> Result<PathBuf, FxError> {
         let mut base: usize = 0;
         let mut target: PathBuf = PathBuf::new();
-        let original_path = &(buf).file_path;
+        let original_path = &buf.file_path;
 
         let len = walkdir::WalkDir::new(&original_path).into_iter().count();
         let unit = len / 5;
@@ -572,17 +568,15 @@ impl State {
 
                 let parent = &original_path.parent().unwrap();
                 if parent == &self.trash_dir {
-                    let mut buf = buf.clone();
                     let rename: String = buf.file_name.chars().skip(11).collect();
-                    buf.file_name = rename.clone();
                     target = match &target_dir {
                         None => self.current_dir.join(&rename),
                         Some(path) => path.join(&rename),
                     };
-                    let rename = rename_dir(&buf, name_set);
+                    let rename = rename_dir(&rename, name_set);
                     name_set.insert(rename);
                 } else {
-                    let rename = rename_dir(buf, name_set);
+                    let rename = rename_dir(&buf.file_name, name_set);
                     target = match &target_dir {
                         None => self.current_dir.join(&rename),
                         Some(path) => path.join(&rename),
