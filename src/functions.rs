@@ -1,6 +1,6 @@
 use crate::errors::FxError;
-
-use super::state::*;
+use log::{info, warn};
+use simplelog::{ConfigBuilder, LevelFilter, WriteLogger};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -40,31 +40,24 @@ pub fn clear_and_show(dir: &Path) {
         let head = git.join("HEAD");
         if let Ok(head) = std::fs::read(head) {
             let branch: Vec<u8> = head.into_iter().skip(16).collect();
-            let branch = std::str::from_utf8(&branch).unwrap();
-            print!(
-                " on {}{}{}{}{}",
-                style::Bold,
-                color::Fg(color::Magenta),
-                branch,
-                style::Reset,
-                color::Fg(color::Reset)
-            );
+            if let Ok(branch) = std::str::from_utf8(&branch) {
+                print!(
+                    " on {}{}{}{}{}",
+                    style::Bold,
+                    color::Fg(color::Magenta),
+                    branch,
+                    style::Reset,
+                    color::Fg(color::Reset)
+                );
+            }
         }
     }
-    //Show arrow
-    print!(
-        "{}{} {}",
-        cursor::Goto(1, 2),
-        clear::UntilNewline,
-        DOWN_ARROW
-    );
 }
 
-/// Rename file when put, in order to avoid the name conflict.
-pub fn rename_file(item: &ItemInfo, name_set: &HashSet<String>) -> String {
-    let file_name = &item.file_name;
+/// Rename the put file, in order to avoid the name conflict.
+pub fn rename_file(file_name: &str, name_set: &HashSet<String>) -> String {
     if name_set.contains(file_name) {
-        let rename = PathBuf::from(&(item).file_name);
+        let rename = PathBuf::from(file_name);
         let extension = rename.extension();
 
         let mut rename = rename.file_stem().unwrap().to_os_string();
@@ -79,32 +72,51 @@ pub fn rename_file(item: &ItemInfo, name_set: &HashSet<String>) -> String {
             .into_string()
             .unwrap_or_else(|_| panic!("cannot rename item."));
 
-        let mut renamed_item = item.clone();
-        renamed_item.file_name = rename;
-        rename_file(&renamed_item, name_set)
+        rename_file(&rename, name_set)
     } else {
-        file_name.clone()
+        file_name.to_string()
     }
 }
 
-/// Rename directory when put, in order to avoid the name conflict.
-pub fn rename_dir(item: &ItemInfo, name_set: &HashSet<String>) -> String {
-    let dir_name = &item.file_name;
+/// Rename the put directory, in order to avoid the name conflict.
+pub fn rename_dir(dir_name: &str, name_set: &HashSet<String>) -> String {
     if name_set.contains(dir_name) {
-        let mut rename = dir_name.clone();
+        let mut rename = dir_name.to_string();
         rename.push_str("_copied");
-        let mut renamed_item = item.clone();
-        renamed_item.file_name = rename;
-        rename_dir(&renamed_item, name_set)
+        rename_dir(&rename, name_set)
     } else {
-        dir_name.clone()
+        dir_name.to_string()
     }
+}
+
+pub fn reset_info_line() {
+    print!("{}{}", cursor::Goto(2, 2), clear::CurrentLine);
+}
+
+pub fn delete_cursor() {
+    print!(" {}", cursor::Left(1));
+}
+
+/// Print the result of operation, such as put/delete/redo/undo.
+pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
+    delete_cursor();
+    info!("{}", message);
+    print!("{}{}{}", cursor::Goto(2, 2), clear::CurrentLine, message,);
+
+    print!(
+        "{}{}>{}",
+        cursor::Hide,
+        cursor::Goto(1, then),
+        cursor::Left(1)
+    );
 }
 
 /// When something goes wrong or does not work, print information about it.
 pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
+    delete_cursor();
+    warn!("{}", message);
     print!(
-        " {}{}{}{}{}{}{}",
+        "{}{}{}{}{}{}{}",
         cursor::Goto(2, 2),
         clear::CurrentLine,
         color::Fg(color::LightWhite),
@@ -122,21 +134,9 @@ pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
     );
 }
 
-/// Print the result of operation, such as put/delete/redo/undo.
-pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
-    print!(" {}{}{}", cursor::Goto(2, 2), clear::CurrentLine, message,);
-
-    print!(
-        "{}{}>{}",
-        cursor::Hide,
-        cursor::Goto(1, then),
-        cursor::Left(1)
-    );
-}
-
 /// Print process of put/delete.
 pub fn print_process<T: std::fmt::Display>(message: T) {
-    print!("{}{}", message, cursor::Left(10));
+    print!("{}{}", message, cursor::Left(7));
 }
 
 /// Print the number of process (put/delete).
@@ -301,7 +301,7 @@ pub fn format_txt(txt: &str, column: u16, is_help: bool) -> Vec<String> {
         }
     }
     if is_help {
-        v.push("Enter 'q' to go back.".to_string());
+        v.push("Press Enter to go back.".to_string());
     }
     v
 }
@@ -327,6 +327,47 @@ pub fn print_help(v: &[String], skip_number: usize, row: u16) {
 
 pub fn is_editable(s: &str) -> bool {
     s.is_ascii()
+}
+
+pub fn init_log(config_dir_path: &Path) -> Result<(), FxError> {
+    let mut log_name = chrono::Local::now().format("%F-%H-%M-%S").to_string();
+    log_name.push_str(".log");
+    let config = ConfigBuilder::new()
+        .set_time_offset_to_local()
+        .unwrap()
+        .build();
+    let log_path = config_dir_path.join("log");
+    if !log_path.exists() {
+        std::fs::create_dir(&log_path)?;
+    }
+    let log_path = log_path.join(log_name);
+    WriteLogger::init(LevelFilter::Info, config, std::fs::File::create(log_path)?).unwrap();
+    info!("===START===");
+
+    Ok(())
+}
+
+pub fn check_version() -> Result<(), FxError> {
+    let output = std::process::Command::new("cargo")
+        .args(["search", "felix", "--limit", "1"])
+        .output()?
+        .stdout;
+    if !output.is_empty() {
+        if let Ok(ver) = std::str::from_utf8(&output) {
+            let latest: String = ver.chars().skip(9).take_while(|x| *x != '\"').collect();
+            let current = env!("CARGO_PKG_VERSION");
+            if latest != current {
+                println!("felix v{}: Latest version is {}.", current, latest);
+            } else {
+                println!("felix v{}: Up to date.", current);
+            }
+        } else {
+            println!("Cannot read the version.");
+        }
+    } else {
+        println!("Cannot fetch the latest version: Check your internet connection.");
+    }
+    Ok(())
 }
 
 #[cfg(test)]
