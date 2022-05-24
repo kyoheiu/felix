@@ -95,7 +95,7 @@ cargo install --path .
 | :z \<keyword\>        | **_This command requires zoxide installed._** Jump to a directory that matches the keyword. Internally, felix calls [`zoxide query <keyword>`](https://man.archlinux.org/man/zoxide-query.1.en), so if the keyword does not match the zoxide database, this command will fail. |
 | :e                    | Reload the current directory. Useful when something goes wrong.                                                                                                                                                                                                                |
 | :empty                | Empty the trash directory. **Please think twice to use this.**                                                                                                                                                                                                                 |
-| :h                    | Show help. (scrollable with `j`                                                                                                                                                                                                                                                | `k` | `Up` | `Down`) |
+| :h                    | Show help. (scrolls by `j/k` or `Up/Down`) |
 | :q / ZZ               | Exit.                                                                                                                                                                                                                                                                          |
 
 Note that items moved to the trash directory are prefixed with Unix time (like `1633843993`) to avoid the name conflict. This prefix will be removed when put.
