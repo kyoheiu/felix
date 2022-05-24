@@ -621,7 +621,11 @@ impl State {
             }
             OpKind::Put(op) => {
                 for x in &op.put {
-                    std::fs::remove_file(&x)?;
+                    if x.is_dir() {
+                        std::fs::remove_dir_all(&x)?;
+                    } else {
+                        std::fs::remove_file(&x)?;
+                    }
                 }
                 self.operations.pos += 1;
                 clear_and_show(&self.current_dir);
