@@ -793,25 +793,20 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                     screen.flush()?;
 
-                    'yank: loop {
-                        let input = stdin.next();
-                        if let Some(Ok(key)) = input {
-                            match key {
-                                Key::Char('y') => {
-                                    state.yank_item(nums.index, false);
-                                    reset_info_line();
-                                    print!("{}", cursor::Hide);
-                                    print_info("1 item yanked", y);
-                                    state.move_cursor(&nums, y);
-                                    break 'yank;
-                                }
+                    let input = stdin.next();
+                    if let Some(Ok(key)) = input {
+                        match key {
+                            Key::Char('y') => {
+                                state.yank_item(nums.index, false);
+                                reset_info_line();
+                                print!("{}", cursor::Hide);
+                                print_info("1 item yanked", y);
+                            }
 
-                                _ => {
-                                    reset_info_line();
-                                    print!("{}", cursor::Hide);
-                                    state.move_cursor(&nums, y);
-                                    break 'yank;
-                                }
+                            _ => {
+                                reset_info_line();
+                                print!("{}", cursor::Hide);
+                                state.move_cursor(&nums, y);
                             }
                         }
                     }
