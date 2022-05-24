@@ -15,8 +15,6 @@ use std::process::{Command, ExitStatus};
 use termion::{clear, color, cursor, style};
 
 pub const BEGINNING_ROW: u16 = 3;
-pub const DOWN_ARROW: char = '\u{21D3}';
-pub const RIGHT_ARROW: char = '\u{21D2}';
 pub const FX_CONFIG_DIR: &str = "felix";
 pub const CONFIG_FILE: &str = "config.toml";
 pub const TRASH: &str = "trash";

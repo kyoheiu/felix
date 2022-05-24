@@ -1,4 +1,3 @@
-use super::state::*;
 use crate::errors::FxError;
 use log::{info, warn};
 use simplelog::{ConfigBuilder, LevelFilter, WriteLogger};
@@ -53,11 +52,9 @@ pub fn clear_and_show(dir: &Path) {
             }
         }
     }
-    //Show arrow
-    reset_info_line();
 }
 
-/// Rename file when put, in order to avoid the name conflict.
+/// Rename the put file, in order to avoid the name conflict.
 pub fn rename_file(file_name: &str, name_set: &HashSet<String>) -> String {
     if name_set.contains(file_name) {
         let rename = PathBuf::from(file_name);
@@ -81,7 +78,7 @@ pub fn rename_file(file_name: &str, name_set: &HashSet<String>) -> String {
     }
 }
 
-/// Rename directory when put, in order to avoid the name conflict.
+/// Rename the put directory, in order to avoid the name conflict.
 pub fn rename_dir(dir_name: &str, name_set: &HashSet<String>) -> String {
     if name_set.contains(dir_name) {
         let mut rename = dir_name.to_string();
@@ -93,7 +90,7 @@ pub fn rename_dir(dir_name: &str, name_set: &HashSet<String>) -> String {
 }
 
 pub fn reset_info_line() {
-    print!("{}{}{}", cursor::Goto(2, 2), clear::CurrentLine, DOWN_ARROW);
+    print!("{}{}", cursor::Goto(2, 2), clear::CurrentLine);
 }
 
 pub fn delete_cursor() {
