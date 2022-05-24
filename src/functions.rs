@@ -41,15 +41,16 @@ pub fn clear_and_show(dir: &Path) {
         let head = git.join("HEAD");
         if let Ok(head) = std::fs::read(head) {
             let branch: Vec<u8> = head.into_iter().skip(16).collect();
-            let branch = std::str::from_utf8(&branch).unwrap();
-            print!(
-                " on {}{}{}{}{}",
-                style::Bold,
-                color::Fg(color::Magenta),
-                branch,
-                style::Reset,
-                color::Fg(color::Reset)
-            );
+            if let Ok(branch) = std::str::from_utf8(&branch) {
+                print!(
+                    " on {}{}{}{}{}",
+                    style::Bold,
+                    color::Fg(color::Magenta),
+                    branch,
+                    style::Reset,
+                    color::Fg(color::Reset)
+                );
+            }
         }
     }
     //Show arrow
