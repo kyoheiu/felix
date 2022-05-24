@@ -858,7 +858,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     }
                     let item = state.get_item(nums.index)?.clone();
                     if !is_editable(&item.file_name) {
-                        print_warning("Item name cannot be renamed due to character type.", y);
+                        print_warning("Item name cannot be renamed due to the character type.", y);
                         screen.flush()?;
                         continue;
                     }
@@ -866,15 +866,14 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     print!("{}", cursor::Show);
                     let mut rename = item.file_name.chars().collect::<Vec<char>>();
                     print!(
-                        "{}{}{} {}",
+                        "{}{}New name: {}",
                         cursor::Goto(2, 2),
                         clear::CurrentLine,
-                        RIGHT_ARROW,
                         &rename.iter().collect::<String>(),
                     );
                     screen.flush()?;
 
-                    let initial_pos = 4;
+                    let initial_pos = 12;
                     loop {
                         let (x, _) = screen.cursor_pos()?;
                         let input = stdin.next();
@@ -931,10 +930,9 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     rename.insert((x - initial_pos).into(), c);
 
                                     print!(
-                                        "{}{}{} {}{}",
+                                        "{}{}New name: {}{}",
                                         clear::CurrentLine,
                                         cursor::Goto(2, 2),
-                                        RIGHT_ARROW,
                                         &rename.iter().collect::<String>(),
                                         cursor::Goto(x + 1, 2)
                                     );
@@ -947,10 +945,9 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     rename.remove((x - initial_pos - 1).into());
 
                                     print!(
-                                        "{}{}{} {}{}",
+                                        "{}{}New name: {}{}",
                                         clear::CurrentLine,
                                         cursor::Goto(2, 2),
-                                        RIGHT_ARROW,
                                         &rename.iter().collect::<String>(),
                                         cursor::Goto(x - 1, 2)
                                     );
