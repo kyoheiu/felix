@@ -301,7 +301,7 @@ pub fn format_txt(txt: &str, column: u16, is_help: bool) -> Vec<String> {
         }
     }
     if is_help {
-        v.push("Enter 'q' to go back.".to_string());
+        v.push("Press Enter to go back.".to_string());
     }
     v
 }
