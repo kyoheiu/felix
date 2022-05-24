@@ -136,7 +136,7 @@ pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
 
 /// Print process of put/delete.
 pub fn print_process<T: std::fmt::Display>(message: T) {
-    print!("{}{}", message, cursor::Left(10));
+    print!("{}{}", message, cursor::Left(7));
 }
 
 /// Print the number of process (put/delete).
