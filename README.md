@@ -12,11 +12,7 @@ A tui file manager with vim-like key mapping, written in Rust. Fast, simple, and
 
 ## v0.9.3 (2022-05-25)
 
-- `viuer`'s `sixel` feature added, which means in a terminal that supports `sixel`, previewed images become high-res.
 - `-l` option creates a log file in `$XDG_CONFIG_HOME/felix/log`. Information such as put, delete, rename, emptying the trash directory, etc. will be recorded.
-
-![high-res](screenshots/high-res.png)
-[image](https://unsplash.com/photos/6B9DNvMu5x0)
 
 For more details, see `CHANGELOG.md`.
 
@@ -87,7 +83,7 @@ cargo install --path .
 | y (select mode)       | Yank selected items, and return to normal mode.                                                                                                                                                                                                                                |
 | u                     | Undo put/delete/rename.                                                                                                                                                                                                                                                        |
 | Ctrl + r              | Redo put/delete/rename.                                                                                                                                                                                                                                                        |
-| v                     | Toggle whether to show preview (text, image(experimental), or the contents tree) on the right half of the terminal.                                                                                                                                                            |
+| v                     | Toggle whether to show preview (text, image(printed by blocks), or the contents tree) on the right half of the terminal.                                                                                                                                                            |
 | backspace             | Toggle whether to show hidden items or not. This change remains after exit (stored in `.session`).                                                                                                                                                                             |
 | t                     | Toggle sort order (by name <-> by modified time). This change remains after exit (same as above).                                                                                                                                                                              |
 | :                     | **_Experimantal._** Switch to the shell mode. Type command and press Enter to execute it. You can use any command in the displayed directory, but some commands may fail, and also, the display may collapse during execution.                                                 |
