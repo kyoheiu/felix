@@ -6,10 +6,10 @@
 
 ### Notes
 - Text preview color needs to be readable enough, so it's worth rethinking (Now LightBlack).
+- To support the sixel feature (hi-res image preview), libsixel must be preinstalled, so this feature in `viuer` is disabled for now. I'm currently working on a way to implement sixel without the dynamic dependency.
 
 ## v0.9.3 (2022-05-25)
 ### Added
-- `viuer`'s `sixel` feature added, which means in a terminal that supports `sixel`, previewed images become high-res.
 - `-l` option creates a log file in `$XDG_CONFIG_HOME/felix/log`. Information such as put, delete, rename, emptying the trash directory, etc. will be recorded.
 - Add message when there are no operations left to undo/redo.
 
