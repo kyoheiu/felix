@@ -1,5 +1,5 @@
 /// Help text.
-pub const HELP: &str = "# felix v0.9.2
+pub const HELP: &str = "# felix v0.9.3
 A simple TUI file manager with vim-like keymapping.
 
 ## Usage
@@ -10,6 +10,7 @@ Both relative and absolute path available.
 ## Arguments
 `fx -h` | `fx --help`    => Print help.
 `fx -v` | `fx --version` => Check update.
+`fx -l [dir path]` => Launch the app and create a log file in `$XDG_CONFIG_HOME/felix/log`.
 
 ## Manual
 j / Up            :Go up.

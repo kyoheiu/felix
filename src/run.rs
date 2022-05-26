@@ -3,10 +3,10 @@ use super::errors::FxError;
 use super::functions::*;
 use super::help::HELP;
 use super::nums::*;
+use super::op::*;
 use super::state::*;
 use crate::session::*;
-use log::info;
-use simplelog::{ConfigBuilder, LevelFilter, WriteLogger};
+use log::{error, info};
 use std::ffi::OsStr;
 use std::io::{stdin, stdout, Write};
 use std::path::PathBuf;
@@ -23,6 +23,9 @@ use termion::{clear, cursor, screen};
 /// frequency to detect terminal size change
 const DETECTION_INTERVAL: u64 = 500;
 
+/// Where the item list starts to scroll.
+const SCROLL_POINT: u16 = 3;
+
 /// Run the app.
 pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     //Prepare config file and trash directory path.
@@ -34,21 +37,8 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     let config_file_path = config_dir_path.join(PathBuf::from(CONFIG_FILE));
     let trash_dir_path = config_dir_path.join(PathBuf::from(TRASH));
 
-    if log {
-        let mut log_name = chrono::Local::now().format("%F-%H-%M-%S").to_string();
-        log_name.push_str(".log");
-        let config = ConfigBuilder::new()
-            .set_time_offset_to_local()
-            .unwrap()
-            .build();
-        let log_name = config_dir_path.join(log_name);
-        WriteLogger::init(
-            LevelFilter::Info,
-            config,
-            std::fs::File::create(log_name).unwrap(),
-        )
-        .unwrap();
-        info!("===START===");
+    if log && init_log(&config_dir_path).is_err() {
+        panic!("Cannot initialize log file.");
     }
 
     //Make config file and trash directory if not exist.
@@ -113,12 +103,12 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
         // Return error if terminal size may cause panic
         if column < 4 {
-            log::error!("Too small terminal size.");
-            panic!("Error: too small terminal size (less than 4 columns)");
+            error!("Too small terminal size (less than 4 columns).");
+            panic!("Error: Too small terminal size (less than 4 columns). Please restart.");
         };
         if row < 4 {
-            log::error!("Too small terminal size.");
-            panic!("Error: too small terminal size (less than 4 columns)");
+            error!("Too small terminal size (less than 4 rows).");
+            panic!("Error: Too small terminal size (less than 4 rows). Please restart.");
         };
 
         let mut state = state_detect.lock().unwrap();
@@ -158,7 +148,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 Key::Char('j') | Key::Down => {
                     if len == 0 || nums.index == len - 1 {
                         continue;
-                    } else if y >= state.layout.terminal_row - 4
+                    } else if y >= state.layout.terminal_row - 1 - SCROLL_POINT
                         && len > (state.layout.terminal_row - BEGINNING_ROW) as usize - 1
                     {
                         nums.go_down();
@@ -176,7 +166,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 Key::Char('k') | Key::Up => {
                     if nums.index == 0 {
                         continue;
-                    } else if y <= BEGINNING_ROW + 3 && nums.skip != 0 {
+                    } else if y <= BEGINNING_ROW + SCROLL_POINT && nums.skip != 0 {
                         nums.go_up();
                         nums.dec_skip();
                         clear_and_show(&state.current_dir);
@@ -198,27 +188,21 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                         screen.flush()?;
 
-                        'top: loop {
-                            let input = stdin.next();
-                            if let Some(Ok(key)) = input {
-                                match key {
-                                    Key::Char('g') => {
-                                        print!("{}", cursor::Hide);
-                                        nums.reset();
-                                        clear_and_show(&state.current_dir);
-                                        state.list_up(0);
-                                        print!(" ");
-                                        state.move_cursor(&nums, BEGINNING_ROW);
-                                        break 'top;
-                                    }
+                        let input = stdin.next();
+                        if let Some(Ok(key)) = input {
+                            match key {
+                                Key::Char('g') => {
+                                    print!("{}", cursor::Hide);
+                                    nums.reset();
+                                    clear_and_show(&state.current_dir);
+                                    state.list_up(nums.skip);
+                                    state.move_cursor(&nums, BEGINNING_ROW);
+                                }
 
-                                    _ => {
-                                        print!("{}", clear::CurrentLine);
-                                        print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
-                                        print!("{}", cursor::Hide);
-                                        state.move_cursor(&nums, y);
-                                        break 'top;
-                                    }
+                                _ => {
+                                    reset_info_line();
+                                    print!("{}", cursor::Hide);
+                                    state.move_cursor(&nums, y);
                                 }
                             }
                         }
@@ -238,10 +222,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                         let cursor_pos = state.layout.terminal_row - 1;
                         state.move_cursor(&nums, cursor_pos);
                     } else {
-                        nums.reset();
                         nums.go_bottom(len - 1);
-                        clear_and_show(&state.current_dir);
-                        state.list_up(nums.skip);
                         state.move_cursor(&nums, len as u16 + BEGINNING_ROW - 1);
                     }
                 }
@@ -258,10 +239,10 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     continue;
                                 }
                                 print!("{}", screen::ToAlternateScreen);
+                                print!("{}", cursor::Hide);
                                 clear_and_show(&state.current_dir);
                                 state.update_list()?;
                                 state.list_up(nums.skip);
-                                print!("{}", cursor::Hide);
                                 state.move_cursor(&nums, y);
                             }
                             FileType::Symlink => match &item.symlink_dir_path {
@@ -311,9 +292,9 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         continue;
                                     }
                                     print!("{}", screen::ToAlternateScreen);
+                                    print!("{}", cursor::Hide);
                                     clear_and_show(&state.current_dir);
                                     state.list_up(nums.skip);
-                                    print!("{}", cursor::Hide);
                                     state.move_cursor(&nums, y);
                                 }
                             },
@@ -361,16 +342,16 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                     state.list_up(nums.skip);
                                                     state.move_cursor(&nums, memo.cursor_pos);
                                                 } else {
-                                                    clear_and_show(&state.current_dir);
-                                                    state.list_up(0);
                                                     nums.reset();
+                                                    clear_and_show(&state.current_dir);
+                                                    state.list_up(nums.skip);
                                                     state.move_cursor(&nums, BEGINNING_ROW);
                                                 }
                                             }
                                             None => {
-                                                clear_and_show(&state.current_dir);
-                                                state.list_up(0);
                                                 nums.reset();
+                                                clear_and_show(&state.current_dir);
+                                                state.list_up(nums.skip);
                                                 state.move_cursor(&nums, BEGINNING_ROW);
                                             }
                                         }
@@ -456,7 +437,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             } else {
                                                 nums.skip = 0;
                                                 clear_and_show(&state.current_dir);
-                                                state.list_up(0);
+                                                state.list_up(nums.skip);
                                                 state.move_cursor(
                                                     &nums,
                                                     (nums.index as u16) + BEGINNING_ROW,
@@ -466,7 +447,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         None => {
                                             nums.reset();
                                             clear_and_show(&state.current_dir);
-                                            state.list_up(0);
+                                            state.list_up(nums.skip);
                                             state.move_cursor(&nums, BEGINNING_ROW);
                                         }
                                     }
@@ -484,7 +465,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     if len == 0 {
                         continue;
                     }
-                    let mut item = state.list.get_mut(nums.index).unwrap();
+                    let mut item = state.get_item_mut(nums.index)?;
                     item.selected = true;
 
                     clear_and_show(&state.current_dir);
@@ -511,11 +492,10 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         nums.inc_skip();
 
                                         if nums.index > start_pos {
-                                            let mut item = state.list.get_mut(nums.index).unwrap();
+                                            let mut item = state.get_item_mut(nums.index)?;
                                             item.selected = true;
                                         } else {
-                                            let mut item =
-                                                state.list.get_mut(nums.index - 1).unwrap();
+                                            let mut item = state.get_item_mut(nums.index - 1)?;
                                             item.selected = false;
                                         }
 
@@ -527,11 +507,10 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         nums.go_down();
 
                                         if nums.index > start_pos {
-                                            let mut item = state.list.get_mut(nums.index).unwrap();
+                                            let mut item = state.get_item_mut(nums.index)?;
                                             item.selected = true;
                                         } else if nums.index <= start_pos {
-                                            let mut item =
-                                                state.list.get_mut(nums.index - 1).unwrap();
+                                            let mut item = state.get_item_mut(nums.index - 1)?;
                                             item.selected = false;
                                         }
 
@@ -549,11 +528,10 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         nums.dec_skip();
 
                                         if nums.index >= start_pos {
-                                            let mut item =
-                                                state.list.get_mut(nums.index + 1).unwrap();
+                                            let mut item = state.get_item_mut(nums.index + 1)?;
                                             item.selected = false;
                                         } else {
-                                            let mut item = state.list.get_mut(nums.index).unwrap();
+                                            let mut item = state.get_item_mut(nums.index)?;
                                             item.selected = true;
                                         }
 
@@ -564,11 +542,10 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         nums.go_up();
 
                                         if nums.index >= start_pos {
-                                            let mut item =
-                                                state.list.get_mut(nums.index + 1).unwrap();
+                                            let mut item = state.get_item_mut(nums.index + 1)?;
                                             item.selected = false;
                                         } else if nums.index < start_pos {
-                                            let mut item = state.list.get_mut(nums.index).unwrap();
+                                            let mut item = state.get_item_mut(nums.index)?;
                                             item.selected = true;
                                         }
 
@@ -587,35 +564,26 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                                         screen.flush()?;
 
-                                        'top_select: loop {
-                                            let input = stdin.next();
-                                            if let Some(Ok(key)) = input {
-                                                match key {
-                                                    Key::Char('g') => {
-                                                        print!("{}", cursor::Hide);
-                                                        nums.reset();
-                                                        state.select_from_top(start_pos);
-                                                        clear_and_show(&state.current_dir);
-                                                        state.list_up(0);
-                                                        print!(
-                                                            " {}>{}",
-                                                            cursor::Goto(1, BEGINNING_ROW),
-                                                            cursor::Left(1)
-                                                        );
-                                                        break 'top_select;
-                                                    }
+                                        let input = stdin.next();
+                                        if let Some(Ok(key)) = input {
+                                            match key {
+                                                Key::Char('g') => {
+                                                    print!("{}", cursor::Hide);
+                                                    nums.reset();
+                                                    state.select_from_top(start_pos);
+                                                    clear_and_show(&state.current_dir);
+                                                    state.list_up(nums.skip);
+                                                    print!(
+                                                        " {}>{}",
+                                                        cursor::Goto(1, BEGINNING_ROW),
+                                                        cursor::Left(1)
+                                                    );
+                                                }
 
-                                                    _ => {
-                                                        print!("{}", clear::CurrentLine);
-                                                        print!(
-                                                            "{}{}",
-                                                            cursor::Goto(2, 2),
-                                                            DOWN_ARROW
-                                                        );
-                                                        print!("{}", cursor::Hide);
-                                                        state.move_cursor(&nums, y);
-                                                        break 'top_select;
-                                                    }
+                                                _ => {
+                                                    reset_info_line();
+                                                    print!("{}", cursor::Hide);
+                                                    state.move_cursor(&nums, y);
                                                 }
                                             }
                                         }
@@ -637,20 +605,19 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         state.select_to_bottom(start_pos);
                                         clear_and_show(&state.current_dir);
                                         state.list_up(nums.skip);
-                                        print!(" ");
                                         state.move_cursor(&nums, len as u16 + BEGINNING_ROW - 1);
                                     }
                                 }
 
                                 Key::Char('d') => {
-                                    print_info("Processing...", y);
+                                    print_info("DELETE: Processing...", y);
                                     let start = Instant::now();
                                     screen.flush()?;
 
                                     state.registered.clear();
-                                    let clone = state.list.clone();
+                                    let cloned = state.list.clone();
                                     let selected: Vec<ItemInfo> =
-                                        clone.into_iter().filter(|item| item.selected).collect();
+                                        cloned.into_iter().filter(|item| item.selected).collect();
                                     let total = selected.len();
 
                                     if let Err(e) = state.remove_and_yank(&selected, true) {
@@ -681,7 +648,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         }
                                     };
                                     print_info(delete_message, y);
-                                    print!(" ");
 
                                     if new_len == 0 {
                                         nums.reset();
@@ -702,15 +668,11 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 Key::Char('y') => {
                                     state.yank_item(nums.index, true);
                                     state.reset_selection();
-                                    clear_and_show(&state.current_dir);
                                     state.list_up(nums.skip);
-
                                     let mut yank_message: String =
                                         state.registered.len().to_string();
                                     yank_message.push_str(" items yanked");
                                     print_info(yank_message, y);
-
-                                    state.move_cursor(&nums, y);
                                     break;
                                 }
 
@@ -742,9 +704,9 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                         }
                     }
                     state.update_list()?;
-                    clear_and_show(&state.current_dir);
-                    state.list_up(0);
                     nums.reset();
+                    clear_and_show(&state.current_dir);
+                    state.list_up(nums.skip);
                     state.move_cursor(&nums, BEGINNING_ROW);
                 }
 
@@ -777,7 +739,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 match key {
                                     Key::Char('d') => {
                                         print!("{}", cursor::Hide);
-                                        print_info("Processing...", y);
+                                        print_info("DELETE: Processing...", y);
                                         let start = Instant::now();
                                         screen.flush()?;
 
@@ -810,8 +772,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         break 'delete;
                                     }
                                     _ => {
-                                        print!("{}", clear::CurrentLine);
-                                        print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
+                                        reset_info_line();
                                         print!("{}", cursor::Hide);
                                         state.move_cursor(&nums, y);
                                         break 'delete;
@@ -832,27 +793,20 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                     screen.flush()?;
 
-                    'yank: loop {
-                        let input = stdin.next();
-                        if let Some(Ok(key)) = input {
-                            match key {
-                                Key::Char('y') => {
-                                    state.yank_item(nums.index, false);
-                                    print!("{}", clear::CurrentLine);
-                                    print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
-                                    print!("{}", cursor::Hide);
-                                    state.move_cursor(&nums, y);
-                                    print_info("1 item yanked", y);
-                                    break 'yank;
-                                }
+                    let input = stdin.next();
+                    if let Some(Ok(key)) = input {
+                        match key {
+                            Key::Char('y') => {
+                                state.yank_item(nums.index, false);
+                                reset_info_line();
+                                print!("{}", cursor::Hide);
+                                print_info("1 item yanked", y);
+                            }
 
-                                _ => {
-                                    print!("{}", clear::CurrentLine);
-                                    print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
-                                    print!("{}", cursor::Hide);
-                                    state.move_cursor(&nums, y);
-                                    break 'yank;
-                                }
+                            _ => {
+                                reset_info_line();
+                                print!("{}", cursor::Hide);
+                                state.move_cursor(&nums, y);
                             }
                         }
                     }
@@ -863,7 +817,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     if state.registered.is_empty() {
                         continue;
                     }
-                    print_info("Processing...", y);
+                    print_info("PUT: Processing...", y);
                     let start = Instant::now();
                     screen.flush()?;
 
@@ -897,7 +851,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     }
                     let item = state.get_item(nums.index)?.clone();
                     if !is_editable(&item.file_name) {
-                        print_warning("Item name cannot be renamed due to character type.", y);
+                        print_warning("Item name cannot be renamed due to the character type.", y);
                         screen.flush()?;
                         continue;
                     }
@@ -905,15 +859,14 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     print!("{}", cursor::Show);
                     let mut rename = item.file_name.chars().collect::<Vec<char>>();
                     print!(
-                        "{}{}{} {}",
+                        "{}{}New name: {}",
                         cursor::Goto(2, 2),
                         clear::CurrentLine,
-                        RIGHT_ARROW,
                         &rename.iter().collect::<String>(),
                     );
                     screen.flush()?;
 
-                    let initial_pos = 4;
+                    let initial_pos = 12;
                     loop {
                         let (x, _) = screen.cursor_pos()?;
                         let input = stdin.next();
@@ -930,21 +883,11 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         break;
                                     }
 
-                                    //Keep the log of rename
-                                    let mut message = "RENAME: ".to_string();
-                                    message.push_str(item.file_path.as_path().to_str().unwrap());
-                                    message.push_str(" -> ");
-                                    message.push_str(to.as_path().to_str().unwrap());
-                                    info!("{}", message);
-
-                                    state.branch_manip();
-                                    state.manipulations.manip_list.push(ManipKind::Rename(
-                                        RenamedFile {
-                                            original_name: item.file_path.clone(),
-                                            new_name: to,
-                                        },
-                                    ));
-                                    state.manipulations.count = 0;
+                                    state.operations.branch();
+                                    state.operations.push(OpKind::Rename(RenamedFile {
+                                        original_name: item.file_path.clone(),
+                                        new_name: to,
+                                    }));
 
                                     print!("{}", cursor::Hide);
                                     clear_and_show(&state.current_dir);
@@ -955,8 +898,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 }
 
                                 Key::Esc => {
-                                    print!("{}", clear::CurrentLine);
-                                    print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
+                                    reset_info_line();
 
                                     print!("{}", cursor::Hide);
                                     state.move_cursor(&nums, y);
@@ -981,10 +923,9 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     rename.insert((x - initial_pos).into(), c);
 
                                     print!(
-                                        "{}{}{} {}{}",
+                                        "{}{}New name: {}{}",
                                         clear::CurrentLine,
                                         cursor::Goto(2, 2),
-                                        RIGHT_ARROW,
                                         &rename.iter().collect::<String>(),
                                         cursor::Goto(x + 1, 2)
                                     );
@@ -997,10 +938,9 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     rename.remove((x - initial_pos - 1).into());
 
                                     print!(
-                                        "{}{}{} {}{}",
+                                        "{}{}New name: {}{}",
                                         clear::CurrentLine,
                                         cursor::Goto(2, 2),
-                                        RIGHT_ARROW,
                                         &rename.iter().collect::<String>(),
                                         cursor::Goto(x - 1, 2)
                                     );
@@ -1035,8 +975,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                             match key {
                                 Key::Char('\n') => {
                                     filtered = true;
-                                    print!("{}", clear::CurrentLine);
-                                    print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
+                                    reset_info_line();
                                     screen.flush()?;
 
                                     nums.reset();
@@ -1142,8 +1081,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                         if let Some(Ok(key)) = input {
                             match key {
                                 Key::Esc => {
-                                    print!("{}", clear::CurrentLine);
-                                    print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
+                                    reset_info_line();
                                     print!("{}", cursor::Hide);
                                     state.move_cursor(&nums, y);
                                     break 'command;
@@ -1180,8 +1118,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                                 Key::Char('\n') => {
                                     if command.is_empty() {
-                                        print!("{}", clear::CurrentLine);
-                                        print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
+                                        reset_info_line();
                                         print!("{}", cursor::Hide);
                                         state.move_cursor(&nums, y);
                                         break;
@@ -1358,53 +1295,47 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         print_warning(WHEN_EMPTY, y);
                                         screen.flush()?;
 
-                                        'empty: loop {
-                                            let input = stdin.next();
-                                            if let Some(Ok(key)) = input {
-                                                match key {
-                                                    Key::Char('y') | Key::Char('Y') => {
-                                                        print_info("Processing...", y);
-                                                        screen.flush()?;
+                                        let input = stdin.next();
+                                        if let Some(Ok(key)) = input {
+                                            match key {
+                                                Key::Char('y') | Key::Char('Y') => {
+                                                    print_info("EMPTY: Processing...", y);
+                                                    screen.flush()?;
 
-                                                        if let Err(e) = std::fs::remove_dir_all(
-                                                            &state.trash_dir,
-                                                        ) {
-                                                            print!("{}", cursor::Hide);
-                                                            print_warning(e, y);
-                                                            screen.flush()?;
-                                                            continue 'main;
-                                                        }
-                                                        if let Err(e) =
-                                                            std::fs::create_dir(&state.trash_dir)
-                                                        {
-                                                            print!("{}", cursor::Hide);
-                                                            print_warning(e, y);
-                                                            screen.flush()?;
-                                                            continue 'main;
-                                                        }
-                                                        break 'empty;
+                                                    if let Err(e) =
+                                                        std::fs::remove_dir_all(&state.trash_dir)
+                                                    {
+                                                        print!("{}", cursor::Hide);
+                                                        print_warning(e, y);
+                                                        screen.flush()?;
+                                                        continue 'main;
                                                     }
-                                                    _ => {
-                                                        break 'empty;
+                                                    if let Err(e) =
+                                                        std::fs::create_dir(&state.trash_dir)
+                                                    {
+                                                        print!("{}", cursor::Hide);
+                                                        print_warning(e, y);
+                                                        screen.flush()?;
+                                                        continue 'main;
                                                     }
                                                 }
+                                                _ => {}
                                             }
                                         }
-                                        print!(
-                                            "{}{}{}{}",
-                                            cursor::Hide,
-                                            cursor::Goto(2, 2),
-                                            clear::CurrentLine,
-                                            DOWN_ARROW
-                                        );
+
+                                        reset_info_line();
+                                        print!("{}", cursor::Hide);
                                         if state.current_dir == state.trash_dir {
                                             clear_and_show(&state.current_dir);
                                             state.update_list()?;
                                             state.list_up(nums.skip);
+                                            print_info("Trash dir emptied", y);
                                             state.move_cursor(&nums, BEGINNING_ROW);
                                         } else {
+                                            print_info("Trash dir emptied", y);
                                             state.move_cursor(&nums, y);
                                         }
+                                        screen.flush()?;
                                         break 'command;
                                     }
 
@@ -1415,7 +1346,11 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         print_warning("Cannot execute command", y);
                                         break 'command;
                                     }
-                                    if std::process::Command::new(c).args(args).status().is_err() {
+                                    if std::process::Command::new(c)
+                                        .args(args.clone())
+                                        .status()
+                                        .is_err()
+                                    {
                                         print!("{}", screen::ToAlternateScreen);
 
                                         clear_and_show(&state.current_dir);
@@ -1427,6 +1362,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         break 'command;
                                     }
                                     print!("{}", screen::ToAlternateScreen);
+                                    info!("SHELL: {} {:?}", c, args);
 
                                     clear_and_show(&state.current_dir);
                                     state.update_list()?;
@@ -1458,55 +1394,22 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                 //undo
                 Key::Char('u') => {
-                    let mani_len = state.manipulations.manip_list.len();
-                    if mani_len < state.manipulations.count + 1 {
+                    let mani_len = state.operations.op_list.len();
+                    if mani_len < state.operations.pos + 1 {
+                        print_info("No operations left.", y);
+                        screen.flush()?;
                         continue;
                     }
-                    if let Some(manipulation) = state
-                        .manipulations
-                        .manip_list
-                        .get(mani_len - state.manipulations.count - 1)
+                    if let Some(op) = state
+                        .operations
+                        .op_list
+                        .get(mani_len - state.operations.pos - 1)
                     {
-                        match manipulation.clone() {
-                            ManipKind::Rename(m) => {
-                                if let Err(e) = std::fs::rename(&m.new_name, &m.original_name) {
-                                    print_warning(e, y);
-                                    screen.flush()?;
-                                    continue;
-                                }
-                                state.manipulations.count += 1;
-                                clear_and_show(&state.current_dir);
-                                state.update_list()?;
-                                state.list_up(nums.skip);
-                                print_info("Undone [rename]", y);
-                            }
-                            ManipKind::Put(m) => {
-                                for x in m.put {
-                                    if let Err(e) = std::fs::remove_file(&x) {
-                                        print_warning(e, y);
-                                        screen.flush()?;
-                                        continue;
-                                    }
-                                }
-                                state.manipulations.count += 1;
-                                clear_and_show(&state.current_dir);
-                                state.update_list()?;
-                                state.list_up(nums.skip);
-                                print_info("Undone [put]", y);
-                            }
-                            ManipKind::Delete(m) => {
-                                let targets = trash_to_info(&state.trash_dir, m.trash)?;
-                                if let Err(e) = state.put_items(&targets, Some(m.dir)) {
-                                    print_warning(e, y);
-                                    screen.flush()?;
-                                    continue;
-                                }
-                                state.manipulations.count += 1;
-                                clear_and_show(&state.current_dir);
-                                state.update_list()?;
-                                state.list_up(nums.skip);
-                                print_info("Undone [delete]", y);
-                            }
+                        let op = op.clone();
+                        if let Err(e) = state.undo(&nums, op) {
+                            print_warning(e, y);
+                            screen.flush()?;
+                            continue;
                         }
 
                         let new_len = state.list.len();
@@ -1526,56 +1429,23 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                 //redo
                 Key::Ctrl('r') => {
-                    let mani_len = state.manipulations.manip_list.len();
-                    if mani_len == 0
-                        || state.manipulations.count == 0
-                        || mani_len < state.manipulations.count
+                    let mani_len = state.operations.op_list.len();
+                    if mani_len == 0 || state.operations.pos == 0 || mani_len < state.operations.pos
                     {
+                        print_info("No operations left.", y);
+                        screen.flush()?;
                         continue;
                     }
-                    if let Some(manipulation) = state
-                        .manipulations
-                        .manip_list
-                        .get(mani_len - state.manipulations.count)
+                    if let Some(op) = state
+                        .operations
+                        .op_list
+                        .get(mani_len - state.operations.pos)
                     {
-                        let manipulation = manipulation.clone();
-                        match manipulation {
-                            ManipKind::Rename(m) => {
-                                if let Err(e) = std::fs::rename(&m.original_name, &m.new_name) {
-                                    print_warning(e, y);
-                                    screen.flush()?;
-                                    continue;
-                                }
-                                state.manipulations.count -= 1;
-                                clear_and_show(&state.current_dir);
-                                state.update_list()?;
-                                state.list_up(nums.skip);
-                                print_info("Redone [rename]", y);
-                            }
-                            ManipKind::Put(m) => {
-                                if let Err(e) = state.put_items(&m.original, Some(m.dir.clone())) {
-                                    print_warning(e, y);
-                                    screen.flush()?;
-                                    continue;
-                                }
-                                state.manipulations.count -= 1;
-                                clear_and_show(&state.current_dir);
-                                state.update_list()?;
-                                state.list_up(nums.skip);
-                                print_info("Redone [put]", y);
-                            }
-                            ManipKind::Delete(m) => {
-                                if let Err(e) = state.remove_and_yank(&m.original, false) {
-                                    print_warning(e, y);
-                                    screen.flush()?;
-                                    continue;
-                                }
-                                state.manipulations.count -= 1;
-                                clear_and_show(&state.current_dir);
-                                state.update_list()?;
-                                state.list_up(nums.skip);
-                                print_info("Redone [delete]", y);
-                            }
+                        let op = op.clone();
+                        if let Err(e) = state.redo(&nums, op) {
+                            print_warning(e, y);
+                            screen.flush()?;
+                            continue;
                         }
 
                         let new_len = state.list.len();
@@ -1596,7 +1466,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 //Debug print for undo/redo
                 Key::Char('P') => {
                     if state.rust_log.is_some() {
-                        print_info(format!("{:?}", state.manipulations), y);
+                        print_info(format!("{:?}", state.operations), y);
                     }
                 }
 
@@ -1613,8 +1483,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                         if let Some(Ok(key)) = input {
                             match key {
                                 Key::Esc => {
-                                    print!("{}", clear::CurrentLine);
-                                    print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
+                                    reset_info_line();
                                     print!("{}", cursor::Hide);
                                     state.move_cursor(&nums, y);
                                     break 'quit;
@@ -1626,8 +1495,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     if command == vec!['Z', 'Z'] {
                                         break 'main;
                                     } else {
-                                        print!("{}", clear::CurrentLine);
-                                        print!("{}{}", cursor::Goto(2, 2), DOWN_ARROW);
+                                        reset_info_line();
                                         print!("{}", cursor::Hide);
                                         state.move_cursor(&nums, y);
                                         break 'quit;
@@ -1675,6 +1543,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
     //Back to normal mode
     screen.suspend_raw_mode()?;
+    info!("===FINISH===");
     Ok(())
 }
 

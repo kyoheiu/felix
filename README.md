@@ -10,13 +10,11 @@ A tui file manager with vim-like key mapping, written in Rust. Fast, simple, and
 
 ## New Release
 
-### v0.9.2 (2022-05-18)
-- Image preview implemented.
-![preview_image](screenshots/preview_image.png)
-- Fix text preview bug that occurs when it has tab characters.
-- Disable renaming non-ascii items: Wide characters such as CJK or characters that do not match our intuition caused panic, so before editing, item name is now checked if it contains only ascii characters.
+## v0.9.3 (2022-05-25)
 
- For more details, see `CHANGELOG.md`.
+- `-l` option creates a log file in `$XDG_CONFIG_HOME/felix/log`. Information such as put, delete, rename, emptying the trash directory, etc. will be recorded.
+
+For more details, see `CHANGELOG.md`.
 
 ## Status
 
@@ -59,12 +57,13 @@ cargo install --path .
 
 ## Usage
 
-| command / arguments       |                                                               |
-| ------------------------- | ------------------------------------------------------------- |
-| `fx`                      | Show items in the current directory.                          |
-| `fx <directory path>`     | Show items in the path. Both relative and absolute available. |
-| `fx -v` or `fx --version` | Print the current version and check update.                   |
-| `fx -h` or `fx --help`    | Print help.                                                   |
+| command / arguments       |                                                                       |
+| ------------------------- | --------------------------------------------------------------------- |
+| `fx`                      | Show items in the current directory.                                  |
+| `fx <directory path>`     | Show items in the path. Both relative and absolute available.         |
+| `fx -l [directory path]`  | Launch the app and create a log file in `$XDG_HOME_CONFIG/felix/log`. |
+| `fx -v` or `fx --version` | Print the current version and check update.                           |
+| `fx -h` or `fx --help`    | Print help.                                                           |
 
 ## Key manual
 
@@ -84,7 +83,7 @@ cargo install --path .
 | y (select mode)       | Yank selected items, and return to normal mode.                                                                                                                                                                                                                                |
 | u                     | Undo put/delete/rename.                                                                                                                                                                                                                                                        |
 | Ctrl + r              | Redo put/delete/rename.                                                                                                                                                                                                                                                        |
-| v                     | Toggle whether to show preview (text, image(experimental), or the contents tree) on the right half of the terminal.                                                                                           |
+| v                     | Toggle whether to show preview (text, image(printed by blocks), or the contents tree) on the right half of the terminal.                                                                                                                                                            |
 | backspace             | Toggle whether to show hidden items or not. This change remains after exit (stored in `.session`).                                                                                                                                                                             |
 | t                     | Toggle sort order (by name <-> by modified time). This change remains after exit (same as above).                                                                                                                                                                              |
 | :                     | **_Experimantal._** Switch to the shell mode. Type command and press Enter to execute it. You can use any command in the displayed directory, but some commands may fail, and also, the display may collapse during execution.                                                 |
@@ -95,7 +94,7 @@ cargo install --path .
 | :z \<keyword\>        | **_This command requires zoxide installed._** Jump to a directory that matches the keyword. Internally, felix calls [`zoxide query <keyword>`](https://man.archlinux.org/man/zoxide-query.1.en), so if the keyword does not match the zoxide database, this command will fail. |
 | :e                    | Reload the current directory. Useful when something goes wrong.                                                                                                                                                                                                                |
 | :empty                | Empty the trash directory. **Please think twice to use this.**                                                                                                                                                                                                                 |
-| :h                    | Show help. (scrollable with `j`                                                                                                                                                                                                                                                | `k` | `Up` | `Down`) |
+| :h                    | Show help. (scrolls by `j/k` or `Up/Down`)                                                                                                                                                                                                                                     |
 | :q / ZZ               | Exit.                                                                                                                                                                                                                                                                          |
 
 Note that items moved to the trash directory are prefixed with Unix time (like `1633843993`) to avoid the name conflict. This prefix will be removed when put.
