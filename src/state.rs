@@ -615,8 +615,8 @@ impl State {
     }
 
     /// Undo operations (put/delete/rename).
-    pub fn undo(&mut self, nums: &Num, op: OpKind) -> Result<(), FxError> {
-        match &op {
+    pub fn undo(&mut self, nums: &Num, op: &OpKind) -> Result<(), FxError> {
+        match op {
             OpKind::Rename(op) => {
                 std::fs::rename(&op.new_name, &op.original_name)?;
                 self.operations.pos += 1;
@@ -649,13 +649,13 @@ impl State {
                 print_info("UNDONE: DELETE", BEGINNING_ROW);
             }
         }
-        relog(&op, true);
+        relog(op, true);
         Ok(())
     }
 
     /// Redo operations (put/delete/rename)
-    pub fn redo(&mut self, nums: &Num, op: OpKind) -> Result<(), FxError> {
-        match &op {
+    pub fn redo(&mut self, nums: &Num, op: &OpKind) -> Result<(), FxError> {
+        match op {
             OpKind::Rename(op) => {
                 std::fs::rename(&op.original_name, &op.new_name)?;
                 self.operations.pos -= 1;
@@ -681,7 +681,7 @@ impl State {
                 print_info("REDONE DELETE", BEGINNING_ROW);
             }
         }
-        relog(&op, false);
+        relog(op, false);
         Ok(())
     }
 

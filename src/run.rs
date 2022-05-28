@@ -1406,7 +1406,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                         .get(mani_len - state.operations.pos - 1)
                     {
                         let op = op.clone();
-                        if let Err(e) = state.undo(&nums, op) {
+                        if let Err(e) = state.undo(&nums, &op) {
                             print_warning(e, y);
                             screen.flush()?;
                             continue;
@@ -1442,7 +1442,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                         .get(mani_len - state.operations.pos)
                     {
                         let op = op.clone();
-                        if let Err(e) = state.redo(&nums, op) {
+                        if let Err(e) = state.redo(&nums, &op) {
                             print_warning(e, y);
                             screen.flush()?;
                             continue;
