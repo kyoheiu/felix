@@ -361,6 +361,30 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     }
                 }
 
+                //Open a file in a new window
+                Key::Ctrl('o') => {
+                    if let Ok(item) = state.get_item(nums.index) {
+                        match item.file_type {
+                            FileType::File => {
+                                print!("{}", screen::ToAlternateScreen);
+                                if let Err(e) = state.open_file_in_new_window(nums.index) {
+                                    print_warning(e, y);
+                                    continue;
+                                }
+                                print!("{}", screen::ToAlternateScreen);
+                                print!("{}", cursor::Hide);
+                                clear_and_show(&state.current_dir);
+                                state.list_up(nums.skip);
+                                state.move_cursor(&nums, y);
+                                continue;
+                            }
+                            _ => {
+                                continue;
+                            }
+                        }
+                    }
+                }
+
                 //Go to parent directory if exists
                 Key::Char('h') | Key::Left => {
                     let pre = state.current_dir.clone();

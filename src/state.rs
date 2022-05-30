@@ -11,7 +11,7 @@ use std::collections::HashSet;
 use std::fs;
 use std::io::ErrorKind;
 use std::path::PathBuf;
-use std::process::{Command, ExitStatus};
+use std::process::{Child, Command, ExitStatus, Stdio};
 use termion::{clear, color, cursor, style};
 
 pub const BEGINNING_ROW: u16 = 3;
@@ -225,6 +225,44 @@ impl State {
             },
 
             None => default.arg(path).status().map_err(FxError::Io),
+        }
+    }
+
+    /// Open the selected file in a new window, according to the config.
+    pub fn open_file_in_new_window(&self, index: usize) -> Result<Child, FxError> {
+        let item = self.get_item(index)?;
+        let path = &item.file_path;
+        let map = &self.commands;
+        let extension = &item.file_ext;
+
+        let mut default = Command::new(&self.default);
+
+        info!("OPEN(new window): {:?}", path);
+
+        match extension {
+            Some(extension) => match map.get(extension) {
+                Some(command) => {
+                    let mut ex = Command::new(command);
+                    ex.arg(path)
+                        .stdout(Stdio::null())
+                        .stdin(Stdio::null())
+                        .spawn()
+                        .map_err(FxError::Io)
+                }
+                None => default
+                    .arg(path)
+                    .stdout(Stdio::null())
+                    .stdin(Stdio::null())
+                    .spawn()
+                    .map_err(FxError::Io),
+            },
+
+            None => default
+                .arg(path)
+                .stdout(Stdio::null())
+                .stdin(Stdio::null())
+                .spawn()
+                .map_err(FxError::Io),
         }
     }
 
