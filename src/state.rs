@@ -9,7 +9,7 @@ use log::info;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
-use std::io::ErrorKind;
+use std::io::{ErrorKind, Write};
 use std::path::PathBuf;
 use std::process::{Command, ExitStatus};
 use termion::{clear, color, cursor, style};
@@ -20,7 +20,7 @@ pub const CONFIG_FILE: &str = "config.toml";
 pub const TRASH: &str = "trash";
 pub const WHEN_EMPTY: &str = "Are you sure to empty the trash directory? (if yes: y)";
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct State {
     pub list: Vec<ItemInfo>,
     pub registered: Vec<ItemInfo>,
@@ -32,6 +32,7 @@ pub struct State {
     pub sort_by: SortKey,
     pub layout: Layout,
     pub show_hidden: bool,
+    pub support_sixel: bool,
     pub rust_log: Option<String>,
 }
 
@@ -55,7 +56,7 @@ pub enum FileType {
     Symlink,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Layout {
     pub y: u16,
     pub terminal_row: u16,
@@ -138,6 +139,9 @@ impl State {
         let (time_start, name_max) =
             make_layout(column, config.use_full_width, config.item_name_length);
 
+        //Import from atanunq/viuer
+        let sixel = check_sixel_support();
+
         Ok(State {
             list: Vec::new(),
             registered: Vec::new(),
@@ -166,6 +170,7 @@ impl State {
                 preview: false,
             },
             show_hidden: session.show_hidden,
+            support_sixel: sixel,
             rust_log: std::env::var("RUST_LOG").ok(),
         })
     }
@@ -1080,45 +1085,68 @@ impl State {
 
     /// Print text preview on the right half of the terminal (Experimental).
     fn preview_image(&self, item: &ItemInfo) {
-        let content = {
-            let path = item.file_path.clone();
-            std::thread::spawn(move || image::io::Reader::open(path))
-        };
         let preview_start_column: u16 = self.layout.terminal_column + 2;
-        let (w, h) = self.get_image_preview_size(item);
+        match self.support_sixel {
+            false => {
+                let content = {
+                    let path = item.file_path.clone();
+                    std::thread::spawn(move || image::io::Reader::open(path))
+                };
+                let (w, h) = self.get_image_preview_size(item);
 
-        //Use sixel if the terminal supports it.
-        let conf = viuer::Config {
-            x: preview_start_column - 1,
-            y: BEGINNING_ROW as i16 - 1,
-            width: Some(w.into()),
-            height: Some(h.into()),
-            use_kitty: false,
-            use_iterm: false,
-            ..Default::default()
-        };
-        //Print item name at the top
-        print!(
-            "{}{}",
-            cursor::Goto(preview_start_column, 1),
-            clear::UntilNewline
-        );
-        print!("[{}]", item.file_name);
-        print!("{}", cursor::Goto(preview_start_column, BEGINNING_ROW));
+                //Use sixel if the terminal supports it.
+                let conf = viuer::Config {
+                    x: preview_start_column - 1,
+                    y: BEGINNING_ROW as i16 - 1,
+                    width: Some(w.into()),
+                    height: Some(h.into()),
+                    use_kitty: false,
+                    use_iterm: false,
+                    ..Default::default()
+                };
+                //Print item name at the top
+                print!(
+                    "{}{}",
+                    cursor::Goto(preview_start_column, 1),
+                    clear::UntilNewline
+                );
+                print!("[{}]", item.file_name);
+                print!("{}", cursor::Goto(preview_start_column, BEGINNING_ROW));
 
-        //Clear preview space
-        self.clear_preview(preview_start_column);
+                //Clear preview space
+                self.clear_preview(preview_start_column);
 
-        if let Ok(image) = content.join().unwrap() {
-            if let Ok(image) = image.decode() {
-                if viuer::print(&image, &conf).is_err() {
-                    print_warning("Image printing failed.", BEGINNING_ROW);
+                if let Ok(image) = content.join().unwrap() {
+                    if let Ok(image) = image.decode() {
+                        if viuer::print(&image, &conf).is_err() {
+                            print_warning("Image printing failed.", BEGINNING_ROW);
+                        }
+                    } else {
+                        print_warning("Cannot decode the image.", BEGINNING_ROW);
+                    }
+                } else {
+                    print_warning("Cannot read the image.", BEGINNING_ROW);
                 }
-            } else {
-                print_warning("Cannot decode the image.", BEGINNING_ROW);
             }
-        } else {
-            print_warning("Cannot read the image.", BEGINNING_ROW);
+            true => {
+                self.clear_preview(preview_start_column);
+
+                let encoder = sixel::encoder::Encoder::new().unwrap();
+                encoder
+                    .set_output(std::path::PathBuf::from("./sixel_tempfile").as_path())
+                    .unwrap();
+                encoder
+                    .set_width(sixel::optflags::SizeSpecification::Pixel(
+                        self.get_sixel_image_preview_size(item),
+                    ))
+                    .unwrap();
+                encoder.use_static().unwrap();
+                encoder.encode_file(&item.file_path).unwrap();
+                let content = std::fs::read_to_string("./sixel_tempfile").unwrap();
+                print!("{}", cursor::Goto(preview_start_column, BEGINNING_ROW));
+                print!("{}", content);
+                std::fs::remove_file(std::path::PathBuf::from("./sixel_tempfile")).unwrap();
+            }
         }
     }
 
@@ -1145,6 +1173,21 @@ impl State {
             }
         } else {
             (0, 0)
+        }
+    }
+
+    fn get_sixel_image_preview_size(&self, item: &ItemInfo) -> u64 {
+        let (w_t, h_t) = termion::terminal_size_pixels().unwrap();
+        if let Ok((_, h)) = image::image_dimensions(&item.file_path) {
+            let estimated_h = h * 9 / 10;
+            let estimated_w = w_t * 3 / 10;
+            if estimated_h > (h_t / 2).into() {
+                (estimated_w as f32 * ((h_t / 2) as f32) / (estimated_h as f32)) as u64
+            } else {
+                estimated_w.into()
+            }
+        } else {
+            0
         }
     }
 
@@ -1270,4 +1313,46 @@ pub fn trash_to_info(trash_dir: &PathBuf, vec: &[PathBuf]) -> Result<Vec<ItemInf
         }
     }
     Ok(result)
+}
+
+// Import from atanunq/viuer
+// Check if Sixel is within the terminal's attributes
+// see https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h2-Sixel-Graphics
+// and https://vt100.net/docs/vt510-rm/DA1.html
+fn check_device_attrs() -> Result<bool, FxError> {
+    let mut term = console::Term::stdout();
+
+    write!(&mut term, "\x1b[c")?;
+    term.flush()?;
+
+    let mut response = String::new();
+
+    while let Ok(key) = term.read_key() {
+        if let console::Key::Char(c) = key {
+            response.push(c);
+            if c == 'c' {
+                break;
+            }
+        }
+    }
+
+    Ok(response.contains(";4;") || response.contains(";4c"))
+}
+
+// Check if Sixel protocol can be used
+fn check_sixel_support() -> bool {
+    if let Ok(term) = std::env::var("TERM") {
+        match term.as_str() {
+            "mlterm" | "yaft-256color" | "foot" | "foot-extra" => return true,
+            "st-256color" | "xterm" | "xterm-256color" => {
+                return check_device_attrs().unwrap_or(false)
+            }
+            _ => {
+                if let Ok(term_program) = std::env::var("TERM_PROGRAM") {
+                    return term_program == "MacTerm";
+                }
+            }
+        }
+    }
+    false
 }

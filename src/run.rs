@@ -1461,7 +1461,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 //Debug print for undo/redo
                 Key::Char('P') => {
                     if state.rust_log.is_some() {
-                        print_info(format!("{:?}", state.operations), y);
+                        print_info(format!("{:?}", state), y);
                     }
                 }
 
