@@ -206,11 +206,10 @@ impl State {
     }
 
     /// Open the selected file according to the config.
-    pub fn open_file(&self, index: usize) -> Result<ExitStatus, FxError> {
-        let item = self.get_item(index)?;
+    pub fn open_file(&self, item: &ItemInfo) -> Result<ExitStatus, FxError> {
         let path = &item.file_path;
         let map = &self.commands;
-        let extension = &item.file_ext;
+        let extension = item.file_ext.as_ref();
 
         let mut default = Command::new(&self.default);
 

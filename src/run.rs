@@ -232,7 +232,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                         match item.file_type {
                             FileType::File => {
                                 print!("{}", screen::ToAlternateScreen);
-                                if let Err(e) = state.open_file(nums.index) {
+                                if let Err(e) = state.open_file(item) {
                                     print_warning(e, y);
                                     screen.flush()?;
                                     continue;
@@ -285,7 +285,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 },
                                 None => {
                                     print!("{}", screen::ToAlternateScreen);
-                                    if let Err(e) = state.open_file(nums.index) {
+                                    if let Err(e) = state.open_file(item) {
                                         print_warning(e, y);
                                         screen.flush()?;
                                         continue;
