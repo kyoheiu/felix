@@ -362,7 +362,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 }
 
                 //Open a file in a new window
-                Key::Ctrl('o') => {
+                Key::Char('o') => {
                     if let Ok(item) = state.get_item(nums.index) {
                         match item.file_type {
                             FileType::File => {
