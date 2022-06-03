@@ -31,8 +31,9 @@ log = "0.4.16"
 simplelog = "0.12.0"
 image = "0.24.2"
 viuer = "0.6.1"
-sixel = "0.3.2"
+sixel = {git = "https://github.com/meh/rust-sixel"}
 console = "0.15.0"
+picto = "0.4.4"
 
 [dependencies.serde]
 version = "1.0.136"

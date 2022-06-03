@@ -1131,21 +1131,10 @@ impl State {
             true => {
                 self.clear_preview(preview_start_column);
 
-                let encoder = sixel::encoder::Encoder::new().unwrap();
-                encoder
-                    .set_output(std::path::PathBuf::from("./sixel_tempfile").as_path())
-                    .unwrap();
-                encoder
-                    .set_width(sixel::optflags::SizeSpecification::Pixel(
-                        self.get_sixel_image_preview_size(item),
-                    ))
-                    .unwrap();
-                encoder.use_static().unwrap();
-                encoder.encode_file(&item.file_path).unwrap();
-                let content = std::fs::read_to_string("./sixel_tempfile").unwrap();
-                print!("{}", cursor::Goto(preview_start_column, BEGINNING_ROW));
-                print!("{}", content);
-                std::fs::remove_file(std::path::PathBuf::from("./sixel_tempfile")).unwrap();
+                let mut setting = sixel::encoder::Settings::default();
+                setting.size(self.get_sixel_image_preview_size(item));
+                let image = picto::read::from_path(&item.file_path).unwrap();
+                sixel::encode(&setting, &image, std::io::stdout()).unwrap();
             }
         }
     }
@@ -1176,18 +1165,20 @@ impl State {
         }
     }
 
-    fn get_sixel_image_preview_size(&self, item: &ItemInfo) -> u64 {
+    fn get_sixel_image_preview_size(&self, item: &ItemInfo) -> (u32, u32) {
         let (w_t, h_t) = termion::terminal_size_pixels().unwrap();
-        if let Ok((_, h)) = image::image_dimensions(&item.file_path) {
-            let estimated_h = h * 9 / 10;
+        if let Ok((original_w, original_h)) = image::image_dimensions(&item.file_path) {
+            let estimated_h = original_h * 9 / 10;
             let estimated_w = w_t * 3 / 10;
             if estimated_h > (h_t / 2).into() {
-                (estimated_w as f32 * ((h_t / 2) as f32) / (estimated_h as f32)) as u64
+                let w = estimated_w as f32 * ((h_t / 2) as f32) / (estimated_h as f32);
+                let h = estimated_h as f32 * w / original_w as f32;
+                (w as u32, h as u32)
             } else {
-                estimated_w.into()
+                (estimated_w as u32, estimated_h as u32)
             }
         } else {
-            0
+            (0, 0)
         }
     }
 
