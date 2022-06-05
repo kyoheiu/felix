@@ -1076,6 +1076,21 @@ impl State {
     /// Print text preview on the right half of the terminal (Experimental).
     fn preview_image(&self, item: &ItemInfo, y: u16) {
         let preview_start_column: u16 = self.layout.terminal_column + 2;
+        let preview_space_width: u16 = self.layout.terminal_column - 1;
+
+        //Print item name at the top
+        print!(
+            "{}{}",
+            cursor::Goto(preview_start_column, 1),
+            clear::UntilNewline
+        );
+        let mut file_name = format!("[{}]", item.file_name);
+        if file_name.len() > preview_space_width.into() {
+            file_name = file_name.chars().take(preview_space_width.into()).collect();
+        }
+        print!("{}", file_name);
+        print!("{}", cursor::Goto(preview_start_column, BEGINNING_ROW));
+
         match self.support_sixel {
             false => {
                 let content = {
@@ -1084,7 +1099,8 @@ impl State {
                 };
                 let (w, h) = self.get_image_preview_size(item);
 
-                //Use sixel if the terminal supports it.
+                //Set viuer config.
+                //use_kitty and use-iterm are disabled because previewed images cannot cleared properly.
                 let conf = viuer::Config {
                     x: preview_start_column - 1,
                     y: BEGINNING_ROW as i16 - 1,
@@ -1094,14 +1110,6 @@ impl State {
                     use_iterm: false,
                     ..Default::default()
                 };
-                //Print item name at the top
-                print!(
-                    "{}{}",
-                    cursor::Goto(preview_start_column, 1),
-                    clear::UntilNewline
-                );
-                print!("[{}]", item.file_name);
-                print!("{}", cursor::Goto(preview_start_column, BEGINNING_ROW));
 
                 //Clear preview space
                 self.clear_preview(preview_start_column);
