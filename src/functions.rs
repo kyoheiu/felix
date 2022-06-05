@@ -235,11 +235,6 @@ pub fn make_layout(
     }
 }
 
-/// Format a line of the text preview to fit the width.
-pub fn format_preview_line(line: &str, preview_column: usize) -> String {
-    line.chars().take(preview_column).collect()
-}
-
 /// Generate the contents of item to show as a preview.
 pub fn list_up_contents(path: PathBuf) -> Result<Vec<String>, FxError> {
     let mut file_v = Vec::new();
@@ -400,14 +395,6 @@ mod tests {
         assert_eq!(
             duration_to_string(Duration::from_millis(5432)),
             "5.43s".to_string()
-        );
-    }
-
-    #[test]
-    fn test_format_preview_line() {
-        assert_eq!(
-            format_preview_line("The quick brown fox jumps over the lazy dog", 20),
-            "The quick brown fox ".to_string()
         );
     }
 
