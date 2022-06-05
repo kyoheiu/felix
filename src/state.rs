@@ -932,7 +932,7 @@ impl State {
             //However it would have its own costs like reading every file, which I don't think is user-friendly.
             if self.layout.preview {
                 if image::ImageFormat::from_path(&item.file_path).is_ok() {
-                    self.preview_image(item);
+                    self.preview_image(item, y);
                 } else {
                     self.preview_text(item);
                 }
@@ -1074,7 +1074,7 @@ impl State {
     }
 
     /// Print text preview on the right half of the terminal (Experimental).
-    fn preview_image(&self, item: &ItemInfo) {
+    fn preview_image(&self, item: &ItemInfo, y: u16) {
         let preview_start_column: u16 = self.layout.terminal_column + 2;
         match self.support_sixel {
             false => {
@@ -1109,22 +1109,61 @@ impl State {
                 if let Ok(image) = content.join().unwrap() {
                     if let Ok(image) = image.decode() {
                         if viuer::print(&image, &conf).is_err() {
-                            print_warning("Image printing failed.", BEGINNING_ROW);
+                            print_warning("Image printing failed.", y);
                         }
                     } else {
-                        print_warning("Cannot decode the image.", BEGINNING_ROW);
+                        print_warning("Cannot decode the image.", y);
                     }
                 } else {
-                    print_warning("Cannot read the image.", BEGINNING_ROW);
+                    print_warning("Cannot read the image.", y);
                 }
             }
             true => {
+                //Clear the preview space and move to first line
                 self.clear_preview(preview_start_column);
+                print!("{}", cursor::Goto(preview_start_column, BEGINNING_ROW));
 
-                let mut setting = sixel::encoder::Settings::default();
-                setting.size(self.get_sixel_image_preview_size(item));
-                let image = picto::read::from_path(&item.file_path).unwrap();
-                sixel::encode(&setting, &image, std::io::stdout()).unwrap();
+                //Make the HashSet<String>, which includes current directory's item name.
+                let mut name_set = HashSet::new();
+                for item in self.list.iter() {
+                    name_set.insert(item.file_name.clone());
+                }
+
+                //Create temporary sixel image file path.
+                let mut output_path = Local::now().timestamp().to_string();
+                output_path.push_str("_temp.sixel");
+                let output_path = rename_file(&output_path, &name_set);
+
+                let file_path = item.file_path.to_str();
+                if file_path.is_none() {
+                    print_warning("Cannot read the file path correctly.", y);
+                    return;
+                }
+
+                let width = self.get_sixel_image_preview_size(item);
+                if std::process::Command::new("img2sixel")
+                    .args([
+                        "--static",
+                        "-w",
+                        &width.to_string(),
+                        "-o",
+                        &output_path,
+                        file_path.unwrap(),
+                    ])
+                    .status()
+                    .is_ok()
+                {
+                    if let Ok(content) = fs::read_to_string(&output_path) {
+                        print!("{}", content);
+                        if std::fs::remove_file(&output_path).is_err() {
+                            print_warning("Cannot remove the temporary sixel file.", y);
+                        }
+                    } else {
+                        print_warning("Cannot read the temporary sixel file", y);
+                    }
+                } else {
+                    print_warning("Cannot execute img2sixel", y);
+                }
             }
         }
     }
@@ -1155,20 +1194,25 @@ impl State {
         }
     }
 
-    fn get_sixel_image_preview_size(&self, item: &ItemInfo) -> (u32, u32) {
-        let (w_t, h_t) = termion::terminal_size_pixels().unwrap();
-        if let Ok((original_w, original_h)) = image::image_dimensions(&item.file_path) {
-            let estimated_h = original_h * 9 / 10;
-            let estimated_w = w_t * 3 / 10;
-            if estimated_h > (h_t / 2).into() {
-                let w = estimated_w as f32 * ((h_t / 2) as f32) / (estimated_h as f32);
-                let h = estimated_h as f32 * w / original_w as f32;
-                (w as u32, h as u32)
+    fn get_sixel_image_preview_size(&self, item: &ItemInfo) -> u32 {
+        let (space_width, space_height) = termion::terminal_size_pixels().unwrap();
+        let space_width = space_width * 9 / 20;
+        let space_height = (space_height * 9 / 10) as f32;
+        //preview space ratio by actual resolution
+        let space_ratio = space_width as f32 / space_height;
+
+        if let Ok((w, h)) = image::image_dimensions(&item.file_path) {
+            let w_f32 = w as f32;
+            let h_f32 = h as f32;
+            let image_ratio = w_f32 / h_f32;
+            if space_ratio <= image_ratio {
+                space_width as u32
             } else {
-                (estimated_w as u32, estimated_h as u32)
+                let factor = h_f32 / space_height;
+                (w_f32 / factor) as u32
             }
         } else {
-            (0, 0)
+            0
         }
     }
 
