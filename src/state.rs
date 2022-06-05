@@ -139,8 +139,7 @@ impl State {
         let (time_start, name_max) =
             make_layout(column, config.use_full_width, config.item_name_length);
 
-        //Import from atanunq/viuer
-        let sixel = check_sixel_support();
+        let sixel = check_sixel_support() && libsixel_exists();
 
         Ok(State {
             list: Vec::new(),
@@ -1330,7 +1329,8 @@ fn check_device_attrs() -> Result<bool, FxError> {
     Ok(response.contains(";4;") || response.contains(";4c"))
 }
 
-// Check if Sixel protocol can be used
+/// Import from atanunq/viuer.
+/// Check if Sixel protocol can be used.
 fn check_sixel_support() -> bool {
     if let Ok(term) = std::env::var("TERM") {
         match term.as_str() {
@@ -1346,4 +1346,16 @@ fn check_sixel_support() -> bool {
         }
     }
     false
+}
+
+/// Check if img2sixel can be used.
+fn libsixel_exists() -> bool {
+    if let Ok(output) = std::process::Command::new("img2sixel")
+        .arg("--help")
+        .output()
+    {
+        !output.stdout.is_empty()
+    } else {
+        false
+    }
 }
