@@ -262,6 +262,7 @@ dependencies = [
  "natord",
  "serde",
  "simplelog",
+ "tempfile",
  "termion",
  "thiserror",
  "toml",
