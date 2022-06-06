@@ -12,6 +12,7 @@ use std::fs;
 use std::io::{ErrorKind, Write};
 use std::path::PathBuf;
 use std::process::{Command, ExitStatus};
+use tempfile::NamedTempFile;
 use termion::{clear, color, cursor, style};
 
 pub const BEGINNING_ROW: u16 = 3;
@@ -932,7 +933,9 @@ impl State {
             //However it would have its own costs like reading every file, which I don't think is user-friendly.
             if self.layout.preview {
                 if image::ImageFormat::from_path(&item.file_path).is_ok() {
-                    self.preview_image(item, y);
+                    if let Err(e) = self.preview_image(item, y) {
+                        print_warning(e, y);
+                    }
                 } else {
                     self.preview_text(item);
                 }
@@ -1074,7 +1077,7 @@ impl State {
     }
 
     /// Print text preview on the right half of the terminal (Experimental).
-    fn preview_image(&self, item: &ItemInfo, y: u16) {
+    fn preview_image(&self, item: &ItemInfo, y: u16) -> Result<(), FxError> {
         let preview_start_column: u16 = self.layout.terminal_column + 2;
         let preview_space_width: u16 = self.layout.terminal_column - 1;
 
@@ -1125,53 +1128,40 @@ impl State {
                 } else {
                     print_warning("Cannot read the image.", y);
                 }
+                Ok(())
             }
             true => {
                 //Clear the preview space and move to first line
                 self.clear_preview(preview_start_column);
                 print!("{}", cursor::Goto(preview_start_column, BEGINNING_ROW));
 
-                //Make the HashSet<String>, which includes current directory's item name.
-                let mut name_set = HashSet::new();
-                for item in self.list.iter() {
-                    name_set.insert(item.file_name.clone());
-                }
-
-                //Create temporary sixel image file path.
-                let mut output_path = Local::now().timestamp().to_string();
-                output_path.push_str("_temp.sixel");
-                let output_path = rename_file(&output_path, &name_set);
+                let temp = NamedTempFile::new()?;
+                let temp_path = temp.path();
 
                 let file_path = item.file_path.to_str();
                 if file_path.is_none() {
                     print_warning("Cannot read the file path correctly.", y);
-                    return;
+                    return Ok(());
                 }
 
                 let width = self.get_sixel_image_preview_size(item);
-                if std::process::Command::new("img2sixel")
+                let temp_path_str = temp_path.to_str().ok_or(FxError::UTF8 {
+                    msg: "Cannot read the tempfile path.".to_string(),
+                })?;
+                std::process::Command::new("img2sixel")
                     .args([
                         "--static",
                         "-w",
                         &width.to_string(),
                         "-o",
-                        &output_path,
+                        temp_path_str,
                         file_path.unwrap(),
                     ])
-                    .status()
-                    .is_ok()
-                {
-                    if let Ok(content) = fs::read_to_string(&output_path) {
-                        print!("{}", content);
-                        if std::fs::remove_file(&output_path).is_err() {
-                            print_warning("Cannot remove the temporary sixel file.", y);
-                        }
-                    } else {
-                        print_warning("Cannot read the temporary sixel file", y);
-                    }
-                } else {
-                    print_warning("Cannot execute img2sixel", y);
-                }
+                    .status()?;
+                let content = fs::read_to_string(temp_path)?;
+                print!("{}", content);
+                temp.close()?;
+                Ok(())
             }
         }
     }
