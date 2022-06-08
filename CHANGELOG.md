@@ -1,15 +1,16 @@
 # Changelog
 
 ## [Unreleased]
-### Added
+### Notes
 - Trying to make a user guide (just to show and explain how to use each commands) by `mdbook`.
+- Text preview color needs to be readable enough, so it's worth rethinking (Now LightBlack).
+
+## v0.9.4 (2022-06-08)
+### Added
 - Hi-res image preview is enabled if i) your terminal supports sixel, and ii) you've preinstalled `libsixel`. If not, images are printed by blocks as before.
 
 ### Changed
 - Some refactoring.
-
-### Notes
-- Text preview color needs to be readable enough, so it's worth rethinking (Now LightBlack).
 
 ## v0.9.3 (2022-05-25)
 ### Added
