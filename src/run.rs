@@ -1394,8 +1394,8 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                 //undo
                 Key::Char('u') => {
-                    let mani_len = state.operations.op_list.len();
-                    if mani_len < state.operations.pos + 1 {
+                    let op_len = state.operations.op_list.len();
+                    if op_len < state.operations.pos + 1 {
                         print_info("No operations left.", y);
                         screen.flush()?;
                         continue;
@@ -1403,10 +1403,10 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     if let Some(op) = state
                         .operations
                         .op_list
-                        .get(mani_len - state.operations.pos - 1)
+                        .get(op_len - state.operations.pos - 1)
                     {
                         let op = op.clone();
-                        if let Err(e) = state.undo(&nums, op) {
+                        if let Err(e) = state.undo(&nums, &op) {
                             print_warning(e, y);
                             screen.flush()?;
                             continue;
@@ -1429,20 +1429,15 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                 //redo
                 Key::Ctrl('r') => {
-                    let mani_len = state.operations.op_list.len();
-                    if mani_len == 0 || state.operations.pos == 0 || mani_len < state.operations.pos
-                    {
+                    let op_len = state.operations.op_list.len();
+                    if op_len == 0 || state.operations.pos == 0 || op_len < state.operations.pos {
                         print_info("No operations left.", y);
                         screen.flush()?;
                         continue;
                     }
-                    if let Some(op) = state
-                        .operations
-                        .op_list
-                        .get(mani_len - state.operations.pos)
-                    {
+                    if let Some(op) = state.operations.op_list.get(op_len - state.operations.pos) {
                         let op = op.clone();
-                        if let Err(e) = state.redo(&nums, op) {
+                        if let Err(e) = state.redo(&nums, &op) {
                             print_warning(e, y);
                             screen.flush()?;
                             continue;
@@ -1466,7 +1461,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 //Debug print for undo/redo
                 Key::Char('P') => {
                     if state.rust_log.is_some() {
-                        print_info(format!("{:?}", state.operations), y);
+                        print_info(format!("{:?}", state), y);
                     }
                 }
 

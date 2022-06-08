@@ -9,9 +9,10 @@ use log::info;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
-use std::io::ErrorKind;
+use std::io::{ErrorKind, Write};
 use std::path::PathBuf;
 use std::process::{Command, ExitStatus};
+use tempfile::NamedTempFile;
 use termion::{clear, color, cursor, style};
 
 pub const BEGINNING_ROW: u16 = 3;
@@ -20,7 +21,7 @@ pub const CONFIG_FILE: &str = "config.toml";
 pub const TRASH: &str = "trash";
 pub const WHEN_EMPTY: &str = "Are you sure to empty the trash directory? (if yes: y)";
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct State {
     pub list: Vec<ItemInfo>,
     pub registered: Vec<ItemInfo>,
@@ -32,6 +33,7 @@ pub struct State {
     pub sort_by: SortKey,
     pub layout: Layout,
     pub show_hidden: bool,
+    pub support_sixel: bool,
     pub rust_log: Option<String>,
 }
 
@@ -55,7 +57,7 @@ pub enum FileType {
     Symlink,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Layout {
     pub y: u16,
     pub terminal_row: u16,
@@ -138,6 +140,8 @@ impl State {
         let (time_start, name_max) =
             make_layout(column, config.use_full_width, config.item_name_length);
 
+        let sixel = check_sixel_support() && libsixel_exists();
+
         Ok(State {
             list: Vec::new(),
             registered: Vec::new(),
@@ -166,6 +170,7 @@ impl State {
                 preview: false,
             },
             show_hidden: session.show_hidden,
+            support_sixel: sixel,
             rust_log: std::env::var("RUST_LOG").ok(),
         })
     }
@@ -615,8 +620,8 @@ impl State {
     }
 
     /// Undo operations (put/delete/rename).
-    pub fn undo(&mut self, nums: &Num, op: OpKind) -> Result<(), FxError> {
-        match &op {
+    pub fn undo(&mut self, nums: &Num, op: &OpKind) -> Result<(), FxError> {
+        match op {
             OpKind::Rename(op) => {
                 std::fs::rename(&op.new_name, &op.original_name)?;
                 self.operations.pos += 1;
@@ -649,13 +654,13 @@ impl State {
                 print_info("UNDONE: DELETE", BEGINNING_ROW);
             }
         }
-        relog(&op, true);
+        relog(op, true);
         Ok(())
     }
 
     /// Redo operations (put/delete/rename)
-    pub fn redo(&mut self, nums: &Num, op: OpKind) -> Result<(), FxError> {
-        match &op {
+    pub fn redo(&mut self, nums: &Num, op: &OpKind) -> Result<(), FxError> {
+        match op {
             OpKind::Rename(op) => {
                 std::fs::rename(&op.original_name, &op.new_name)?;
                 self.operations.pos -= 1;
@@ -681,7 +686,7 @@ impl State {
                 print_info("REDONE DELETE", BEGINNING_ROW);
             }
         }
-        relog(&op, false);
+        relog(op, false);
         Ok(())
     }
 
@@ -928,7 +933,9 @@ impl State {
             //However it would have its own costs like reading every file, which I don't think is user-friendly.
             if self.layout.preview {
                 if image::ImageFormat::from_path(&item.file_path).is_ok() {
-                    self.preview_image(item);
+                    if let Err(e) = self.preview_image(item, y) {
+                        print_warning(e, y);
+                    }
                 } else {
                     self.preview_text(item);
                 }
@@ -1010,22 +1017,8 @@ impl State {
 
     /// Print text preview on the right half of the terminal.
     fn preview_text(&self, item: &ItemInfo) {
-        //Spawn another thread and read the content if item is text file
-        let content = {
-            let item = item.file_path.clone();
-            let column = self.layout.terminal_column;
-            std::thread::spawn(move || {
-                let content = fs::read_to_string(item);
-                if let Ok(content) = content {
-                    let content = content.replace('\t', "    ");
-                    format_txt(&content, column - 1, false)
-                } else {
-                    vec![]
-                }
-            })
-        };
-
         let preview_start_column: u16 = self.layout.terminal_column + 2;
+        let preview_space_width: u16 = self.layout.terminal_column - 1;
 
         //Print item name at the top
         print!(
@@ -1033,35 +1026,40 @@ impl State {
             cursor::Goto(preview_start_column, 1),
             clear::UntilNewline
         );
-        print!("[{}]", item.file_name);
+        let mut file_name = format!("[{}]", item.file_name);
+        if file_name.len() > preview_space_width.into() {
+            file_name = file_name.chars().take(preview_space_width.into()).collect();
+        }
+        print!("{}", file_name);
         print!("{}", cursor::Goto(preview_start_column, BEGINNING_ROW));
 
         //Clear preview space
         self.clear_preview(preview_start_column);
 
-        if item.file_type == FileType::Directory {
-            if let Ok(contents) = list_up_contents(item.file_path.clone()) {
-                if let Ok(contents) = make_tree(contents) {
-                    for (i, line) in contents.lines().enumerate() {
-                        print!(
-                            "{}",
-                            cursor::Goto(preview_start_column, BEGINNING_ROW + i as u16)
-                        );
-                        print!(
-                            "{}{}{}",
-                            color::Fg(color::LightBlack),
-                            format_preview_line(line, (self.layout.terminal_column - 1).into()),
-                            color::Fg(color::Reset)
-                        );
-                        if BEGINNING_ROW + i as u16 == self.layout.terminal_row - 1 {
-                            break;
-                        }
-                    }
+        let content = if item.file_type == FileType::Directory {
+            if let Ok(content) = list_up_contents(item.file_path.clone()) {
+                if let Ok(content) = make_tree(content) {
+                    format_txt(&content, preview_space_width, false)
+                } else {
+                    vec![]
                 }
+            } else {
+                vec![]
             }
-        }
+        } else {
+            let item = item.file_path.clone();
+            let column = self.layout.terminal_column;
+            let content = fs::read_to_string(item);
+            if let Ok(content) = content {
+                let content = content.replace('\t', "    ");
+                format_txt(&content, column - 1, false)
+            } else {
+                vec![]
+            }
+        };
+
         //Print preview (wrapping)
-        for (i, line) in content.join().unwrap().iter().enumerate() {
+        for (i, line) in content.iter().enumerate() {
             print!(
                 "{}",
                 cursor::Goto(preview_start_column, BEGINNING_ROW + i as u16)
@@ -1079,46 +1077,92 @@ impl State {
     }
 
     /// Print text preview on the right half of the terminal (Experimental).
-    fn preview_image(&self, item: &ItemInfo) {
-        let content = {
-            let path = item.file_path.clone();
-            std::thread::spawn(move || image::io::Reader::open(path))
-        };
+    fn preview_image(&self, item: &ItemInfo, y: u16) -> Result<(), FxError> {
         let preview_start_column: u16 = self.layout.terminal_column + 2;
-        let (w, h) = self.get_image_preview_size(item);
+        let preview_space_width: u16 = self.layout.terminal_column - 1;
 
-        //Use sixel if the terminal supports it.
-        let conf = viuer::Config {
-            x: preview_start_column - 1,
-            y: BEGINNING_ROW as i16 - 1,
-            width: Some(w.into()),
-            height: Some(h.into()),
-            use_kitty: false,
-            use_iterm: false,
-            ..Default::default()
-        };
         //Print item name at the top
         print!(
             "{}{}",
             cursor::Goto(preview_start_column, 1),
             clear::UntilNewline
         );
-        print!("[{}]", item.file_name);
+        let mut file_name = format!("[{}]", item.file_name);
+        if file_name.len() > preview_space_width.into() {
+            file_name = file_name.chars().take(preview_space_width.into()).collect();
+        }
+        print!("{}", file_name);
         print!("{}", cursor::Goto(preview_start_column, BEGINNING_ROW));
 
-        //Clear preview space
-        self.clear_preview(preview_start_column);
+        match self.support_sixel {
+            false => {
+                let content = {
+                    let path = item.file_path.clone();
+                    std::thread::spawn(move || image::io::Reader::open(path))
+                };
+                let (w, h) = self.get_image_preview_size(item);
 
-        if let Ok(image) = content.join().unwrap() {
-            if let Ok(image) = image.decode() {
-                if viuer::print(&image, &conf).is_err() {
-                    print_warning("Image printing failed.", BEGINNING_ROW);
+                //Set viuer config.
+                //use_kitty and use-iterm are disabled because previewed images cannot cleared properly.
+                let conf = viuer::Config {
+                    x: preview_start_column - 1,
+                    y: BEGINNING_ROW as i16 - 1,
+                    width: Some(w.into()),
+                    height: Some(h.into()),
+                    use_kitty: false,
+                    use_iterm: false,
+                    ..Default::default()
+                };
+
+                //Clear preview space
+                self.clear_preview(preview_start_column);
+
+                if let Ok(image) = content.join().unwrap() {
+                    if let Ok(image) = image.decode() {
+                        if viuer::print(&image, &conf).is_err() {
+                            print_warning("Image printing failed.", y);
+                        }
+                    } else {
+                        print_warning("Cannot decode the image.", y);
+                    }
+                } else {
+                    print_warning("Cannot read the image.", y);
                 }
-            } else {
-                print_warning("Cannot decode the image.", BEGINNING_ROW);
+                Ok(())
             }
-        } else {
-            print_warning("Cannot read the image.", BEGINNING_ROW);
+            true => {
+                //Clear the preview space and move to first line
+                self.clear_preview(preview_start_column);
+                print!("{}", cursor::Goto(preview_start_column, BEGINNING_ROW));
+
+                let temp = NamedTempFile::new()?;
+                let temp_path = temp.path();
+
+                let file_path = item.file_path.to_str();
+                if file_path.is_none() {
+                    print_warning("Cannot read the file path correctly.", y);
+                    return Ok(());
+                }
+
+                let width = self.get_sixel_image_preview_size(item);
+                let temp_path_str = temp_path.to_str().ok_or(FxError::UTF8 {
+                    msg: "Cannot read the tempfile path.".to_string(),
+                })?;
+                std::process::Command::new("img2sixel")
+                    .args([
+                        "--static",
+                        "-w",
+                        &width.to_string(),
+                        "-o",
+                        temp_path_str,
+                        file_path.unwrap(),
+                    ])
+                    .status()?;
+                let content = fs::read_to_string(temp_path)?;
+                print!("{}", content);
+                temp.close()?;
+                Ok(())
+            }
         }
     }
 
@@ -1145,6 +1189,28 @@ impl State {
             }
         } else {
             (0, 0)
+        }
+    }
+
+    fn get_sixel_image_preview_size(&self, item: &ItemInfo) -> u32 {
+        let (space_width, space_height) = termion::terminal_size_pixels().unwrap();
+        let space_width = space_width * 9 / 20;
+        let space_height = (space_height * 9 / 10) as f32;
+        //preview space ratio by actual resolution
+        let space_ratio = space_width as f32 / space_height;
+
+        if let Ok((w, h)) = image::image_dimensions(&item.file_path) {
+            let w_f32 = w as f32;
+            let h_f32 = h as f32;
+            let image_ratio = w_f32 / h_f32;
+            if space_ratio <= image_ratio {
+                space_width as u32
+            } else {
+                let factor = h_f32 / space_height;
+                (w_f32 / factor) as u32
+            }
+        } else {
+            0
         }
     }
 
@@ -1270,4 +1336,59 @@ pub fn trash_to_info(trash_dir: &PathBuf, vec: &[PathBuf]) -> Result<Vec<ItemInf
         }
     }
     Ok(result)
+}
+
+// Import from atanunq/viuer
+// Check if Sixel is within the terminal's attributes
+// see https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h2-Sixel-Graphics
+// and https://vt100.net/docs/vt510-rm/DA1.html
+fn check_device_attrs() -> Result<bool, FxError> {
+    let mut term = console::Term::stdout();
+
+    write!(&mut term, "\x1b[c")?;
+    term.flush()?;
+
+    let mut response = String::new();
+
+    while let Ok(key) = term.read_key() {
+        if let console::Key::Char(c) = key {
+            response.push(c);
+            if c == 'c' {
+                break;
+            }
+        }
+    }
+
+    Ok(response.contains(";4;") || response.contains(";4c"))
+}
+
+/// Import from atanunq/viuer.
+/// Check if Sixel protocol can be used.
+fn check_sixel_support() -> bool {
+    if let Ok(term) = std::env::var("TERM") {
+        match term.as_str() {
+            "mlterm" | "yaft-256color" | "foot" | "foot-extra" => return true,
+            "st-256color" | "xterm" | "xterm-256color" => {
+                return check_device_attrs().unwrap_or(false)
+            }
+            _ => {
+                if let Ok(term_program) = std::env::var("TERM_PROGRAM") {
+                    return term_program == "MacTerm";
+                }
+            }
+        }
+    }
+    false
+}
+
+/// Check if img2sixel can be used.
+fn libsixel_exists() -> bool {
+    if let Ok(output) = std::process::Command::new("img2sixel")
+        .arg("--help")
+        .output()
+    {
+        !output.stdout.is_empty()
+    } else {
+        false
+    }
 }
