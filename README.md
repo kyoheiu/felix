@@ -13,7 +13,8 @@ A tui file manager with vim-like key mapping, written in Rust. Fast, simple, and
 ## v0.9.4 (2022-06-08)
 - Hi-res image preview is enabled if i) your terminal supports sixel, and ii) you've preinstalled `libsixel`. If not, images are printed by blocks as before.
 
-![hi-res sample](screenshots/hi-res-example.jpg)
+![hi-res sample](screenshots/hi-res-scr.png)
+[image from Unsplash](https://unsplash.com/photos/AQ9cQGQ3p5A)
 
 For more details, see `CHANGELOG.md`.
 
