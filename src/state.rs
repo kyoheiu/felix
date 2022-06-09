@@ -33,6 +33,7 @@ pub struct State {
     pub sort_by: SortKey,
     pub layout: Layout,
     pub show_hidden: bool,
+    pub filtered: bool,
     pub support_sixel: bool,
     pub rust_log: Option<String>,
 }
@@ -170,6 +171,7 @@ impl State {
                 preview: false,
             },
             show_hidden: session.show_hidden,
+            filtered: false,
             support_sixel: sixel,
             rust_log: std::env::var("RUST_LOG").ok(),
         })
@@ -185,7 +187,7 @@ impl State {
         self.layout.name_max_len = name_max;
         self.layout.time_start_pos = time_start;
 
-        clear_and_show(&self.current_dir);
+        self.clear_and_show();
         self.list_up(nums.skip);
         self.move_cursor(nums, cursor_pos);
     }
@@ -625,7 +627,7 @@ impl State {
             OpKind::Rename(op) => {
                 std::fs::rename(&op.new_name, &op.original_name)?;
                 self.operations.pos += 1;
-                clear_and_show(&self.current_dir);
+                self.clear_and_show();
                 self.update_list()?;
                 self.list_up(nums.skip);
                 print_info("UNDONE: RENAME", BEGINNING_ROW);
@@ -639,7 +641,7 @@ impl State {
                     }
                 }
                 self.operations.pos += 1;
-                clear_and_show(&self.current_dir);
+                self.clear_and_show();
                 self.update_list()?;
                 self.list_up(nums.skip);
                 print_info("UNDONE: PUT", BEGINNING_ROW);
@@ -648,7 +650,7 @@ impl State {
                 let targets = trash_to_info(&self.trash_dir, &op.trash)?;
                 self.put_items(&targets, Some(op.dir.clone()))?;
                 self.operations.pos += 1;
-                clear_and_show(&self.current_dir);
+                self.clear_and_show();
                 self.update_list()?;
                 self.list_up(nums.skip);
                 print_info("UNDONE: DELETE", BEGINNING_ROW);
@@ -664,7 +666,7 @@ impl State {
             OpKind::Rename(op) => {
                 std::fs::rename(&op.original_name, &op.new_name)?;
                 self.operations.pos -= 1;
-                clear_and_show(&self.current_dir);
+                self.clear_and_show();
                 self.update_list()?;
                 self.list_up(nums.skip);
                 print_info("REDONE: RENAME", BEGINNING_ROW);
@@ -672,7 +674,7 @@ impl State {
             OpKind::Put(op) => {
                 self.put_items(&op.original, Some(op.dir.clone()))?;
                 self.operations.pos -= 1;
-                clear_and_show(&self.current_dir);
+                self.clear_and_show();
                 self.update_list()?;
                 self.list_up(nums.skip);
                 print_info("REDONE: PUT", BEGINNING_ROW);
@@ -680,7 +682,7 @@ impl State {
             OpKind::Delete(op) => {
                 self.remove_and_yank(&op.original, false)?;
                 self.operations.pos -= 1;
-                clear_and_show(&self.current_dir);
+                self.clear_and_show();
                 self.update_list()?;
                 self.list_up(nums.skip);
                 print_info("REDONE DELETE", BEGINNING_ROW);
@@ -688,6 +690,44 @@ impl State {
         }
         relog(op, false);
         Ok(())
+    }
+
+    /// Clear all and show the current directory information.
+    pub fn clear_and_show(&mut self) {
+        print!("{}{}", clear::All, cursor::Goto(1, 1));
+
+        //Show current directory path
+        print!(
+            " {}{}{}{}{}",
+            style::Bold,
+            color::Fg(color::Cyan),
+            self.current_dir.display(),
+            style::Reset,
+            color::Fg(color::Reset),
+        );
+
+        //If .git directory exists, get the branch information and print it.
+        let git = self.current_dir.join(".git");
+        if git.exists() {
+            let head = git.join("HEAD");
+            if let Ok(head) = std::fs::read(head) {
+                let branch: Vec<u8> = head.into_iter().skip(16).collect();
+                if let Ok(branch) = std::str::from_utf8(&branch) {
+                    print!(
+                        " on {}{}{}{}{}",
+                        style::Bold,
+                        color::Fg(color::Magenta),
+                        branch.trim(),
+                        style::Reset,
+                        color::Fg(color::Reset)
+                    );
+                }
+            }
+        }
+
+        if self.filtered {
+            print!(" (filtered)");
+        }
     }
 
     /// Print an item in the directory.
