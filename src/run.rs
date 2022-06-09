@@ -362,8 +362,19 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     }
                 }
 
-                //Go to parent directory if exists
+                //Go to parent directory if exists.
+                //If the list is filtered, reload current directory.
                 Key::Char('h') | Key::Left => {
+                    if filtered {
+                        nums.reset();
+                        state.update_list()?;
+                        clear_and_show(&state.current_dir);
+                        state.list_up(nums.skip);
+                        state.move_cursor(&nums, BEGINNING_ROW);
+                        screen.flush()?;
+                        filtered = false;
+                        continue;
+                    }
                     let pre = state.current_dir.clone();
 
                     match state.current_dir.parent() {
@@ -1125,8 +1136,10 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     }
 
                                     if command == vec!['q'] {
+                                        //quit
                                         break 'main;
                                     } else if command == vec!['c', 'd'] || command == vec!['z'] {
+                                        //go to the home directory
                                         p_memo_v = Vec::new();
                                         c_memo_v = Vec::new();
                                         state.current_dir = dirs::home_dir().unwrap();
@@ -1141,6 +1154,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         state.move_cursor(&nums, BEGINNING_ROW);
                                         break 'command;
                                     } else if command == vec!['e'] {
+                                        //reload current dir
                                         nums.reset();
                                         state.update_list()?;
                                         clear_and_show(&state.current_dir);
@@ -1149,6 +1163,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         state.move_cursor(&nums, BEGINNING_ROW);
                                         break 'command;
                                     } else if command == vec!['h'] {
+                                        //Show help
                                         print!(
                                             "{}{}{}",
                                             cursor::Hide,
@@ -1232,6 +1247,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     }
 
                                     if (c == "cd" || c == "z") && args.is_empty() {
+                                        //Change directory (z uses zoxide)
                                         p_memo_v = Vec::new();
                                         c_memo_v = Vec::new();
                                         state.current_dir = dirs::home_dir().unwrap();
@@ -1245,6 +1261,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     }
 
                                     if c == "z" && args.len() == 1 {
+                                        //using zoxide
                                         if let Ok(output) = std::process::Command::new("zoxide")
                                             .args(["query", args[0].trim()])
                                             .output()
@@ -1292,6 +1309,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     }
 
                                     if c == "empty" && args.is_empty() {
+                                        //Empty the trash dir
                                         print_warning(WHEN_EMPTY, y);
                                         screen.flush()?;
 
