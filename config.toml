@@ -13,10 +13,10 @@ use_full_width = false
 # If not set, this will be 30.
 # item_name_length = 30
 
-# key(command you want to use) = values(extensions)
-[exec]
-feh = ["jpg", "jpeg", "png", "gif", "svg"]
-zathura = ["pdf"]
+# key(the command you want to use) = values(extensions)
+# [exec]
+# feh = ["jpg", "jpeg", "png", "gif", "svg"]
+# zathura = ["pdf"]
 
 # the foreground color of file and directory in the list
 # Pick one of the following:

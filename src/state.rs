@@ -29,7 +29,7 @@ pub struct State {
     pub current_dir: PathBuf,
     pub trash_dir: PathBuf,
     pub default: String,
-    pub commands: HashMap<String, String>,
+    pub commands: Option<HashMap<String, String>>,
     pub sort_by: SortKey,
     pub layout: Layout,
     pub show_hidden: bool,
@@ -223,16 +223,18 @@ impl State {
 
         info!("OPEN: {:?}", path);
 
-        match extension {
-            Some(extension) => match map.get(extension) {
-                Some(command) => {
-                    let mut ex = Command::new(command);
-                    ex.arg(path).status().map_err(FxError::Io)
-                }
-                None => default.arg(path).status().map_err(FxError::Io),
-            },
-
+        match map {
             None => default.arg(path).status().map_err(FxError::Io),
+            Some(map) => match extension {
+                None => default.arg(path).status().map_err(FxError::Io),
+                Some(extension) => match map.get(extension) {
+                    Some(command) => {
+                        let mut ex = Command::new(command);
+                        ex.arg(path).status().map_err(FxError::Io)
+                    }
+                    None => default.arg(path).status().map_err(FxError::Io),
+                },
+            },
         }
     }
 

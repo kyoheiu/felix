@@ -22,10 +22,10 @@ use_full_width = true
 # If not set, this will be 30.
 # item_name_length = 30
 
-# key(command you want to use) = [values](extensions)
-[exec]
-feh = [\"jpg\", \"jpeg\", \"png\", \"gif\", \"svg\"]
-zathura = [\"pdf\"]
+# key(the command you want to use) = [values](extensions)
+# [exec]
+# feh = [\"jpg\", \"jpeg\", \"png\", \"gif\", \"svg\"]
+# zathura = [\"pdf\"]
 
 # the foreground color of file and directory in the list
 # Pick one of the following:
@@ -57,7 +57,7 @@ symlink_fg = \"LightYellow\"
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config {
     pub default: String,
-    pub exec: HashMap<String, Vec<String>>,
+    pub exec: Option<HashMap<String, Vec<String>>>,
     pub color: Color,
     pub use_full_width: Option<bool>,
     pub item_name_length: Option<usize>,
