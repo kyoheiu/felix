@@ -1,5 +1,5 @@
 /// Help text.
-pub const HELP: &str = "# felix v0.9.3
+pub const HELP: &str = "# felix v0.9.4
 A simple TUI file manager with vim-like keymapping.
 
 ## Usage

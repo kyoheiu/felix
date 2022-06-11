@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
-use termion::{clear, color, cursor, style};
+use termion::{clear, color, cursor};
 
 pub const PROPER_WIDTH: u16 = 28;
 pub const TIME_WIDTH: u16 = 16;
@@ -17,40 +17,6 @@ pub fn format_time(time: &Option<String>) -> String {
     match time {
         Some(datetime) => format!("{} {}", &datetime[0..10], &datetime[11..16]),
         None => "".to_string(),
-    }
-}
-
-/// Clear all and show the current directory information.
-pub fn clear_and_show(dir: &Path) {
-    print!("{}{}", clear::All, cursor::Goto(1, 1));
-
-    //Show current directory path
-    print!(
-        " {}{}{}{}{}",
-        style::Bold,
-        color::Fg(color::Cyan),
-        dir.display(),
-        style::Reset,
-        color::Fg(color::Reset),
-    );
-
-    //If .git directory exists, get the branch information and print it.
-    let git = dir.join(".git");
-    if git.exists() {
-        let head = git.join("HEAD");
-        if let Ok(head) = std::fs::read(head) {
-            let branch: Vec<u8> = head.into_iter().skip(16).collect();
-            if let Ok(branch) = std::str::from_utf8(&branch) {
-                print!(
-                    " on {}{}{}{}{}",
-                    style::Bold,
-                    color::Fg(color::Magenta),
-                    branch,
-                    style::Reset,
-                    color::Fg(color::Reset)
-                );
-            }
-        }
     }
 }
 
@@ -235,11 +201,6 @@ pub fn make_layout(
     }
 }
 
-/// Format a line of the text preview to fit the width.
-pub fn format_preview_line(line: &str, preview_column: usize) -> String {
-    line.chars().take(preview_column).collect()
-}
-
 /// Generate the contents of item to show as a preview.
 pub fn list_up_contents(path: PathBuf) -> Result<Vec<String>, FxError> {
     let mut file_v = Vec::new();
@@ -400,14 +361,6 @@ mod tests {
         assert_eq!(
             duration_to_string(Duration::from_millis(5432)),
             "5.43s".to_string()
-        );
-    }
-
-    #[test]
-    fn test_format_preview_line() {
-        assert_eq!(
-            format_preview_line("The quick brown fox jumps over the lazy dog", 20),
-            "The quick brown fox ".to_string()
         );
     }
 
