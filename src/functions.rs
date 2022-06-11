@@ -115,14 +115,21 @@ pub fn display_count(i: usize, all: usize) -> String {
 }
 
 /// Convert extension setting in the config to HashMap.
-pub fn to_extension_map(config: &HashMap<String, Vec<String>>) -> HashMap<String, String> {
+pub fn to_extension_map(
+    config: &Option<HashMap<String, Vec<String>>>,
+) -> Option<HashMap<String, String>> {
     let mut new_map = HashMap::new();
-    for (command, extensions) in config.iter() {
-        for ext in extensions.iter() {
-            new_map.insert(ext.to_lowercase(), command.clone());
+    match config {
+        Some(config) => {
+            for (command, extensions) in config.iter() {
+                for ext in extensions.iter() {
+                    new_map.insert(ext.to_lowercase(), command.clone());
+                }
+            }
         }
+        None => return None,
     }
-    new_map
+    Some(new_map)
 }
 
 /// Create the duration as String. Used after print_process(put/delete).
