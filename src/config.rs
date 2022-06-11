@@ -111,7 +111,17 @@ pub fn make_config_if_not_exist(config_file: &Path, trash_dir: &Path) -> Result<
     }
 
     if !config_file.exists() {
-        std::fs::write(&config_file, CONFIG_EXAMPLE)
+        println!(
+            "Config file not found: Please enter the default command to open a file. (e.g. nvim)"
+        );
+
+        let mut buffer = String::new();
+        let stdin = std::io::stdin();
+        stdin.read_line(&mut buffer)?;
+
+        let config = CONFIG_EXAMPLE.replace("nvim", buffer.trim());
+
+        std::fs::write(&config_file, config)
             .unwrap_or_else(|_| panic!("cannot write new config file."));
     }
 
