@@ -112,7 +112,7 @@ pub fn make_config_if_not_exist(config_file: &Path, trash_dir: &Path) -> Result<
 
     if !config_file.exists() {
         println!(
-            "Config file not found: Please enter the default command to open a file. (e.g. nvim)"
+            "Config file not found: To set up, Please enter the default command to open a file. (e.g. nvim)"
         );
 
         let mut buffer = String::new();
