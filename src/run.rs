@@ -438,6 +438,141 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     }
                 }
 
+                //Jumps to the directory that matches the keyword (zoxide required).
+                Key::Char('z') => {
+                    print!(" {}{}z", cursor::Goto(2, 2), clear::CurrentLine,);
+                    print!("{}", cursor::Show);
+
+                    let mut command: Vec<char> = vec!['z'];
+                    screen.flush()?;
+
+                    let initial_pos = 2;
+                    'zoxide: loop {
+                        let (x, _) = screen.cursor_pos()?;
+                        let input = stdin.next();
+                        if let Some(Ok(key)) = input {
+                            match key {
+                                Key::Esc => {
+                                    reset_info_line();
+                                    print!("{}", cursor::Hide);
+                                    state.move_cursor(&nums, y);
+                                    break 'zoxide;
+                                }
+
+                                Key::Left => {
+                                    if x == initial_pos {
+                                        continue;
+                                    };
+                                    print!("{}", cursor::Left(1));
+                                }
+
+                                Key::Right => {
+                                    if x as usize == command.len() + initial_pos as usize {
+                                        continue;
+                                    };
+                                    print!("{}", cursor::Right(1));
+                                }
+
+                                Key::Backspace => {
+                                    if x == initial_pos + 1 {
+                                        reset_info_line();
+                                        print!("{}", cursor::Hide);
+                                        state.move_cursor(&nums, y);
+                                        break 'zoxide;
+                                    };
+                                    command.remove((x - initial_pos - 1).into());
+
+                                    print!(
+                                        "{}{}{}{}",
+                                        clear::CurrentLine,
+                                        cursor::Goto(2, 2),
+                                        &command.iter().collect::<String>(),
+                                        cursor::Goto(x - 1, 2)
+                                    );
+                                }
+
+                                Key::Char('\n') => {
+                                    let command: String = command.iter().collect();
+                                    if command.trim() == "z" {
+                                        //go to the home directory
+                                        p_memo_v = Vec::new();
+                                        c_memo_v = Vec::new();
+                                        state.current_dir = dirs::home_dir().unwrap();
+                                        nums.reset();
+                                        if let Err(e) = state.update_list() {
+                                            print_warning(e, y);
+                                            break 'zoxide;
+                                        }
+                                        print!("{}", cursor::Hide);
+                                        state.redraw(&nums, BEGINNING_ROW);
+                                        break 'zoxide;
+                                    } else if command.len() > 2 {
+                                        let (command, arg) = command.split_at(2);
+                                        if command == "z " {
+                                            if let Ok(output) = std::process::Command::new("zoxide")
+                                                .args(["query", arg.trim()])
+                                                .output()
+                                            {
+                                                let output = output.stdout;
+                                                if output.is_empty() {
+                                                    print_warning(
+                                                        "Keyword cannot match the database.",
+                                                        y,
+                                                    );
+                                                    break 'zoxide;
+                                                } else {
+                                                    let target_dir = std::str::from_utf8(&output);
+                                                    match target_dir {
+                                                        Err(e) => {
+                                                            print!("{}", cursor::Hide);
+                                                            print_warning(e, y);
+                                                            break 'zoxide;
+                                                        }
+                                                        Ok(target_dir) => {
+                                                            print!("{}", cursor::Hide);
+                                                            p_memo_v = Vec::new();
+                                                            c_memo_v = Vec::new();
+                                                            nums.reset();
+                                                            let target_path =
+                                                                PathBuf::from(target_dir.trim());
+                                                            state.current_dir =
+                                                                target_path.canonicalize()?;
+                                                            state.reload(&nums, BEGINNING_ROW)?;
+                                                            break 'zoxide;
+                                                        }
+                                                    }
+                                                }
+                                            } else {
+                                                print_warning("zoxide not installed?", y);
+                                                break 'zoxide;
+                                            }
+                                        }
+                                    } else {
+                                        reset_info_line();
+                                        print!("{}", cursor::Hide);
+                                        state.move_cursor(&nums, y);
+                                        break 'zoxide;
+                                    }
+                                }
+
+                                Key::Char(c) => {
+                                    command.insert((x - initial_pos).into(), c);
+                                    print!(
+                                        "{}{}{}{}",
+                                        clear::CurrentLine,
+                                        cursor::Goto(2, 2),
+                                        &command.iter().collect::<String>(),
+                                        cursor::Goto(x + 1, 2)
+                                    );
+                                }
+
+                                _ => continue,
+                            }
+                            screen.flush()?;
+                        }
+                    }
+                }
+
                 //select mode
                 Key::Char('V') => {
                     if len == 0 {
