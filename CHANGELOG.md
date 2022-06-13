@@ -1,6 +1,11 @@
 # Changelog
 
 ## [Unreleased]
+### Changed
+- Refactor: Use redraw() and reload() instead of multiple methods.
+- Better config: If config file not found, now you can interactively set the default command.
+- When in filtered list, by `h` or `Left` you exit the filter mode and reload the current directory's contents.
+
 ### Notes
 - Trying to make a user guide (just to show and explain how to use each commands) by `mdbook`.
 - Text preview color needs to be readable enough, so it's worth rethinking (Now LightBlack).
