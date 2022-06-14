@@ -29,7 +29,7 @@ pub struct State {
     pub current_dir: PathBuf,
     pub trash_dir: PathBuf,
     pub default: String,
-    pub commands: HashMap<String, String>,
+    pub commands: Option<HashMap<String, String>>,
     pub sort_by: SortKey,
     pub layout: Layout,
     pub show_hidden: bool,
@@ -187,9 +187,7 @@ impl State {
         self.layout.name_max_len = name_max;
         self.layout.time_start_pos = time_start;
 
-        self.clear_and_show();
-        self.list_up(nums.skip);
-        self.move_cursor(nums, cursor_pos);
+        self.redraw(nums, cursor_pos);
     }
 
     /// Select an item that the cursor points to.
@@ -222,16 +220,18 @@ impl State {
 
         info!("OPEN: {:?}", path);
 
-        match extension {
-            Some(extension) => match map.get(extension) {
-                Some(command) => {
-                    let mut ex = Command::new(command);
-                    ex.arg(path).status().map_err(FxError::Io)
-                }
-                None => default.arg(path).status().map_err(FxError::Io),
-            },
-
+        match map {
             None => default.arg(path).status().map_err(FxError::Io),
+            Some(map) => match extension {
+                None => default.arg(path).status().map_err(FxError::Io),
+                Some(extension) => match map.get(extension) {
+                    Some(command) => {
+                        let mut ex = Command::new(command);
+                        ex.arg(path).status().map_err(FxError::Io)
+                    }
+                    None => default.arg(path).status().map_err(FxError::Io),
+                },
+            },
         }
     }
 
@@ -246,16 +246,31 @@ impl State {
 
         info!("OPEN(new window): {:?}", path);
 
-        match extension {
-            Some(extension) => match map.get(extension) {
-                Some(command) => {
-                    let mut ex = Command::new(command);
-                    ex.arg(path)
+        match map {
+            None => default
+                .arg(path)
+                .stdout(Stdio::null())
+                .stdin(Stdio::null())
+                .spawn()
+                .map_err(FxError::Io),
+            Some(map) => match extension {
+                Some(extension) => match map.get(extension) {
+                    Some(command) => {
+                        let mut ex = Command::new(command);
+                        ex.arg(path)
+                            .stdout(Stdio::null())
+                            .stdin(Stdio::null())
+                            .spawn()
+                            .map_err(FxError::Io)
+                    }
+                    None => default
+                        .arg(path)
                         .stdout(Stdio::null())
                         .stdin(Stdio::null())
                         .spawn()
-                        .map_err(FxError::Io)
-                }
+                        .map_err(FxError::Io),
+                },
+
                 None => default
                     .arg(path)
                     .stdout(Stdio::null())
@@ -263,13 +278,6 @@ impl State {
                     .spawn()
                     .map_err(FxError::Io),
             },
-
-            None => default
-                .arg(path)
-                .stdout(Stdio::null())
-                .stdin(Stdio::null())
-                .spawn()
-                .map_err(FxError::Io),
         }
     }
 
@@ -664,8 +672,8 @@ impl State {
             OpKind::Rename(op) => {
                 std::fs::rename(&op.new_name, &op.original_name)?;
                 self.operations.pos += 1;
-                self.clear_and_show();
                 self.update_list()?;
+                self.clear_and_show_headline();
                 self.list_up(nums.skip);
                 print_info("UNDONE: RENAME", BEGINNING_ROW);
             }
@@ -678,8 +686,8 @@ impl State {
                     }
                 }
                 self.operations.pos += 1;
-                self.clear_and_show();
                 self.update_list()?;
+                self.clear_and_show_headline();
                 self.list_up(nums.skip);
                 print_info("UNDONE: PUT", BEGINNING_ROW);
             }
@@ -687,8 +695,8 @@ impl State {
                 let targets = trash_to_info(&self.trash_dir, &op.trash)?;
                 self.put_items(&targets, Some(op.dir.clone()))?;
                 self.operations.pos += 1;
-                self.clear_and_show();
                 self.update_list()?;
+                self.clear_and_show_headline();
                 self.list_up(nums.skip);
                 print_info("UNDONE: DELETE", BEGINNING_ROW);
             }
@@ -703,24 +711,24 @@ impl State {
             OpKind::Rename(op) => {
                 std::fs::rename(&op.original_name, &op.new_name)?;
                 self.operations.pos -= 1;
-                self.clear_and_show();
                 self.update_list()?;
+                self.clear_and_show_headline();
                 self.list_up(nums.skip);
                 print_info("REDONE: RENAME", BEGINNING_ROW);
             }
             OpKind::Put(op) => {
                 self.put_items(&op.original, Some(op.dir.clone()))?;
                 self.operations.pos -= 1;
-                self.clear_and_show();
                 self.update_list()?;
+                self.clear_and_show_headline();
                 self.list_up(nums.skip);
                 print_info("REDONE: PUT", BEGINNING_ROW);
             }
             OpKind::Delete(op) => {
                 self.remove_and_yank(&op.original, false)?;
                 self.operations.pos -= 1;
-                self.clear_and_show();
                 self.update_list()?;
+                self.clear_and_show_headline();
                 self.list_up(nums.skip);
                 print_info("REDONE DELETE", BEGINNING_ROW);
             }
@@ -729,8 +737,24 @@ impl State {
         Ok(())
     }
 
+    /// Redraw the contents.
+    pub fn redraw(&mut self, nums: &Num, y: u16) {
+        self.clear_and_show_headline();
+        self.list_up(nums.skip);
+        self.move_cursor(nums, y);
+    }
+
+    /// Reload the item list and redraw it.
+    pub fn reload(&mut self, nums: &Num, y: u16) -> Result<(), FxError> {
+        self.update_list()?;
+        self.clear_and_show_headline();
+        self.list_up(nums.skip);
+        self.move_cursor(nums, y);
+        Ok(())
+    }
+
     /// Clear all and show the current directory information.
-    pub fn clear_and_show(&mut self) {
+    pub fn clear_and_show_headline(&mut self) {
         print!("{}{}", clear::All, cursor::Goto(1, 1));
 
         //Show current directory path
