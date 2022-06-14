@@ -14,7 +14,6 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 use std::time::Instant;
-use termion::cursor::DetectCursorPos;
 use termion::event::Key;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
@@ -219,7 +218,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                         match item.file_type {
                             FileType::File => {
                                 print!("{}", screen::ToAlternateScreen);
-                                if let Err(e) = state.open_file(nums.index) {
+                                if let Err(e) = state.open_file(item) {
                                     print_warning(e, y);
                                     screen.flush()?;
                                     continue;
@@ -267,7 +266,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 },
                                 None => {
                                     print!("{}", screen::ToAlternateScreen);
-                                    if let Err(e) = state.open_file(nums.index) {
+                                    if let Err(e) = state.open_file(item) {
                                         print_warning(e, y);
                                         screen.flush()?;
                                         continue;
@@ -333,6 +332,29 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         }
                                     }
                                 }
+                            }
+                        }
+                    }
+                }
+
+                //Open a file in a new window
+                Key::Char('o') => {
+                    if let Ok(item) = state.get_item(nums.index) {
+                        match item.file_type {
+                            FileType::File => {
+                                if let Err(e) = state.open_file_in_new_window(nums.index) {
+                                    print_warning(e, y);
+                                    continue;
+                                }
+                                print!("{}", cursor::Hide);
+                                state.clear_and_show_headline();
+                                state.list_up(nums.skip);
+                                state.move_cursor(&nums, y);
+                                screen.flush()?;
+                                continue;
+                            }
+                            _ => {
+                                continue;
                             }
                         }
                     }
@@ -450,16 +472,16 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     screen.flush()?;
 
                     let start_pos = nums.index;
+                    let mut current_pos = y;
 
                     loop {
-                        let (_, y) = screen.cursor_pos()?;
                         let input = stdin.next();
                         if let Some(Ok(key)) = input {
                             match key {
                                 Key::Char('j') | Key::Down => {
                                     if len == 0 || nums.index == len - 1 {
                                         continue;
-                                    } else if y >= state.layout.terminal_row - 4
+                                    } else if current_pos >= state.layout.terminal_row - 4
                                         && len
                                             > (state.layout.terminal_row - BEGINNING_ROW) as usize
                                                 - 1
@@ -475,10 +497,11 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             item.selected = false;
                                         }
 
-                                        state.redraw(&nums, y);
+                                        state.redraw(&nums, current_pos);
                                         screen.flush()?;
                                     } else {
                                         nums.go_down();
+                                        current_pos += 1;
 
                                         if nums.index > start_pos {
                                             let mut item = state.get_item_mut(nums.index)?;
@@ -488,14 +511,14 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             item.selected = false;
                                         }
 
-                                        state.redraw(&nums, y + 1);
+                                        state.redraw(&nums, current_pos);
                                     }
                                 }
 
                                 Key::Char('k') | Key::Up => {
                                     if nums.index == 0 {
                                         continue;
-                                    } else if y <= BEGINNING_ROW + 3 && nums.skip != 0 {
+                                    } else if current_pos <= BEGINNING_ROW + 3 && nums.skip != 0 {
                                         nums.go_up();
                                         nums.dec_skip();
 
@@ -506,9 +529,10 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             let mut item = state.get_item_mut(nums.index)?;
                                             item.selected = true;
                                         }
-                                        state.redraw(&nums, y);
+                                        state.redraw(&nums, current_pos);
                                     } else {
                                         nums.go_up();
+                                        current_pos -= 1;
 
                                         if nums.index >= start_pos {
                                             let mut item = state.get_item_mut(nums.index + 1)?;
@@ -517,7 +541,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             let mut item = state.get_item_mut(nums.index)?;
                                             item.selected = true;
                                         }
-                                        state.redraw(&nums, y - 1);
+                                        state.redraw(&nums, current_pos);
                                     }
                                 }
 
@@ -537,13 +561,14 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                     print!("{}", cursor::Hide);
                                                     nums.reset();
                                                     state.select_from_top(start_pos);
-                                                    state.redraw(&nums, BEGINNING_ROW);
+                                                    current_pos = BEGINNING_ROW;
+                                                    state.redraw(&nums, current_pos);
                                                 }
 
                                                 _ => {
                                                     reset_info_line();
                                                     print!("{}", cursor::Hide);
-                                                    state.move_cursor(&nums, y);
+                                                    state.move_cursor(&nums, current_pos);
                                                 }
                                             }
                                         }
@@ -567,7 +592,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 }
 
                                 Key::Char('d') => {
-                                    print_info("DELETE: Processing...", y);
+                                    print_info("DELETE: Processing...", current_pos);
                                     let start = Instant::now();
                                     screen.flush()?;
 
@@ -578,7 +603,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     let total = selected.len();
 
                                     if let Err(e) = state.remove_and_yank(&selected, true) {
-                                        print_warning(e, y);
+                                        print_warning(e, current_pos);
                                         screen.flush()?;
                                         break;
                                     }
@@ -610,14 +635,15 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         nums.reset();
                                         state.move_cursor(&nums, BEGINNING_ROW);
                                     } else if nums.index > new_len - 1 {
-                                        let mut new_y = y - (nums.index - (new_len - 1)) as u16;
+                                        let mut new_y =
+                                            current_pos - (nums.index - (new_len - 1)) as u16;
                                         if new_y < 3 {
                                             new_y = 3;
                                         }
                                         nums.index = new_len - 1;
                                         state.move_cursor(&nums, new_y)
                                     } else {
-                                        state.move_cursor(&nums, y);
+                                        state.move_cursor(&nums, current_pos);
                                     }
                                     break;
                                 }
@@ -629,13 +655,13 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     let mut yank_message: String =
                                         state.registered.len().to_string();
                                     yank_message.push_str(" items yanked");
-                                    print_info(yank_message, y);
+                                    print_info(yank_message, current_pos);
                                     break;
                                 }
 
                                 Key::Esc => {
                                     state.reset_selection();
-                                    state.redraw(&nums, y);
+                                    state.redraw(&nums, current_pos);
                                     break;
                                 }
 
@@ -816,8 +842,8 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     screen.flush()?;
 
                     let initial_pos = 12;
+                    let mut current_pos: u16 = 12 + item.file_name.len() as u16;
                     loop {
-                        let (x, _) = screen.cursor_pos()?;
                         let input = stdin.next();
                         if let Some(Ok(key)) = input {
                             match key {
@@ -851,43 +877,47 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 }
 
                                 Key::Left => {
-                                    if x == initial_pos {
+                                    if current_pos == initial_pos {
                                         continue;
                                     };
+                                    current_pos -= 1;
                                     print!("{}", cursor::Left(1));
                                 }
 
                                 Key::Right => {
-                                    if x as usize == rename.len() + initial_pos as usize {
+                                    if current_pos as usize == rename.len() + initial_pos as usize {
                                         continue;
                                     };
+                                    current_pos += 1;
                                     print!("{}", cursor::Right(1));
                                 }
 
                                 Key::Char(c) => {
-                                    rename.insert((x - initial_pos).into(), c);
+                                    rename.insert((current_pos - initial_pos).into(), c);
+                                    current_pos += 1;
 
                                     print!(
                                         "{}{}New name: {}{}",
                                         clear::CurrentLine,
                                         cursor::Goto(2, 2),
                                         &rename.iter().collect::<String>(),
-                                        cursor::Goto(x + 1, 2)
+                                        cursor::Goto(current_pos, 2)
                                     );
                                 }
 
                                 Key::Backspace => {
-                                    if x == initial_pos {
+                                    if current_pos == initial_pos {
                                         continue;
                                     };
-                                    rename.remove((x - initial_pos - 1).into());
+                                    rename.remove((current_pos - initial_pos - 1).into());
+                                    current_pos -= 1;
 
                                     print!(
                                         "{}{}New name: {}{}",
                                         clear::CurrentLine,
                                         cursor::Goto(2, 2),
                                         &rename.iter().collect::<String>(),
-                                        cursor::Goto(x - 1, 2)
+                                        cursor::Goto(current_pos, 2)
                                     );
                                 }
 
@@ -912,10 +942,9 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                     let mut keyword: Vec<char> = Vec::new();
                     let initial_pos = 3;
+                    let mut current_pos = 3;
                     loop {
-                        let (x, _) = screen.cursor_pos()?;
                         let keyword_len = keyword.len();
-
                         let input = stdin.next();
                         if let Some(Ok(key)) = input {
                             match key {
@@ -936,21 +965,24 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 }
 
                                 Key::Left => {
-                                    if x == initial_pos {
+                                    if current_pos == initial_pos {
                                         continue;
                                     }
+                                    current_pos -= 1;
                                     print!("{}", cursor::Left(1));
                                 }
 
                                 Key::Right => {
-                                    if x as usize == keyword_len + initial_pos as usize {
+                                    if current_pos == keyword_len + initial_pos as usize {
                                         continue;
                                     }
+                                    current_pos += 1;
                                     print!("{}", cursor::Right(1));
                                 }
 
                                 Key::Char(c) => {
-                                    keyword.insert((x - initial_pos).into(), c);
+                                    keyword.insert(current_pos - initial_pos, c);
+                                    current_pos += 1;
 
                                     let result = &keyword.iter().collect::<String>();
 
@@ -967,15 +999,16 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         "{}/{}{}",
                                         cursor::Goto(2, 2),
                                         result,
-                                        cursor::Goto(x + 1, 2)
+                                        cursor::Goto((current_pos).try_into().unwrap(), 2)
                                     );
                                 }
 
                                 Key::Backspace => {
-                                    if x == initial_pos {
+                                    if current_pos == initial_pos {
                                         continue;
                                     };
-                                    keyword.remove((x - initial_pos - 1).into());
+                                    keyword.remove(current_pos - initial_pos - 1);
+                                    current_pos -= 1;
 
                                     state.list = original_list
                                         .clone()
@@ -995,7 +1028,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         "{}/{}{}",
                                         cursor::Goto(2, 2),
                                         &keyword.iter().collect::<String>(),
-                                        cursor::Goto(x - 1, 2)
+                                        cursor::Goto((current_pos).try_into().unwrap(), 2)
                                     );
                                 }
 
@@ -1016,8 +1049,8 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     screen.flush()?;
 
                     let initial_pos = 3;
+                    let mut current_pos = 3;
                     'command: loop {
-                        let (x, _) = screen.cursor_pos()?;
                         let input = stdin.next();
                         if let Some(Ok(key)) = input {
                             match key {
@@ -1029,31 +1062,35 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 }
 
                                 Key::Left => {
-                                    if x == initial_pos {
+                                    if current_pos == initial_pos {
                                         continue;
                                     };
+                                    current_pos -= 1;
                                     print!("{}", cursor::Left(1));
                                 }
 
                                 Key::Right => {
-                                    if x as usize == command.len() + initial_pos as usize {
+                                    if current_pos as usize == command.len() + initial_pos as usize
+                                    {
                                         continue;
                                     };
+                                    current_pos += 1;
                                     print!("{}", cursor::Right(1));
                                 }
 
                                 Key::Backspace => {
-                                    if x == initial_pos {
+                                    if current_pos == initial_pos {
                                         continue;
                                     };
-                                    command.remove((x - initial_pos - 1).into());
+                                    command.remove((current_pos - initial_pos - 1).into());
+                                    current_pos -= 1;
 
                                     print!(
                                         "{}{}:{}{}",
                                         clear::CurrentLine,
                                         cursor::Goto(2, 2),
                                         &command.iter().collect::<String>(),
-                                        cursor::Goto(x - 1, 2)
+                                        cursor::Goto(current_pos, 2)
                                     );
                                 }
 
@@ -1299,13 +1336,14 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 }
 
                                 Key::Char(c) => {
-                                    command.insert((x - initial_pos).into(), c);
+                                    command.insert((current_pos - initial_pos).into(), c);
+                                    current_pos += 1;
                                     print!(
                                         "{}{}:{}{}",
                                         clear::CurrentLine,
                                         cursor::Goto(2, 2),
                                         &command.iter().collect::<String>(),
-                                        cursor::Goto(x + 1, 2)
+                                        cursor::Goto(current_pos, 2)
                                     );
                                 }
 
