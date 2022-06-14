@@ -497,7 +497,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             item.selected = false;
                                         }
 
-                                        state.redraw(&nums, y);
+                                        state.redraw(&nums, current_pos);
                                         screen.flush()?;
                                     } else {
                                         nums.go_down();
@@ -511,7 +511,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             item.selected = false;
                                         }
 
-                                        state.redraw(&nums, y + 1);
+                                        state.redraw(&nums, current_pos);
                                     }
                                 }
 
@@ -529,7 +529,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             let mut item = state.get_item_mut(nums.index)?;
                                             item.selected = true;
                                         }
-                                        state.redraw(&nums, y);
+                                        state.redraw(&nums, current_pos);
                                     } else {
                                         nums.go_up();
                                         current_pos -= 1;
@@ -541,7 +541,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             let mut item = state.get_item_mut(nums.index)?;
                                             item.selected = true;
                                         }
-                                        state.redraw(&nums, y - 1);
+                                        state.redraw(&nums, current_pos);
                                     }
                                 }
 
@@ -561,7 +561,8 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                     print!("{}", cursor::Hide);
                                                     nums.reset();
                                                     state.select_from_top(start_pos);
-                                                    state.redraw(&nums, BEGINNING_ROW);
+                                                    current_pos = BEGINNING_ROW;
+                                                    state.redraw(&nums, current_pos);
                                                 }
 
                                                 _ => {
@@ -660,7 +661,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                                 Key::Esc => {
                                     state.reset_selection();
-                                    state.redraw(&nums, y);
+                                    state.redraw(&nums, current_pos);
                                     break;
                                 }
 
@@ -1336,6 +1337,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                                 Key::Char(c) => {
                                     command.insert((current_pos - initial_pos).into(), c);
+                                    current_pos += 1;
                                     print!(
                                         "{}{}:{}{}",
                                         clear::CurrentLine,
