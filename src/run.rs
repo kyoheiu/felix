@@ -347,9 +347,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     continue;
                                 }
                                 print!("{}", cursor::Hide);
-                                state.clear_and_show_headline();
-                                state.list_up(nums.skip);
-                                state.move_cursor(&nums, y);
+                                state.redraw(&nums, y);
                                 screen.flush()?;
                                 continue;
                             }
@@ -469,8 +467,8 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     screen.flush()?;
 
                     let initial_pos = 2;
+                    let mut current_pos = 2;
                     'zoxide: loop {
-                        let (x, _) = screen.cursor_pos()?;
                         let input = stdin.next();
                         if let Some(Ok(key)) = input {
                             match key {
@@ -482,34 +480,38 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 }
 
                                 Key::Left => {
-                                    if x == initial_pos {
+                                    if current_pos == initial_pos {
                                         continue;
                                     };
+                                    current_pos -= 1;
                                     print!("{}", cursor::Left(1));
                                 }
 
                                 Key::Right => {
-                                    if x as usize == command.len() + initial_pos as usize {
+                                    if current_pos as usize == command.len() + initial_pos as usize
+                                    {
                                         continue;
                                     };
+                                    current_pos += 1;
                                     print!("{}", cursor::Right(1));
                                 }
 
                                 Key::Backspace => {
-                                    if x == initial_pos + 1 {
+                                    if current_pos == initial_pos + 1 {
                                         reset_info_line();
                                         print!("{}", cursor::Hide);
                                         state.move_cursor(&nums, y);
                                         break 'zoxide;
                                     };
-                                    command.remove((x - initial_pos - 1).into());
+                                    command.remove((current_pos - initial_pos - 1).into());
+                                    current_pos -= 1;
 
                                     print!(
                                         "{}{}{}{}",
                                         clear::CurrentLine,
                                         cursor::Goto(2, 2),
                                         &command.iter().collect::<String>(),
-                                        cursor::Goto(x - 1, 2)
+                                        cursor::Goto(current_pos - 1, 2)
                                     );
                                 }
 
@@ -578,13 +580,14 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 }
 
                                 Key::Char(c) => {
-                                    command.insert((x - initial_pos).into(), c);
+                                    command.insert((current_pos - initial_pos).into(), c);
+                                    current_pos += 1;
                                     print!(
                                         "{}{}{}{}",
                                         clear::CurrentLine,
                                         cursor::Goto(2, 2),
                                         &command.iter().collect::<String>(),
-                                        cursor::Goto(x + 1, 2)
+                                        cursor::Goto(current_pos, 2)
                                     );
                                 }
 
@@ -776,9 +779,11 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             new_y = 3;
                                         }
                                         nums.index = new_len - 1;
-                                        state.move_cursor(&nums, new_y)
+                                        state.move_cursor(&nums, new_y);
+                                        screen.flush()?;
                                     } else {
                                         state.move_cursor(&nums, current_pos);
+                                        screen.flush()?;
                                     }
                                     break;
                                 }
