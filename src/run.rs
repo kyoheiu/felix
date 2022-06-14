@@ -467,7 +467,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     screen.flush()?;
 
                     let initial_pos = 2;
-                    let mut current_pos = 2;
+                    let mut current_pos = 3;
                     'zoxide: loop {
                         let input = stdin.next();
                         if let Some(Ok(key)) = input {
@@ -511,7 +511,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         clear::CurrentLine,
                                         cursor::Goto(2, 2),
                                         &command.iter().collect::<String>(),
-                                        cursor::Goto(current_pos - 1, 2)
+                                        cursor::Goto(current_pos, 2)
                                     );
                                 }
 
