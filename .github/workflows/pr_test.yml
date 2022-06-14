@@ -2,7 +2,7 @@ name: 'pull request install test'
 
 on:
   pull_request:
-    types: [opened, reopened]
+    types: [opened, edited, reopened]
 
 env:
   CARGO_TERM_COLOR: always

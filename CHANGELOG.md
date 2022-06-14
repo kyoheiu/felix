@@ -2,9 +2,10 @@
 
 ## [Unreleased]
 ### Changed
+- `z <keyword>` works without prefix `:` (jumps to the directory that matches the keyword).
 - Refactor: Use redraw() and reload() instead of multiple methods.
 - Better config: If config file not found, now you can interactively set the default command.
-- When in filtered list, by `h` or `Left` you exit the filter mode and reload the current directory's contents.
+- When in filtered list, press `h` or `Left` to exit the filter mode and reload the current directory's contents.
 
 ### Notes
 - Trying to make a user guide (just to show and explain how to use each commands) by `mdbook`.
