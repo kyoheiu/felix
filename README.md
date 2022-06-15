@@ -10,12 +10,10 @@ A tui file manager with vim-like key mapping, written in Rust. Fast, simple, and
 
 ## New Release
 
-## v0.9.4 (2022-06-08)
-
-- Hi-res image preview is enabled if i) your terminal supports sixel, and ii) you've preinstalled `libsixel`. If not, images are printed by blocks as before.
-
-![hi-res sample](screenshots/hi-res_scr.png)
-[image from Unsplash](https://unsplash.com/photos/AQ9cQGQ3p5A)
+## v0.9.5 (2022-06-15)
+- `z <keyword>` works without prefix `:` (jump to a directory that matches the keyword).
+- Better config: If config file not found, now you can interactively set the default command.
+- In the filter mode, press `h` or `Left` to return to the normal mode and reload the current directory's contents.
 
 For more details, see `CHANGELOG.md`.
 
