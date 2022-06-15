@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
-use termion::{clear, color, cursor, style};
+use termion::{clear, color, cursor};
 
 pub const PROPER_WIDTH: u16 = 28;
 pub const TIME_WIDTH: u16 = 16;
@@ -17,40 +17,6 @@ pub fn format_time(time: &Option<String>) -> String {
     match time {
         Some(datetime) => format!("{} {}", &datetime[0..10], &datetime[11..16]),
         None => "".to_string(),
-    }
-}
-
-/// Clear all and show the current directory information.
-pub fn clear_and_show(dir: &Path) {
-    print!("{}{}", clear::All, cursor::Goto(1, 1));
-
-    //Show current directory path
-    print!(
-        " {}{}{}{}{}",
-        style::Bold,
-        color::Fg(color::Cyan),
-        dir.display(),
-        style::Reset,
-        color::Fg(color::Reset),
-    );
-
-    //If .git directory exists, get the branch information and print it.
-    let git = dir.join(".git");
-    if git.exists() {
-        let head = git.join("HEAD");
-        if let Ok(head) = std::fs::read(head) {
-            let branch: Vec<u8> = head.into_iter().skip(16).collect();
-            if let Ok(branch) = std::str::from_utf8(&branch) {
-                print!(
-                    " on {}{}{}{}{}",
-                    style::Bold,
-                    color::Fg(color::Magenta),
-                    branch,
-                    style::Reset,
-                    color::Fg(color::Reset)
-                );
-            }
-        }
     }
 }
 
@@ -149,14 +115,21 @@ pub fn display_count(i: usize, all: usize) -> String {
 }
 
 /// Convert extension setting in the config to HashMap.
-pub fn to_extension_map(config: &HashMap<String, Vec<String>>) -> HashMap<String, String> {
+pub fn to_extension_map(
+    config: &Option<HashMap<String, Vec<String>>>,
+) -> Option<HashMap<String, String>> {
     let mut new_map = HashMap::new();
-    for (command, extensions) in config.iter() {
-        for ext in extensions.iter() {
-            new_map.insert(ext.to_lowercase(), command.clone());
+    match config {
+        Some(config) => {
+            for (command, extensions) in config.iter() {
+                for ext in extensions.iter() {
+                    new_map.insert(ext.to_lowercase(), command.clone());
+                }
+            }
         }
+        None => return None,
     }
-    new_map
+    Some(new_map)
 }
 
 /// Create the duration as String. Used after print_process(put/delete).

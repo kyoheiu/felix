@@ -11,7 +11,7 @@ use std::collections::HashSet;
 use std::fs;
 use std::io::{ErrorKind, Write};
 use std::path::PathBuf;
-use std::process::{Command, ExitStatus};
+use std::process::{Child, Command, ExitStatus, Stdio};
 use tempfile::NamedTempFile;
 use termion::{clear, color, cursor, style};
 
@@ -29,10 +29,11 @@ pub struct State {
     pub current_dir: PathBuf,
     pub trash_dir: PathBuf,
     pub default: String,
-    pub commands: HashMap<String, String>,
+    pub commands: Option<HashMap<String, String>>,
     pub sort_by: SortKey,
     pub layout: Layout,
     pub show_hidden: bool,
+    pub filtered: bool,
     pub support_sixel: bool,
     pub rust_log: Option<String>,
 }
@@ -170,6 +171,7 @@ impl State {
                 preview: false,
             },
             show_hidden: session.show_hidden,
+            filtered: false,
             support_sixel: sixel,
             rust_log: std::env::var("RUST_LOG").ok(),
         })
@@ -185,9 +187,7 @@ impl State {
         self.layout.name_max_len = name_max;
         self.layout.time_start_pos = time_start;
 
-        clear_and_show(&self.current_dir);
-        self.list_up(nums.skip);
-        self.move_cursor(nums, cursor_pos);
+        self.redraw(nums, cursor_pos);
     }
 
     /// Select an item that the cursor points to.
@@ -211,7 +211,32 @@ impl State {
     }
 
     /// Open the selected file according to the config.
-    pub fn open_file(&self, index: usize) -> Result<ExitStatus, FxError> {
+    pub fn open_file(&self, item: &ItemInfo) -> Result<ExitStatus, FxError> {
+        let path = &item.file_path;
+        let map = &self.commands;
+        let extension = item.file_ext.as_ref();
+
+        let mut default = Command::new(&self.default);
+
+        info!("OPEN: {:?}", path);
+
+        match map {
+            None => default.arg(path).status().map_err(FxError::Io),
+            Some(map) => match extension {
+                None => default.arg(path).status().map_err(FxError::Io),
+                Some(extension) => match map.get(extension) {
+                    Some(command) => {
+                        let mut ex = Command::new(command);
+                        ex.arg(path).status().map_err(FxError::Io)
+                    }
+                    None => default.arg(path).status().map_err(FxError::Io),
+                },
+            },
+        }
+    }
+
+    /// Open the selected file in a new window, according to the config.
+    pub fn open_file_in_new_window(&self, index: usize) -> Result<Child, FxError> {
         let item = self.get_item(index)?;
         let path = &item.file_path;
         let map = &self.commands;
@@ -219,18 +244,40 @@ impl State {
 
         let mut default = Command::new(&self.default);
 
-        info!("OPEN: {:?}", path);
+        info!("OPEN(new window): {:?}", path);
 
-        match extension {
-            Some(extension) => match map.get(extension) {
-                Some(command) => {
-                    let mut ex = Command::new(command);
-                    ex.arg(path).status().map_err(FxError::Io)
-                }
-                None => default.arg(path).status().map_err(FxError::Io),
+        match map {
+            None => default
+                .arg(path)
+                .stdout(Stdio::null())
+                .stdin(Stdio::null())
+                .spawn()
+                .map_err(FxError::Io),
+            Some(map) => match extension {
+                Some(extension) => match map.get(extension) {
+                    Some(command) => {
+                        let mut ex = Command::new(command);
+                        ex.arg(path)
+                            .stdout(Stdio::null())
+                            .stdin(Stdio::null())
+                            .spawn()
+                            .map_err(FxError::Io)
+                    }
+                    None => default
+                        .arg(path)
+                        .stdout(Stdio::null())
+                        .stdin(Stdio::null())
+                        .spawn()
+                        .map_err(FxError::Io),
+                },
+
+                None => default
+                    .arg(path)
+                    .stdout(Stdio::null())
+                    .stdin(Stdio::null())
+                    .spawn()
+                    .map_err(FxError::Io),
             },
-
-            None => default.arg(path).status().map_err(FxError::Io),
         }
     }
 
@@ -625,8 +672,8 @@ impl State {
             OpKind::Rename(op) => {
                 std::fs::rename(&op.new_name, &op.original_name)?;
                 self.operations.pos += 1;
-                clear_and_show(&self.current_dir);
                 self.update_list()?;
+                self.clear_and_show_headline();
                 self.list_up(nums.skip);
                 print_info("UNDONE: RENAME", BEGINNING_ROW);
             }
@@ -639,8 +686,8 @@ impl State {
                     }
                 }
                 self.operations.pos += 1;
-                clear_and_show(&self.current_dir);
                 self.update_list()?;
+                self.clear_and_show_headline();
                 self.list_up(nums.skip);
                 print_info("UNDONE: PUT", BEGINNING_ROW);
             }
@@ -648,8 +695,8 @@ impl State {
                 let targets = trash_to_info(&self.trash_dir, &op.trash)?;
                 self.put_items(&targets, Some(op.dir.clone()))?;
                 self.operations.pos += 1;
-                clear_and_show(&self.current_dir);
                 self.update_list()?;
+                self.clear_and_show_headline();
                 self.list_up(nums.skip);
                 print_info("UNDONE: DELETE", BEGINNING_ROW);
             }
@@ -664,30 +711,84 @@ impl State {
             OpKind::Rename(op) => {
                 std::fs::rename(&op.original_name, &op.new_name)?;
                 self.operations.pos -= 1;
-                clear_and_show(&self.current_dir);
                 self.update_list()?;
+                self.clear_and_show_headline();
                 self.list_up(nums.skip);
                 print_info("REDONE: RENAME", BEGINNING_ROW);
             }
             OpKind::Put(op) => {
                 self.put_items(&op.original, Some(op.dir.clone()))?;
                 self.operations.pos -= 1;
-                clear_and_show(&self.current_dir);
                 self.update_list()?;
+                self.clear_and_show_headline();
                 self.list_up(nums.skip);
                 print_info("REDONE: PUT", BEGINNING_ROW);
             }
             OpKind::Delete(op) => {
                 self.remove_and_yank(&op.original, false)?;
                 self.operations.pos -= 1;
-                clear_and_show(&self.current_dir);
                 self.update_list()?;
+                self.clear_and_show_headline();
                 self.list_up(nums.skip);
                 print_info("REDONE DELETE", BEGINNING_ROW);
             }
         }
         relog(op, false);
         Ok(())
+    }
+
+    /// Redraw the contents.
+    pub fn redraw(&mut self, nums: &Num, y: u16) {
+        self.clear_and_show_headline();
+        self.list_up(nums.skip);
+        self.move_cursor(nums, y);
+    }
+
+    /// Reload the item list and redraw it.
+    pub fn reload(&mut self, nums: &Num, y: u16) -> Result<(), FxError> {
+        self.update_list()?;
+        self.clear_and_show_headline();
+        self.list_up(nums.skip);
+        self.move_cursor(nums, y);
+        Ok(())
+    }
+
+    /// Clear all and show the current directory information.
+    pub fn clear_and_show_headline(&mut self) {
+        print!("{}{}", clear::All, cursor::Goto(1, 1));
+
+        //Show current directory path
+        print!(
+            " {}{}{}{}{}",
+            style::Bold,
+            color::Fg(color::Cyan),
+            self.current_dir.display(),
+            style::Reset,
+            color::Fg(color::Reset),
+        );
+
+        //If .git directory exists, get the branch information and print it.
+        let git = self.current_dir.join(".git");
+        if git.exists() {
+            let head = git.join("HEAD");
+            if let Ok(head) = std::fs::read(head) {
+                let branch: Vec<u8> = head.into_iter().skip(16).collect();
+                if let Ok(branch) = std::str::from_utf8(&branch) {
+                    print!(
+                        " on {}{}{}{}{}",
+                        style::Bold,
+                        color::Fg(color::Magenta),
+                        branch.trim(),
+                        style::Reset,
+                        color::Fg(color::Reset)
+                    );
+                }
+            }
+        }
+
+        if self.filtered {
+            print!(" (filtered)");
+        }
     }
 
     /// Print an item in the directory.

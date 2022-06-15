@@ -1,5 +1,5 @@
 /// Help text.
-pub const HELP: &str = "# felix v0.9.4
+pub const HELP: &str = "# felix v0.9.5
 A simple TUI file manager with vim-like keymapping.
 
 ## Usage
@@ -15,27 +15,30 @@ Both relative and absolute path available.
 ## Manual
 j / Up            :Go up.
 k / Down          :Go down.
-h / Left          :Go to parent directory if exists.
-l / Right / Enter :Open file or change directory.
+h / Left          :Go to the parent directory if exists.
+l / Right / Enter :Open a file or change directory.
+o                 :Open a fila in a new window. 
 gg                :Go to the top.
 G                 :Go to the bottom.
-dd                :Delete and yank item.
-yy                :Yank item.
-p                 :Put yanked item in the current directory.
+z + Enter         :Go to the home directory.
+z <keyword>       :*zoxide required* Jump to a directory that matches the keyword.
+dd                :Delete and yank one item.
+yy                :Yank one item.
+p                 :Put yanked item(s) in the current directory.
 V                 :Switch to the select mode.
-  - d             :In the select mode, delete and yank selected items.
-  - y             :In the select mode, yank selected items.
+  - d             :In the select mode, delete and yank selected item(s).
+  - y             :In the select mode, yank selected item(s).
 u                 :Undo put/delete/rename.
 Ctrl + r          :Redo put/delete/rename.
-v                 :Toggle whether to show preview.
+v                 :Toggle whether to show the preview.
 backspace         :Toggle whether to show hidden items.
-t                 :Toggle sort order (name <-> modified time).
+t                 :Toggle the sort order (name <-> modified time).
 :                 :Switch to the shell mode.
 c                 :Switch to the rename mode.
 /                 :Switch to the filter mode.
 Esc               :Return to the normal mode.
-:cd | :z          :Go to the home directory.
-:z <keyword>      :*zoxide required* Jump to a directory that matches the keyword.
+:cd / :z          :Go to the home directory.
+:z <keyword>      :Same as `z <keyword>`.
 :e                :Reload the current directory.
 :empty            :Empty the trash directory.
 :h                :Show help.

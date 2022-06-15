@@ -5,6 +5,13 @@
 - Trying to make a user guide (just to show and explain how to use each commands) by `mdbook`.
 - Text preview color needs to be readable enough, so it's worth rethinking (Now LightBlack).
 
+## v0.9.5 (2022-06-15)
+### Changed
+- `z <keyword>` works without prefix `:` (jump to a directory that matches the keyword).
+- Refactor: Use redraw() and reload() instead of multiple methods.
+- Better config: If config file not found, now you can interactively set the default command.
+- In the filter mode, press `h` or `Left` to return to the normal mode and reload the current directory's contents.
+
 ## v0.9.4 (2022-06-08)
 ### Added
 - Hi-res image preview is enabled if i) your terminal supports sixel, and ii) you've preinstalled `libsixel`. If not, images are printed by blocks as before.
