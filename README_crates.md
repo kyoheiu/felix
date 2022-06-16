@@ -6,6 +6,10 @@ A tui file manager with vim-like key mapping, written in Rust. Fast, simple, and
 
 ## New Release
 
+## v0.9.6 (2022-06-16)
+### Fixed
+- Formatting of the contents tree.
+
 ## v0.9.5 (2022-06-15)
 - `z <keyword>` works without prefix `:` (jump to a directory that matches the keyword).
 - Better config: If config file not found, now you can interactively set the default command.

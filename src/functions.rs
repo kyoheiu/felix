@@ -254,7 +254,7 @@ pub fn format_txt(txt: &str, column: u16, is_help: bool) -> Vec<String> {
     let mut line = String::new();
     for c in txt.chars() {
         if c == '\n' {
-            v.push(line.clone());
+            v.push(line);
             line = String::new();
             column_count = 0;
             continue;
@@ -262,11 +262,14 @@ pub fn format_txt(txt: &str, column: u16, is_help: bool) -> Vec<String> {
         line.push(c);
         column_count += 1;
         if column_count == column {
-            v.push(line.clone());
+            v.push(line);
             line = String::new();
             column_count = 0;
             continue;
         }
+    }
+    if !line.is_empty() {
+        v.push(line);
     }
     if is_help {
         v.push("Press Enter to go back.".to_string());
@@ -338,6 +341,7 @@ pub fn check_version() -> Result<(), FxError> {
     Ok(())
 }
 
+//cargo test -- --nocapture
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -380,11 +384,13 @@ mod tests {
             "a.txt".to_string(),
             "b.txt".to_string(),
         ];
+        let tree = make_tree(v).unwrap();
+        let formatted = format_txt(&tree, 50, false);
         assert_eq!(
-            make_tree(v.clone()).unwrap(),
+            tree,
             ("├ data\n├ 01.txt\n├ 2.txt\n├ a.txt\n└ b.txt").to_string()
         );
-        println!("{}", make_tree(v).unwrap());
+        assert_eq!(tree.lines().count(), formatted.len());
     }
 
     #[test]
