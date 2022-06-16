@@ -6,6 +6,10 @@ A tui file manager with vim-like key mapping, written in Rust. Fast, simple, and
 
 ## New Release
 
+## v0.9.7 (2022-06-16)
+### Fixed
+- Move cursor and put properly in an empty directory.
+
 ## v0.9.6 (2022-06-16)
 ### Fixed
 - Formatting of the contents tree.
