@@ -1041,11 +1041,11 @@ impl State {
                     self.preview_text(item);
                 }
             }
-            print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
-
-            //Store cursor position when cursor moves
-            self.layout.y = y;
         }
+        print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+
+        //Store cursor position when cursor moves
+        self.layout.y = y;
     }
 
     /// Print item informatin at the bottom of the terminal.
