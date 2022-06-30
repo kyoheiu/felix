@@ -119,10 +119,21 @@ pub fn make_config_if_not_exist(config_file: &Path, trash_dir: &Path) -> Result<
         let stdin = std::io::stdin();
         stdin.read_line(&mut buffer)?;
 
-        let config = CONFIG_EXAMPLE.replace("nvim", buffer.trim());
-
+        let trimmed = buffer.trim();
+        let config = CONFIG_EXAMPLE.replace("nvim", trimmed);
         std::fs::write(&config_file, config)
             .unwrap_or_else(|_| panic!("cannot write new config file."));
+        if cfg!(target_os = "mac_os") {
+            println!(
+                "Default command set as [{}].\nSee ~/Library/Application Support/felix/config.toml",
+                trimmed
+            );
+        } else {
+            println!(
+                "Default command set as [{}].\nSee ~/.config/felix/config.toml",
+                trimmed
+            );
+        }
     }
 
     Ok(())

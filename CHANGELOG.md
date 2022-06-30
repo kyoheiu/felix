@@ -6,6 +6,13 @@
 - Trying to make a user guide (just to show and explain how to use each commands) by `mdbook`.
 - Text preview color needs to be readable enough, so it's worth rethinking (Now LightBlack).
 
+## v0.9.8 (2022-06-30)
+### Fixed
+- Enable resizing window.
+
+### Added
+- Print message about the config file when created.
+
 ## v0.9.7 (2022-06-16)
 ### Fixed
 - Move cursor and put properly in an empty directory.

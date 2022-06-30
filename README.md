@@ -10,18 +10,12 @@ A tui file manager with vim-like key mapping, written in Rust. Fast, simple, and
 
 ## New Release
 
-## v0.9.7 (2022-06-16)
+## v0.9.8 (2022-06-30)
 ### Fixed
-- Move cursor and put properly in an empty directory.
+- Enable resizing window.
 
-## v0.9.6 (2022-06-16)
-### Fixed
-- Formatting of the contents tree.
-
-## v0.9.5 (2022-06-15)
-- `z <keyword>` works without prefix `:` (jump to a directory that matches the keyword).
-- Better config: If config file not found, now you can interactively set the default command.
-- In the filter mode, press `h` or `Left` to return to the normal mode and reload the current directory's contents.
+### Added
+- Print message about the config file when created.
 
 For more details, see `CHANGELOG.md`.
 
