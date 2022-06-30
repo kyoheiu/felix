@@ -127,6 +127,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     let mut stdin = stdin().keys();
 
     'main: loop {
+        let input = stdin.next();
         let mut state = state_run.lock().unwrap();
         let mut screen = screen_run.lock().unwrap();
         screen.flush()?;
@@ -134,7 +135,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         let len = state.list.len();
         let y = state.layout.y;
 
-        let input = stdin.next();
         if let Some(Ok(key)) = input {
             match key {
                 //Go up. If lists exceed max-row, lists "scrolls" before the top of the list
