@@ -1567,35 +1567,19 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 Key::Char('Z') => {
                     print!(" {}{}Z", cursor::Goto(2, 2), clear::CurrentLine,);
                     print!("{}", cursor::Show);
-
-                    let mut command: Vec<char> = vec!['Z'];
                     screen.flush()?;
 
-                    'quit: loop {
-                        let input = stdin.next();
-                        if let Some(Ok(key)) = input {
-                            match key {
-                                Key::Esc => {
-                                    reset_info_line();
-                                    print!("{}", cursor::Hide);
-                                    state.move_cursor(&nums, y);
-                                    break 'quit;
-                                }
+                    let input = stdin.next();
+                    if let Some(Ok(key)) = input {
+                        match key {
+                            Key::Char('Z') => {
+                                break 'main;
+                            }
 
-                                Key::Char(c) => {
-                                    command.push(c);
-
-                                    if command == vec!['Z', 'Z'] {
-                                        break 'main;
-                                    } else {
-                                        reset_info_line();
-                                        print!("{}", cursor::Hide);
-                                        state.move_cursor(&nums, y);
-                                        break 'quit;
-                                    }
-                                }
-
-                                _ => continue,
+                            _ => {
+                                reset_info_line();
+                                print!("{}", cursor::Hide);
+                                state.move_cursor(&nums, y);
                             }
                         }
                     }
