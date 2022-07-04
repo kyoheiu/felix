@@ -719,13 +719,13 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             - state.layout.terminal_row;
                                         nums.go_bottom(len - 1);
                                         state.select_to_bottom(start_pos);
-                                        let cursor_pos = state.layout.terminal_row - 1;
-                                        state.redraw(&nums, cursor_pos);
+                                        current_pos = state.layout.terminal_row - 1;
+                                        state.redraw(&nums, current_pos);
                                     } else {
                                         nums.go_bottom(len - 1);
                                         state.select_to_bottom(start_pos);
-                                        let cursor_pos = len as u16 + BEGINNING_ROW - 1;
-                                        state.redraw(&nums, cursor_pos);
+                                        current_pos = len as u16 + BEGINNING_ROW - 1;
+                                        state.redraw(&nums, current_pos);
                                     }
                                 }
 
