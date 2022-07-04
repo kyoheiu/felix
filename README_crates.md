@@ -102,7 +102,7 @@ Note that items moved to the trash directory are prefixed with Unix time (like `
 
 ## Configuration
 
-|       |                                           |
+| OS    | path                                      |
 | ----- | ----------------------------------------- |
 | Linux | `$XDG_CONFIG_HOME/felix`                  |
 | macOS | `$HOME/Library/Application Support/felix` |
