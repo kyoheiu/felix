@@ -851,50 +851,46 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                         screen.flush()?;
 
-                        'delete: loop {
-                            let input = stdin.next();
-                            if let Some(Ok(key)) = input {
-                                match key {
-                                    Key::Char('d') => {
-                                        print!("{}", cursor::Hide);
-                                        print_info("DELETE: Processing...", y);
-                                        let start = Instant::now();
+                        let input = stdin.next();
+                        if let Some(Ok(key)) = input {
+                            match key {
+                                Key::Char('d') => {
+                                    print!("{}", cursor::Hide);
+                                    print_info("DELETE: Processing...", y);
+                                    let start = Instant::now();
+                                    screen.flush()?;
+
+                                    let target = state.get_item(nums.index)?.clone();
+                                    let target = vec![target];
+
+                                    if let Err(e) = state.remove_and_yank(&target, true) {
+                                        print_warning(e, y);
                                         screen.flush()?;
-
-                                        let target = state.get_item(nums.index)?.clone();
-                                        let target = vec![target];
-
-                                        if let Err(e) = state.remove_and_yank(&target, true) {
-                                            print_warning(e, y);
-                                            screen.flush()?;
-                                            continue;
-                                        }
-
-                                        state.clear_and_show_headline();
-                                        state.update_list()?;
-                                        state.list_up(nums.skip);
-                                        let cursor_pos = if state.list.is_empty() {
-                                            BEGINNING_ROW
-                                        } else if nums.index == len - 1 {
-                                            nums.go_up();
-                                            y - 1
-                                        } else {
-                                            y
-                                        };
-                                        let duration = duration_to_string(start.elapsed());
-                                        print_info(
-                                            format!("1 item deleted [{}]", duration),
-                                            cursor_pos,
-                                        );
-                                        state.move_cursor(&nums, cursor_pos);
-                                        break 'delete;
+                                        continue;
                                     }
-                                    _ => {
-                                        reset_info_line();
-                                        print!("{}", cursor::Hide);
-                                        state.move_cursor(&nums, y);
-                                        break 'delete;
-                                    }
+
+                                    state.clear_and_show_headline();
+                                    state.update_list()?;
+                                    state.list_up(nums.skip);
+                                    let cursor_pos = if state.list.is_empty() {
+                                        BEGINNING_ROW
+                                    } else if nums.index == len - 1 {
+                                        nums.go_up();
+                                        y - 1
+                                    } else {
+                                        y
+                                    };
+                                    let duration = duration_to_string(start.elapsed());
+                                    print_info(
+                                        format!("1 item deleted [{}]", duration),
+                                        cursor_pos,
+                                    );
+                                    state.move_cursor(&nums, cursor_pos);
+                                }
+                                _ => {
+                                    reset_info_line();
+                                    print!("{}", cursor::Hide);
+                                    state.move_cursor(&nums, y);
                                 }
                             }
                         }
