@@ -10,12 +10,11 @@ A tui file manager with vim-like key mapping, written in Rust. Fast, simple, and
 
 ## New Release
 
-## v0.9.8 (2022-06-30)
-### Fixed
-- Enable resizing window.
+## v1.0.0 (2022-07-04) :green_heart:
 
-### Added
-- Print message about the config file when created.
+### Fixed
+
+- Cursor move in select mode.
 
 For more details, see `CHANGELOG.md`.
 
@@ -32,13 +31,13 @@ For more details, see `CHANGELOG.md`.
 
 _Make sure that `gcc` is installed._
 
-from crates.io:
+From crates.io:
 
 ```
 cargo install felix
 ```
 
-from aur:
+From aur:
 
 ```
 yay -S felix-rs
@@ -50,7 +49,7 @@ On NetBSD, package is available from the official repositories:
 pkgin install felix
 ```
 
-from this repository(develop branch):
+From this repository (develop branch):
 
 ```
 git clone -b develop https://github.com/kyoheiu/felix.git
@@ -60,13 +59,13 @@ cargo install --path .
 
 ## Usage
 
-| command / arguments       |                                                                       |
-| ------------------------- | --------------------------------------------------------------------- |
-| `fx`                      | Show items in the current directory.                                  |
-| `fx <directory path>`     | Show items in the path. Both relative and absolute available.         |
-| `fx -l [directory path]`  | Launch the app and create a log file in `$XDG_HOME_CONFIG/felix/log`. |
-| `fx -v` or `fx --version` | Print the current version and check update.                           |
-| `fx -h` or `fx --help`    | Print help.                                                           |
+| command / arguments                 |                                                               |
+| ----------------------------------- | ------------------------------------------------------------- |
+| `fx`                                | Show items in the current directory.                          |
+| `fx <directory path>`               | Show items in the path. Both relative and absolute available. |
+| `fx -l [path]` or `fx --log [path]` | Launch the app and create a log file.                         |
+| `fx -v` or `fx --version`           | Print the current version and check update.                   |
+| `fx -h` or `fx --help`              | Print help.                                                   |
 
 ## Key manual
 
@@ -95,7 +94,7 @@ cargo install --path .
 | c                 | Switch to the rename mode (enter the new name and press Enter to rename the item).                                                                                                                                                                                             |
 | /                 | Switch to the filter mode (enter the keyword and press Enter to show the filtered list). Press h or Left to exit the filter mode.                                                                                                                                              |
 | :                 | **_Experimantal._** Switch to the shell mode. Type command and press Enter to execute it. You can use any command in the displayed directory, but some commands may fail, and the display may collapse during execution.                                                       |
-| :cd / :z         | Go to the home directory.                                                                                                                                                                                                                                                      |
+| :cd / :z          | Go to the home directory.                                                                                                                                                                                                                                                      |
 | :z \<keyword\>    | Same as `z <keyword>`.                                                                                                                                                                                                                                                         |
 | :e                | Reload the current directory. Useful when something goes wrong.                                                                                                                                                                                                                |
 | :empty            | Empty the trash directory. **Please think twice to use this.**                                                                                                                                                                                                                 |
@@ -105,12 +104,19 @@ cargo install --path .
 
 Note that items moved to the trash directory are prefixed with Unix time (like `1633843993`) to avoid the name conflict. This prefix will be removed when put.
 
-## Settings
+## Configuration
 
-|                 |                                      |
-| --------------- | ------------------------------------ |
-| config file     | `$XDG_CONFIG_HOME/felix/config.toml` |
-| trash directory | `$XDG_CONFIG_HOME/felix/trash`       |
+|       |                                           |
+| ----- | ----------------------------------------- |
+| Linux | `$XDG_CONFIG_HOME/felix`                  |
+| macOS | `$HOME/Library/Application Support/felix` |
+
+```
+felix
+├── config.toml # Configuration file
+├── log         # log files
+└── trash       # trash directory
+```
 
 Default config file, which is [here](config.toml), will be created automatically when you launch the program for the first time.
 
@@ -121,9 +127,9 @@ In config.toml, you can set:
 - color of directory, file, and symlink separatively
 - default key to sort the item list ("Name" or "Time")
 
-### Command setting
+### Command settings
 
-If you write
+For example, If you write
 
 ```
 default = "nvim"

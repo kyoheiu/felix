@@ -1,5 +1,5 @@
 /// Help text.
-pub const HELP: &str = "# felix v0.9.8
+pub const HELP: &str = "# felix v1.0.0
 A simple TUI file manager with vim-like keymapping.
 
 ## Usage
@@ -8,9 +8,9 @@ A simple TUI file manager with vim-like keymapping.
 Both relative and absolute path available.
 
 ## Arguments
-`fx -h` | `fx --help`    => Print help.
-`fx -v` | `fx --version` => Check update.
-`fx -l [dir path]` => Launch the app and create a log file in `$XDG_CONFIG_HOME/felix/log`.
+`-h` | `--help`    => Print help.
+`-v` | `--version` => Check update.
+`-l [path]` | `--log [path]` => Launch the app and create a log file.
 
 ## Manual
 j / Up            :Go up.
@@ -45,8 +45,15 @@ Esc               :Return to the normal mode.
 :q / ZZ           :Exit.
 
 ## Configuration
+### Linux
 config file    : $XDG_CONFIG_HOME/felix/config.toml
 trash directory: $XDG_CONFIG_HOME/felix/trash
+log files      : $XDG_CONFIG_HOME/felix/log
+
+### macOS
+config file    : $HOME/Library/Application Support/felix/config.toml
+trash directory: $HOME/Library/Application Support/felix/trash
+log files      : $HOME/Library/Application Support/felix/log
 
 For more detail, visit https://github.com/kyoheiu/felix
 ";

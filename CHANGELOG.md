@@ -6,6 +6,11 @@
 - Trying to make a user guide (just to show and explain how to use each commands) by `mdbook`.
 - Text preview color needs to be readable enough, so it's worth rethinking (Now LightBlack).
 
+## v1.0.0 (2022-07-04)
+### Fixed
+- Cursor move when using G in select mode.
+- Remove unnecessary loops in `dd`, `ZZ`.
+
 ## v0.9.8 (2022-06-30)
 ### Fixed
 - Enable resizing window.
