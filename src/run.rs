@@ -227,6 +227,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 print!("{}", cursor::Hide);
                                 state.filtered = false;
                                 state.reload(&nums, y)?;
+                                screen.flush()?;
                             }
                             FileType::Symlink => match &item.symlink_dir_path {
                                 Some(true_path) => match std::fs::File::open(true_path) {
