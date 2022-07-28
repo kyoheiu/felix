@@ -226,7 +226,12 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 print!("{}", screen::ToAlternateScreen);
                                 print!("{}", cursor::Hide);
                                 state.filtered = false;
+                                //Add thread sleep time after state.open_file().
+                                // This is necessary because, with tiling window managers, the window resizing is sometimes slow and felix reloads the layout so quickly that the display may become broken.
+                                //By the sleep (50ms for now and I think it's not easy to recognize this sleep), this will be avoided.
+                                std::thread::sleep(Duration::from_millis(50));
                                 state.reload(&nums, y)?;
+                                screen.flush()?;
                             }
                             FileType::Symlink => match &item.symlink_dir_path {
                                 Some(true_path) => match std::fs::File::open(true_path) {
