@@ -6,11 +6,11 @@ A tui file manager with vim-like key mapping, written in Rust. Fast, simple, and
 
 ## New Release
 
-## v1.0.0 (2022-07-04)
+## v1.0.1 (2022-07-28)
 
-### Fixed
+### fixed
 
-- Cursor move in select mode.
+- Add thread sleep time after state.open_file(). this is necessary because, with tiling window managers, the window resizing is sometimes slow and felix reloads the layout so quickly that the display may become broken. by the sleep (50ms for now and i think it's not easy to recognize this sleep), this will be avoided.
 
 For more details, see `CHANGELOG.md`.
 
