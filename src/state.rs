@@ -141,7 +141,7 @@ impl State {
         let (time_start, name_max) =
             make_layout(column, config.use_full_width, config.item_name_length);
 
-        let sixel = check_sixel_support() && libsixel_exists();
+        let sixel = !is_windows() && check_sixel_support() && libsixel_exists();
 
         Ok(State {
             list: Vec::new(),
@@ -1492,4 +1492,9 @@ fn libsixel_exists() -> bool {
     } else {
         false
     }
+}
+
+/// Check if target OS is Windows or not
+fn is_windows() -> bool {
+    std::env::consts::OS == "windows"
 }
