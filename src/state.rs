@@ -1178,6 +1178,7 @@ impl State {
     }
 
     /// Print text preview on the right half of the terminal (Experimental).
+    #[cfg(not(target_os = "windows"))]
     fn preview_image(&self, item: &ItemInfo, y: u16) -> Result<(), FxError> {
         let preview_start_column: u16 = self.layout.terminal_column + 2;
         let preview_space_width: u16 = self.layout.terminal_column - 1;
