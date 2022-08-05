@@ -9,10 +9,9 @@ use log::info;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
-use std::io::{ErrorKind, Write};
+use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::process::{Child, Command, ExitStatus, Stdio};
-use tempfile::NamedTempFile;
 use termion::{clear, color, cursor, style};
 
 pub const BEGINNING_ROW: u16 = 3;
@@ -34,7 +33,6 @@ pub struct State {
     pub layout: Layout,
     pub show_hidden: bool,
     pub filtered: bool,
-    pub support_sixel: bool,
     pub rust_log: Option<String>,
 }
 
@@ -141,8 +139,6 @@ impl State {
         let (time_start, name_max) =
             make_layout(column, config.use_full_width, config.item_name_length);
 
-        let sixel = check_sixel_support() && libsixel_exists();
-
         Ok(State {
             list: Vec::new(),
             registered: Vec::new(),
@@ -172,7 +168,6 @@ impl State {
             },
             show_hidden: session.show_hidden,
             filtered: false,
-            support_sixel: sixel,
             rust_log: std::env::var("RUST_LOG").ok(),
         })
     }
@@ -1195,76 +1190,30 @@ impl State {
         print!("{}", file_name);
         print!("{}", cursor::Goto(preview_start_column, BEGINNING_ROW));
 
-        match self.support_sixel {
-            false => {
-                let content = {
-                    let path = item.file_path.clone();
-                    std::thread::spawn(move || image::io::Reader::open(path))
-                };
-                let (w, h) = self.get_image_preview_size(item);
+        let (w, h) = self.get_image_preview_size(item);
+        let wxh = format!("--size={}x{}", w, h);
 
-                //Set viuer config.
-                //use_kitty and use-iterm are disabled because previewed images cannot cleared properly.
-                let conf = viuer::Config {
-                    x: preview_start_column - 1,
-                    y: BEGINNING_ROW as i16 - 1,
-                    width: Some(w.into()),
-                    height: Some(h.into()),
-                    use_kitty: false,
-                    use_iterm: false,
-                    ..Default::default()
-                };
-
-                //Clear preview space
-                self.clear_preview(preview_start_column);
-
-                if let Ok(image) = content.join().unwrap() {
-                    if let Ok(image) = image.decode() {
-                        if viuer::print(&image, &conf).is_err() {
-                            print_warning("Image printing failed.", y);
-                        }
-                    } else {
-                        print_warning("Cannot decode the image.", y);
-                    }
-                } else {
-                    print_warning("Cannot read the image.", y);
-                }
-                Ok(())
-            }
-            true => {
-                //Clear the preview space and move to first line
-                self.clear_preview(preview_start_column);
-                print!("{}", cursor::Goto(preview_start_column, BEGINNING_ROW));
-
-                let temp = NamedTempFile::new()?;
-                let temp_path = temp.path();
-
-                let file_path = item.file_path.to_str();
-                if file_path.is_none() {
-                    print_warning("Cannot read the file path correctly.", y);
-                    return Ok(());
-                }
-
-                let width = self.get_sixel_image_preview_size(item);
-                let temp_path_str = temp_path.to_str().ok_or(FxError::UTF8 {
-                    msg: "Cannot read the tempfile path.".to_string(),
-                })?;
-                std::process::Command::new("img2sixel")
-                    .args([
-                        "--static",
-                        "-w",
-                        &width.to_string(),
-                        "-o",
-                        temp_path_str,
-                        file_path.unwrap(),
-                    ])
-                    .status()?;
-                let content = fs::read_to_string(temp_path)?;
-                print!("{}", content);
-                temp.close()?;
-                Ok(())
-            }
+        let file_path = item.file_path.to_str();
+        if file_path.is_none() {
+            print_warning("Cannot read the file path correctly.", y);
+            return Ok(());
         }
+
+        //Clear preview space
+        self.clear_preview(preview_start_column);
+        print!("{}", cursor::Goto(preview_start_column, BEGINNING_ROW));
+
+        let output = std::process::Command::new("chafa")
+            .args(["--animate=false", &wxh, file_path.unwrap()])
+            .output()?
+            .stdout;
+        let output = String::from_utf8(output).unwrap();
+        for (i, line) in output.lines().enumerate() {
+            let next_line: u16 = BEGINNING_ROW + (i as u16) + 1;
+            print!("{}", line);
+            print!("{}", cursor::Goto(preview_start_column, next_line));
+        }
+        Ok(())
     }
 
     /// Get the proper aspect ratio of image to print.
@@ -1293,6 +1242,7 @@ impl State {
         }
     }
 
+    #[allow(dead_code)]
     fn get_sixel_image_preview_size(&self, item: &ItemInfo) -> u32 {
         let (space_width, space_height) = termion::terminal_size_pixels().unwrap();
         let space_width = space_width * 9 / 20;
@@ -1437,59 +1387,4 @@ pub fn trash_to_info(trash_dir: &PathBuf, vec: &[PathBuf]) -> Result<Vec<ItemInf
         }
     }
     Ok(result)
-}
-
-// Import from atanunq/viuer
-// Check if Sixel is within the terminal's attributes
-// see https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h2-Sixel-Graphics
-// and https://vt100.net/docs/vt510-rm/DA1.html
-fn check_device_attrs() -> Result<bool, FxError> {
-    let mut term = console::Term::stdout();
-
-    write!(&mut term, "\x1b[c")?;
-    term.flush()?;
-
-    let mut response = String::new();
-
-    while let Ok(key) = term.read_key() {
-        if let console::Key::Char(c) = key {
-            response.push(c);
-            if c == 'c' {
-                break;
-            }
-        }
-    }
-
-    Ok(response.contains(";4;") || response.contains(";4c"))
-}
-
-/// Import from atanunq/viuer.
-/// Check if Sixel protocol can be used.
-fn check_sixel_support() -> bool {
-    if let Ok(term) = std::env::var("TERM") {
-        match term.as_str() {
-            "mlterm" | "yaft-256color" | "foot" | "foot-extra" => return true,
-            "st-256color" | "xterm" | "xterm-256color" => {
-                return check_device_attrs().unwrap_or(false)
-            }
-            _ => {
-                if let Ok(term_program) = std::env::var("TERM_PROGRAM") {
-                    return term_program == "MacTerm";
-                }
-            }
-        }
-    }
-    false
-}
-
-/// Check if img2sixel can be used.
-fn libsixel_exists() -> bool {
-    if let Ok(output) = std::process::Command::new("img2sixel")
-        .arg("--help")
-        .output()
-    {
-        !output.stdout.is_empty()
-    } else {
-        false
-    }
 }
