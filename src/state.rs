@@ -34,6 +34,7 @@ pub struct State {
     pub show_hidden: bool,
     pub filtered: bool,
     pub rust_log: Option<String>,
+    pub has_chafa: bool,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -139,6 +140,8 @@ impl State {
         let (time_start, name_max) =
             make_layout(column, config.use_full_width, config.item_name_length);
 
+        let has_chafa = check_chafa();
+
         Ok(State {
             list: Vec::new(),
             registered: Vec::new(),
@@ -169,6 +172,7 @@ impl State {
             show_hidden: session.show_hidden,
             filtered: false,
             rust_log: std::env::var("RUST_LOG").ok(),
+            has_chafa,
         })
     }
 
@@ -1028,7 +1032,7 @@ impl State {
             //It would be more precise if image::guess_format could be used here(Interpretation by extension is not accurate).
             //However it would have its own costs like reading every file, which I don't think is user-friendly.
             if self.layout.preview {
-                if image::ImageFormat::from_path(&item.file_path).is_ok() {
+                if self.has_chafa && image::ImageFormat::from_path(&item.file_path).is_ok() {
                     if let Err(e) = self.preview_image(item, y) {
                         print_warning(e, y);
                     }
@@ -1387,4 +1391,11 @@ pub fn trash_to_info(trash_dir: &PathBuf, vec: &[PathBuf]) -> Result<Vec<ItemInf
         }
     }
     Ok(result)
+}
+
+fn check_chafa() -> bool {
+    std::process::Command::new("chafa")
+        .arg("--help")
+        .output()
+        .is_ok()
 }
