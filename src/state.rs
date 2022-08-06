@@ -34,7 +34,6 @@ pub struct State {
     pub show_hidden: bool,
     pub filtered: bool,
     pub rust_log: Option<String>,
-    pub has_chafa: bool,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -68,6 +67,8 @@ pub struct Layout {
     pub option_name_len: Option<usize>,
     pub colors: Color,
     pub preview: bool,
+    pub has_chafa: bool,
+    pub is_kitty: bool,
 }
 
 /// Print an item. modified time will be omitted if width is not enough.
@@ -141,6 +142,7 @@ impl State {
             make_layout(column, config.use_full_width, config.item_name_length);
 
         let has_chafa = check_chafa();
+        let is_kitty = check_kitty_support();
 
         Ok(State {
             list: Vec::new(),
@@ -168,11 +170,12 @@ impl State {
                     symlink_fg: config.color.symlink_fg,
                 },
                 preview: false,
+                has_chafa,
+                is_kitty,
             },
             show_hidden: session.show_hidden,
             filtered: false,
             rust_log: std::env::var("RUST_LOG").ok(),
-            has_chafa,
         })
     }
 
@@ -1032,7 +1035,7 @@ impl State {
             //It would be more precise if image::guess_format could be used here(Interpretation by extension is not accurate).
             //However it would have its own costs like reading every file, which I don't think is user-friendly.
             if self.layout.preview {
-                if self.has_chafa && image::ImageFormat::from_path(&item.file_path).is_ok() {
+                if self.layout.has_chafa && image::ImageFormat::from_path(&item.file_path).is_ok() {
                     if let Err(e) = self.preview_image(item, y) {
                         print_warning(e, y);
                     }
@@ -1398,4 +1401,13 @@ fn check_chafa() -> bool {
         .arg("--help")
         .output()
         .is_ok()
+}
+
+// Check if the terminal is Kitty or not
+fn check_kitty_support() -> bool {
+    if let Ok(term) = std::env::var("TERM") {
+        term.contains("kitty")
+    } else {
+        false
+    }
 }
