@@ -1052,58 +1052,63 @@ impl State {
             //Print item information at the bottom
             self.print_footer(nums, item);
 
+            //Print preview if preview is on
             if self.layout.preview {
-                //At least print the item name
-                self.print_file_name(item);
-                //Clear preview space
-                self.clear_preview(self.layout.preview_start_column);
-
-                match self.check_preview_type(item) {
-                    PreviewType::TooBigSize => {
-                        self.clear_preview(self.layout.terminal_column + 2);
-                        print!("(Too big size to preview)");
-                    }
-                    PreviewType::Directory => {
-                        self.preview_content(item, true);
-                    }
-                    PreviewType::Image => {
-                        if self.layout.has_chafa {
-                            if let Err(e) = self.preview_image(item, y) {
-                                print_warning(e, y);
-                            }
-                        } else {
-                            self.clear_preview(self.layout.terminal_column + 2);
-                            let help =
-                                format_txt(CHAFA_WARNING, self.layout.terminal_column - 1, false);
-                            for (i, line) in help.iter().enumerate() {
-                                print!(
-                                    "{}",
-                                    cursor::Goto(
-                                        self.layout.preview_start_column,
-                                        BEGINNING_ROW + i as u16
-                                    )
-                                );
-                                print!("{}", line,);
-                                if BEGINNING_ROW + i as u16 == self.layout.terminal_row - 1 {
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    PreviewType::Text => {
-                        self.preview_content(item, false);
-                    }
-                    PreviewType::Binary => {
-                        self.clear_preview(self.layout.terminal_column + 2);
-                        print!("(Binary file)");
-                    }
-                }
+                self.print_preview(item, y);
             }
         }
         print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
 
         //Store cursor position when cursor moves
         self.layout.y = y;
+    }
+
+    /// Print preview according to the preview type.
+    fn print_preview(&self, item: &ItemInfo, y: u16) {
+        //At least print the item name
+        self.print_file_name(item);
+        //Clear preview space
+        self.clear_preview(self.layout.preview_start_column);
+
+        match self.check_preview_type(item) {
+            PreviewType::TooBigSize => {
+                self.clear_preview(self.layout.terminal_column + 2);
+                print!("(Too big size to preview)");
+            }
+            PreviewType::Directory => {
+                self.preview_content(item, true);
+            }
+            PreviewType::Image => {
+                if self.layout.has_chafa {
+                    if let Err(e) = self.preview_image(item, y) {
+                        print_warning(e, y);
+                    }
+                } else {
+                    self.clear_preview(self.layout.terminal_column + 2);
+                    let help = format_txt(CHAFA_WARNING, self.layout.terminal_column - 1, false);
+                    for (i, line) in help.iter().enumerate() {
+                        print!(
+                            "{}",
+                            cursor::Goto(
+                                self.layout.preview_start_column,
+                                BEGINNING_ROW + i as u16
+                            )
+                        );
+                        print!("{}", line,);
+                        if BEGINNING_ROW + i as u16 == self.layout.terminal_row - 1 {
+                            break;
+                        }
+                    }
+                }
+            }
+            PreviewType::Text => {
+                self.preview_content(item, false);
+            }
+            PreviewType::Binary => {
+                self.clear_preview(self.layout.terminal_column + 2);
+                print!("(Binary file)");
+            }
+        }
     }
 
     /// Check preview type.
