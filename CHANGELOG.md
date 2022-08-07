@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Changed
+- Use `chafa` instead of `libsixel` & `viuer` to preview image files. This greatly improves the performance and code maintainability, and as a consequence, the number of dependencies is reduced (137 -> 51).
+- With `chafa`, the hi-res image preview is supported in kitty and iTerm2.
+- Files larger than 1GB are no longer previewed in order to improve the performance.
+- Remove profile.release to support older version of Rust.
+- Huge refactoring.
+
+### Added
+- `content-inspector` to exclude binary files to be previewed.
+
 ## Notes
 
 - Trying to make a user guide (just to show and explain how to use each commands) by `mdbook`.
