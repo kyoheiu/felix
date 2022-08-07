@@ -9,25 +9,25 @@ use crate::state::FX_CONFIG_DIR;
 const CONFIG_FILE: &str = "config.toml";
 
 pub const CONFIG_EXAMPLE: &str = "
-# default exec command when open files
+# Default exec command when open files.
 default = \"nvim\"
 
-# Whether to use the full width of terminal.
+# (Optional) Whether to use the full width of terminal.
 # If not set, this will be true.
-use_full_width = true
+# use_full_width = true
 
-# Option: Set the max length of item name to be displayed.
+# (Optional) Set the max length of item name to be displayed.
 # This works only when use_full_width is set to false.
 # If the terminal size is not enough, the length will be changed to fit it.
 # If not set, this will be 30.
 # item_name_length = 30
 
-# key(the command you want to use) = [values](extensions)
+# key (the command you want to use) = [values] (extensions)
 # [exec]
 # feh = [\"jpg\", \"jpeg\", \"png\", \"gif\", \"svg\"]
 # zathura = [\"pdf\"]
 
-# the foreground color of file and directory in the list
+# The foreground color of directory, file and symlink.
 # Pick one of the following:
 #   AnsiValue(u8)
 #   Black
@@ -47,7 +47,7 @@ use_full_width = true
 #   Rgb(u8, u8, u8)
 #   White
 #   Yellow
-# For more detail, read https://docs.rs/termion/1.5.6/termion/color/index.html
+# For more details, see https://docs.rs/termion/1.5.6/termion/color/index.html
 [color]
 dir_fg = \"LightCyan\"
 file_fg = \"LightWhite\"
