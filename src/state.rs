@@ -19,6 +19,11 @@ pub const FX_CONFIG_DIR: &str = "felix";
 pub const CONFIG_FILE: &str = "config.toml";
 pub const TRASH: &str = "trash";
 pub const WHEN_EMPTY: &str = "Are you sure to empty the trash directory? (if yes: y)";
+/// cf: https://docs.rs/image/latest/src/image/image.rs.html#84-112
+pub const IMAGE_EXTENSION: [&str; 20] = [
+    "avif", "jpg", "jpeg", "png", "gif", "webp", "tif", "tiff", "tga", "dds", "bmp", "ico", "hdr",
+    "exr", "pbm", "pam", "ppm", "pgm", "ff", "farbfeld",
+];
 
 #[derive(Debug, Clone)]
 pub struct State {
@@ -1087,7 +1092,7 @@ impl State {
             PreviewType::TooBigSize
         } else if item.file_type == FileType::Directory {
             PreviewType::Directory
-        } else if self.layout.has_chafa && image::ImageFormat::from_path(&item.file_path).is_ok() {
+        } else if self.layout.has_chafa && is_supported_ext(item) {
             PreviewType::Image
         } else {
             let content_type = content_inspector::inspect(&std::fs::read(&item.file_path).unwrap());
@@ -1255,55 +1260,6 @@ impl State {
         Ok(())
     }
 
-    #[allow(dead_code)]
-    fn get_image_preview_size(&self, item: &ItemInfo) -> (u16, u16) {
-        let term_width = self.layout.terminal_column - 1;
-        let term_height = self.layout.terminal_row - 3;
-        //preview space ratio by actual resolution
-        let term_height_actual = (term_height * 2) as f32;
-        let term_ratio = term_width as f32 / term_height_actual;
-
-        if let Ok((w, h)) = image::image_dimensions(&item.file_path) {
-            let w_f32 = w as f32;
-            let h_f32 = h as f32;
-            let image_ratio = w_f32 / h_f32;
-            if term_ratio <= image_ratio {
-                let factor = w_f32 / term_width as f32;
-                let height = (h_f32 / factor) as u16;
-                (term_width, height / 2)
-            } else {
-                let factor = h_f32 / term_height_actual;
-                let width = (w_f32 / factor) as u16;
-                (width, term_height)
-            }
-        } else {
-            (0, 0)
-        }
-    }
-
-    #[allow(dead_code)]
-    fn get_sixel_image_preview_size(&self, item: &ItemInfo) -> u32 {
-        let (space_width, space_height) = termion::terminal_size_pixels().unwrap();
-        let space_width = space_width * 9 / 20;
-        let space_height = (space_height * 9 / 10) as f32;
-        //preview space ratio by actual resolution
-        let space_ratio = space_width as f32 / space_height;
-
-        if let Ok((w, h)) = image::image_dimensions(&item.file_path) {
-            let w_f32 = w as f32;
-            let h_f32 = h as f32;
-            let image_ratio = w_f32 / h_f32;
-            if space_ratio <= image_ratio {
-                space_width as u32
-            } else {
-                let factor = h_f32 / space_height;
-                (w_f32 / factor) as u32
-            }
-        } else {
-            0
-        }
-    }
-
     /// Clear the preview space.
     fn clear_preview(&self, preview_start_column: u16) {
         for i in 0..self.layout.terminal_row {
@@ -1462,5 +1418,12 @@ fn is_supported_image(item: &ItemInfo) -> bool {
         }
     } else {
         false
+    }
+}
+
+fn is_supported_ext(item: &ItemInfo) -> bool {
+    match &item.file_ext {
+        None => false,
+        Some(ext) => IMAGE_EXTENSION.contains(&ext.as_str()),
     }
 }
