@@ -1047,7 +1047,9 @@ impl State {
                 //Is the item directory, image or text?
                 if item.file_type == FileType::Directory {
                     self.preview_content(item, true);
-                } else if self.layout.has_chafa && is_supported_image(item) {
+                } else if self.layout.has_chafa
+                    && image::ImageFormat::from_path(&item.file_path).is_ok()
+                {
                     if let Err(e) = self.preview_image(item, y) {
                         print_warning(e, y);
                     }
@@ -1058,6 +1060,7 @@ impl State {
                         self.preview_content(item, false);
                     } else {
                         self.clear_preview(self.layout.terminal_column + 2);
+                        print!("(BINARY)");
                     }
                 }
             }
@@ -1415,6 +1418,7 @@ fn check_kitty_support() -> bool {
     }
 }
 
+#[allow(dead_code)]
 fn is_supported_image(item: &ItemInfo) -> bool {
     if let Ok(output) = std::process::Command::new("file")
         .args(["--mime", item.file_path.to_str().unwrap()])
