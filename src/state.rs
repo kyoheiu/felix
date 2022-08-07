@@ -24,6 +24,7 @@ pub const IMAGE_EXTENSION: [&str; 20] = [
     "avif", "jpg", "jpeg", "png", "gif", "webp", "tif", "tiff", "tga", "dds", "bmp", "ico", "hdr",
     "exr", "pbm", "pam", "ppm", "pgm", "ff", "farbfeld",
 ];
+pub const CHAFA_WARNING: &str = "From v1.1.0, the image preview needs chafa. For more details, please see https://github.com/kyoheiu/felix/blob/main/CHANGELOG.md ";
 
 #[derive(Debug, Clone)]
 pub struct State {
@@ -1066,8 +1067,27 @@ impl State {
                         self.preview_content(item, true);
                     }
                     PreviewType::Image => {
-                        if let Err(e) = self.preview_image(item, y) {
-                            print_warning(e, y);
+                        if self.layout.has_chafa {
+                            if let Err(e) = self.preview_image(item, y) {
+                                print_warning(e, y);
+                            }
+                        } else {
+                            self.clear_preview(self.layout.terminal_column + 2);
+                            let help =
+                                format_txt(CHAFA_WARNING, self.layout.terminal_column - 1, false);
+                            for (i, line) in help.iter().enumerate() {
+                                print!(
+                                    "{}",
+                                    cursor::Goto(
+                                        self.layout.preview_start_column,
+                                        BEGINNING_ROW + i as u16
+                                    )
+                                );
+                                print!("{}", line,);
+                                if BEGINNING_ROW + i as u16 == self.layout.terminal_row - 1 {
+                                    break;
+                                }
+                            }
                         }
                     }
                     PreviewType::Text => {
@@ -1092,7 +1112,7 @@ impl State {
             PreviewType::TooBigSize
         } else if item.file_type == FileType::Directory {
             PreviewType::Directory
-        } else if self.layout.has_chafa && is_supported_ext(item) {
+        } else if is_supported_ext(item) {
             PreviewType::Image
         } else {
             let content_type = content_inspector::inspect(&std::fs::read(&item.file_path).unwrap());
