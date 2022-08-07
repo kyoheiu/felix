@@ -1,21 +1,24 @@
 # Changelog
 
+## Notes
+
+- Text preview color needs to be readable enough, so it's worth rethinking (Now LightBlack).
+
 ## [Unreleased]
 
+## v1.1.0 (2022-08-08)
+
 ### Changed
+
 - Use `chafa` instead of `libsixel` & `viuer` to preview image files. This greatly improves the performance and code maintainability, and as a consequence, the number of dependencies is reduced (137 -> 53).
-- With `chafa`, the hi-res image preview is supported in kitty and iTerm2.
+- With `chafa`, the hi-res image preview is supported in kitty and iTerm2, or terminals that support sixel.
 - Files larger than 1GB are no longer previewed in order to improve the performance.
 - Remove profile.release to support older version of Rust.
 - Huge refactoring.
 
 ### Added
+
 - `content-inspector` to exclude binary files to be previewed.
-
-## Notes
-
-- Trying to make a user guide (just to show and explain how to use each commands) by `mdbook`.
-- Text preview color needs to be readable enough, so it's worth rethinking (Now LightBlack).
 
 ## v1.0.1 (2022-07-28)
 

@@ -1,5 +1,5 @@
 /// Help text.
-pub const HELP: &str = "# felix v1.0.1
+pub const HELP: &str = "# felix v1.1.0
 A simple TUI file manager with vim-like keymapping.
 
 ## Usage
@@ -55,5 +55,5 @@ config file    : $HOME/Library/Application Support/felix/config.toml
 trash directory: $HOME/Library/Application Support/felix/trash
 log files      : $HOME/Library/Application Support/felix/log
 
-For more detail, visit https://github.com/kyoheiu/felix
+For more details, visit https://github.com/kyoheiu/felix
 ";
