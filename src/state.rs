@@ -73,6 +73,14 @@ pub struct Layout {
     pub is_kitty: bool,
 }
 
+enum PreviewType {
+    TooBigSize,
+    Directory,
+    Image,
+    Text,
+    Binary,
+}
+
 /// Print an item. modified time will be omitted if width is not enough.
 macro_rules! print_item {
     ($color: expr, $name: expr, $time: expr, $selected: expr, $layout: expr) => {
@@ -1044,23 +1052,25 @@ impl State {
                 //Clear preview space
                 self.clear_preview(self.layout.preview_start_column);
 
-                //Is the item directory, image or text?
-                if item.file_type == FileType::Directory {
-                    self.preview_content(item, true);
-                } else if self.layout.has_chafa
-                    && image::ImageFormat::from_path(&item.file_path).is_ok()
-                {
-                    if let Err(e) = self.preview_image(item, y) {
-                        print_warning(e, y);
-                    }
-                } else {
-                    let content_type =
-                        content_inspector::inspect(&std::fs::read(&item.file_path).unwrap());
-                    if content_type.is_text() {
-                        self.preview_content(item, false);
-                    } else {
+                match self.check_preview_type(item) {
+                    PreviewType::TooBigSize => {
                         self.clear_preview(self.layout.terminal_column + 2);
-                        print!("(BINARY)");
+                        print!("(Too big size to preview)");
+                    }
+                    PreviewType::Directory => {
+                        self.preview_content(item, true);
+                    }
+                    PreviewType::Image => {
+                        if let Err(e) = self.preview_image(item, y) {
+                            print_warning(e, y);
+                        }
+                    }
+                    PreviewType::Text => {
+                        self.preview_content(item, false);
+                    }
+                    PreviewType::Binary => {
+                        self.clear_preview(self.layout.terminal_column + 2);
+                        print!("(Binary file)");
                     }
                 }
             }
@@ -1071,6 +1081,23 @@ impl State {
         self.layout.y = y;
     }
 
+    /// Check preview type.
+    fn check_preview_type(&self, item: &ItemInfo) -> PreviewType {
+        if item.file_size > 1_000_000_000 {
+            PreviewType::TooBigSize
+        } else if item.file_type == FileType::Directory {
+            PreviewType::Directory
+        } else if self.layout.has_chafa && image::ImageFormat::from_path(&item.file_path).is_ok() {
+            PreviewType::Image
+        } else {
+            let content_type = content_inspector::inspect(&std::fs::read(&item.file_path).unwrap());
+            if content_type.is_text() {
+                PreviewType::Text
+            } else {
+                PreviewType::Binary
+            }
+        }
+    }
     /// Print item informatin at the bottom of the terminal.
     fn print_footer(&self, nums: &Num, item: &ItemInfo) {
         print!("{}", cursor::Goto(1, self.layout.terminal_row));
@@ -1200,8 +1227,11 @@ impl State {
 
     /// Print text preview on the right half of the terminal (Experimental).
     fn preview_image(&self, item: &ItemInfo, y: u16) -> Result<(), FxError> {
-        let (w, h) = self.get_image_preview_size(item);
-        let wxh = format!("--size={}x{}", w, h);
+        let wxh = format!(
+            "--size={}x{}",
+            self.layout.preview_width,
+            self.layout.terminal_row - BEGINNING_ROW
+        );
 
         let file_path = item.file_path.to_str();
         if file_path.is_none() {
@@ -1225,7 +1255,7 @@ impl State {
         Ok(())
     }
 
-    /// Get the proper aspect ratio of image to print.
+    #[allow(dead_code)]
     fn get_image_preview_size(&self, item: &ItemInfo) -> (u16, u16) {
         let term_width = self.layout.terminal_column - 1;
         let term_height = self.layout.terminal_row - 3;
