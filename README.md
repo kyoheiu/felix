@@ -148,7 +148,7 @@ config.toml example:
 
 ```
 # Default exec command when open files.
-default = \"nvim\"
+default = "nvim"
 
 # (Optional) Whether to use the full width of terminal.
 # If not set, this will be true.
@@ -187,9 +187,9 @@ default = \"nvim\"
 #   Yellow
 # For more details, see https://docs.rs/termion/1.5.6/termion/color/index.html
 [color]
-dir_fg = \"LightCyan\"
-file_fg = \"LightWhite\"
-symlink_fg = \"LightYellow\"
+dir_fg = "LightCyan"
+file_fg = "LightWhite"
+symlink_fg = "LightYellow"
 ```
 
 ### Command settings
