@@ -17,7 +17,7 @@ A tui file manager with vim-like key mapping, written in Rust. Fast, simple, and
 - From v1.1.0, felix uses [hpjansson](https://github.com/hpjansson) /
   [chafa](https://github.com/hpjansson/chafa) instead of `libsixel` & `viuer` to preview image files. This greatly improves the performance and code maintainability, and as a consequence, the number of dependencies is reduced (137 -> 53).
 - Due to this change, the image preview does not work out of the box: **_You must install `chafa` to preview images._** Please see https://hpjansson.org/chafa/
-- By `chafa`, the high-res image preview is enabled in terminals that support sixel, or kitty and iTerm2.
+- By `chafa`, the high-res image preview is enabled in terminals that support sixel, or kitty.
 - In other terminals, images are displayed by characters.
 
 For more details, see `CHANGELOG.md`.
