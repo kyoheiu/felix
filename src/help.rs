@@ -44,6 +44,11 @@ Esc               :Return to the normal mode.
 :h                :Show help.
 :q / ZZ           :Exit.
 
+## Preview feature
+By default, text files and directories can be previewed.
+To preview images, you need to install chafa.
+Please see https://hpjansson.org/chafa/
+
 ## Configuration
 ### Linux
 config file    : $XDG_CONFIG_HOME/felix/config.toml
