@@ -2,6 +2,7 @@ mod config;
 mod errors;
 mod functions;
 mod help;
+mod layout;
 mod nums;
 mod op;
 mod run;

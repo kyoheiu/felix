@@ -1,6 +1,7 @@
 use super::config::*;
 use super::errors::FxError;
 use super::functions::*;
+use super::layout::Layout;
 use super::nums::*;
 use super::op::*;
 use super::session::*;
@@ -9,10 +10,9 @@ use log::info;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
-use std::io::{ErrorKind, Write};
+use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::process::{Child, Command, ExitStatus, Stdio};
-use tempfile::NamedTempFile;
 use termion::{clear, color, cursor, style};
 
 pub const BEGINNING_ROW: u16 = 3;
@@ -34,7 +34,6 @@ pub struct State {
     pub layout: Layout,
     pub show_hidden: bool,
     pub filtered: bool,
-    pub support_sixel: bool,
     pub rust_log: Option<String>,
 }
 
@@ -56,19 +55,6 @@ pub enum FileType {
     Directory,
     File,
     Symlink,
-}
-
-#[derive(Debug, Clone)]
-pub struct Layout {
-    pub y: u16,
-    pub terminal_row: u16,
-    pub terminal_column: u16,
-    pub name_max_len: usize,
-    pub time_start_pos: u16,
-    pub use_full: Option<bool>,
-    pub option_name_len: Option<usize>,
-    pub colors: Color,
-    pub preview: bool,
 }
 
 /// Print an item. modified time will be omitted if width is not enough.
@@ -141,7 +127,8 @@ impl State {
         let (time_start, name_max) =
             make_layout(column, config.use_full_width, config.item_name_length);
 
-        let sixel = check_sixel_support() && libsixel_exists();
+        let has_chafa = check_chafa();
+        let is_kitty = check_kitty_support();
 
         Ok(State {
             list: Vec::new(),
@@ -169,10 +156,13 @@ impl State {
                     symlink_fg: config.color.symlink_fg,
                 },
                 preview: false,
+                preview_start_column: column + 2,
+                preview_width: column - 1,
+                has_chafa,
+                is_kitty,
             },
             show_hidden: session.show_hidden,
             filtered: false,
-            support_sixel: sixel,
             rust_log: std::env::var("RUST_LOG").ok(),
         })
     }
@@ -184,6 +174,8 @@ impl State {
 
         self.layout.terminal_row = row;
         self.layout.terminal_column = column;
+        self.layout.preview_start_column = column + 2;
+        self.layout.preview_width = column - 1;
         self.layout.name_max_len = name_max;
         self.layout.time_start_pos = time_start;
 
@@ -1021,8 +1013,8 @@ impl State {
     }
 
     /// Change the cursor position, and print item information at the bottom.
-    /// If preview is enabled, print text preview, contents of the directory or image preview on the right half of the terminal.
-    /// Note that image preivew is experimental and if perfomance issues arise, this feature may be removed.
+    /// If preview is enabled, print text preview, contents of the directory or image preview on the right half of the terminal
+    /// (To preview image, you must install chafa. See help).
     pub fn move_cursor(&mut self, nums: &Num, y: u16) {
         if let Ok(item) = self.get_item(nums.index) {
             delete_cursor();
@@ -1030,16 +1022,9 @@ impl State {
             //Print item information at the bottom
             self.print_footer(nums, item);
 
-            //It would be more precise if image::guess_format could be used here(Interpretation by extension is not accurate).
-            //However it would have its own costs like reading every file, which I don't think is user-friendly.
+            //Print preview if preview is on
             if self.layout.preview {
-                if image::ImageFormat::from_path(&item.file_path).is_ok() {
-                    if let Err(e) = self.preview_image(item, y) {
-                        print_warning(e, y);
-                    }
-                } else {
-                    self.preview_text(item);
-                }
+                self.layout.print_preview(item, y);
             }
         }
         print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
@@ -1113,216 +1098,6 @@ impl State {
                 print!("{}", footer);
                 print!("{}", style::Reset);
             }
-        }
-    }
-
-    /// Print text preview on the right half of the terminal.
-    fn preview_text(&self, item: &ItemInfo) {
-        let preview_start_column: u16 = self.layout.terminal_column + 2;
-        let preview_space_width: u16 = self.layout.terminal_column - 1;
-
-        //Print item name at the top
-        print!(
-            "{}{}",
-            cursor::Goto(preview_start_column, 1),
-            clear::UntilNewline
-        );
-        let mut file_name = format!("[{}]", item.file_name);
-        if file_name.len() > preview_space_width.into() {
-            file_name = file_name.chars().take(preview_space_width.into()).collect();
-        }
-        print!("{}", file_name);
-        print!("{}", cursor::Goto(preview_start_column, BEGINNING_ROW));
-
-        //Clear preview space
-        self.clear_preview(preview_start_column);
-
-        let content = if item.file_type == FileType::Directory {
-            if let Ok(content) = list_up_contents(item.file_path.clone()) {
-                if let Ok(content) = make_tree(content) {
-                    format_txt(&content, preview_space_width, false)
-                } else {
-                    vec![]
-                }
-            } else {
-                vec![]
-            }
-        } else {
-            let item = item.file_path.clone();
-            let column = self.layout.terminal_column;
-            let content = fs::read_to_string(item);
-            if let Ok(content) = content {
-                let content = content.replace('\t', "    ");
-                format_txt(&content, column - 1, false)
-            } else {
-                vec![]
-            }
-        };
-
-        //Print preview (wrapping)
-        for (i, line) in content.iter().enumerate() {
-            print!(
-                "{}",
-                cursor::Goto(preview_start_column, BEGINNING_ROW + i as u16)
-            );
-            print!(
-                "{}{}{}",
-                color::Fg(color::LightBlack),
-                line,
-                color::Fg(color::Reset)
-            );
-            if BEGINNING_ROW + i as u16 == self.layout.terminal_row - 1 {
-                break;
-            }
-        }
-    }
-
-    /// Print text preview on the right half of the terminal (Experimental).
-    fn preview_image(&self, item: &ItemInfo, y: u16) -> Result<(), FxError> {
-        let preview_start_column: u16 = self.layout.terminal_column + 2;
-        let preview_space_width: u16 = self.layout.terminal_column - 1;
-
-        //Print item name at the top
-        print!(
-            "{}{}",
-            cursor::Goto(preview_start_column, 1),
-            clear::UntilNewline
-        );
-        let mut file_name = format!("[{}]", item.file_name);
-        if file_name.len() > preview_space_width.into() {
-            file_name = file_name.chars().take(preview_space_width.into()).collect();
-        }
-        print!("{}", file_name);
-        print!("{}", cursor::Goto(preview_start_column, BEGINNING_ROW));
-
-        match self.support_sixel {
-            false => {
-                let content = {
-                    let path = item.file_path.clone();
-                    std::thread::spawn(move || image::io::Reader::open(path))
-                };
-                let (w, h) = self.get_image_preview_size(item);
-
-                //Set viuer config.
-                //use_kitty and use-iterm are disabled because previewed images cannot cleared properly.
-                let conf = viuer::Config {
-                    x: preview_start_column - 1,
-                    y: BEGINNING_ROW as i16 - 1,
-                    width: Some(w.into()),
-                    height: Some(h.into()),
-                    use_kitty: false,
-                    use_iterm: false,
-                    ..Default::default()
-                };
-
-                //Clear preview space
-                self.clear_preview(preview_start_column);
-
-                if let Ok(image) = content.join().unwrap() {
-                    if let Ok(image) = image.decode() {
-                        if viuer::print(&image, &conf).is_err() {
-                            print_warning("Image printing failed.", y);
-                        }
-                    } else {
-                        print_warning("Cannot decode the image.", y);
-                    }
-                } else {
-                    print_warning("Cannot read the image.", y);
-                }
-                Ok(())
-            }
-            true => {
-                //Clear the preview space and move to first line
-                self.clear_preview(preview_start_column);
-                print!("{}", cursor::Goto(preview_start_column, BEGINNING_ROW));
-
-                let temp = NamedTempFile::new()?;
-                let temp_path = temp.path();
-
-                let file_path = item.file_path.to_str();
-                if file_path.is_none() {
-                    print_warning("Cannot read the file path correctly.", y);
-                    return Ok(());
-                }
-
-                let width = self.get_sixel_image_preview_size(item);
-                let temp_path_str = temp_path.to_str().ok_or(FxError::UTF8 {
-                    msg: "Cannot read the tempfile path.".to_string(),
-                })?;
-                std::process::Command::new("img2sixel")
-                    .args([
-                        "--static",
-                        "-w",
-                        &width.to_string(),
-                        "-o",
-                        temp_path_str,
-                        file_path.unwrap(),
-                    ])
-                    .status()?;
-                let content = fs::read_to_string(temp_path)?;
-                print!("{}", content);
-                temp.close()?;
-                Ok(())
-            }
-        }
-    }
-
-    /// Get the proper aspect ratio of image to print.
-    fn get_image_preview_size(&self, item: &ItemInfo) -> (u16, u16) {
-        let term_width = self.layout.terminal_column - 1;
-        let term_height = self.layout.terminal_row - 3;
-        //preview space ratio by actual resolution
-        let term_height_actual = (term_height * 2) as f32;
-        let term_ratio = term_width as f32 / term_height_actual;
-
-        if let Ok((w, h)) = image::image_dimensions(&item.file_path) {
-            let w_f32 = w as f32;
-            let h_f32 = h as f32;
-            let image_ratio = w_f32 / h_f32;
-            if term_ratio <= image_ratio {
-                let factor = w_f32 / term_width as f32;
-                let height = (h_f32 / factor) as u16;
-                (term_width, height / 2)
-            } else {
-                let factor = h_f32 / term_height_actual;
-                let width = (w_f32 / factor) as u16;
-                (width, term_height)
-            }
-        } else {
-            (0, 0)
-        }
-    }
-
-    fn get_sixel_image_preview_size(&self, item: &ItemInfo) -> u32 {
-        let (space_width, space_height) = termion::terminal_size_pixels().unwrap();
-        let space_width = space_width * 9 / 20;
-        let space_height = (space_height * 9 / 10) as f32;
-        //preview space ratio by actual resolution
-        let space_ratio = space_width as f32 / space_height;
-
-        if let Ok((w, h)) = image::image_dimensions(&item.file_path) {
-            let w_f32 = w as f32;
-            let h_f32 = h as f32;
-            let image_ratio = w_f32 / h_f32;
-            if space_ratio <= image_ratio {
-                space_width as u32
-            } else {
-                let factor = h_f32 / space_height;
-                (w_f32 / factor) as u32
-            }
-        } else {
-            0
-        }
-    }
-
-    /// Clear the preview space.
-    fn clear_preview(&self, preview_start_column: u16) {
-        for i in 0..self.layout.terminal_row {
-            print!(
-                "{}",
-                cursor::Goto(preview_start_column, BEGINNING_ROW + i as u16)
-            );
-            print!("{}", clear::UntilNewline);
         }
     }
 
@@ -1421,7 +1196,7 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
     }
 }
 
-/// Generate item information from trash direcotry, in order to use when redo.
+/// Generate item information from trash direcotry, in order to use when redoing.
 pub fn trash_to_info(trash_dir: &PathBuf, vec: &[PathBuf]) -> Result<Vec<ItemInfo>, FxError> {
     let total = vec.len();
     let mut count = 0;
@@ -1439,56 +1214,34 @@ pub fn trash_to_info(trash_dir: &PathBuf, vec: &[PathBuf]) -> Result<Vec<ItemInf
     Ok(result)
 }
 
-// Import from atanunq/viuer
-// Check if Sixel is within the terminal's attributes
-// see https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h2-Sixel-Graphics
-// and https://vt100.net/docs/vt510-rm/DA1.html
-fn check_device_attrs() -> Result<bool, FxError> {
-    let mut term = console::Term::stdout();
-
-    write!(&mut term, "\x1b[c")?;
-    term.flush()?;
-
-    let mut response = String::new();
-
-    while let Ok(key) = term.read_key() {
-        if let console::Key::Char(c) = key {
-            response.push(c);
-            if c == 'c' {
-                break;
-            }
-        }
-    }
-
-    Ok(response.contains(";4;") || response.contains(";4c"))
-}
-
-/// Import from atanunq/viuer.
-/// Check if Sixel protocol can be used.
-fn check_sixel_support() -> bool {
-    if let Ok(term) = std::env::var("TERM") {
-        match term.as_str() {
-            "mlterm" | "yaft-256color" | "foot" | "foot-extra" => return true,
-            "st-256color" | "xterm" | "xterm-256color" => {
-                return check_device_attrs().unwrap_or(false)
-            }
-            _ => {
-                if let Ok(term_program) = std::env::var("TERM_PROGRAM") {
-                    return term_program == "MacTerm";
-                }
-            }
-        }
-    }
-    false
-}
-
-/// Check if img2sixel can be used.
-fn libsixel_exists() -> bool {
-    if let Ok(output) = std::process::Command::new("img2sixel")
+fn check_chafa() -> bool {
+    std::process::Command::new("chafa")
         .arg("--help")
         .output()
+        .is_ok()
+}
+
+// Check if the terminal is Kitty or not
+fn check_kitty_support() -> bool {
+    if let Ok(term) = std::env::var("TERM") {
+        term.contains("kitty")
+    } else {
+        false
+    }
+}
+
+#[allow(dead_code)]
+fn is_supported_image(item: &ItemInfo) -> bool {
+    if let Ok(output) = std::process::Command::new("file")
+        .args(["--mime", item.file_path.to_str().unwrap()])
+        .output()
     {
-        !output.stdout.is_empty()
+        if let Ok(result) = String::from_utf8(output.stdout) {
+            let v: Vec<&str> = result.split([':', ';']).collect();
+            v[1].contains("image")
+        } else {
+            false
+        }
     } else {
         false
     }

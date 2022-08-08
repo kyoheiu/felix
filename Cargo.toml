@@ -1,10 +1,10 @@
 [package]
 name = "felix"
-version = "1.0.1"
+version = "1.1.0"
 authors = ["Kyohei Uto <kyoheiu@outlook.com>"]
 edition = "2021"
 description = "tui file manager with vim-like key mapping"
-readme = "README_crates.md"
+readme = "README.md"
 repository = "https://github.com/kyoheiu/felix"
 license = "MIT"
 keywords = ["tui", "termion", "file-manager"]
@@ -16,9 +16,6 @@ path = "src/main.rs"
 test = true
 bench = false
 
-[profile.release]
-strip = true
-
 [dependencies]
 termion = "1.5.6"
 dirs = "4.0.0"
@@ -29,10 +26,7 @@ chrono = "0.4.19"
 toml = "0.5.8"
 log = "0.4.16"
 simplelog = "0.12.0"
-image = "0.24.2"
-viuer = "0.6.1"
-console = "0.15.0"
-tempfile = "3.3.0"
+content_inspector = "0.2.4"
 
 [dependencies.serde]
 version = "1.0.136"

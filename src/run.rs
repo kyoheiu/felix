@@ -130,12 +130,18 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         let input = stdin.next();
         let mut state = state_run.lock().unwrap();
         let mut screen = screen_run.lock().unwrap();
-        screen.flush()?;
         let mut nums = nums_run.lock().unwrap();
         let len = state.list.len();
         let y = state.layout.y;
 
         if let Some(Ok(key)) = input {
+            //If you use kitty, you must clear the screen or the previewed image remains.
+            if state.layout.is_kitty && state.layout.preview {
+                print!("\x1B[2J");
+                state.clear_and_show_headline();
+                state.list_up(nums.skip);
+                screen.flush()?;
+            }
             match key {
                 //Go up. If lists exceed max-row, lists "scrolls" before the top of the list
                 Key::Char('j') | Key::Down => {
