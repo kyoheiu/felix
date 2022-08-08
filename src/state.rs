@@ -20,6 +20,7 @@ pub const CONFIG_FILE: &str = "config.toml";
 pub const TRASH: &str = "trash";
 pub const WHEN_EMPTY: &str = "Are you sure to empty the trash directory? (if yes: y)";
 /// cf: https://docs.rs/image/latest/src/image/image.rs.html#84-112
+pub const MAX_SIZE_TO_PREVIEW: u64 = 1_000_000_000;
 pub const IMAGE_EXTENSION: [&str; 20] = [
     "avif", "jpg", "jpeg", "png", "gif", "webp", "tif", "tiff", "tga", "dds", "bmp", "ico", "hdr",
     "exr", "pbm", "pam", "ppm", "pgm", "ff", "farbfeld",
@@ -1073,7 +1074,6 @@ impl State {
 
         match self.check_preview_type(item) {
             PreviewType::TooBigSize => {
-                self.clear_preview(self.layout.terminal_column + 2);
                 print!("(Too big size to preview)");
             }
             PreviewType::Directory => {
@@ -1085,7 +1085,6 @@ impl State {
                         print_warning(e, y);
                     }
                 } else {
-                    self.clear_preview(self.layout.terminal_column + 2);
                     let help = format_txt(CHAFA_WARNING, self.layout.terminal_column - 1, false);
                     for (i, line) in help.iter().enumerate() {
                         print!(
@@ -1106,7 +1105,6 @@ impl State {
                 self.preview_content(item, false);
             }
             PreviewType::Binary => {
-                self.clear_preview(self.layout.terminal_column + 2);
                 print!("(Binary file)");
             }
         }
@@ -1114,7 +1112,7 @@ impl State {
 
     /// Check preview type.
     fn check_preview_type(&self, item: &ItemInfo) -> PreviewType {
-        if item.file_size > 1_000_000_000 {
+        if item.file_size > MAX_SIZE_TO_PREVIEW {
             PreviewType::TooBigSize
         } else if item.file_type == FileType::Directory {
             PreviewType::Directory
