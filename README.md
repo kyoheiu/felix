@@ -160,6 +160,7 @@ default = "nvim"
 # If not set, this will be 30.
 # item_name_length = 30
 
+# (Optional)
 # key (the command you want to use) = [values] (extensions)
 # [exec]
 # feh = [\"jpg\", \"jpeg\", \"png\", \"gif\", \"svg\"]
