@@ -1013,8 +1013,8 @@ impl State {
     }
 
     /// Change the cursor position, and print item information at the bottom.
-    /// If preview is enabled, print text preview, contents of the directory or image preview on the right half of the terminal.
-    /// Note that image preivew is experimental and if perfomance issues arise, this feature may be removed.
+    /// If preview is enabled, print text preview, contents of the directory or image preview on the right half of the terminal
+    /// (To preview image, you must install chafa. See help).
     pub fn move_cursor(&mut self, nums: &Num, y: u16) {
         if let Ok(item) = self.get_item(nums.index) {
             delete_cursor();
