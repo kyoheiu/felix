@@ -29,7 +29,7 @@ For more details, see `CHANGELOG.md`.
 | Linux   | works well                                               |
 | NetBSD  | works well                                               |
 | MacOS   | works, though some errors may occur. if so, let me know! |
-| Windows | almost unavailable due to file-name encoding error       |
+| Windows | not supported |
 
 ## Installation
 
@@ -113,7 +113,7 @@ cargo install --path .
 
 | Key       | Explanation                                                                                                                                                                                                              |
 | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| v         | Toggle whether to show the item preview (text, image, or the contents tree) on the right half of the terminal. You must install [`chafa`](https://hpjansson.org/chafa/) in order to use the image preview.               |
+| v         | Toggle whether to show the item preview (text, image, or the contents tree) on the right half of the terminal. ***You must install [`chafa`](https://hpjansson.org/chafa/) in order to preview images.***               |
 | backspace | Toggle whether to show hidden items or not. This change remains after exit (stored in `.session`).                                                                                                                       |
 | t         | Toggle sort order (by name <-> by modified time). This change remains after exit (same as above).                                                                                                                        |
 | /         | Switch to the filter mode (enter the keyword and press Enter to show the filtered list). Press h or Left to exit the filter mode.                                                                                        |
