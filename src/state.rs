@@ -1,6 +1,7 @@
 use super::config::*;
 use super::errors::FxError;
 use super::functions::*;
+use super::layout::Layout;
 use super::nums::*;
 use super::op::*;
 use super::session::*;
@@ -19,14 +20,6 @@ pub const FX_CONFIG_DIR: &str = "felix";
 pub const CONFIG_FILE: &str = "config.toml";
 pub const TRASH: &str = "trash";
 pub const WHEN_EMPTY: &str = "Are you sure to empty the trash directory? (if yes: y)";
-/// cf: https://docs.rs/image/latest/src/image/image.rs.html#84-112
-pub const MAX_SIZE_TO_PREVIEW: u64 = 1_000_000_000;
-pub const IMAGE_EXTENSION: [&str; 20] = [
-    "avif", "jpg", "jpeg", "png", "gif", "webp", "tif", "tiff", "tga", "dds", "bmp", "ico", "hdr",
-    "exr", "pbm", "pam", "ppm", "pgm", "ff", "farbfeld",
-];
-pub const CHAFA_WARNING: &str =
-    "From v1.1.0, the image preview needs chafa. For more details, please see help by `:h` ";
 
 #[derive(Debug, Clone)]
 pub struct State {
@@ -62,31 +55,6 @@ pub enum FileType {
     Directory,
     File,
     Symlink,
-}
-
-#[derive(Debug, Clone)]
-pub struct Layout {
-    pub y: u16,
-    pub terminal_row: u16,
-    pub terminal_column: u16,
-    pub name_max_len: usize,
-    pub time_start_pos: u16,
-    pub use_full: Option<bool>,
-    pub option_name_len: Option<usize>,
-    pub colors: Color,
-    pub preview: bool,
-    pub preview_start_column: u16,
-    pub preview_width: u16,
-    pub has_chafa: bool,
-    pub is_kitty: bool,
-}
-
-enum PreviewType {
-    TooBigSize,
-    Directory,
-    Image,
-    Text,
-    Binary,
 }
 
 /// Print an item. modified time will be omitted if width is not enough.
@@ -1056,7 +1024,7 @@ impl State {
 
             //Print preview if preview is on
             if self.layout.preview {
-                self.print_preview(item, y);
+                self.layout.print_preview(item, y);
             }
         }
         print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
@@ -1065,68 +1033,6 @@ impl State {
         self.layout.y = y;
     }
 
-    /// Print preview according to the preview type.
-    fn print_preview(&self, item: &ItemInfo, y: u16) {
-        //At least print the item name
-        self.print_file_name(item);
-        //Clear preview space
-        self.clear_preview(self.layout.preview_start_column);
-
-        match self.check_preview_type(item) {
-            PreviewType::TooBigSize => {
-                print!("(Too big size to preview)");
-            }
-            PreviewType::Directory => {
-                self.preview_content(item, true);
-            }
-            PreviewType::Image => {
-                if self.layout.has_chafa {
-                    if let Err(e) = self.preview_image(item, y) {
-                        print_warning(e, y);
-                    }
-                } else {
-                    let help = format_txt(CHAFA_WARNING, self.layout.terminal_column - 1, false);
-                    for (i, line) in help.iter().enumerate() {
-                        print!(
-                            "{}",
-                            cursor::Goto(
-                                self.layout.preview_start_column,
-                                BEGINNING_ROW + i as u16
-                            )
-                        );
-                        print!("{}", line,);
-                        if BEGINNING_ROW + i as u16 == self.layout.terminal_row - 1 {
-                            break;
-                        }
-                    }
-                }
-            }
-            PreviewType::Text => {
-                self.preview_content(item, false);
-            }
-            PreviewType::Binary => {
-                print!("(Binary file)");
-            }
-        }
-    }
-
-    /// Check preview type.
-    fn check_preview_type(&self, item: &ItemInfo) -> PreviewType {
-        if item.file_size > MAX_SIZE_TO_PREVIEW {
-            PreviewType::TooBigSize
-        } else if item.file_type == FileType::Directory {
-            PreviewType::Directory
-        } else if is_supported_ext(item) {
-            PreviewType::Image
-        } else {
-            let content_type = content_inspector::inspect(&std::fs::read(&item.file_path).unwrap());
-            if content_type.is_text() {
-                PreviewType::Text
-            } else {
-                PreviewType::Binary
-            }
-        }
-    }
     /// Print item informatin at the bottom of the terminal.
     fn print_footer(&self, nums: &Num, item: &ItemInfo) {
         print!("{}", cursor::Goto(1, self.layout.terminal_row));
@@ -1193,110 +1099,6 @@ impl State {
                 print!("{}", style::Reset);
             }
         }
-    }
-
-    /// Print item name at the top.
-    fn print_file_name(&self, item: &ItemInfo) {
-        print!(
-            "{}{}",
-            cursor::Goto(self.layout.preview_start_column, 1),
-            clear::UntilNewline
-        );
-        let mut file_name = format!("[{}]", item.file_name);
-        if file_name.len() > self.layout.preview_width.into() {
-            file_name = file_name
-                .chars()
-                .take(self.layout.preview_width.into())
-                .collect();
-        }
-        print!("{}", file_name);
-    }
-
-    /// Print text preview on the right half of the terminal.
-    fn preview_content(&self, item: &ItemInfo, is_dir: bool) {
-        let content = if is_dir {
-            if let Ok(content) = list_up_contents(item.file_path.clone()) {
-                if let Ok(content) = make_tree(content) {
-                    format_txt(&content, self.layout.preview_width, false)
-                } else {
-                    vec![]
-                }
-            } else {
-                vec![]
-            }
-        } else {
-            let item = item.file_path.clone();
-            let column = self.layout.terminal_column;
-            let content = fs::read_to_string(item);
-            if let Ok(content) = content {
-                let content = content.replace('\t', "    ");
-                format_txt(&content, column - 1, false)
-            } else {
-                vec![]
-            }
-        };
-
-        //Print preview (wrapping)
-        for (i, line) in content.iter().enumerate() {
-            print!(
-                "{}",
-                cursor::Goto(self.layout.preview_start_column, BEGINNING_ROW + i as u16)
-            );
-            print!(
-                "{}{}{}",
-                color::Fg(color::LightBlack),
-                line,
-                color::Fg(color::Reset)
-            );
-            if BEGINNING_ROW + i as u16 == self.layout.terminal_row - 1 {
-                break;
-            }
-        }
-    }
-
-    /// Print text preview on the right half of the terminal (Experimental).
-    fn preview_image(&self, item: &ItemInfo, y: u16) -> Result<(), FxError> {
-        let wxh = format!(
-            "--size={}x{}",
-            self.layout.preview_width,
-            self.layout.terminal_row - BEGINNING_ROW
-        );
-
-        let file_path = item.file_path.to_str();
-        if file_path.is_none() {
-            print_warning("Cannot read the file path correctly.", y);
-            return Ok(());
-        }
-
-        let output = std::process::Command::new("chafa")
-            .args(["--animate=false", &wxh, file_path.unwrap()])
-            .output()?
-            .stdout;
-        let output = String::from_utf8(output).unwrap();
-        for (i, line) in output.lines().enumerate() {
-            let next_line: u16 = BEGINNING_ROW + (i as u16) + 1;
-            print!("{}", line);
-            print!(
-                "{}",
-                cursor::Goto(self.layout.preview_start_column, next_line)
-            );
-        }
-        Ok(())
-    }
-
-    /// Clear the preview space.
-    fn clear_preview(&self, preview_start_column: u16) {
-        for i in 0..self.layout.terminal_row {
-            print!(
-                "{}",
-                cursor::Goto(preview_start_column, BEGINNING_ROW + i as u16)
-            );
-            print!("{}", clear::UntilNewline);
-        }
-        print!(
-            "{}",
-            cursor::Goto(self.layout.preview_start_column, BEGINNING_ROW)
-        );
     }
 
     /// Store the sort key and whether to show hidden items to session file.
@@ -1394,7 +1196,7 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
     }
 }
 
-/// Generate item information from trash direcotry, in order to use when redo.
+/// Generate item information from trash direcotry, in order to use when redoing.
 pub fn trash_to_info(trash_dir: &PathBuf, vec: &[PathBuf]) -> Result<Vec<ItemInfo>, FxError> {
     let total = vec.len();
     let mut count = 0;
@@ -1442,12 +1244,5 @@ fn is_supported_image(item: &ItemInfo) -> bool {
         }
     } else {
         false
-    }
-}
-
-fn is_supported_ext(item: &ItemInfo) -> bool {
-    match &item.file_ext {
-        None => false,
-        Some(ext) => IMAGE_EXTENSION.contains(&ext.as_str()),
     }
 }
