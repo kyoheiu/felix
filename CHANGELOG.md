@@ -14,7 +14,7 @@
 - With `chafa`, the hi-res image preview is supported in kitty or terminals that support sixel.
 - Files larger than 1GB are no longer previewed in order to improve the performance.
 - Remove profile.release to support older version of Rust.
-- Huge refactoring.
+- Huge refactoring (layout.rs created).
 
 ### Added
 
