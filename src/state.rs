@@ -24,7 +24,8 @@ pub const IMAGE_EXTENSION: [&str; 20] = [
     "avif", "jpg", "jpeg", "png", "gif", "webp", "tif", "tiff", "tga", "dds", "bmp", "ico", "hdr",
     "exr", "pbm", "pam", "ppm", "pgm", "ff", "farbfeld",
 ];
-pub const CHAFA_WARNING: &str = "From v1.1.0, the image preview needs chafa. For more details, please see https://github.com/kyoheiu/felix/blob/main/CHANGELOG.md ";
+pub const CHAFA_WARNING: &str =
+    "From v1.1.0, the image preview needs chafa. For more details, please see help by `:h` ";
 
 #[derive(Debug, Clone)]
 pub struct State {
