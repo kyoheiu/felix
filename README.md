@@ -163,8 +163,8 @@ default = "nvim"
 # (Optional)
 # key (the command you want to use) = [values] (extensions)
 # [exec]
-# feh = [\"jpg\", \"jpeg\", \"png\", \"gif\", \"svg\"]
-# zathura = [\"pdf\"]
+# feh = ["jpg", "jpeg", "png", "gif", "svg"]
+# zathura = ["pdf"]
 
 # The foreground color of directory, file and symlink.
 # Pick one of the following:
