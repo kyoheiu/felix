@@ -1,4 +1,4 @@
-# 1.1.0
+# 1.1.1
 
 # Default exec command when open files.
 default = "nvim"

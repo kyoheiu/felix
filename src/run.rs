@@ -1086,7 +1086,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     screen.flush()?;
 
                     let original_list = state.list.clone();
-
                     let mut keyword: Vec<char> = Vec::new();
                     let initial_pos = 3;
                     let mut current_pos = 3;
@@ -1107,7 +1106,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     print!("{}", cursor::Hide);
                                     state.filtered = false;
                                     state.list = original_list;
-                                    state.redraw(&nums, y);
+                                    state.reload(&nums, y)?;
                                     break;
                                 }
 
@@ -1125,6 +1124,39 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     }
                                     current_pos += 1;
                                     print!("{}", cursor::Right(1));
+                                }
+
+                                Key::Backspace => {
+                                    if current_pos == initial_pos {
+                                        print!("{}", cursor::Hide);
+                                        state.filtered = false;
+                                        state.list = original_list;
+                                        state.reload(&nums, y)?;
+                                        break;
+                                    } else {
+                                        keyword.remove(current_pos - initial_pos - 1);
+                                        current_pos -= 1;
+
+                                        state.list = original_list
+                                            .clone()
+                                            .into_iter()
+                                            .filter(|entry| {
+                                                entry
+                                                    .file_name
+                                                    .contains(&keyword.iter().collect::<String>())
+                                            })
+                                            .collect();
+
+                                        state.clear_and_show_headline();
+                                        state.list_up(0);
+
+                                        print!(
+                                            "{}/{}{}",
+                                            cursor::Goto(2, 2),
+                                            &keyword.iter().collect::<String>(),
+                                            cursor::Goto((current_pos).try_into().unwrap(), 2)
+                                        );
+                                    }
                                 }
 
                                 Key::Char(c) => {
@@ -1146,35 +1178,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         "{}/{}{}",
                                         cursor::Goto(2, 2),
                                         result,
-                                        cursor::Goto((current_pos).try_into().unwrap(), 2)
-                                    );
-                                }
-
-                                Key::Backspace => {
-                                    if current_pos == initial_pos {
-                                        continue;
-                                    };
-                                    keyword.remove(current_pos - initial_pos - 1);
-                                    current_pos -= 1;
-
-                                    state.list = original_list
-                                        .clone()
-                                        .into_iter()
-                                        .filter(|entry| {
-                                            entry
-                                                .file_name
-                                                .contains(&keyword.iter().collect::<String>())
-                                        })
-                                        .collect();
-
-                                    nums.reset_skip();
-                                    state.clear_and_show_headline();
-                                    state.list_up(nums.skip);
-
-                                    print!(
-                                        "{}/{}{}",
-                                        cursor::Goto(2, 2),
-                                        &keyword.iter().collect::<String>(),
                                         cursor::Goto((current_pos).try_into().unwrap(), 2)
                                     );
                                 }
@@ -1227,18 +1230,22 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                                 Key::Backspace => {
                                     if current_pos == initial_pos {
-                                        continue;
-                                    };
-                                    command.remove((current_pos - initial_pos - 1).into());
-                                    current_pos -= 1;
+                                        reset_info_line();
+                                        print!("{}", cursor::Hide);
+                                        state.move_cursor(&nums, y);
+                                        break 'command;
+                                    } else {
+                                        command.remove((current_pos - initial_pos - 1).into());
+                                        current_pos -= 1;
 
-                                    print!(
-                                        "{}{}:{}{}",
-                                        clear::CurrentLine,
-                                        cursor::Goto(2, 2),
-                                        &command.iter().collect::<String>(),
-                                        cursor::Goto(current_pos, 2)
-                                    );
+                                        print!(
+                                            "{}{}:{}{}",
+                                            clear::CurrentLine,
+                                            cursor::Goto(2, 2),
+                                            &command.iter().collect::<String>(),
+                                            cursor::Goto(current_pos, 2)
+                                        );
+                                    }
                                 }
 
                                 Key::Char('\n') => {
