@@ -38,7 +38,4 @@ impl Num {
     pub fn dec_skip(&mut self) {
         self.skip -= 1;
     }
-    pub fn reset_skip(&mut self) {
-        self.skip = 0;
-    }
 }
