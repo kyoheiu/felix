@@ -1230,18 +1230,22 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                                 Key::Backspace => {
                                     if current_pos == initial_pos {
-                                        continue;
-                                    };
-                                    command.remove((current_pos - initial_pos - 1).into());
-                                    current_pos -= 1;
+                                        reset_info_line();
+                                        print!("{}", cursor::Hide);
+                                        state.move_cursor(&nums, y);
+                                        break 'command;
+                                    } else {
+                                        command.remove((current_pos - initial_pos - 1).into());
+                                        current_pos -= 1;
 
-                                    print!(
-                                        "{}{}:{}{}",
-                                        clear::CurrentLine,
-                                        cursor::Goto(2, 2),
-                                        &command.iter().collect::<String>(),
-                                        cursor::Goto(current_pos, 2)
-                                    );
+                                        print!(
+                                            "{}{}:{}{}",
+                                            clear::CurrentLine,
+                                            cursor::Goto(2, 2),
+                                            &command.iter().collect::<String>(),
+                                            cursor::Goto(current_pos, 2)
+                                        );
+                                    }
                                 }
 
                                 Key::Char('\n') => {
