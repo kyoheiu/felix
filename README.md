@@ -10,9 +10,15 @@ A tui file manager with vim-like key mapping, written in Rust. Fast, simple, and
 
 ## New Release
 
+## v1.1.1 (2022-08-11)
+
+### Fixed
+
+- In the filter mode and shell mode, when you don't have any input, `backspace` now means to return to the normal mode. Also, when you press `Esc` during the filter mode, the cursor position is now restored.
+
 ## v1.1.0 (2022-08-08)
 
-### Important Change
+### Important change about the preview feature
 
 - From v1.1.0, felix uses [hpjansson](https://github.com/hpjansson) /
   [chafa](https://github.com/hpjansson/chafa) instead of `libsixel` & `viuer` to preview image files. This greatly improves the performance and code maintainability, and as a consequence, the number of dependencies is reduced (137 -> 53).
