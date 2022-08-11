@@ -14,7 +14,7 @@ A tui file manager with vim-like key mapping, written in Rust. Fast, simple, and
 
 ### Fixed
 
-- In the filter mode and shell mode, when you don't have any input, `backspace` now means to return to the normal mode. Also, when you press `Esc` during the filter mode, the cursor position is now restored.
+- In the filter mode and shell mode, when you don't have any input, `backspace` now means return to the normal mode. Also, during the filter mode, `Esc` now restores the cursor position.
 
 ## v1.1.0 (2022-08-08)
 
