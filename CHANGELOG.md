@@ -8,7 +8,7 @@
 
 ### Fixed
 
-- In the filter mode, if you don't have any input, `backspace` now means to return to the normal mode. Also, if you press `Esc` during the filter mode, the cursor position is now restored.
+- In the filter mode and shell mode, if you don't have any input, `backspace` now means to return to the normal mode. Also, if you press `Esc` during the filter mode, the cursor position is now restored.
 
 ## v1.1.0 (2022-08-08)
 
