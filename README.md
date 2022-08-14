@@ -17,16 +17,6 @@ For the detailed document, please see https://kyoheiu.dev/felix.
 - In the filter mode and shell mode, when you don't have any input, `backspace` now means return to the normal mode.
 - Also, during the filter mode, `Esc` now restores the cursor position.
 
-## v1.1.0 (2022-08-08)
-
-### Important change about the preview feature
-
-- From v1.1.0, felix uses [hpjansson](https://github.com/hpjansson) /
-  [chafa](https://github.com/hpjansson/chafa) instead of `libsixel` & `viuer` to preview image files. This greatly improves the performance and code maintainability, and as a consequence, the number of dependencies is reduced (137 -> 53).
-- Due to this change, the image preview does not work out of the box: **_Install `chafa` and it will be enabled without configuration_**. To install, please see https://hpjansson.org/chafa/.
-- By `chafa`, the high-res image preview is enabled in terminals that support sixel, or kitty.
-- In other terminals, images are displayed by characters.
-
 For more details, see `CHANGELOG.md`.
 
 ## Status
