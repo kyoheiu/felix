@@ -68,6 +68,15 @@ cd felix
 cargo install --path .
 ```
 
+## Integrations
+
+In addition, you can use felix more conveniently by installing these two apps:
+
+- [zoxide](https://github.com/ajeetdsouza/zoxide): A smarter `cd` command, which enables you to jump to a directory that matches the keyword in felix.
+- [chafa](https://hpjansson.org/chafa/): Terminal graphics for the 21st century, by which you can preview images in felix.
+
+These apps do not need any configuration to use with felix!
+
 ## Usage
 
 ```
@@ -95,7 +104,7 @@ o                 :Open a fila in a new window.
 gg                :Go to the top.
 G                 :Go to the bottom.
 z + Enter         :Go to the home directory.
-z <keyword>       :Jump to a directory that matches the keyword. (zoxide* required)
+z <keyword>       :Jump to a directory that matches the keyword. (zoxide required)
 dd                :Delete and yank one item.
 yy                :Yank one item.
 p                 :Put yanked item(s) in the current directory.
@@ -119,26 +128,27 @@ Esc               :Return to the normal mode.
 :q / ZZ           :Exit.
 ```
 
-\* zoxide https://github.com/ajeetdsouza/zoxide
-
 ## Preview feature
 
-By default, text files and directories can be previewed.
-To preview images, you need to install chafa.
-Please see https://hpjansson.org/chafa/.
+By default, text files and directories can be previewed.  
+Install `chafa` and you can preview images without any configuration.
 
 ## Configuration
 
 ### Linux
 
-config file : $XDG_CONFIG_HOME/felix/config.toml
-trash directory: $XDG_CONFIG_HOME/felix/trash
-log files : \$XDG_CONFIG_HOME/felix/log
+```
+config file     : $XDG_CONFIG_HOME/felix/config.toml
+trash directory : $XDG_CONFIG_HOME/felix/trash
+log files       : \$XDG_CONFIG_HOME/felix/log
+```
 
 ### macOS
 
-config file : $HOME/Library/Application Support/felix/config.toml
-trash directory: $HOME/Library/Application Support/felix/trash
-log files : \$HOME/Library/Application Support/felix/log
+```
+config file     : $HOME/Library/Application Support/felix/config.toml
+trash directory : $HOME/Library/Application Support/felix/trash
+log files       : \$HOME/Library/Application Support/felix/log
+```
 
 For more details, visit https://kyoheiu.dev/felix.
