@@ -174,11 +174,11 @@ pub fn make_layout(
         (time_start, name_max)
     } else {
         match use_full {
-            Some(true) => {
+            Some(true) | None => {
                 time_start = column - TIME_WIDTH;
                 name_max = (time_start - SPACES).into();
             }
-            Some(false) | None => match name_length {
+            Some(false) => match name_length {
                 Some(option_max) => {
                     time_start = option_max as u16 + SPACES;
                     name_max = option_max;
