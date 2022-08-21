@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Use full width of the terminal when use_full_width in config.toml is not set.
+
 ## v1.1.1 (2022-08-11)
 
 ### Fixed
