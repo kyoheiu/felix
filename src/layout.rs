@@ -13,6 +13,10 @@ pub const IMAGE_EXTENSION: [&str; 20] = [
 pub const CHAFA_WARNING: &str =
     "From v1.1.0, the image preview needs chafa. For more details, please see help by `:h` ";
 
+pub const PROPER_WIDTH: u16 = 28;
+pub const TIME_WIDTH: u16 = 16;
+pub const DEFAULT_NAME_LENGTH: u16 = 30;
+
 #[derive(Debug, Clone)]
 pub struct Layout {
     pub y: u16,
@@ -174,6 +178,55 @@ impl Layout {
             print!("{}", clear::UntilNewline);
         }
         print!("{}", cursor::Goto(self.preview_start_column, BEGINNING_ROW));
+    }
+}
+
+/// Make app's layout according to terminal width and app's config.
+pub fn make_layout(
+    column: u16,
+    use_full: Option<bool>,
+    name_length: Option<usize>,
+) -> (u16, usize) {
+    let mut time_start: u16;
+    let mut name_max: usize;
+
+    if column < PROPER_WIDTH {
+        time_start = column;
+        name_max = (column - 2).into();
+        (time_start, name_max)
+    } else {
+        match use_full {
+            Some(true) | None => {
+                time_start = column - TIME_WIDTH;
+                name_max = (time_start - SPACES).into();
+            }
+            Some(false) => match name_length {
+                Some(option_max) => {
+                    time_start = option_max as u16 + SPACES;
+                    name_max = option_max;
+                }
+                None => {
+                    time_start = if column >= DEFAULT_NAME_LENGTH + TIME_WIDTH + SPACES {
+                        DEFAULT_NAME_LENGTH + SPACES
+                    } else {
+                        column - TIME_WIDTH
+                    };
+                    name_max = if column >= DEFAULT_NAME_LENGTH + TIME_WIDTH + SPACES {
+                        DEFAULT_NAME_LENGTH.into()
+                    } else {
+                        (time_start - SPACES).into()
+                    };
+                }
+            },
+        }
+        let required = time_start + TIME_WIDTH - 1;
+        if required > column {
+            let diff = required - column;
+            name_max -= diff as usize;
+            time_start -= diff;
+        }
+
+        (time_start, name_max)
     }
 }
 

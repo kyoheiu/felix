@@ -7,9 +7,6 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 use termion::{clear, color, cursor};
 
-pub const PROPER_WIDTH: u16 = 28;
-pub const TIME_WIDTH: u16 = 16;
-pub const DEFAULT_NAME_LENGTH: u16 = 30;
 pub const SPACES: u16 = 3;
 
 /// Generate modified time as `String`.
@@ -157,55 +154,6 @@ pub fn to_proper_size(byte: u64) -> String {
         result.push_str("GB");
     }
     result
-}
-
-/// Make app's layout according to terminal width and app's config.
-pub fn make_layout(
-    column: u16,
-    use_full: Option<bool>,
-    name_length: Option<usize>,
-) -> (u16, usize) {
-    let mut time_start: u16;
-    let mut name_max: usize;
-
-    if column < PROPER_WIDTH {
-        time_start = column;
-        name_max = (column - 2).into();
-        (time_start, name_max)
-    } else {
-        match use_full {
-            Some(true) | None => {
-                time_start = column - TIME_WIDTH;
-                name_max = (time_start - SPACES).into();
-            }
-            Some(false) => match name_length {
-                Some(option_max) => {
-                    time_start = option_max as u16 + SPACES;
-                    name_max = option_max;
-                }
-                None => {
-                    time_start = if column >= DEFAULT_NAME_LENGTH + TIME_WIDTH + SPACES {
-                        DEFAULT_NAME_LENGTH + SPACES
-                    } else {
-                        column - TIME_WIDTH
-                    };
-                    name_max = if column >= DEFAULT_NAME_LENGTH + TIME_WIDTH + SPACES {
-                        DEFAULT_NAME_LENGTH.into()
-                    } else {
-                        (time_start - SPACES).into()
-                    };
-                }
-            },
-        }
-        let required = time_start + TIME_WIDTH - 1;
-        if required > column {
-            let diff = required - column;
-            name_max -= diff as usize;
-            time_start -= diff;
-        }
-
-        (time_start, name_max)
-    }
 }
 
 /// Generate the contents of item to show as a preview.

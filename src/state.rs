@@ -1,7 +1,7 @@
 use super::config::*;
 use super::errors::FxError;
 use super::functions::*;
-use super::layout::Layout;
+use super::layout::*;
 use super::nums::*;
 use super::op::*;
 use super::session::*;
