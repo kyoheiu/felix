@@ -8,7 +8,13 @@
 
 ### Fixed
 
-- Use full width of the terminal when use_full_width in config.toml is not set.
+## v1.1.2 (2022-08-29)
+
+### Fixed
+
+- Use full width of the terminal when `use_full_width` in config.toml is not set.
+- Use `cursor::Goto` instead of `cursor::Left` to fix the layout in macOS Terminal.app.
+- Refactor functions around the layout.
 
 ## v1.1.1 (2022-08-11)
 
