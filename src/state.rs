@@ -1043,8 +1043,8 @@ impl State {
                 print!("{}", style::Invert);
                 print!(
                     "{}{}",
-                    " ".repeat(self.layout.terminal_column.into()),
-                    cursor::Left(self.layout.terminal_column),
+                    " ".repeat(self.layout.terminal_column as usize),
+                    cursor::Goto(1, self.layout.terminal_row)
                 );
                 let mut footer = format!(
                     "[{}/{}] {} {}",
@@ -1073,8 +1073,8 @@ impl State {
                 print!("{}", style::Invert);
                 print!(
                     "{}{}",
-                    " ".repeat(self.layout.terminal_column.into()),
-                    cursor::Left(self.layout.terminal_column),
+                    " ".repeat(self.layout.terminal_column as usize),
+                    cursor::Goto(1, self.layout.terminal_row)
                 );
                 let mut footer = format!(
                     "[{}/{}] {}",
