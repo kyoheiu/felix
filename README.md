@@ -10,12 +10,13 @@ For the detailed document, please see https://kyoheiu.dev/felix.
 
 ## New Release
 
-## v1.1.1 (2022-08-11)
+## v1.1.2 (2022-08-29)
 
 ### Fixed
 
-- In the filter mode and shell mode, when you don't have any input, `backspace` now means return to the normal mode.
-- Also, during the filter mode, `Esc` now restores the cursor position.
+- Use full width of the terminal when `use_full_width` in config.toml is not set.
+- Use `cursor::Goto` instead of `cursor::Left` to fix the layout in macOS Terminal.app.
+- Refactor functions around the layout.
 
 For more details, see `CHANGELOG.md`.
 
