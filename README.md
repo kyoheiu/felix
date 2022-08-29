@@ -26,7 +26,7 @@ For more details, see `CHANGELOG.md`.
 | ------- | -------------------------------- |
 | Linux   | works                            |
 | NetBSD  | works                            |
-| MacOS   | works (tested only on Intel Mac) |
+| MacOS   | works |
 | Windows | not supported yet                |
 
 ## Installation
