@@ -1176,7 +1176,10 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
                 file_path: path,
                 symlink_dir_path: sym_dir_path,
                 file_size: size,
-                file_ext: ext,
+                file_ext: match filetype {
+                    FileType::Directory => None,
+                    _ => ext,
+                },
                 modified: time,
                 selected: false,
                 is_hidden: hidden,
