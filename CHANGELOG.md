@@ -8,6 +8,8 @@
 
 ### Fixed
 
+- Choose `None` for directory extension.
+
 ## v1.1.2 (2022-08-29)
 
 ### Fixed
