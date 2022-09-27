@@ -18,7 +18,7 @@ pub fn format_time(time: &Option<String>) -> String {
 }
 
 /// Rename the put file, in order to avoid the name conflict.
-pub fn rename_file(file_name: &str, name_set: &HashSet<String>) -> String {
+pub fn rename_file(file_name: &str, name_set: &HashSet<String>) -> Result<String, FxError> {
     if name_set.contains(file_name) {
         let rename = PathBuf::from(file_name);
         let extension = rename.extension();
@@ -31,13 +31,12 @@ pub fn rename_file(file_name: &str, name_set: &HashSet<String>) -> String {
             rename.push("_copied");
         }
 
-        let rename = rename
-            .into_string()
-            .unwrap_or_else(|_| panic!("cannot rename item."));
-
-        rename_file(&rename, name_set)
+        match rename.into_string() {
+            Ok(s) => rename_file(&s, name_set),
+            Err(_) => Err(FxError::RenameItem),
+        }
     } else {
-        file_name.to_string()
+        Ok(file_name.to_string())
     }
 }
 
