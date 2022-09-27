@@ -11,6 +11,7 @@ pub enum FxError {
     RenameItem,
     RemoveItem,
     TooSmallWindowSize,
+    Log,
 }
 
 impl std::error::Error for FxError {}
@@ -29,6 +30,7 @@ impl std::fmt::Display for FxError {
             FxError::RenameItem => "Error: Cannot rename item",
             FxError::RemoveItem => "Error: Cannot remove item",
             FxError::TooSmallWindowSize => "Error: Too small window size",
+            FxError::Log => "Error: Cannot initialize logger",
         };
         write!(f, "{}", printable)
     }
@@ -55,5 +57,11 @@ impl From<toml::ser::Error> for FxError {
 impl From<walkdir::Error> for FxError {
     fn from(_err: walkdir::Error) -> Self {
         FxError::WalkDir
+    }
+}
+
+impl From<log::SetLoggerError> for FxError {
+    fn from(_err: log::SetLoggerError) -> Self {
+        FxError::Log
     }
 }

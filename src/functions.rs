@@ -259,7 +259,7 @@ pub fn init_log(config_dir_path: &Path) -> Result<(), FxError> {
         std::fs::create_dir(&log_path)?;
     }
     let log_path = log_path.join(log_name);
-    WriteLogger::init(LevelFilter::Info, config, std::fs::File::create(log_path)?).unwrap();
+    WriteLogger::init(LevelFilter::Info, config, std::fs::File::create(log_path)?)?;
     info!("===START===");
 
     Ok(())
