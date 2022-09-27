@@ -112,16 +112,12 @@ impl State {
 
         // Return error if terminal size may cause panic
         if column < 4 {
-            log::error!("Too small terminal size (less than 4 columns).");
-            return Err(FxError::SmallSize {
-                msg: "Error: too small terminal size (less than 4 columns)".to_string(),
-            });
+            error!("Too small terminal size (less than 4 columns).");
+            return Err(FxError::TooSmallWindowSize);
         };
         if row < 4 {
-            log::error!("Too small terminal size. (less than 4 rows)");
-            return Err(FxError::SmallSize {
-                msg: "Error: too small terminal size (less than 4 rows)".to_string(),
-            });
+            error!("Too small terminal size. (less than 4 rows)");
+            return Err(FxError::TooSmallWindowSize);
         };
 
         let (time_start, name_max) =
@@ -184,22 +180,12 @@ impl State {
 
     /// Select an item that the cursor points to.
     pub fn get_item(&self, index: usize) -> Result<&ItemInfo, FxError> {
-        self.list.get(index).ok_or_else(|| {
-            FxError::Io(std::io::Error::new(
-                ErrorKind::NotFound,
-                "Cannot choose item.",
-            ))
-        })
+        self.list.get(index).ok_or(FxError::GetItem)
     }
 
     /// Select an item that the cursor points to, as mut.
     pub fn get_item_mut(&mut self, index: usize) -> Result<&mut ItemInfo, FxError> {
-        self.list.get_mut(index).ok_or_else(|| {
-            FxError::Io(std::io::Error::new(
-                ErrorKind::NotFound,
-                "Cannot choose item as mut.",
-            ))
-        })
+        self.list.get_mut(index).ok_or(FxError::GetItem)
     }
 
     /// Open the selected file according to the config.
@@ -213,15 +199,15 @@ impl State {
         info!("OPEN: {:?}", path);
 
         match map {
-            None => default.arg(path).status().map_err(FxError::Io),
+            None => default.arg(path).status().or(Err(FxError::OpenItem)),
             Some(map) => match extension {
-                None => default.arg(path).status().map_err(FxError::Io),
+                None => default.arg(path).status().or(Err(FxError::OpenItem)),
                 Some(extension) => match map.get(extension) {
                     Some(command) => {
                         let mut ex = Command::new(command);
-                        ex.arg(path).status().map_err(FxError::Io)
+                        ex.arg(path).status().or(Err(FxError::OpenItem))
                     }
-                    None => default.arg(path).status().map_err(FxError::Io),
+                    None => default.arg(path).status().or(Err(FxError::OpenItem)),
                 },
             },
         }
@@ -244,7 +230,7 @@ impl State {
                 .stdout(Stdio::null())
                 .stdin(Stdio::null())
                 .spawn()
-                .map_err(FxError::Io),
+                .or(Err(FxError::OpenItem)),
             Some(map) => match extension {
                 Some(extension) => match map.get(extension) {
                     Some(command) => {
@@ -253,14 +239,14 @@ impl State {
                             .stdout(Stdio::null())
                             .stdin(Stdio::null())
                             .spawn()
-                            .map_err(FxError::Io)
+                            .or(Err(FxError::OpenItem))
                     }
                     None => default
                         .arg(path)
                         .stdout(Stdio::null())
                         .stdin(Stdio::null())
                         .spawn()
-                        .map_err(FxError::Io),
+                        .or(Err(FxError::OpenItem)),
                 },
 
                 None => default
@@ -268,7 +254,7 @@ impl State {
                     .stdout(Stdio::null())
                     .stdin(Stdio::null())
                     .spawn()
-                    .map_err(FxError::Io),
+                    .or(Err(FxError::OpenItem)),
             },
         }
     }
@@ -327,7 +313,7 @@ impl State {
         if item.file_type == FileType::Symlink && !from.exists() {
             match Command::new("rm").arg(from).status() {
                 Ok(_) => Ok(PathBuf::new()),
-                Err(e) => Err(FxError::Io(e)),
+                Err(_) => Err(FxError::RemoveItem),
             }
         } else {
             let name = &item.file_name;
@@ -340,9 +326,7 @@ impl State {
 
                 //copy
                 if std::fs::copy(from, &to).is_err() {
-                    return Err(FxError::FileCopy {
-                        msg: format!("Cannot copy item: {:?}", from),
-                    });
+                    return Err(FxError::CopyItem);
                 }
 
                 self.push_to_registered(&item, to.clone(), rename);
@@ -350,9 +334,7 @@ impl State {
 
             //remove original
             if std::fs::remove_file(from).is_err() {
-                return Err(FxError::FileRemove {
-                    msg: format!("Cannot Remove item: {:?}", from),
-                });
+                return Err(FxError::RemoveItem);
             }
 
             Ok(to)
@@ -393,9 +375,7 @@ impl State {
                     trash_name.push('_');
                     let file_name = entry.file_name().to_str();
                     if file_name == None {
-                        return Err(FxError::UTF8 {
-                            msg: "Cannot convert filename to UTF-8.".to_string(),
-                        });
+                        return Err(FxError::UTF8);
                     }
                     trash_name.push_str(file_name.unwrap());
                     trash_path = self.trash_dir.join(&trash_name);
@@ -417,9 +397,7 @@ impl State {
                     }
 
                     if std::fs::copy(entry_path, &target).is_err() {
-                        return Err(FxError::FileCopy {
-                            msg: format!("Cannot copy item: {:?}", entry_path),
-                        });
+                        return Err(FxError::CopyItem);
                     }
                 }
             }
@@ -429,9 +407,7 @@ impl State {
 
         //remove original
         if std::fs::remove_dir_all(&item.file_path).is_err() {
-            return Err(FxError::FileRemove {
-                msg: format!("Cannot Remove directory: {:?}", item.file_name),
-            });
+            return Err(FxError::RemoveItem);
         }
 
         Ok(trash_path)
@@ -535,22 +511,18 @@ impl State {
             None => {
                 if item.file_path.parent() == Some(&self.trash_dir) {
                     let rename: String = item.file_name.chars().skip(11).collect();
-                    let rename = rename_file(&rename, name_set);
+                    let rename = rename_file(&rename, name_set)?;
                     let to = &self.current_dir.join(&rename);
                     if std::fs::copy(&item.file_path, to).is_err() {
-                        return Err(FxError::FileCopy {
-                            msg: format!("Cannot copy item: {:?}", &item.file_path),
-                        });
+                        return Err(FxError::CopyItem);
                     }
                     name_set.insert(rename);
                     Ok(to.to_path_buf())
                 } else {
-                    let rename = rename_file(&item.file_name, name_set);
+                    let rename = rename_file(&item.file_name, name_set)?;
                     let to = &self.current_dir.join(&rename);
                     if std::fs::copy(&item.file_path, to).is_err() {
-                        return Err(FxError::FileCopy {
-                            msg: format!("Cannot copy item: {:?}", &item.file_path),
-                        });
+                        return Err(FxError::CopyItem);
                     }
                     name_set.insert(rename);
                     Ok(to.to_path_buf())
@@ -559,22 +531,18 @@ impl State {
             Some(path) => {
                 if item.file_path.parent() == Some(&self.trash_dir) {
                     let rename: String = item.file_name.chars().skip(11).collect();
-                    let rename = rename_file(&rename, name_set);
+                    let rename = rename_file(&rename, name_set)?;
                     let to = path.join(&rename);
                     if std::fs::copy(&item.file_path, to.clone()).is_err() {
-                        return Err(FxError::FileCopy {
-                            msg: format!("Cannot copy item: {:?}", &item.file_path),
-                        });
+                        return Err(FxError::CopyItem);
                     }
                     name_set.insert(rename);
                     Ok(to)
                 } else {
-                    let rename = rename_file(&item.file_name, name_set);
+                    let rename = rename_file(&item.file_name, name_set)?;
                     let to = &path.join(&rename);
                     if std::fs::copy(&item.file_path, to).is_err() {
-                        return Err(FxError::FileCopy {
-                            msg: format!("Cannot copy item: {:?}", &item.file_path),
-                        });
+                        return Err(FxError::CopyItem);
                     }
                     name_set.insert(rename);
                     Ok(to.to_path_buf())
@@ -649,9 +617,7 @@ impl State {
                 }
 
                 if std::fs::copy(entry_path, &child).is_err() {
-                    return Err(FxError::FileCopy {
-                        msg: format!("Cannot copy item: {:?}", entry_path),
-                    });
+                    return Err(FxError::CopyItem);
                 }
             }
         }
