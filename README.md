@@ -22,12 +22,14 @@ For more details, see `CHANGELOG.md`.
 
 ## Status
 
-| OS      | Status                           |
-| ------- | -------------------------------- |
-| Linux   | works                            |
-| NetBSD  | works                            |
-| MacOS   | works |
-| Windows | not supported yet                |
+| OS      | Status            |
+| ------- | ----------------- |
+| Linux   | works             |
+| NetBSD  | works             |
+| MacOS   | works             |
+| Windows | not supported yet |
+
+MSRV(Minimum Supported Rust Version): **1.59.0**
 
 ## Installation
 
