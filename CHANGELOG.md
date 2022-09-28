@@ -6,6 +6,11 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Huge refactoring: Instead of `thiserror`, use custom error type to make it easier to handle.
+- Bump up chrono version, clarify the feature to use.
+
 ### Fixed
 
 - Choose `None` for directory extension.
