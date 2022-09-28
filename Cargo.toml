@@ -33,4 +33,4 @@ features = ["derive"]
 [dependencies.chrono]
 version = "0.4.22"
 default-features = false
-features = ["std", "clock"]
+features = ["clock"]
