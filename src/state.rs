@@ -1019,13 +1019,14 @@ impl State {
                     to_proper_size(item.file_size),
                 );
                 if self.rust_log.is_some() {
-                    footer.push_str(&format!(
+                    let _ = write!(
+                        footer,
                         " index:{} skip:{} column:{} row:{}",
                         nums.index,
                         nums.skip,
                         self.layout.terminal_column,
                         self.layout.terminal_row
-                    ));
+                    );
                 }
                 let footer: String = footer
                     .chars()
@@ -1048,13 +1049,14 @@ impl State {
                     to_proper_size(item.file_size),
                 );
                 if self.rust_log.is_some() {
-                    footer.push_str(&format!(
+                    let _ = write!(
+                        footer,
                         " index:{} skip:{} column:{} row:{}",
                         nums.index,
                         nums.skip,
                         self.layout.terminal_column,
                         self.layout.terminal_row
-                    ));
+                    );
                 }
                 let footer: String = footer
                     .chars()
