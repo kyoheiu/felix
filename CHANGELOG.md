@@ -4,12 +4,18 @@
 
 - Text preview color needs to be readable enough, so it's worth rethinking (Now LightBlack).
 
-## [Unreleased]
+## Unreleased
+
+(None)
+
+## v1.2.0 (2022-10-01)
 
 ### Changed
 
 - Huge refactoring: Instead of `thiserror`, use custom error type to make it easier to handle.
-- Bump up chrono version, clarify the feature to use.
+- Bump up chrono version to 0.4.22, clarifing the feature to use.
+- Avoid extra heap allocation by using write! instead of push_str/format!.
+- Copied item will be renamed with the suffix "\_{count}" such as "test_1.txt", instead of "test_copied.txt".
 
 ### Fixed
 

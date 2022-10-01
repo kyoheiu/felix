@@ -10,15 +10,18 @@ For the detailed document, please see https://kyoheiu.dev/felix.
 
 ## New Release
 
-## v1.1.2 (2022-08-29)
+## v1.2.0 (2022-10-01)
+
+### Changed
+
+- Huge refactoring: Instead of `thiserror`, use custom error type to make it easier to handle.
+- Bump up chrono version to 0.4.22, clarifing the feature to use.
+- Avoid extra heap allocation by using write! instead of push_str/format!.
+- Copied item will be renamed with the suffix "\_{count}" such as "test_1.txt", instead of "test_copied.txt".
 
 ### Fixed
 
-- Use full width of the terminal when `use_full_width` in config.toml is not set.
-- Use `cursor::Goto` instead of `cursor::Left` to fix the layout in macOS Terminal.app.
-- Refactor functions around the layout.
-
-For more details, see `CHANGELOG.md`.
+- Choose `None` for directory extension.
 
 ## Status
 
