@@ -1,8 +1,9 @@
-use crate::errors::FxError;
+use super::errors::FxError;
+
 use log::{info, warn};
 use simplelog::{ConfigBuilder, LevelFilter, WriteLogger};
-use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use termion::{clear, color, cursor};
@@ -18,37 +19,50 @@ pub fn format_time(time: &Option<String>) -> String {
 }
 
 /// Rename the put file, in order to avoid the name conflict.
-pub fn rename_file(file_name: &str, name_set: &HashSet<String>) -> Result<String, FxError> {
-    if name_set.contains(file_name) {
-        let rename = PathBuf::from(file_name);
-        let extension = rename.extension();
+pub fn rename_file(file_name: &str, name_set: &HashSet<String>) -> String {
+    let mut count: usize = 1;
+    let (stem, extension) = {
+        let file_name = PathBuf::from(file_name);
+        (
+            file_name.file_stem().unwrap().to_owned(),
+            file_name.extension().map(|x| x.to_owned()),
+        )
+    };
+    let mut new_name = file_name.to_owned();
 
-        let mut rename = rename.file_stem().unwrap().to_os_string();
-        if let Some(ext) = extension {
-            rename.push("_copied.");
+    while name_set.contains(&new_name) {
+        let mut suffix = OsString::from("_");
+        suffix.push({
+            let count: OsString = count.to_string().into();
+            count
+        });
+        let mut rename = stem.to_os_string();
+        if let Some(ref ext) = extension {
+            rename.push(suffix);
+            rename.push(".");
             rename.push(ext);
         } else {
-            rename.push("_copied");
+            rename.push(suffix);
         }
-
-        match rename.into_string() {
-            Ok(s) => rename_file(&s, name_set),
-            Err(_) => Err(FxError::RenameItem),
-        }
-    } else {
-        Ok(file_name.to_string())
+        new_name = rename.into_string().unwrap();
+        count += 1;
     }
+    new_name
 }
 
 /// Rename the put directory, in order to avoid the name conflict.
 pub fn rename_dir(dir_name: &str, name_set: &HashSet<String>) -> String {
-    if name_set.contains(dir_name) {
-        let mut rename = dir_name.to_string();
-        rename.push_str("_copied");
-        rename_dir(&rename, name_set)
-    } else {
-        dir_name.to_string()
+    let mut count: usize = 1;
+    let mut new_name = dir_name.to_owned();
+    while name_set.contains(&new_name) {
+        let mut suffix = "_".to_string();
+        suffix.push_str(&count.to_string());
+        let mut rename = dir_name.to_owned();
+        rename.push_str(&suffix);
+        new_name = rename;
+        count += 1;
     }
+    new_name
 }
 
 pub fn reset_info_line() {
