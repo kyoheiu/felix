@@ -4,16 +4,17 @@ use super::functions::*;
 use super::help::HELP;
 use super::nums::*;
 use super::op::*;
+use super::session::*;
 use super::state::*;
-use crate::session::*;
+
 use log::{error, info};
 use std::ffi::OsStr;
+use std::fmt::Write as _;
 use std::io::{stdin, stdout, Write};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use termion::event::Key;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
@@ -771,10 +772,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             format!("1 item deleted [{}]", duration)
                                         } else {
                                             let mut count = total.to_string();
-                                            count.push_str(&format!(
-                                                " items deleted [{}]",
-                                                duration
-                                            ));
+                                            let _ = write!(count, " items deleted [{}]", duration);
                                             count
                                         }
                                     };
@@ -959,9 +957,9 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     let registered_len = state.registered.len();
                     let mut put_message: String = registered_len.to_string();
                     if registered_len == 1 {
-                        put_message.push_str(&format!(" item inserted [{}]", duration));
+                        let _ = write!(put_message, " item inserted [{}]", duration);
                     } else {
-                        put_message.push_str(&format!(" items inserted [{}]", duration));
+                        let _ = write!(put_message, " items inserted [{}]", duration);
                     }
                     print_info(put_message, y);
                 }
