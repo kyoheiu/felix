@@ -5,10 +5,12 @@ use super::layout::*;
 use super::nums::*;
 use super::op::*;
 use super::session::*;
+
 use chrono::prelude::*;
 use log::{error, info};
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::fmt::Write as _;
 use std::fs;
 use std::path::PathBuf;
 use std::process::{Child, Command, ExitStatus, Stdio};
@@ -312,7 +314,7 @@ impl State {
         if item.file_type == FileType::Symlink && !from.exists() {
             match Command::new("rm").arg(from).status() {
                 Ok(_) => Ok(PathBuf::new()),
-                Err(_) => Err(FxError::RemoveItem),
+                Err(_) => Err(FxError::RemoveItem(from.to_owned())),
             }
         } else {
             let name = &item.file_name;
@@ -325,7 +327,7 @@ impl State {
 
                 //copy
                 if std::fs::copy(from, &to).is_err() {
-                    return Err(FxError::CopyItem);
+                    return Err(FxError::PutItem(from.to_owned()));
                 }
 
                 self.push_to_registered(&item, to.clone(), rename);
@@ -333,7 +335,7 @@ impl State {
 
             //remove original
             if std::fs::remove_file(from).is_err() {
-                return Err(FxError::RemoveItem);
+                return Err(FxError::RemoveItem(from.to_owned()));
             }
 
             Ok(to)
@@ -374,7 +376,7 @@ impl State {
                     trash_name.push('_');
                     let file_name = entry.file_name().to_str();
                     if file_name == None {
-                        return Err(FxError::UTF8);
+                        return Err(FxError::Encode);
                     }
                     trash_name.push_str(file_name.unwrap());
                     trash_path = self.trash_dir.join(&trash_name);
@@ -396,7 +398,7 @@ impl State {
                     }
 
                     if std::fs::copy(entry_path, &target).is_err() {
-                        return Err(FxError::CopyItem);
+                        return Err(FxError::PutItem(entry_path.to_owned()));
                     }
                 }
             }
@@ -406,7 +408,7 @@ impl State {
 
         //remove original
         if std::fs::remove_dir_all(&item.file_path).is_err() {
-            return Err(FxError::RemoveItem);
+            return Err(FxError::RemoveItem(item.file_path));
         }
 
         Ok(trash_path)
@@ -510,18 +512,18 @@ impl State {
             None => {
                 if item.file_path.parent() == Some(&self.trash_dir) {
                     let rename: String = item.file_name.chars().skip(11).collect();
-                    let rename = rename_file(&rename, name_set)?;
+                    let rename = rename_file(&rename, name_set);
                     let to = &self.current_dir.join(&rename);
                     if std::fs::copy(&item.file_path, to).is_err() {
-                        return Err(FxError::CopyItem);
+                        return Err(FxError::PutItem(item.file_path.clone()));
                     }
                     name_set.insert(rename);
                     Ok(to.to_path_buf())
                 } else {
-                    let rename = rename_file(&item.file_name, name_set)?;
+                    let rename = rename_file(&item.file_name, name_set);
                     let to = &self.current_dir.join(&rename);
                     if std::fs::copy(&item.file_path, to).is_err() {
-                        return Err(FxError::CopyItem);
+                        return Err(FxError::PutItem(item.file_path.clone()));
                     }
                     name_set.insert(rename);
                     Ok(to.to_path_buf())
@@ -530,18 +532,18 @@ impl State {
             Some(path) => {
                 if item.file_path.parent() == Some(&self.trash_dir) {
                     let rename: String = item.file_name.chars().skip(11).collect();
-                    let rename = rename_file(&rename, name_set)?;
+                    let rename = rename_file(&rename, name_set);
                     let to = path.join(&rename);
                     if std::fs::copy(&item.file_path, to.clone()).is_err() {
-                        return Err(FxError::CopyItem);
+                        return Err(FxError::PutItem(item.file_path.clone()));
                     }
                     name_set.insert(rename);
                     Ok(to)
                 } else {
-                    let rename = rename_file(&item.file_name, name_set)?;
+                    let rename = rename_file(&item.file_name, name_set);
                     let to = &path.join(&rename);
                     if std::fs::copy(&item.file_path, to).is_err() {
-                        return Err(FxError::CopyItem);
+                        return Err(FxError::PutItem(item.file_path.clone()));
                     }
                     name_set.insert(rename);
                     Ok(to.to_path_buf())
@@ -616,7 +618,7 @@ impl State {
                 }
 
                 if std::fs::copy(entry_path, &child).is_err() {
-                    return Err(FxError::CopyItem);
+                    return Err(FxError::PutItem(entry_path.to_owned()));
                 }
             }
         }
