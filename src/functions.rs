@@ -1,7 +1,7 @@
 use super::errors::FxError;
 use super::term::*;
 
-use crossterm::style::{Color, Colors, ResetColor, SetColors};
+use crossterm::style::Color;
 use log::{info, warn};
 use simplelog::{ConfigBuilder, LevelFilter, WriteLogger};
 use std::collections::{HashMap, HashSet};
@@ -96,10 +96,9 @@ pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
     move_to(2, 2);
     clear_current_line();
 
-    let warn_colors = Colors::new(Color::White, Color::Red);
-    print!("{}", SetColors(warn_colors));
+    set_color(Some(Color::White), Some(Color::Red));
     print!("{}", message,);
-    print!("{}", ResetColor);
+    reset_color();
 
     hide_cursor();
     move_to(1, then);

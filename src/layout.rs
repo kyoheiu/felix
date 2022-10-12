@@ -2,6 +2,7 @@ use super::config::*;
 use super::errors::FxError;
 use super::functions::*;
 use super::state::{FileType, ItemInfo, BEGINNING_ROW};
+use super::term::*;
 use termion::{clear, color, cursor};
 
 /// cf: https://docs.rs/image/latest/src/image/image.rs.html#84-112
@@ -65,10 +66,7 @@ impl Layout {
                 } else {
                     let help = format_txt(CHAFA_WARNING, self.terminal_column - 1, false);
                     for (i, line) in help.iter().enumerate() {
-                        print!(
-                            "{}",
-                            cursor::Goto(self.preview_start_column, BEGINNING_ROW + i as u16)
-                        );
+                        move_to(self.preview_start_column, BEGINNING_ROW + i as u16);
                         print!("{}", line,);
                         if BEGINNING_ROW + i as u16 == self.terminal_row - 1 {
                             break;
@@ -87,11 +85,8 @@ impl Layout {
 
     /// Print item name at the top.
     fn print_file_name(&self, item: &ItemInfo) {
-        print!(
-            "{}{}",
-            cursor::Goto(self.preview_start_column, 1),
-            clear::UntilNewline
-        );
+        move_to(self.preview_start_column, 1);
+        clear_until_newline();
         let mut file_name = format!("[{}]", item.file_name);
         if file_name.len() > self.preview_width.into() {
             file_name = file_name.chars().take(self.preview_width.into()).collect();
@@ -125,10 +120,7 @@ impl Layout {
 
         //Print preview (wrapping)
         for (i, line) in content.iter().enumerate() {
-            print!(
-                "{}",
-                cursor::Goto(self.preview_start_column, BEGINNING_ROW + i as u16)
-            );
+            move_to(self.preview_start_column, BEGINNING_ROW + i as u16);
             print!(
                 "{}{}{}",
                 color::Fg(color::LightBlack),
