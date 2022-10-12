@@ -25,6 +25,7 @@ toml = "0.5.8"
 log = "0.4.16"
 simplelog = "0.12.0"
 content_inspector = "0.2.4"
+crossterm = "0.25.0"
 
 [dependencies.serde]
 version = "1.0.136"

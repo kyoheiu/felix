@@ -8,6 +8,7 @@ mod op;
 mod run;
 mod session;
 mod state;
+mod term;
 
 use std::path::PathBuf;
 

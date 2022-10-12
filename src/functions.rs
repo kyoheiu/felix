@@ -1,12 +1,13 @@
 use super::errors::FxError;
+use super::term::*;
 
+use crossterm::style::{Color, Colors, ResetColor, SetColors};
 use log::{info, warn};
 use simplelog::{ConfigBuilder, LevelFilter, WriteLogger};
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
-use termion::{clear, color, cursor};
 
 pub const SPACES: u16 = 3;
 
@@ -66,53 +67,49 @@ pub fn rename_dir(dir_name: &str, name_set: &HashSet<String>) -> String {
 }
 
 pub fn reset_info_line() {
-    print!("{}{}", cursor::Goto(2, 2), clear::CurrentLine);
+    move_to(2, 2);
+    clear_current_line();
 }
 
 pub fn delete_cursor() {
-    print!(" {}", cursor::Left(1));
+    move_left(1);
 }
 
 /// Print the result of operation, such as put/delete/redo/undo.
 pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
     delete_cursor();
+    reset_info_line();
     info!("{}", message);
-    print!("{}{}{}", cursor::Goto(2, 2), clear::CurrentLine, message,);
+    print!("{}", message);
 
-    print!(
-        "{}{}>{}",
-        cursor::Hide,
-        cursor::Goto(1, then),
-        cursor::Left(1)
-    );
+    hide_cursor();
+    move_to(1, then);
+    print_cursor();
+    move_left(1);
 }
 
 /// When something goes wrong or does not work, print information about it.
 pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
     delete_cursor();
     warn!("{}", message);
-    print!(
-        "{}{}{}{}{}{}{}",
-        cursor::Goto(2, 2),
-        clear::CurrentLine,
-        color::Fg(color::LightWhite),
-        color::Bg(color::Red),
-        message,
-        color::Fg(color::Reset),
-        color::Bg(color::Reset),
-    );
+    move_to(2, 2);
+    clear_current_line();
 
-    print!(
-        "{}{}>{}",
-        cursor::Hide,
-        cursor::Goto(1, then),
-        cursor::Left(1)
-    );
+    let warn_colors = Colors::new(Color::White, Color::Red);
+    print!("{}", SetColors(warn_colors));
+    print!("{}", message,);
+    print!("{}", ResetColor);
+
+    hide_cursor();
+    move_to(1, then);
+    print_cursor();
+    move_left(1);
 }
 
 /// Print process of put/delete.
 pub fn print_process<T: std::fmt::Display>(message: T) {
-    print!("{}{}", message, cursor::Left(7));
+    print!("{}", message);
+    move_left(7);
 }
 
 /// Print the number of process (put/delete).
@@ -246,8 +243,7 @@ pub fn print_help(v: &[String], skip_number: usize, row: u16) {
             continue;
         }
 
-        print!("{}", cursor::Goto(1, (i + 1 - skip_number) as u16));
-
+        move_to(1, (i + 1 - skip_number) as u16);
         if row_count == row - 1 {
             print!("{}...{}", termion::style::Invert, termion::style::Reset);
             break;
