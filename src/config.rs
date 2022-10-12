@@ -59,13 +59,13 @@ symlink_fg = \"LightYellow\"
 pub struct Config {
     pub default: String,
     pub exec: Option<HashMap<String, Vec<String>>>,
-    pub color: Color,
+    pub color: ConfigColor,
     pub use_full_width: Option<bool>,
     pub item_name_length: Option<usize>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct Color {
+pub struct ConfigColor {
     pub dir_fg: Colorname,
     pub file_fg: Colorname,
     pub symlink_fg: Colorname,

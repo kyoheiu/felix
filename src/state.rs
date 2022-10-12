@@ -147,7 +147,7 @@ impl State {
                 time_start_pos: time_start,
                 use_full: config.use_full_width,
                 option_name_len: config.item_name_length,
-                colors: Color {
+                colors: ConfigColor {
                     dir_fg: config.color.dir_fg,
                     file_fg: config.color.file_fg,
                     symlink_fg: config.color.symlink_fg,
