@@ -72,6 +72,7 @@ pub fn reset_info_line() {
 }
 
 pub fn delete_cursor() {
+    print!(" ");
     move_left(1);
 }
 
