@@ -1,5 +1,5 @@
 use crossterm::{
-    cursor::{Hide, MoveLeft, MoveTo},
+    cursor::{Hide, MoveLeft, MoveRight, MoveTo},
     style::{Color, Colors, ResetColor, SetColors},
     terminal::Clear,
 };
@@ -16,8 +16,16 @@ pub fn clear_until_newline() {
     print!("{}", Clear(crossterm::terminal::ClearType::UntilNewLine));
 }
 
+pub fn clear_all() {
+    print!("{}", Clear(crossterm::terminal::ClearType::All));
+}
+
 pub fn move_left(x: u16) {
     print!("{}", MoveLeft(x));
+}
+
+pub fn move_right(x: u16) {
+    print!("{}", MoveRight(x));
 }
 
 pub fn hide_cursor() {
