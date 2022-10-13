@@ -8,7 +8,8 @@ use super::session::*;
 use super::term::*;
 
 use chrono::prelude::*;
-use crossterm::style::Stylize;
+use crossterm::style::SetForegroundColor;
+use crossterm::style::{Color, Stylize};
 use log::{error, info};
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -16,7 +17,6 @@ use std::fmt::Write as _;
 use std::fs;
 use std::path::PathBuf;
 use std::process::{Child, Command, ExitStatus, Stdio};
-use termion::color;
 
 pub const BEGINNING_ROW: u16 = 3;
 pub const FX_CONFIG_DIR: &str = "felix";
@@ -67,7 +67,8 @@ macro_rules! print_item {
             if *($selected) {
                 print!("{}{}", $color, $name.negative(),);
             } else {
-                print!("{}{}{}", $color, $name, color::Fg(color::Reset));
+                print!("{}{}", $color, $name);
+                reset_color();
             }
             if $layout.terminal_column > $layout.time_start_pos + TIME_WIDTH {
                 clear_until_newline();
@@ -83,7 +84,7 @@ macro_rules! print_item {
                 move_left(100);
                 move_right($layout.time_start_pos - 1);
                 print!(" {}", $time);
-                print!("{}", color::Fg(color::Reset));
+                reset_color();
             }
             if $layout.terminal_column > $layout.time_start_pos + TIME_WIDTH {
                 clear_until_newline();
@@ -709,12 +710,9 @@ impl State {
         //Show current directory path.
         //crossterm's Stylize cannot be applied to PathBuf,
         //current directory does not have any text attribute for now.
-        print!(
-            " {}{}{}",
-            color::Fg(color::Cyan),
-            self.current_dir.display(),
-            color::Fg(color::Reset),
-        );
+        set_foregroundcolor(Color::DarkCyan);
+        print!(" {}", self.current_dir.display(),);
+        reset_color();
 
         //If .git directory exists, get the branch information and print it.
         let git = self.current_dir.join(".git");
@@ -723,12 +721,10 @@ impl State {
             if let Ok(head) = std::fs::read(head) {
                 let branch: Vec<u8> = head.into_iter().skip(16).collect();
                 if let Ok(branch) = std::str::from_utf8(&branch) {
-                    print!(
-                        " on {}{}{}",
-                        color::Fg(color::Magenta),
-                        branch.trim().bold(),
-                        color::Fg(color::Reset)
-                    );
+                    print!(" on ",);
+                    set_foregroundcolor(Color::Magenta);
+                    print!("{}", branch.trim().bold());
+                    reset_color();
                 }
             }
         }
@@ -760,66 +756,81 @@ impl State {
             FileType::Symlink => &self.layout.colors.symlink_fg,
         };
         match color {
-            Colorname::AnsiValue(n) => {
+            Colorname::Black => {
                 print_item!(
-                    color::Fg(color::AnsiValue(*n)),
+                    SetForegroundColor(Color::Black),
                     name,
                     time,
                     selected,
                     self.layout
                 );
             }
-            Colorname::Black => {
-                print_item!(color::Fg(color::Black), name, time, selected, self.layout);
-            }
-            Colorname::Blue => {
-                print_item!(color::Fg(color::Blue), name, time, selected, self.layout);
-            }
-            Colorname::Cyan => {
-                print_item!(color::Fg(color::Cyan), name, time, selected, self.layout);
+            Colorname::Red => {
+                print_item!(
+                    SetForegroundColor(Color::DarkRed),
+                    name,
+                    time,
+                    selected,
+                    self.layout
+                );
             }
             Colorname::Green => {
-                print_item!(color::Fg(color::Green), name, time, selected, self.layout);
+                print_item!(
+                    SetForegroundColor(Color::DarkGreen),
+                    name,
+                    time,
+                    selected,
+                    self.layout
+                );
+            }
+            Colorname::Yellow => {
+                print_item!(
+                    SetForegroundColor(Color::DarkYellow),
+                    name,
+                    time,
+                    selected,
+                    self.layout
+                );
+            }
+            Colorname::Blue => {
+                print_item!(
+                    SetForegroundColor(Color::DarkBlue),
+                    name,
+                    time,
+                    selected,
+                    self.layout
+                );
+            }
+            Colorname::Magenta => {
+                print_item!(
+                    SetForegroundColor(Color::DarkMagenta),
+                    name,
+                    time,
+                    selected,
+                    self.layout
+                );
+            }
+            Colorname::Cyan => {
+                print_item!(
+                    SetForegroundColor(Color::DarkCyan),
+                    name,
+                    time,
+                    selected,
+                    self.layout
+                );
+            }
+            Colorname::White => {
+                print_item!(
+                    SetForegroundColor(Color::Grey),
+                    name,
+                    time,
+                    selected,
+                    self.layout
+                );
             }
             Colorname::LightBlack => {
                 print_item!(
-                    color::Fg(color::LightBlack),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
-            }
-            Colorname::LightBlue => {
-                print_item!(
-                    color::Fg(color::LightBlue),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
-            }
-            Colorname::LightCyan => {
-                print_item!(
-                    color::Fg(color::LightCyan),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
-            }
-            Colorname::LightGreen => {
-                print_item!(
-                    color::Fg(color::LightGreen),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
-            }
-            Colorname::LightMagenta => {
-                print_item!(
-                    color::Fg(color::LightMagenta),
+                    SetForegroundColor(Color::DarkGrey),
                     name,
                     time,
                     selected,
@@ -828,16 +839,16 @@ impl State {
             }
             Colorname::LightRed => {
                 print_item!(
-                    color::Fg(color::LightRed),
+                    SetForegroundColor(Color::Red),
                     name,
                     time,
                     selected,
                     self.layout
                 );
             }
-            Colorname::LightWhite => {
+            Colorname::LightGreen => {
                 print_item!(
-                    color::Fg(color::LightWhite),
+                    SetForegroundColor(Color::Green),
                     name,
                     time,
                     selected,
@@ -846,33 +857,70 @@ impl State {
             }
             Colorname::LightYellow => {
                 print_item!(
-                    color::Fg(color::LightYellow),
+                    SetForegroundColor(Color::Yellow),
                     name,
                     time,
                     selected,
                     self.layout
                 );
             }
-            Colorname::Magenta => {
-                print_item!(color::Fg(color::Magenta), name, time, selected, self.layout);
+            Colorname::LightBlue => {
+                print_item!(
+                    SetForegroundColor(Color::Blue),
+                    name,
+                    time,
+                    selected,
+                    self.layout
+                );
             }
-            Colorname::Red => {
-                print_item!(color::Fg(color::Red), name, time, selected, self.layout);
+            Colorname::LightMagenta => {
+                print_item!(
+                    SetForegroundColor(Color::Magenta),
+                    name,
+                    time,
+                    selected,
+                    self.layout
+                );
+            }
+            Colorname::LightCyan => {
+                print_item!(
+                    SetForegroundColor(Color::Cyan),
+                    name,
+                    time,
+                    selected,
+                    self.layout
+                );
+            }
+            Colorname::LightWhite => {
+                print_item!(
+                    SetForegroundColor(Color::White),
+                    name,
+                    time,
+                    selected,
+                    self.layout
+                );
             }
             Colorname::Rgb(x, y, z) => {
                 print_item!(
-                    color::Fg(color::Rgb(*x, *y, *z)),
+                    SetForegroundColor(Color::Rgb {
+                        r: *x,
+                        g: *y,
+                        b: *z
+                    }),
                     name,
                     time,
                     selected,
                     self.layout
                 );
             }
-            Colorname::White => {
-                print_item!(color::Fg(color::White), name, time, selected, self.layout);
-            }
-            Colorname::Yellow => {
-                print_item!(color::Fg(color::Yellow), name, time, selected, self.layout);
+            Colorname::AnsiValue(n) => {
+                print_item!(
+                    SetForegroundColor(Color::AnsiValue(*n)),
+                    name,
+                    time,
+                    selected,
+                    self.layout
+                );
             }
         }
     }

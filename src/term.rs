@@ -1,6 +1,6 @@
 use crossterm::{
     cursor::{Hide, MoveLeft, MoveRight, MoveTo},
-    style::{Color, Colors, ResetColor, SetColors},
+    style::{Color, Colors, ResetColor, SetColors, SetForegroundColor},
     terminal::Clear,
 };
 
@@ -42,6 +42,10 @@ pub fn set_color(foreground: Option<Color>, background: Option<Color>) {
         background,
     };
     print!("{}", SetColors(colors));
+}
+
+pub fn set_foregroundcolor(foreground: Color) {
+    print!("{}", SetForegroundColor(foreground));
 }
 
 pub fn reset_color() {
