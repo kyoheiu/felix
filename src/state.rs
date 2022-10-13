@@ -5,8 +5,10 @@ use super::layout::*;
 use super::nums::*;
 use super::op::*;
 use super::session::*;
+use super::term::*;
 
 use chrono::prelude::*;
+use crossterm::style::Stylize;
 use log::{error, info};
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -63,26 +65,22 @@ macro_rules! print_item {
     ($color: expr, $name: expr, $time: expr, $selected: expr, $layout: expr) => {
         if $layout.terminal_column < PROPER_WIDTH {
             if *($selected) {
-                print!("{}{}{}{}", $color, style::Invert, $name, style::Reset,);
+                print!("{}{}", $color, $name.negative(),);
             } else {
                 print!("{}{}{}", $color, $name, color::Fg(color::Reset));
             }
             if $layout.terminal_column > $layout.time_start_pos + TIME_WIDTH {
-                print!("{}", clear::AfterCursor);
+                clear_until_newline();
             }
         } else {
             if *($selected) {
                 print!(
-                    "{}{}{}{}{}{} {}{}{}",
+                    "{}{}{}{} {}",
                     $color,
-                    style::Invert,
-                    $name,
-                    style::Reset,
+                    $name.negative(),
                     cursor::Left(100),
                     cursor::Right($layout.time_start_pos - 1),
-                    style::Invert,
-                    $time,
-                    style::Reset
+                    $time.negative(),
                 );
             } else {
                 print!(
@@ -96,7 +94,7 @@ macro_rules! print_item {
                 );
             }
             if $layout.terminal_column > $layout.time_start_pos + TIME_WIDTH {
-                print!("{}", clear::AfterCursor);
+                clear_until_newline();
             }
         }
     };
