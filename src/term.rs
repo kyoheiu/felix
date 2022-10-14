@@ -6,9 +6,9 @@ use crossterm::{
     terminal::Clear,
 };
 
-pub enum TermColor {
-    ForeGround(Colorname),
-    BackGround(Colorname),
+pub enum TermColor<'a> {
+    ForeGround(&'a Colorname),
+    BackGround(&'a Colorname),
 }
 
 pub fn move_to(x: u16, y: u16) {
@@ -43,7 +43,7 @@ pub fn print_cursor() {
     print!(">");
 }
 
-pub fn set_color(c: TermColor) {
+pub fn set_color(c: &TermColor) {
     match c {
         TermColor::ForeGround(c) => match c {
             Colorname::Black => print!("{}", SetForegroundColor(Color::Black)),
@@ -62,8 +62,15 @@ pub fn set_color(c: TermColor) {
             Colorname::LightMagenta => print!("{}", SetForegroundColor(Color::Magenta)),
             Colorname::LightCyan => print!("{}", SetForegroundColor(Color::Cyan)),
             Colorname::LightWhite => print!("{}", SetForegroundColor(Color::White)),
-            Colorname::Rgb(r, g, b) => print!("{}", SetForegroundColor(Color::Rgb { r, g, b })),
-            Colorname::AnsiValue(n) => print!("{}", SetForegroundColor(Color::AnsiValue(n))),
+            Colorname::Rgb(r, g, b) => print!(
+                "{}",
+                SetForegroundColor(Color::Rgb {
+                    r: *r,
+                    g: *g,
+                    b: *b
+                })
+            ),
+            Colorname::AnsiValue(n) => print!("{}", SetForegroundColor(Color::AnsiValue(*n))),
         },
         TermColor::BackGround(c) => match c {
             Colorname::Black => print!("{}", SetBackgroundColor(Color::Black)),
@@ -82,8 +89,15 @@ pub fn set_color(c: TermColor) {
             Colorname::LightMagenta => print!("{}", SetBackgroundColor(Color::Magenta)),
             Colorname::LightCyan => print!("{}", SetBackgroundColor(Color::Cyan)),
             Colorname::LightWhite => print!("{}", SetBackgroundColor(Color::White)),
-            Colorname::Rgb(r, g, b) => print!("{}", SetBackgroundColor(Color::Rgb { r, g, b })),
-            Colorname::AnsiValue(n) => print!("{}", SetBackgroundColor(Color::AnsiValue(n))),
+            Colorname::Rgb(r, g, b) => print!(
+                "{}",
+                SetBackgroundColor(Color::Rgb {
+                    r: *r,
+                    g: *g,
+                    b: *b
+                })
+            ),
+            Colorname::AnsiValue(n) => print!("{}", SetBackgroundColor(Color::AnsiValue(*n))),
         },
     }
 }

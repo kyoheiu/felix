@@ -8,8 +8,7 @@ use super::session::*;
 use super::term::*;
 
 use chrono::prelude::*;
-use crossterm::style::SetForegroundColor;
-use crossterm::style::{Color, Stylize};
+use crossterm::style::Stylize;
 use log::{error, info};
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -58,39 +57,6 @@ pub enum FileType {
     Directory,
     File,
     Symlink,
-}
-
-/// Print an item. modified time will be omitted if width is not enough.
-macro_rules! print_item {
-    ($color: expr, $name: expr, $time: expr, $selected: expr, $layout: expr) => {
-        if $layout.terminal_column < PROPER_WIDTH {
-            if *($selected) {
-                print!("{}{}", $color, $name.negative(),);
-            } else {
-                print!("{}{}", $color, $name);
-                reset_color();
-            }
-            if $layout.terminal_column > $layout.time_start_pos + TIME_WIDTH {
-                clear_until_newline();
-            }
-        } else {
-            if *($selected) {
-                print!("{}{}", $color, $name.negative(),);
-                move_left(100);
-                move_right($layout.time_start_pos - 1);
-                print!(" {}", $time.negative());
-            } else {
-                print!("{}{}", $color, $name);
-                move_left(100);
-                move_right($layout.time_start_pos - 1);
-                print!(" {}", $time);
-                reset_color();
-            }
-            if $layout.terminal_column > $layout.time_start_pos + TIME_WIDTH {
-                clear_until_newline();
-            }
-        }
-    };
 }
 
 impl State {
@@ -710,7 +676,7 @@ impl State {
         //Show current directory path.
         //crossterm's Stylize cannot be applied to PathBuf,
         //current directory does not have any text attribute for now.
-        set_color(TermColor::ForeGround(Colorname::Cyan));
+        set_color(&TermColor::ForeGround(&Colorname::Cyan));
         print!(" {}", self.current_dir.display(),);
         reset_color();
 
@@ -722,7 +688,7 @@ impl State {
                 let branch: Vec<u8> = head.into_iter().skip(16).collect();
                 if let Ok(branch) = std::str::from_utf8(&branch) {
                     print!(" on ",);
-                    set_color(TermColor::ForeGround(Colorname::LightMagenta));
+                    set_color(&TermColor::ForeGround(&Colorname::LightMagenta));
                     print!("{}", branch.trim().bold());
                     reset_color();
                 }
@@ -755,172 +721,35 @@ impl State {
             FileType::File => &self.layout.colors.file_fg,
             FileType::Symlink => &self.layout.colors.symlink_fg,
         };
-        match color {
-            Colorname::Black => {
-                print_item!(
-                    SetForegroundColor(Color::Black),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
+        if self.layout.terminal_column < PROPER_WIDTH {
+            if *selected {
+                set_color(&TermColor::ForeGround(color));
+                print!("{}", name.negative(),);
+            } else {
+                set_color(&TermColor::ForeGround(color));
+                print!("{}", name);
+                reset_color();
             }
-            Colorname::Red => {
-                print_item!(
-                    SetForegroundColor(Color::DarkRed),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
+            if self.layout.terminal_column > self.layout.time_start_pos + TIME_WIDTH {
+                clear_until_newline();
             }
-            Colorname::Green => {
-                print_item!(
-                    SetForegroundColor(Color::DarkGreen),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
+        } else {
+            if *selected {
+                set_color(&TermColor::ForeGround(color));
+                print!("{}", name.negative(),);
+                move_left(100);
+                move_right(self.layout.time_start_pos - 1);
+                print!(" {}", time.negative());
+            } else {
+                set_color(&TermColor::ForeGround(color));
+                print!("{}", name);
+                move_left(100);
+                move_right(self.layout.time_start_pos - 1);
+                print!(" {}", time);
+                reset_color();
             }
-            Colorname::Yellow => {
-                print_item!(
-                    SetForegroundColor(Color::DarkYellow),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
-            }
-            Colorname::Blue => {
-                print_item!(
-                    SetForegroundColor(Color::DarkBlue),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
-            }
-            Colorname::Magenta => {
-                print_item!(
-                    SetForegroundColor(Color::DarkMagenta),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
-            }
-            Colorname::Cyan => {
-                print_item!(
-                    SetForegroundColor(Color::DarkCyan),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
-            }
-            Colorname::White => {
-                print_item!(
-                    SetForegroundColor(Color::Grey),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
-            }
-            Colorname::LightBlack => {
-                print_item!(
-                    SetForegroundColor(Color::DarkGrey),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
-            }
-            Colorname::LightRed => {
-                print_item!(
-                    SetForegroundColor(Color::Red),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
-            }
-            Colorname::LightGreen => {
-                print_item!(
-                    SetForegroundColor(Color::Green),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
-            }
-            Colorname::LightYellow => {
-                print_item!(
-                    SetForegroundColor(Color::Yellow),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
-            }
-            Colorname::LightBlue => {
-                print_item!(
-                    SetForegroundColor(Color::Blue),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
-            }
-            Colorname::LightMagenta => {
-                print_item!(
-                    SetForegroundColor(Color::Magenta),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
-            }
-            Colorname::LightCyan => {
-                print_item!(
-                    SetForegroundColor(Color::Cyan),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
-            }
-            Colorname::LightWhite => {
-                print_item!(
-                    SetForegroundColor(Color::White),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
-            }
-            Colorname::Rgb(x, y, z) => {
-                print_item!(
-                    SetForegroundColor(Color::Rgb {
-                        r: *x,
-                        g: *y,
-                        b: *z
-                    }),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
-            }
-            Colorname::AnsiValue(n) => {
-                print_item!(
-                    SetForegroundColor(Color::AnsiValue(*n)),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
+            if self.layout.terminal_column > self.layout.time_start_pos + TIME_WIDTH {
+                clear_until_newline();
             }
         }
     }

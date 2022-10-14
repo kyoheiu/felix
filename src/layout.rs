@@ -120,7 +120,7 @@ impl Layout {
         //Print preview (wrapping)
         for (i, line) in content.iter().enumerate() {
             move_to(self.preview_start_column, BEGINNING_ROW + i as u16);
-            set_color(TermColor::ForeGround(Colorname::LightBlack));
+            set_color(&TermColor::ForeGround(&Colorname::LightBlack));
             print!("{}", line);
             reset_color();
             if BEGINNING_ROW + i as u16 == self.terminal_row - 1 {

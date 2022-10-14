@@ -96,8 +96,8 @@ pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
     move_to(2, 2);
     clear_current_line();
 
-    set_color(TermColor::ForeGround(Colorname::White));
-    set_color(TermColor::BackGround(Colorname::LightRed));
+    set_color(&TermColor::ForeGround(&Colorname::White));
+    set_color(&TermColor::BackGround(&Colorname::LightRed));
     print!("{}", message,);
     reset_color();
 
