@@ -6,7 +6,10 @@
 
 ## Unreleased
 
-(None)
+### Changed
+
+- Huge refactoring: Migrated to crossterm from termion due to the maintainability and future-support for Windows. New module `term.rs` contains (almost) all of the terminal API, so that other modules will not get effected by the future backend change.
+- As a result, the number of dependencies increased to 66 from 51.
 
 ## v1.2.0 (2022-10-01)
 
