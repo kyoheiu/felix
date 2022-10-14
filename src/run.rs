@@ -19,7 +19,7 @@ use std::time::{Duration, Instant};
 use termion::event::Key;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
-use termion::{clear, cursor, screen};
+use termion::{cursor, screen};
 
 /// frequency to detect terminal size change
 const DETECTION_INTERVAL: u64 = 500;
@@ -1547,12 +1547,14 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                 //exit by ZZ
                 Key::Char('Z') => {
-                    print!(" {}{}Z", cursor::Goto(2, 2), clear::CurrentLine,);
-                    print!("{}", cursor::Show);
+                    print!(" ");
+                    to_info_bar();
+                    clear_current_line();
+                    print!("Z");
+                    show_cursor();
                     screen.flush()?;
 
-                    let input = stdin.next();
-                    if let Some(Ok(key)) = input {
+                    if let Some(Ok(key)) = stdin.next() {
                         match key {
                             Key::Char('Z') => {
                                 break 'main;
@@ -1560,7 +1562,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                             _ => {
                                 reset_info_line();
-                                print!("{}", cursor::Hide);
+                                hide_cursor();
                                 state.move_cursor(&nums, y);
                             }
                         }
