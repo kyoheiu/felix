@@ -710,7 +710,7 @@ impl State {
         //Show current directory path.
         //crossterm's Stylize cannot be applied to PathBuf,
         //current directory does not have any text attribute for now.
-        set_foregroundcolor(Color::DarkCyan);
+        set_color(TermColor::ForeGround(Colorname::Cyan));
         print!(" {}", self.current_dir.display(),);
         reset_color();
 
@@ -722,7 +722,7 @@ impl State {
                 let branch: Vec<u8> = head.into_iter().skip(16).collect();
                 if let Ok(branch) = std::str::from_utf8(&branch) {
                     print!(" on ",);
-                    set_foregroundcolor(Color::Magenta);
+                    set_color(TermColor::ForeGround(Colorname::LightMagenta));
                     print!("{}", branch.trim().bold());
                     reset_color();
                 }

@@ -3,7 +3,6 @@ use super::errors::FxError;
 use super::functions::*;
 use super::state::{FileType, ItemInfo, BEGINNING_ROW};
 use super::term::*;
-use crossterm::style::Color;
 
 /// cf: https://docs.rs/image/latest/src/image/image.rs.html#84-112
 pub const MAX_SIZE_TO_PREVIEW: u64 = 1_000_000_000;
@@ -121,7 +120,7 @@ impl Layout {
         //Print preview (wrapping)
         for (i, line) in content.iter().enumerate() {
             move_to(self.preview_start_column, BEGINNING_ROW + i as u16);
-            set_foregroundcolor(Color::DarkGrey);
+            set_color(TermColor::ForeGround(Colorname::LightBlack));
             print!("{}", line);
             reset_color();
             if BEGINNING_ROW + i as u16 == self.terminal_row - 1 {

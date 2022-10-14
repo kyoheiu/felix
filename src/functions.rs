@@ -1,7 +1,7 @@
+use super::config::Colorname;
 use super::errors::FxError;
 use super::term::*;
 
-use crossterm::style::Color;
 use log::{info, warn};
 use simplelog::{ConfigBuilder, LevelFilter, WriteLogger};
 use std::collections::{HashMap, HashSet};
@@ -96,7 +96,8 @@ pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
     move_to(2, 2);
     clear_current_line();
 
-    set_color(Some(Color::White), Some(Color::Red));
+    set_color(TermColor::ForeGround(Colorname::White));
+    set_color(TermColor::BackGround(Colorname::LightRed));
     print!("{}", message,);
     reset_color();
 
