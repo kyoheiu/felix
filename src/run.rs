@@ -1178,8 +1178,11 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                 //shell mode
                 Key::Char(':') => {
-                    print!(" {}{}:", cursor::Goto(2, 2), clear::CurrentLine,);
-                    print!("{}", cursor::Show);
+                    print!(" ");
+                    to_info_bar();
+                    clear_current_line();
+                    print!(":");
+                    show_cursor();
 
                     let mut command: Vec<char> = Vec::new();
                     screen.flush()?;
@@ -1187,12 +1190,11 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     let initial_pos = 3;
                     let mut current_pos = 3;
                     'command: loop {
-                        let input = stdin.next();
-                        if let Some(Ok(key)) = input {
+                        if let Some(Ok(key)) = stdin.next() {
                             match key {
                                 Key::Esc => {
                                     reset_info_line();
-                                    print!("{}", cursor::Hide);
+                                    hide_cursor();
                                     state.move_cursor(&nums, y);
                                     break 'command;
                                 }
@@ -1202,7 +1204,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         continue;
                                     };
                                     current_pos -= 1;
-                                    print!("{}", cursor::Left(1));
+                                    move_left(1);
                                 }
 
                                 Key::Right => {
@@ -1211,33 +1213,30 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         continue;
                                     };
                                     current_pos += 1;
-                                    print!("{}", cursor::Right(1));
+                                    move_right(1);
                                 }
 
                                 Key::Backspace => {
                                     if current_pos == initial_pos {
                                         reset_info_line();
-                                        print!("{}", cursor::Hide);
+                                        hide_cursor();
                                         state.move_cursor(&nums, y);
                                         break 'command;
                                     } else {
                                         command.remove((current_pos - initial_pos - 1).into());
                                         current_pos -= 1;
 
-                                        print!(
-                                            "{}{}:{}{}",
-                                            clear::CurrentLine,
-                                            cursor::Goto(2, 2),
-                                            &command.iter().collect::<String>(),
-                                            cursor::Goto(current_pos, 2)
-                                        );
+                                        clear_current_line();
+                                        to_info_bar();
+                                        print!(":{}", &command.iter().collect::<String>());
+                                        move_to(current_pos, 2);
                                     }
                                 }
 
                                 Key::Char('\n') => {
+                                    hide_cursor();
                                     if command.is_empty() {
                                         reset_info_line();
-                                        print!("{}", cursor::Hide);
                                         state.move_cursor(&nums, y);
                                         break;
                                     }
@@ -1255,24 +1254,18 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             print_warning(e, y);
                                             break 'command;
                                         }
-                                        print!("{}", cursor::Hide);
                                         state.redraw(&nums, BEGINNING_ROW);
                                         break 'command;
                                     } else if command == vec!['e'] {
                                         //reload current dir
-                                        print!("{}", cursor::Hide);
                                         nums.reset();
                                         state.filtered = false;
                                         state.reload(&nums, BEGINNING_ROW)?;
                                         break 'command;
                                     } else if command == vec!['h'] {
                                         //Show help
-                                        print!(
-                                            "{}{}{}",
-                                            cursor::Hide,
-                                            clear::All,
-                                            cursor::Goto(1, 1)
-                                        );
+                                        clear_all();
+                                        move_to(1, 1);
                                         screen.flush()?;
                                         let help =
                                             format_txt(HELP, state.layout.terminal_column, true);
@@ -1294,7 +1287,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                         {
                                                             continue;
                                                         } else {
-                                                            print!("{}", clear::All);
+                                                            clear_all();
                                                             skip += 1;
                                                             print_help(
                                                                 &help,
@@ -1309,7 +1302,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                         if skip == 0 {
                                                             continue;
                                                         } else {
-                                                            print!("{}", clear::All);
+                                                            clear_all();
                                                             skip -= 1;
                                                             print_help(
                                                                 &help,
@@ -1326,15 +1319,12 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                 }
                                             }
                                         }
-                                        print!("{}", cursor::Hide);
                                         state.redraw(&nums, y);
                                         break 'command;
                                     }
 
                                     let commands: String = command.iter().collect();
-
                                     let commands = commands.split_ascii_whitespace();
-
                                     let mut c = "";
                                     let mut args = Vec::new();
                                     let mut i = 0;
@@ -1351,7 +1341,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         //Change directory (z uses zoxide)
                                         p_memo_v = Vec::new();
                                         c_memo_v = Vec::new();
-                                        print!("{}", cursor::Hide);
                                         nums.reset();
                                         state.filtered = false;
                                         state.current_dir = dirs::home_dir().unwrap();
@@ -1376,12 +1365,10 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                 let target_dir = std::str::from_utf8(&output);
                                                 match target_dir {
                                                     Err(e) => {
-                                                        print!("{}", cursor::Hide);
                                                         print_warning(e, y);
                                                         break 'command;
                                                     }
                                                     Ok(target_dir) => {
-                                                        print!("{}", cursor::Hide);
                                                         p_memo_v = Vec::new();
                                                         c_memo_v = Vec::new();
                                                         nums.reset();
@@ -1415,7 +1402,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                     if let Err(e) =
                                                         std::fs::remove_dir_all(&state.trash_dir)
                                                     {
-                                                        print!("{}", cursor::Hide);
                                                         print_warning(e, y);
                                                         screen.flush()?;
                                                         continue 'main;
@@ -1423,12 +1409,10 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                     if let Err(e) =
                                                         std::fs::create_dir(&state.trash_dir)
                                                     {
-                                                        print!("{}", cursor::Hide);
                                                         print_warning(e, y);
                                                         screen.flush()?;
                                                         continue 'main;
                                                     }
-                                                    print!("{}", cursor::Hide);
                                                     reset_info_line();
                                                     if state.current_dir == state.trash_dir {
                                                         state.reload(&nums, BEGINNING_ROW)?;
@@ -1453,7 +1437,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     print!("{}", screen::ToAlternateScreen);
                                     if std::env::set_current_dir(&state.current_dir).is_err() {
                                         print!("{}", screen::ToAlternateScreen);
-                                        print!("{}", cursor::Hide,);
                                         print_warning("Cannot execute command", y);
                                         break 'command;
                                     }
@@ -1463,13 +1446,11 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         .is_err()
                                     {
                                         print!("{}", screen::ToAlternateScreen);
-                                        print!("{}", cursor::Hide,);
                                         state.redraw(&nums, y);
                                         print_warning("Cannot execute command", y);
                                         break 'command;
                                     }
                                     print!("{}", screen::ToAlternateScreen);
-                                    print!("{}", cursor::Hide);
                                     info!("SHELL: {} {:?}", c, args);
                                     state.reload(&nums, y)?;
                                     break 'command;
@@ -1478,13 +1459,10 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 Key::Char(c) => {
                                     command.insert((current_pos - initial_pos).into(), c);
                                     current_pos += 1;
-                                    print!(
-                                        "{}{}:{}{}",
-                                        clear::CurrentLine,
-                                        cursor::Goto(2, 2),
-                                        &command.iter().collect::<String>(),
-                                        cursor::Goto(current_pos, 2)
-                                    );
+                                    clear_current_line();
+                                    to_info_bar();
+                                    print!(":{}", &command.iter().collect::<String>(),);
+                                    move_to(current_pos, 2);
                                 }
 
                                 _ => continue,
