@@ -63,7 +63,12 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     //Initialize app state
     let mut state = State::new()?;
     state.trash_dir = trash_dir_path;
-    state.current_dir = arg.canonicalize()?;
+    if cfg!(not(windows)) {
+        // If executed this on widnows, "//?" will be inserted at the beginning of the path.
+        state.current_dir = arg.canonicalize()?;
+    } else {
+        state.current_dir = arg;
+    }
 
     //Initialize num as Arc
     let nums = Num::new();
