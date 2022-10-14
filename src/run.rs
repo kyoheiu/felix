@@ -1070,19 +1070,21 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     if len == 0 {
                         continue;
                     }
-                    print!(" {}{}/", cursor::Goto(2, 2), clear::CurrentLine,);
-                    print!("{}", cursor::Show);
+                    print!(" ");
+                    to_info_bar();
+                    clear_current_line();
+                    print!("/");
+                    show_cursor();
                     state.filtered = true;
                     screen.flush()?;
 
                     let original_list = state.list.clone();
                     let mut keyword: Vec<char> = Vec::new();
                     let initial_pos = 3;
-                    let mut current_pos = 3;
+                    let mut current_pos = initial_pos;
                     loop {
                         let keyword_len = keyword.len();
-                        let input = stdin.next();
-                        if let Some(Ok(key)) = input {
+                        if let Some(Ok(key)) = stdin.next() {
                             match key {
                                 Key::Char('\n') => {
                                     reset_info_line();
@@ -1093,7 +1095,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 }
 
                                 Key::Esc => {
-                                    print!("{}", cursor::Hide);
+                                    hide_cursor();
                                     state.filtered = false;
                                     state.list = original_list;
                                     state.reload(&nums, y)?;
@@ -1105,7 +1107,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         continue;
                                     }
                                     current_pos -= 1;
-                                    print!("{}", cursor::Left(1));
+                                    move_left(1);
                                 }
 
                                 Key::Right => {
@@ -1113,12 +1115,12 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         continue;
                                     }
                                     current_pos += 1;
-                                    print!("{}", cursor::Right(1));
+                                    move_right(1);
                                 }
 
                                 Key::Backspace => {
                                     if current_pos == initial_pos {
-                                        print!("{}", cursor::Hide);
+                                        hide_cursor();
                                         state.filtered = false;
                                         state.list = original_list;
                                         state.reload(&nums, y)?;
@@ -1127,25 +1129,21 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         keyword.remove(current_pos - initial_pos - 1);
                                         current_pos -= 1;
 
+                                        let result = &keyword.iter().collect::<String>();
+
                                         state.list = original_list
                                             .clone()
                                             .into_iter()
-                                            .filter(|entry| {
-                                                entry
-                                                    .file_name
-                                                    .contains(&keyword.iter().collect::<String>())
-                                            })
+                                            .filter(|entry| entry.file_name.contains(result))
                                             .collect();
 
                                         state.clear_and_show_headline();
                                         state.list_up(0);
 
-                                        print!(
-                                            "{}/{}{}",
-                                            cursor::Goto(2, 2),
-                                            &keyword.iter().collect::<String>(),
-                                            cursor::Goto((current_pos).try_into().unwrap(), 2)
-                                        );
+                                        to_info_bar();
+                                        print!("/");
+                                        print!("{}", result);
+                                        move_to((current_pos).try_into().unwrap(), 2)
                                     }
                                 }
 
@@ -1164,12 +1162,10 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     state.clear_and_show_headline();
                                     state.list_up(0);
 
-                                    print!(
-                                        "{}/{}{}",
-                                        cursor::Goto(2, 2),
-                                        result,
-                                        cursor::Goto((current_pos).try_into().unwrap(), 2)
-                                    );
+                                    to_info_bar();
+                                    print!("/");
+                                    print!("{}", result);
+                                    move_to((current_pos).try_into().unwrap(), 2);
                                 }
 
                                 _ => continue,
@@ -1177,7 +1173,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                             screen.flush()?;
                         }
                     }
-                    print!("{}", cursor::Hide);
+                    hide_cursor();
                 }
 
                 //shell mode
