@@ -30,24 +30,24 @@ default = \"nvim\"
 
 # The foreground color of directory, file and symlink.
 # Pick one of the following:
-#   AnsiValue(u8)
-#   Black
-#   Blue
-#   Cyan
-#   Green
-#   LightBlack
-#   LightBlue
-#   LightCyan
-#   LightGreen
-#   LightMagenta
-#   LightRed
-#   LightWhite
-#   LightYellow
-#   Magenta
-#   Red
-#   Rgb(u8, u8, u8)
-#   White
-#   Yellow
+#     Black
+#     Red
+#     Green
+#     Yellow
+#     Blue
+#     Magenta
+#     Cyan
+#     White
+#     LightBlack
+#     LightRed
+#     LightGreen
+#     LightYellow
+#     LightBlue
+#     LightMagenta
+#     LightCyan
+#     LightWhite
+#     Rgb(u8, u8, u8)
+#     AnsiValue(u8)
 # For more details, see https://docs.rs/termion/1.5.6/termion/color/index.html
 [color]
 dir_fg = \"LightCyan\"
@@ -73,22 +73,22 @@ pub struct ConfigColor {
 
 #[derive(Deserialize, Debug, Clone)]
 pub enum Colorname {
-    Black,
-    Red,
-    Green,
-    Yellow,
-    Blue,
-    Magenta,
-    Cyan,
-    White,
-    LightBlack,
-    LightRed,
-    LightGreen,
-    LightYellow,
-    LightBlue,
-    LightMagenta,
-    LightCyan,
-    LightWhite,
+    Black,        // 0
+    Red,          // 1
+    Green,        // 2
+    Yellow,       // 3
+    Blue,         // 4
+    Magenta,      // 5
+    Cyan,         // 6
+    White,        // 7
+    LightBlack,   // 8
+    LightRed,     // 9
+    LightGreen,   // 10
+    LightYellow,  // 11
+    LightBlue,    // 12
+    LightMagenta, // 13
+    LightCyan,    // 14
+    LightWhite,   // 15
     Rgb(u8, u8, u8),
     AnsiValue(u8),
 }
