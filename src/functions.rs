@@ -67,7 +67,7 @@ pub fn rename_dir(dir_name: &str, name_set: &HashSet<String>) -> String {
 }
 
 pub fn reset_info_line() {
-    move_to(2, 2);
+    to_info_bar();
     clear_current_line();
 }
 
@@ -85,7 +85,7 @@ pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
 
     hide_cursor();
     move_to(1, then);
-    print_cursor();
+    print_pointer();
     move_left(1);
 }
 
@@ -93,7 +93,7 @@ pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
 pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
     delete_cursor();
     warn!("{}", message);
-    move_to(2, 2);
+    to_info_bar();
     clear_current_line();
 
     set_color(&TermColor::ForeGround(&Colorname::White));
@@ -103,7 +103,7 @@ pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
 
     hide_cursor();
     move_to(1, then);
-    print_cursor();
+    print_pointer();
     move_left(1);
 }
 

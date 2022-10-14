@@ -1,7 +1,7 @@
 use super::config::Colorname;
 
 use crossterm::{
-    cursor::{Hide, MoveLeft, MoveRight, MoveTo},
+    cursor::{Hide, MoveLeft, MoveRight, MoveTo, Show},
     style::{Color, ResetColor, SetBackgroundColor, SetForegroundColor},
     terminal::Clear,
 };
@@ -13,6 +13,10 @@ pub enum TermColor<'a> {
 
 pub fn move_to(x: u16, y: u16) {
     print!("{}", MoveTo(x - 1, y - 1));
+}
+
+pub fn to_info_bar() {
+    move_to(2, 2);
 }
 
 pub fn clear_current_line() {
@@ -39,7 +43,11 @@ pub fn hide_cursor() {
     print!("{}", Hide);
 }
 
-pub fn print_cursor() {
+pub fn show_cursor() {
+    print!("{}", Show);
+}
+
+pub fn print_pointer() {
     print!(">");
 }
 

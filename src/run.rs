@@ -6,6 +6,7 @@ use super::nums::*;
 use super::op::*;
 use super::session::*;
 use super::state::*;
+use super::term::*;
 
 use log::{error, info};
 use std::ffi::OsStr;
@@ -75,7 +76,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     let screen_detect = screen_run.clone();
 
     //Update list, print and flush
-    print!("{}", cursor::Hide);
+    hide_cursor();
     state.reload(&nums, BEGINNING_ROW)?;
     let mut init_screen = screen_run.lock().unwrap();
     init_screen.flush()?;
@@ -93,7 +94,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     let interval = Duration::from_millis(DETECTION_INTERVAL);
     thread::spawn(move || loop {
         thread::sleep(interval);
-        let (mut column, row) = termion::terminal_size().unwrap();
+        let (mut column, row) = crossterm::terminal::size().unwrap();
 
         // Return error if terminal size may cause panic
         if column < 4 {
@@ -179,23 +180,24 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     if nums.index == 0 {
                         continue;
                     } else {
-                        print!("{}{}g", cursor::Goto(2, 2), clear::CurrentLine,);
-                        print!("{}", cursor::Show);
-
+                        to_info_bar();
+                        clear_current_line();
+                        print!("g");
+                        show_cursor();
                         screen.flush()?;
 
                         let input = stdin.next();
                         if let Some(Ok(key)) = input {
                             match key {
                                 Key::Char('g') => {
-                                    print!("{}", cursor::Hide);
+                                    hide_cursor();
                                     nums.reset();
                                     state.redraw(&nums, BEGINNING_ROW);
                                 }
 
                                 _ => {
-                                    reset_info_line();
-                                    print!("{}", cursor::Hide);
+                                    clear_current_line();
+                                    hide_cursor();
                                     state.move_cursor(&nums, y);
                                 }
                             }
@@ -231,7 +233,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     continue;
                                 }
                                 print!("{}", screen::ToAlternateScreen);
-                                print!("{}", cursor::Hide);
+                                hide_cursor();
                                 state.filtered = false;
                                 //Add thread sleep time after state.open_file().
                                 // This is necessary because, with tiling window managers, the window resizing is sometimes slow and felix reloads the layout so quickly that the display may become broken.
@@ -284,7 +286,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         continue;
                                     }
                                     print!("{}", screen::ToAlternateScreen);
-                                    print!("{}", cursor::Hide);
+                                    hide_cursor();
                                     state.filtered = false;
                                     state.redraw(&nums, y);
                                 }
@@ -358,7 +360,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     print_warning(e, y);
                                     continue;
                                 }
-                                print!("{}", cursor::Hide);
+                                hide_cursor();
                                 state.redraw(&nums, y);
                                 screen.flush()?;
                                 continue;
@@ -472,8 +474,11 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                 //Jumps to the directory that matches the keyword (zoxide required).
                 Key::Char('z') => {
-                    print!(" {}{}z", cursor::Goto(2, 2), clear::CurrentLine,);
-                    print!("{}", cursor::Show);
+                    print!(" ");
+                    to_info_bar();
+                    clear_current_line();
+                    print!("z");
+                    show_cursor();
 
                     let mut command: Vec<char> = vec!['z'];
                     screen.flush()?;
@@ -486,7 +491,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                             match key {
                                 Key::Esc => {
                                     reset_info_line();
-                                    print!("{}", cursor::Hide);
+                                    hide_cursor();
                                     state.move_cursor(&nums, y);
                                     break 'zoxide;
                                 }
@@ -496,7 +501,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         continue;
                                     };
                                     current_pos -= 1;
-                                    print!("{}", cursor::Left(1));
+                                    move_left(1);
                                 }
 
                                 Key::Right => {
@@ -505,26 +510,23 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         continue;
                                     };
                                     current_pos += 1;
-                                    print!("{}", cursor::Right(1));
+                                    move_right(1);
                                 }
 
                                 Key::Backspace => {
                                     if current_pos == initial_pos + 1 {
                                         reset_info_line();
-                                        print!("{}", cursor::Hide);
+                                        hide_cursor();
                                         state.move_cursor(&nums, y);
                                         break 'zoxide;
                                     };
                                     command.remove((current_pos - initial_pos - 1).into());
                                     current_pos -= 1;
 
-                                    print!(
-                                        "{}{}{}{}",
-                                        clear::CurrentLine,
-                                        cursor::Goto(2, 2),
-                                        &command.iter().collect::<String>(),
-                                        cursor::Goto(current_pos, 2)
-                                    );
+                                    clear_current_line();
+                                    to_info_bar();
+                                    print!("{}", &command.iter().collect::<String>(),);
+                                    move_to(current_pos, 2);
                                 }
 
                                 Key::Char('\n') => {
@@ -539,7 +541,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             print_warning(e, y);
                                             break 'zoxide;
                                         }
-                                        print!("{}", cursor::Hide);
+                                        hide_cursor();
                                         state.redraw(&nums, BEGINNING_ROW);
                                         break 'zoxide;
                                     } else if command.len() > 2 {
@@ -560,12 +562,12 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                     let target_dir = std::str::from_utf8(&output);
                                                     match target_dir {
                                                         Err(e) => {
-                                                            print!("{}", cursor::Hide);
+                                                            hide_cursor();
                                                             print_warning(e, y);
                                                             break 'zoxide;
                                                         }
                                                         Ok(target_dir) => {
-                                                            print!("{}", cursor::Hide);
+                                                            hide_cursor();
                                                             p_memo_v = Vec::new();
                                                             c_memo_v = Vec::new();
                                                             nums.reset();
@@ -585,7 +587,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         }
                                     } else {
                                         reset_info_line();
-                                        print!("{}", cursor::Hide);
+                                        hide_cursor();
                                         state.move_cursor(&nums, y);
                                         break 'zoxide;
                                     }
@@ -594,13 +596,10 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 Key::Char(c) => {
                                     command.insert((current_pos - initial_pos).into(), c);
                                     current_pos += 1;
-                                    print!(
-                                        "{}{}{}{}",
-                                        clear::CurrentLine,
-                                        cursor::Goto(2, 2),
-                                        &command.iter().collect::<String>(),
-                                        cursor::Goto(current_pos, 2)
-                                    );
+                                    clear_current_line();
+                                    to_info_bar();
+                                    print!("{}", &command.iter().collect::<String>(),);
+                                    move_to(current_pos, 2);
                                 }
 
                                 _ => continue,

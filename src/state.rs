@@ -228,7 +228,7 @@ impl State {
             let item = item.clone();
 
             print!(" ");
-            move_to(2, 2);
+            to_info_bar();
             clear_current_line();
             print!("{}", display_count(i, total_selected));
 
@@ -427,7 +427,7 @@ impl State {
         let total_selected = targets.len();
         for (i, item) in targets.iter().enumerate() {
             print!(" ");
-            move_to(2, 2);
+            to_info_bar();
             clear_current_line();
             print!("{}", display_count(i, total_selected));
 
@@ -855,7 +855,7 @@ impl State {
             }
         }
         move_to(1, y);
-        print_cursor();
+        print_pointer();
         move_left(1);
 
         //Store cursor position when cursor moves
