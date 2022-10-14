@@ -2,6 +2,7 @@ use super::config::Colorname;
 use super::errors::FxError;
 use super::term::*;
 
+use crossterm::style::Stylize;
 use log::{info, warn};
 use simplelog::{ConfigBuilder, LevelFilter, WriteLogger};
 use std::collections::{HashMap, HashSet};
@@ -246,7 +247,7 @@ pub fn print_help(v: &[String], skip_number: usize, row: u16) {
 
         move_to(1, (i + 1 - skip_number) as u16);
         if row_count == row - 1 {
-            print!("{}...{}", termion::style::Invert, termion::style::Reset);
+            print!("{}", "...".negative());
             break;
         }
         print!("{}", line);

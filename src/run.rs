@@ -8,7 +8,12 @@ use super::session::*;
 use super::state::*;
 use super::term::*;
 
+use crossterm::cursor::RestorePosition;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::execute;
+use crossterm::terminal::{
+    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+};
 use log::{error, info};
 use std::ffi::OsStr;
 use std::fmt::Write as _;
@@ -17,8 +22,6 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
-use termion::raw::IntoRawMode;
-use termion::{cursor, screen};
 
 /// frequency to detect terminal size change
 const DETECTION_INTERVAL: u64 = 500;
@@ -74,8 +77,11 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     let nums_run = Arc::new(Mutex::new(nums));
     let nums_detect = nums_run.clone();
 
+    let mut screen = stdout();
+    execute!(screen, EnterAlternateScreen)?;
+    enable_raw_mode()?;
+
     //Initialize screen as Arc
-    let screen = screen::AlternateScreen::from(stdout().into_raw_mode().unwrap());
     let screen_run = Arc::new(Mutex::new(screen));
     let screen_detect = screen_run.clone();
 
@@ -229,13 +235,13 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     if let Ok(item) = state.get_item(nums.index) {
                         match item.file_type {
                             FileType::File => {
-                                print!("{}", screen::ToAlternateScreen);
+                                execute!(screen, EnterAlternateScreen)?;
                                 if let Err(e) = state.open_file(item) {
                                     print_warning(e, y);
                                     screen.flush()?;
                                     continue;
                                 }
-                                print!("{}", screen::ToAlternateScreen);
+                                execute!(screen, EnterAlternateScreen)?;
                                 hide_cursor();
                                 state.filtered = false;
                                 //Add thread sleep time after state.open_file().
@@ -282,13 +288,13 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     }
                                 },
                                 None => {
-                                    print!("{}", screen::ToAlternateScreen);
+                                    execute!(screen, EnterAlternateScreen)?;
                                     if let Err(e) = state.open_file(item) {
                                         print_warning(e, y);
                                         screen.flush()?;
                                         continue;
                                     }
-                                    print!("{}", screen::ToAlternateScreen);
+                                    execute!(screen, EnterAlternateScreen)?;
                                     hide_cursor();
                                     state.filtered = false;
                                     state.redraw(&nums, y);
@@ -845,7 +851,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                         let new_row = state.layout.terminal_row;
                         state.refresh(new_column, new_row, &nums, y);
                     } else {
-                        let (new_column, new_row) = termion::terminal_size().unwrap();
+                        let (new_column, new_row) = crossterm::terminal::size().unwrap();
                         state.refresh(new_column, new_row, &nums, y);
                     }
                 }
@@ -1434,9 +1440,9 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     }
 
                                     //Execute the command as it is
-                                    print!("{}", screen::ToAlternateScreen);
+                                    execute!(screen, EnterAlternateScreen)?;
                                     if std::env::set_current_dir(&state.current_dir).is_err() {
-                                        print!("{}", screen::ToAlternateScreen);
+                                        execute!(screen, EnterAlternateScreen)?;
                                         print_warning("Cannot execute command", y);
                                         break 'command;
                                     }
@@ -1445,12 +1451,12 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         .status()
                                         .is_err()
                                     {
-                                        print!("{}", screen::ToAlternateScreen);
+                                        execute!(screen, EnterAlternateScreen)?;
                                         state.redraw(&nums, y);
                                         print_warning("Cannot execute command", y);
                                         break 'command;
                                     }
-                                    print!("{}", screen::ToAlternateScreen);
+                                    execute!(screen, EnterAlternateScreen)?;
                                     info!("SHELL: {} {:?}", c, args);
                                     state.reload(&nums, y)?;
                                     break 'command;
@@ -1596,12 +1602,12 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
     //Save session, restore screen state and cursor
     state.write_session(session_file_path)?;
-    write!(screen, "{}", screen::ToMainScreen)?;
-    write!(screen, "{}", cursor::Restore)?;
+    execute!(screen, LeaveAlternateScreen)?;
+    write!(screen, "{}", RestorePosition)?;
     screen.flush()?;
 
     //Back to normal mode
-    screen.suspend_raw_mode()?;
+    disable_raw_mode()?;
     info!("===FINISH===");
     Ok(())
 }
