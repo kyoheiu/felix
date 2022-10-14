@@ -698,16 +698,17 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     if nums.index == 0 {
                                         continue;
                                     } else {
-                                        print!("{}{}g", cursor::Goto(2, 2), clear::CurrentLine,);
-                                        print!("{}", cursor::Show);
-
+                                        to_info_bar();
+                                        clear_current_line();
+                                        print!("g");
+                                        show_cursor();
                                         screen.flush()?;
 
                                         let input = stdin.next();
                                         if let Some(Ok(key)) = input {
                                             match key {
                                                 Key::Char('g') => {
-                                                    print!("{}", cursor::Hide);
+                                                    hide_cursor();
                                                     nums.reset();
                                                     state.select_from_top(start_pos);
                                                     current_pos = BEGINNING_ROW;
@@ -716,7 +717,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                                                 _ => {
                                                     reset_info_line();
-                                                    print!("{}", cursor::Hide);
+                                                    hide_cursor();
                                                     state.move_cursor(&nums, current_pos);
                                                 }
                                             }
@@ -783,8 +784,8 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     } else if nums.index > new_len - 1 {
                                         let mut new_y =
                                             current_pos - (nums.index - (new_len - 1)) as u16;
-                                        if new_y < 3 {
-                                            new_y = 3;
+                                        if new_y < BEGINNING_ROW {
+                                            new_y = BEGINNING_ROW;
                                         }
                                         nums.index = new_len - 1;
                                         state.move_cursor(&nums, new_y);
@@ -854,16 +855,16 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     if len == 0 {
                         continue;
                     } else {
-                        print!("{}{}d", cursor::Goto(2, 2), clear::CurrentLine,);
-                        print!("{}", cursor::Show);
-
+                        to_info_bar();
+                        clear_current_line();
+                        print!("d");
+                        show_cursor();
                         screen.flush()?;
 
-                        let input = stdin.next();
-                        if let Some(Ok(key)) = input {
+                        if let Some(Ok(key)) = stdin.next() {
                             match key {
                                 Key::Char('d') => {
-                                    print!("{}", cursor::Hide);
+                                    hide_cursor();
                                     print_info("DELETE: Processing...", y);
                                     let start = Instant::now();
                                     screen.flush()?;
@@ -897,7 +898,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 }
                                 _ => {
                                     reset_info_line();
-                                    print!("{}", cursor::Hide);
+                                    hide_cursor();
                                     state.move_cursor(&nums, y);
                                 }
                             }
@@ -910,8 +911,10 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     if len == 0 {
                         continue;
                     }
-                    print!("{}{}y", cursor::Goto(2, 2), clear::CurrentLine,);
-                    print!("{}", cursor::Show);
+                    to_info_bar();
+                    clear_current_line();
+                    print!("y");
+                    show_cursor();
 
                     screen.flush()?;
 
@@ -921,13 +924,13 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                             Key::Char('y') => {
                                 state.yank_item(nums.index, false);
                                 reset_info_line();
-                                print!("{}", cursor::Hide);
+                                hide_cursor();
                                 print_info("1 item yanked", y);
                             }
 
                             _ => {
                                 reset_info_line();
-                                print!("{}", cursor::Hide);
+                                hide_cursor();
                                 state.move_cursor(&nums, y);
                             }
                         }
