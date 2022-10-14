@@ -978,21 +978,17 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                         continue;
                     }
 
-                    print!("{}", cursor::Show);
+                    show_cursor();
                     let mut rename = item.file_name.chars().collect::<Vec<char>>();
-                    print!(
-                        "{}{}New name: {}",
-                        cursor::Goto(2, 2),
-                        clear::CurrentLine,
-                        &rename.iter().collect::<String>(),
-                    );
+                    to_info_bar();
+                    clear_current_line();
+                    print!("New name: {}", &rename.iter().collect::<String>(),);
                     screen.flush()?;
 
                     let initial_pos = 12;
                     let mut current_pos: u16 = 12 + item.file_name.len() as u16;
                     loop {
-                        let input = stdin.next();
-                        if let Some(Ok(key)) = input {
+                        if let Some(Ok(key)) = stdin.next() {
                             match key {
                                 //rename item
                                 Key::Char('\n') => {
@@ -1000,7 +996,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     let mut to = state.current_dir.clone();
                                     to.push(rename);
                                     if let Err(e) = std::fs::rename(&item.file_path, &to) {
-                                        print!("{}", cursor::Hide);
+                                        hide_cursor();
                                         print_warning(e, y);
                                         break;
                                     }
@@ -1011,14 +1007,14 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         new_name: to,
                                     }));
 
-                                    print!("{}", cursor::Hide);
+                                    hide_cursor();
                                     state.reload(&nums, y)?;
                                     break;
                                 }
 
                                 Key::Esc => {
                                     reset_info_line();
-                                    print!("{}", cursor::Hide);
+                                    hide_cursor();
                                     state.move_cursor(&nums, y);
                                     break;
                                 }
@@ -1028,7 +1024,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         continue;
                                     };
                                     current_pos -= 1;
-                                    print!("{}", cursor::Left(1));
+                                    move_left(1);
                                 }
 
                                 Key::Right => {
@@ -1036,20 +1032,17 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         continue;
                                     };
                                     current_pos += 1;
-                                    print!("{}", cursor::Right(1));
+                                    move_right(1);
                                 }
 
                                 Key::Char(c) => {
                                     rename.insert((current_pos - initial_pos).into(), c);
                                     current_pos += 1;
 
-                                    print!(
-                                        "{}{}New name: {}{}",
-                                        clear::CurrentLine,
-                                        cursor::Goto(2, 2),
-                                        &rename.iter().collect::<String>(),
-                                        cursor::Goto(current_pos, 2)
-                                    );
+                                    to_info_bar();
+                                    clear_current_line();
+                                    print!("New name: {}", &rename.iter().collect::<String>(),);
+                                    move_to(current_pos, 2);
                                 }
 
                                 Key::Backspace => {
@@ -1059,13 +1052,10 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     rename.remove((current_pos - initial_pos - 1).into());
                                     current_pos -= 1;
 
-                                    print!(
-                                        "{}{}New name: {}{}",
-                                        clear::CurrentLine,
-                                        cursor::Goto(2, 2),
-                                        &rename.iter().collect::<String>(),
-                                        cursor::Goto(current_pos, 2)
-                                    );
+                                    to_info_bar();
+                                    clear_current_line();
+                                    print!("New name: {}", &rename.iter().collect::<String>(),);
+                                    move_to(current_pos, 2);
                                 }
 
                                 _ => continue,
