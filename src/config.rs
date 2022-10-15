@@ -129,6 +129,11 @@ pub fn make_config_if_not_exist(config_file: &Path, trash_dir: &Path) -> Result<
                 "Default command set as [{}].\nSee ~/Library/Application Support/felix/config.toml",
                 trimmed
             );
+        } else if cfg!(target_os = "windows") {
+            println!(
+                "Default command set as [{}].\nSee ~\\AppData\\Roaming\\felix\\config.toml",
+                trimmed
+            );
         } else {
             println!(
                 "Default command set as [{}].\nSee ~/.config/felix/config.toml",
