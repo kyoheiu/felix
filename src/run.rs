@@ -65,12 +65,12 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     //Initialize app state
     let mut state = State::new()?;
     state.trash_dir = trash_dir_path;
-    if cfg!(not(windows)) {
+    state.current_dir = if cfg!(not(windows)) {
         // If executed this on widnows, "//?" will be inserted at the beginning of the path.
-        state.current_dir = arg.canonicalize()?;
+        arg.canonicalize()?
     } else {
-        state.current_dir = arg;
-    }
+        arg
+    };
 
     //Initialize num as Arc
     let nums = Num::new();
@@ -582,7 +582,11 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                             let target_path =
                                                                 PathBuf::from(target_dir.trim());
                                                             state.current_dir =
-                                                                target_path.canonicalize()?;
+                                                                if cfg!(not(windows)) {
+                                                                    target_path.canonicalize()?
+                                                                } else {
+                                                                    target_path
+                                                                };
                                                             state.reload(&nums, BEGINNING_ROW)?;
                                                             break 'zoxide;
                                                         }
@@ -1345,7 +1349,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     }
 
                                     if (c == "cd" || c == "z") && args.is_empty() {
-                                        //Change directory (z uses zoxide)
+                                        //Change directory
                                         p_memo_v = Vec::new();
                                         c_memo_v = Vec::new();
                                         nums.reset();
@@ -1356,7 +1360,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     }
 
                                     if c == "z" && args.len() == 1 {
-                                        //using zoxide
+                                        //Change diretory using zoxide
                                         if let Ok(output) = std::process::Command::new("zoxide")
                                             .args(["query", args[0].trim()])
                                             .output()
@@ -1381,8 +1385,11 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                         nums.reset();
                                                         let target_path =
                                                             PathBuf::from(target_dir.trim());
-                                                        state.current_dir =
-                                                            target_path.canonicalize()?;
+                                                        state.current_dir = if cfg!(not(windows)) {
+                                                            target_path.canonicalize()?
+                                                        } else {
+                                                            target_path
+                                                        };
                                                         state.reload(&nums, BEGINNING_ROW)?;
                                                         break 'command;
                                                     }
