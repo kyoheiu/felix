@@ -9,7 +9,12 @@
 ### Changed
 
 - Huge refactoring: Migrated to crossterm from termion due to the maintainability and future-support for Windows. New module `term.rs` contains (almost) all of the terminal API, so that other modules will not get effected by the future backend change.
-- As a result, the number of dependencies increased to 66 from 51.
+- Alongside, some changes are added to show the file path properly in Windows.
+- As a result of this migration, the number of dependencies increased to 66 from 51.
+
+### Fixed
+
+- After zoxide jump, turn off the filter mode.
 
 ## v1.2.0 (2022-10-01)
 
