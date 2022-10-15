@@ -7,6 +7,10 @@ default = "nvim"
 # If not set, this will be true.
 # use_full_width = true
 
+# (Optional) Sets the command mode at the bottom like vim
+# If not set, this will be false.
+# command_mode_bottom = true
+
 # (Optional) Set the max length of item name to be displayed.
 # This works only when use_full_width is set to false.
 # If the terminal size is not enough, the length will be changed to fit it.

@@ -134,6 +134,11 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         let mut nums = nums_run.lock().unwrap();
         let len = state.list.len();
         let y = state.layout.y;
+        let command_pos = if state.command_mode_bottom != Some(true) {
+            2
+        } else {
+            state.layout.terminal_row
+        };
 
         if let Some(Ok(key)) = input {
             //If you use kitty, you must clear the screen or the previewed image remains.
@@ -179,7 +184,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     if nums.index == 0 {
                         continue;
                     } else {
-                        print!("{}{}g", cursor::Goto(2, 2), clear::CurrentLine,);
+                        print!("{}{}g", cursor::Goto(2, command_pos), clear::CurrentLine,);
                         print!("{}", cursor::Show);
 
                         screen.flush()?;
@@ -472,7 +477,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                 //Jumps to the directory that matches the keyword (zoxide required).
                 Key::Char('z') => {
-                    print!(" {}{}z", cursor::Goto(2, 2), clear::CurrentLine,);
+                    print!(" {}{}z", cursor::Goto(2, command_pos), clear::CurrentLine,);
                     print!("{}", cursor::Show);
 
                     let mut command: Vec<char> = vec!['z'];
@@ -521,7 +526,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     print!(
                                         "{}{}{}{}",
                                         clear::CurrentLine,
-                                        cursor::Goto(2, 2),
+                                        cursor::Goto(2, command_pos),
                                         &command.iter().collect::<String>(),
                                         cursor::Goto(current_pos, 2)
                                     );
@@ -597,7 +602,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     print!(
                                         "{}{}{}{}",
                                         clear::CurrentLine,
-                                        cursor::Goto(2, 2),
+                                        cursor::Goto(2, command_pos),
                                         &command.iter().collect::<String>(),
                                         cursor::Goto(current_pos, 2)
                                     );
@@ -699,7 +704,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     if nums.index == 0 {
                                         continue;
                                     } else {
-                                        print!("{}{}g", cursor::Goto(2, 2), clear::CurrentLine,);
+                                        print!("{}{}g", cursor::Goto(2, command_pos), clear::CurrentLine,);
                                         print!("{}", cursor::Show);
 
                                         screen.flush()?;
@@ -855,7 +860,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     if len == 0 {
                         continue;
                     } else {
-                        print!("{}{}d", cursor::Goto(2, 2), clear::CurrentLine,);
+                        print!("{}{}d", cursor::Goto(2, command_pos), clear::CurrentLine,);
                         print!("{}", cursor::Show);
 
                         screen.flush()?;
@@ -911,7 +916,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     if len == 0 {
                         continue;
                     }
-                    print!("{}{}y", cursor::Goto(2, 2), clear::CurrentLine,);
+                    print!("{}{}y", cursor::Goto(2, command_pos), clear::CurrentLine,);
                     print!("{}", cursor::Show);
 
                     screen.flush()?;
@@ -980,7 +985,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     let mut rename = item.file_name.chars().collect::<Vec<char>>();
                     print!(
                         "{}{}New name: {}",
-                        cursor::Goto(2, 2),
+                        cursor::Goto(2, command_pos),
                         clear::CurrentLine,
                         &rename.iter().collect::<String>(),
                     );
@@ -1044,7 +1049,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     print!(
                                         "{}{}New name: {}{}",
                                         clear::CurrentLine,
-                                        cursor::Goto(2, 2),
+                                        cursor::Goto(2, command_pos),
                                         &rename.iter().collect::<String>(),
                                         cursor::Goto(current_pos, 2)
                                     );
@@ -1060,7 +1065,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     print!(
                                         "{}{}New name: {}{}",
                                         clear::CurrentLine,
-                                        cursor::Goto(2, 2),
+                                        cursor::Goto(2, command_pos),
                                         &rename.iter().collect::<String>(),
                                         cursor::Goto(current_pos, 2)
                                     );
@@ -1078,7 +1083,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     if len == 0 {
                         continue;
                     }
-                    print!(" {}{}/", cursor::Goto(2, 2), clear::CurrentLine,);
+                    print!(" {}{}/", cursor::Goto(2, command_pos), clear::CurrentLine,);
                     print!("{}", cursor::Show);
                     state.filtered = true;
                     screen.flush()?;
@@ -1150,7 +1155,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                                         print!(
                                             "{}/{}{}",
-                                            cursor::Goto(2, 2),
+                                            cursor::Goto(2, command_pos),
                                             &keyword.iter().collect::<String>(),
                                             cursor::Goto((current_pos).try_into().unwrap(), 2)
                                         );
@@ -1174,7 +1179,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                                     print!(
                                         "{}/{}{}",
-                                        cursor::Goto(2, 2),
+                                        cursor::Goto(2, command_pos),
                                         result,
                                         cursor::Goto((current_pos).try_into().unwrap(), 2)
                                     );
@@ -1190,7 +1195,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                 //shell mode
                 Key::Char(':') => {
-                    print!(" {}{}:", cursor::Goto(2, 2), clear::CurrentLine,);
+                    print!(" {}{}:", cursor::Goto(2, command_pos), clear::CurrentLine,);
                     print!("{}", cursor::Show);
 
                     let mut command: Vec<char> = Vec::new();
@@ -1239,7 +1244,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         print!(
                                             "{}{}:{}{}",
                                             clear::CurrentLine,
-                                            cursor::Goto(2, 2),
+                                            cursor::Goto(2, command_pos),
                                             &command.iter().collect::<String>(),
                                             cursor::Goto(current_pos, 2)
                                         );
@@ -1493,7 +1498,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     print!(
                                         "{}{}:{}{}",
                                         clear::CurrentLine,
-                                        cursor::Goto(2, 2),
+                                        cursor::Goto(2, command_pos),
                                         &command.iter().collect::<String>(),
                                         cursor::Goto(current_pos, 2)
                                     );
@@ -1581,7 +1586,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                 //exit by ZZ
                 Key::Char('Z') => {
-                    print!(" {}{}Z", cursor::Goto(2, 2), clear::CurrentLine,);
+                    print!(" {}{}Z", cursor::Goto(2, command_pos), clear::CurrentLine,);
                     print!("{}", cursor::Show);
                     screen.flush()?;
 

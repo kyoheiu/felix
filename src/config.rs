@@ -62,6 +62,7 @@ pub struct Config {
     pub color: Color,
     pub use_full_width: Option<bool>,
     pub item_name_length: Option<usize>,
+    pub command_mode_bottom: Option<bool>
 }
 
 #[derive(Deserialize, Debug, Clone)]
