@@ -587,6 +587,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                                 } else {
                                                                     target_path
                                                                 };
+                                                            state.filtered = false;
                                                             state.reload(&nums, BEGINNING_ROW)?;
                                                             break 'zoxide;
                                                         }
@@ -1390,6 +1391,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                         } else {
                                                             target_path
                                                         };
+                                                        state.filtered = false;
                                                         state.reload(&nums, BEGINNING_ROW)?;
                                                         break 'command;
                                                     }
