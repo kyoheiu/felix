@@ -57,7 +57,7 @@ symlink_fg = \"LightYellow\"
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config {
-    pub default: String,
+    pub default: Option<String>,
     pub exec: Option<HashMap<String, Vec<String>>>,
     pub color: Color,
     pub use_full_width: Option<bool>,

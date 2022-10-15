@@ -15,6 +15,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::{Child, Command, ExitStatus, Stdio};
 use termion::{clear, color, cursor, style};
+use std::env;
 
 pub const BEGINNING_ROW: u16 = 3;
 pub const FX_CONFIG_DIR: &str = "felix";
@@ -136,7 +137,7 @@ impl State {
             },
             current_dir: PathBuf::new(),
             trash_dir: PathBuf::new(),
-            default: config.default,
+            default: config.default.unwrap_or_else(|| env::var("EDITOR").expect("")),
             commands: to_extension_map(&config.exec),
             sort_by: session.sort_by,
             layout: Layout {
