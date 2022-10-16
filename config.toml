@@ -1,6 +1,7 @@
 # 1.2.0
 
-# Default exec command when open files.
+# (Optional) Default exec command when open files.
+# If not set, will default to $EDITOR
 default = "nvim"
 
 # (Optional) Whether to use the full width of terminal.

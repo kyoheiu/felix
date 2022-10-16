@@ -10,6 +10,7 @@ use chrono::prelude::*;
 use log::{error, info};
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::env;
 use std::fmt::Write as _;
 use std::fs;
 use std::path::PathBuf;
@@ -136,7 +137,9 @@ impl State {
             },
             current_dir: PathBuf::new(),
             trash_dir: PathBuf::new(),
-            default: config.default,
+            default: config
+                .default
+                .unwrap_or_else(|| env::var("EDITOR").expect("Falling back to env var")),
             commands: to_extension_map(&config.exec),
             sort_by: session.sort_by,
             layout: Layout {
