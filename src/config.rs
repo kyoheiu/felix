@@ -57,7 +57,7 @@ symlink_fg = \"LightYellow\"
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config {
-    pub default: String,
+    pub default: Option<String>,
     pub exec: Option<HashMap<String, Vec<String>>>,
     pub color: ConfigColor,
     pub use_full_width: Option<bool>,
@@ -120,27 +120,73 @@ pub fn make_config_if_not_exist(config_file: &Path, trash_dir: &Path) -> Result<
         let stdin = std::io::stdin();
         stdin.read_line(&mut buffer)?;
 
-        let trimmed = buffer.trim();
-        let config = CONFIG_EXAMPLE.replace("nvim", trimmed);
-        std::fs::write(&config_file, config)
-            .unwrap_or_else(|_| panic!("cannot write new config file."));
-        if cfg!(target_os = "mac_os") {
-            println!(
+        let mut trimmed = buffer.trim();
+        if trimmed.is_empty() {
+            match std::env::var("EDITOR") {
+                Ok(_) => {
+                    let config = CONFIG_EXAMPLE.replace("default = \"nvim\"", "# default = \"\"");
+                    std::fs::write(&config_file, config)
+                        .unwrap_or_else(|_| panic!("Cannot write new config file."));
+                    if cfg!(target_os = "mac_os") {
+                        println!(
+                "Config file created.\nSee ~/Library/Application Support/felix/config.toml");
+                    } else if cfg!(target_os = "windows") {
+                        println!(
+                            "Config file created.\nSee ~\\AppData\\Roaming\\felix\\config.toml"
+                        );
+                    } else {
+                        println!("Config file created.\nSee ~/.config/felix/config.toml");
+                    }
+                }
+                Err(_) => {
+                    while trimmed.is_empty() {
+                        println!("Cannot detect $EDITOR: Enter your default command.");
+                        buffer = String::new();
+                        std::io::stdin().read_line(&mut buffer)?;
+                        trimmed = buffer.trim();
+                    }
+                    let config = CONFIG_EXAMPLE.replace("nvim", trimmed);
+                    std::fs::write(&config_file, config)
+                        .unwrap_or_else(|_| panic!("cannot write new config file."));
+                    if cfg!(target_os = "mac_os") {
+                        println!(
                 "Default command set as [{}].\nSee ~/Library/Application Support/felix/config.toml",
                 trimmed
             );
-        } else if cfg!(target_os = "windows") {
-            println!(
+                    } else if cfg!(target_os = "windows") {
+                        println!(
                 "Default command set as [{}].\nSee ~\\AppData\\Roaming\\felix\\config.toml",
                 trimmed
             );
+                    } else {
+                        println!(
+                            "Default command set as [{}].\nSee ~/.config/felix/config.toml",
+                            trimmed
+                        );
+                    }
+                }
+            }
         } else {
-            println!(
-                "Default command set as [{}].\nSee ~/.config/felix/config.toml",
+            let config = CONFIG_EXAMPLE.replace("nvim", trimmed);
+            std::fs::write(&config_file, config)
+                .unwrap_or_else(|_| panic!("cannot write new config file."));
+            if cfg!(target_os = "mac_os") {
+                println!(
+                "Default command set as [{}].\nSee ~/Library/Application Support/felix/config.toml",
                 trimmed
             );
+            } else if cfg!(target_os = "windows") {
+                println!(
+                    "Default command set as [{}].\nSee ~\\AppData\\Roaming\\felix\\config.toml",
+                    trimmed
+                );
+            } else {
+                println!(
+                    "Default command set as [{}].\nSee ~/.config/felix/config.toml",
+                    trimmed
+                );
+            }
         }
     }
-
     Ok(())
 }
