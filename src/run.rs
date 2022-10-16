@@ -6,19 +6,22 @@ use super::nums::*;
 use super::op::*;
 use super::session::*;
 use super::state::*;
+use super::term::*;
 
+use crossterm::cursor::RestorePosition;
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::execute;
+use crossterm::terminal::{
+    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+};
 use log::{error, info};
 use std::ffi::OsStr;
 use std::fmt::Write as _;
-use std::io::{stdin, stdout, Write};
+use std::io::{stdout, Write};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
-use termion::event::Key;
-use termion::input::TermRead;
-use termion::raw::IntoRawMode;
-use termion::{clear, cursor, screen};
 
 /// frequency to detect terminal size change
 const DETECTION_INTERVAL: u64 = 500;
@@ -62,20 +65,28 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     //Initialize app state
     let mut state = State::new()?;
     state.trash_dir = trash_dir_path;
-    state.current_dir = arg.canonicalize()?;
+    state.current_dir = if cfg!(not(windows)) {
+        // If executed this on widnows, "//?" will be inserted at the beginning of the path.
+        arg.canonicalize()?
+    } else {
+        arg
+    };
 
     //Initialize num as Arc
     let nums = Num::new();
     let nums_run = Arc::new(Mutex::new(nums));
     let nums_detect = nums_run.clone();
 
+    let mut screen = stdout();
+    execute!(screen, EnterAlternateScreen)?;
+    enable_raw_mode()?;
+
     //Initialize screen as Arc
-    let screen = screen::AlternateScreen::from(stdout().into_raw_mode().unwrap());
     let screen_run = Arc::new(Mutex::new(screen));
     let screen_detect = screen_run.clone();
 
     //Update list, print and flush
-    print!("{}", cursor::Hide);
+    hide_cursor();
     state.reload(&nums, BEGINNING_ROW)?;
     let mut init_screen = screen_run.lock().unwrap();
     init_screen.flush()?;
@@ -93,7 +104,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     let interval = Duration::from_millis(DETECTION_INTERVAL);
     thread::spawn(move || loop {
         thread::sleep(interval);
-        let (mut column, row) = termion::terminal_size().unwrap();
+        let (mut column, row) = crossterm::terminal::size().unwrap();
 
         // Return error if terminal size may cause panic
         if column < 4 {
@@ -125,17 +136,17 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         }
     });
 
-    let mut stdin = stdin().keys();
-
     'main: loop {
-        let input = stdin.next();
         let mut state = state_run.lock().unwrap();
         let mut screen = screen_run.lock().unwrap();
         let mut nums = nums_run.lock().unwrap();
         let len = state.list.len();
         let y = state.layout.y;
 
-        if let Some(Ok(key)) = input {
+        if let Event::Key(KeyEvent {
+            code, modifiers, ..
+        }) = event::read()?
+        {
             //If you use kitty, you must clear the screen or the previewed image remains.
             if state.layout.is_kitty && state.layout.preview {
                 print!("\x1B[2J");
@@ -143,9 +154,9 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 state.list_up(nums.skip);
                 screen.flush()?;
             }
-            match key {
+            match code {
                 //Go up. If lists exceed max-row, lists "scrolls" before the top of the list
-                Key::Char('j') | Key::Down => {
+                KeyCode::Char('j') | KeyCode::Down => {
                     if len == 0 || nums.index == len - 1 {
                         continue;
                     } else if y >= state.layout.terminal_row - 1 - SCROLL_POINT
@@ -161,7 +172,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 }
 
                 //Go down. If lists exceed max-row, lists "scrolls" before the bottom of the list
-                Key::Char('k') | Key::Up => {
+                KeyCode::Char('k') | KeyCode::Up => {
                     if nums.index == 0 {
                         continue;
                     } else if y <= BEGINNING_ROW + SCROLL_POINT && nums.skip != 0 {
@@ -175,27 +186,27 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 }
 
                 //Go to top
-                Key::Char('g') => {
+                KeyCode::Char('g') => {
                     if nums.index == 0 {
                         continue;
                     } else {
-                        print!("{}{}g", cursor::Goto(2, 2), clear::CurrentLine,);
-                        print!("{}", cursor::Show);
-
+                        to_info_bar();
+                        clear_current_line();
+                        print!("g");
+                        show_cursor();
                         screen.flush()?;
 
-                        let input = stdin.next();
-                        if let Some(Ok(key)) = input {
-                            match key {
-                                Key::Char('g') => {
-                                    print!("{}", cursor::Hide);
+                        if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                            match code {
+                                KeyCode::Char('g') => {
+                                    hide_cursor();
                                     nums.reset();
                                     state.redraw(&nums, BEGINNING_ROW);
                                 }
 
                                 _ => {
-                                    reset_info_line();
-                                    print!("{}", cursor::Hide);
+                                    clear_current_line();
+                                    hide_cursor();
                                     state.move_cursor(&nums, y);
                                 }
                             }
@@ -204,7 +215,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 }
 
                 //Go to bottom
-                Key::Char('G') => {
+                KeyCode::Char('G') => {
                     if len == 0 {
                         continue;
                     }
@@ -220,18 +231,18 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 }
 
                 //Open file or change directory
-                Key::Char('l') | Key::Char('\n') | Key::Right => {
+                KeyCode::Char('l') | KeyCode::Enter | KeyCode::Right => {
                     if let Ok(item) = state.get_item(nums.index) {
                         match item.file_type {
                             FileType::File => {
-                                print!("{}", screen::ToAlternateScreen);
+                                execute!(screen, EnterAlternateScreen)?;
                                 if let Err(e) = state.open_file(item) {
                                     print_warning(e, y);
                                     screen.flush()?;
                                     continue;
                                 }
-                                print!("{}", screen::ToAlternateScreen);
-                                print!("{}", cursor::Hide);
+                                execute!(screen, EnterAlternateScreen)?;
+                                hide_cursor();
                                 state.filtered = false;
                                 //Add thread sleep time after state.open_file().
                                 // This is necessary because, with tiling window managers, the window resizing is sometimes slow and felix reloads the layout so quickly that the display may become broken.
@@ -277,14 +288,14 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     }
                                 },
                                 None => {
-                                    print!("{}", screen::ToAlternateScreen);
+                                    execute!(screen, EnterAlternateScreen)?;
                                     if let Err(e) = state.open_file(item) {
                                         print_warning(e, y);
                                         screen.flush()?;
                                         continue;
                                     }
-                                    print!("{}", screen::ToAlternateScreen);
-                                    print!("{}", cursor::Hide);
+                                    execute!(screen, EnterAlternateScreen)?;
+                                    hide_cursor();
                                     state.filtered = false;
                                     state.redraw(&nums, y);
                                 }
@@ -350,7 +361,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 }
 
                 //Open a file in a new window
-                Key::Char('o') => {
+                KeyCode::Char('o') => {
                     if let Ok(item) = state.get_item(nums.index) {
                         match item.file_type {
                             FileType::File => {
@@ -358,7 +369,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     print_warning(e, y);
                                     continue;
                                 }
-                                print!("{}", cursor::Hide);
+                                hide_cursor();
                                 state.redraw(&nums, y);
                                 screen.flush()?;
                                 continue;
@@ -372,7 +383,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                 //Go to parent directory if exists.
                 //If the list is filtered, reload current directory.
-                Key::Char('h') | Key::Left => {
+                KeyCode::Char('h') | KeyCode::Left => {
                     if state.filtered {
                         nums.reset();
                         state.filtered = false;
@@ -471,9 +482,12 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 }
 
                 //Jumps to the directory that matches the keyword (zoxide required).
-                Key::Char('z') => {
-                    print!(" {}{}z", cursor::Goto(2, 2), clear::CurrentLine,);
-                    print!("{}", cursor::Show);
+                KeyCode::Char('z') => {
+                    print!(" ");
+                    to_info_bar();
+                    clear_current_line();
+                    print!("z");
+                    show_cursor();
 
                     let mut command: Vec<char> = vec!['z'];
                     screen.flush()?;
@@ -481,53 +495,49 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     let initial_pos = 2;
                     let mut current_pos = 3;
                     'zoxide: loop {
-                        let input = stdin.next();
-                        if let Some(Ok(key)) = input {
-                            match key {
-                                Key::Esc => {
+                        if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                            match code {
+                                KeyCode::Esc => {
                                     reset_info_line();
-                                    print!("{}", cursor::Hide);
+                                    hide_cursor();
                                     state.move_cursor(&nums, y);
                                     break 'zoxide;
                                 }
 
-                                Key::Left => {
+                                KeyCode::Left => {
                                     if current_pos == initial_pos {
                                         continue;
                                     };
                                     current_pos -= 1;
-                                    print!("{}", cursor::Left(1));
+                                    move_left(1);
                                 }
 
-                                Key::Right => {
+                                KeyCode::Right => {
                                     if current_pos as usize == command.len() + initial_pos as usize
                                     {
                                         continue;
                                     };
                                     current_pos += 1;
-                                    print!("{}", cursor::Right(1));
+                                    move_right(1);
                                 }
 
-                                Key::Backspace => {
+                                KeyCode::Backspace => {
                                     if current_pos == initial_pos + 1 {
                                         reset_info_line();
-                                        print!("{}", cursor::Hide);
+                                        hide_cursor();
                                         state.move_cursor(&nums, y);
                                         break 'zoxide;
                                     };
                                     command.remove((current_pos - initial_pos - 1).into());
                                     current_pos -= 1;
 
-                                    print!(
-                                        "{}{}{}{}",
-                                        clear::CurrentLine,
-                                        cursor::Goto(2, 2),
-                                        &command.iter().collect::<String>(),
-                                        cursor::Goto(current_pos, 2)
-                                    );
+                                    clear_current_line();
+                                    to_info_bar();
+                                    print!("{}", &command.iter().collect::<String>(),);
+                                    move_to(current_pos, 2);
                                 }
 
-                                Key::Char('\n') => {
+                                KeyCode::Enter => {
                                     let command: String = command.iter().collect();
                                     if command.trim() == "z" {
                                         //go to the home directory
@@ -539,7 +549,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             print_warning(e, y);
                                             break 'zoxide;
                                         }
-                                        print!("{}", cursor::Hide);
+                                        hide_cursor();
                                         state.redraw(&nums, BEGINNING_ROW);
                                         break 'zoxide;
                                     } else if command.len() > 2 {
@@ -560,19 +570,24 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                     let target_dir = std::str::from_utf8(&output);
                                                     match target_dir {
                                                         Err(e) => {
-                                                            print!("{}", cursor::Hide);
+                                                            hide_cursor();
                                                             print_warning(e, y);
                                                             break 'zoxide;
                                                         }
                                                         Ok(target_dir) => {
-                                                            print!("{}", cursor::Hide);
+                                                            hide_cursor();
                                                             p_memo_v = Vec::new();
                                                             c_memo_v = Vec::new();
                                                             nums.reset();
                                                             let target_path =
                                                                 PathBuf::from(target_dir.trim());
                                                             state.current_dir =
-                                                                target_path.canonicalize()?;
+                                                                if cfg!(not(windows)) {
+                                                                    target_path.canonicalize()?
+                                                                } else {
+                                                                    target_path
+                                                                };
+                                                            state.filtered = false;
                                                             state.reload(&nums, BEGINNING_ROW)?;
                                                             break 'zoxide;
                                                         }
@@ -585,22 +600,19 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         }
                                     } else {
                                         reset_info_line();
-                                        print!("{}", cursor::Hide);
+                                        hide_cursor();
                                         state.move_cursor(&nums, y);
                                         break 'zoxide;
                                     }
                                 }
 
-                                Key::Char(c) => {
+                                KeyCode::Char(c) => {
                                     command.insert((current_pos - initial_pos).into(), c);
                                     current_pos += 1;
-                                    print!(
-                                        "{}{}{}{}",
-                                        clear::CurrentLine,
-                                        cursor::Goto(2, 2),
-                                        &command.iter().collect::<String>(),
-                                        cursor::Goto(current_pos, 2)
-                                    );
+                                    clear_current_line();
+                                    to_info_bar();
+                                    print!("{}", &command.iter().collect::<String>(),);
+                                    move_to(current_pos, 2);
                                 }
 
                                 _ => continue,
@@ -611,7 +623,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 }
 
                 //select mode
-                Key::Char('V') => {
+                KeyCode::Char('V') => {
                     if len == 0 {
                         continue;
                     }
@@ -625,10 +637,9 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     let mut current_pos = y;
 
                     loop {
-                        let input = stdin.next();
-                        if let Some(Ok(key)) = input {
-                            match key {
-                                Key::Char('j') | Key::Down => {
+                        if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                            match code {
+                                KeyCode::Char('j') | KeyCode::Down => {
                                     if len == 0 || nums.index == len - 1 {
                                         continue;
                                     } else if current_pos >= state.layout.terminal_row - 4
@@ -665,7 +676,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     }
                                 }
 
-                                Key::Char('k') | Key::Up => {
+                                KeyCode::Char('k') | KeyCode::Up => {
                                     if nums.index == 0 {
                                         continue;
                                     } else if current_pos <= BEGINNING_ROW + 3 && nums.skip != 0 {
@@ -695,20 +706,20 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     }
                                 }
 
-                                Key::Char('g') => {
+                                KeyCode::Char('g') => {
                                     if nums.index == 0 {
                                         continue;
                                     } else {
-                                        print!("{}{}g", cursor::Goto(2, 2), clear::CurrentLine,);
-                                        print!("{}", cursor::Show);
-
+                                        to_info_bar();
+                                        clear_current_line();
+                                        print!("g");
+                                        show_cursor();
                                         screen.flush()?;
 
-                                        let input = stdin.next();
-                                        if let Some(Ok(key)) = input {
-                                            match key {
-                                                Key::Char('g') => {
-                                                    print!("{}", cursor::Hide);
+                                        if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                                            match code {
+                                                KeyCode::Char('g') => {
+                                                    hide_cursor();
                                                     nums.reset();
                                                     state.select_from_top(start_pos);
                                                     current_pos = BEGINNING_ROW;
@@ -717,7 +728,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                                                 _ => {
                                                     reset_info_line();
-                                                    print!("{}", cursor::Hide);
+                                                    hide_cursor();
                                                     state.move_cursor(&nums, current_pos);
                                                 }
                                             }
@@ -725,7 +736,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     }
                                 }
 
-                                Key::Char('G') => {
+                                KeyCode::Char('G') => {
                                     if len > (state.layout.terminal_row - BEGINNING_ROW) as usize {
                                         nums.skip = (len as u16) + BEGINNING_ROW
                                             - state.layout.terminal_row;
@@ -741,7 +752,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     }
                                 }
 
-                                Key::Char('d') => {
+                                KeyCode::Char('d') => {
                                     print_info("DELETE: Processing...", current_pos);
                                     let start = Instant::now();
                                     screen.flush()?;
@@ -784,8 +795,8 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     } else if nums.index > new_len - 1 {
                                         let mut new_y =
                                             current_pos - (nums.index - (new_len - 1)) as u16;
-                                        if new_y < 3 {
-                                            new_y = 3;
+                                        if new_y < BEGINNING_ROW {
+                                            new_y = BEGINNING_ROW;
                                         }
                                         nums.index = new_len - 1;
                                         state.move_cursor(&nums, new_y);
@@ -797,7 +808,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     break;
                                 }
 
-                                Key::Char('y') => {
+                                KeyCode::Char('y') => {
                                     state.yank_item(nums.index, true);
                                     state.reset_selection();
                                     state.list_up(nums.skip);
@@ -808,7 +819,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     break;
                                 }
 
-                                Key::Esc => {
+                                KeyCode::Esc => {
                                     state.reset_selection();
                                     state.redraw(&nums, current_pos);
                                     break;
@@ -824,7 +835,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 }
 
                 //toggle sortkey
-                Key::Char('t') => {
+                KeyCode::Char('t') => {
                     match state.sort_by {
                         SortKey::Name => {
                             state.sort_by = SortKey::Time;
@@ -838,33 +849,33 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 }
 
                 //toggle whether to show preview of text file
-                Key::Char('v') => {
+                KeyCode::Char('v') => {
                     state.layout.preview = !state.layout.preview;
                     if state.layout.preview {
                         let new_column = state.layout.terminal_column / 2;
                         let new_row = state.layout.terminal_row;
                         state.refresh(new_column, new_row, &nums, y);
                     } else {
-                        let (new_column, new_row) = termion::terminal_size().unwrap();
+                        let (new_column, new_row) = crossterm::terminal::size().unwrap();
                         state.refresh(new_column, new_row, &nums, y);
                     }
                 }
 
                 //delete
-                Key::Char('d') => {
+                KeyCode::Char('d') => {
                     if len == 0 {
                         continue;
                     } else {
-                        print!("{}{}d", cursor::Goto(2, 2), clear::CurrentLine,);
-                        print!("{}", cursor::Show);
-
+                        to_info_bar();
+                        clear_current_line();
+                        print!("d");
+                        show_cursor();
                         screen.flush()?;
 
-                        let input = stdin.next();
-                        if let Some(Ok(key)) = input {
-                            match key {
-                                Key::Char('d') => {
-                                    print!("{}", cursor::Hide);
+                        if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                            match code {
+                                KeyCode::Char('d') => {
+                                    hide_cursor();
                                     print_info("DELETE: Processing...", y);
                                     let start = Instant::now();
                                     screen.flush()?;
@@ -898,7 +909,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 }
                                 _ => {
                                     reset_info_line();
-                                    print!("{}", cursor::Hide);
+                                    hide_cursor();
                                     state.move_cursor(&nums, y);
                                 }
                             }
@@ -907,28 +918,29 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 }
 
                 //yank
-                Key::Char('y') => {
+                KeyCode::Char('y') => {
                     if len == 0 {
                         continue;
                     }
-                    print!("{}{}y", cursor::Goto(2, 2), clear::CurrentLine,);
-                    print!("{}", cursor::Show);
+                    to_info_bar();
+                    clear_current_line();
+                    print!("y");
+                    show_cursor();
 
                     screen.flush()?;
 
-                    let input = stdin.next();
-                    if let Some(Ok(key)) = input {
-                        match key {
-                            Key::Char('y') => {
+                    if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                        match code {
+                            KeyCode::Char('y') => {
                                 state.yank_item(nums.index, false);
                                 reset_info_line();
-                                print!("{}", cursor::Hide);
+                                hide_cursor();
                                 print_info("1 item yanked", y);
                             }
 
                             _ => {
                                 reset_info_line();
-                                print!("{}", cursor::Hide);
+                                hide_cursor();
                                 state.move_cursor(&nums, y);
                             }
                         }
@@ -936,7 +948,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 }
 
                 //put
-                Key::Char('p') => {
+                KeyCode::Char('p') => {
                     if state.registered.is_empty() {
                         continue;
                     }
@@ -965,7 +977,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 }
 
                 //rename
-                Key::Char('c') => {
+                KeyCode::Char('c') => {
                     if len == 0 {
                         continue;
                     }
@@ -976,29 +988,25 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                         continue;
                     }
 
-                    print!("{}", cursor::Show);
+                    show_cursor();
                     let mut rename = item.file_name.chars().collect::<Vec<char>>();
-                    print!(
-                        "{}{}New name: {}",
-                        cursor::Goto(2, 2),
-                        clear::CurrentLine,
-                        &rename.iter().collect::<String>(),
-                    );
+                    to_info_bar();
+                    clear_current_line();
+                    print!("New name: {}", &rename.iter().collect::<String>(),);
                     screen.flush()?;
 
                     let initial_pos = 12;
                     let mut current_pos: u16 = 12 + item.file_name.len() as u16;
                     loop {
-                        let input = stdin.next();
-                        if let Some(Ok(key)) = input {
-                            match key {
+                        if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                            match code {
                                 //rename item
-                                Key::Char('\n') => {
+                                KeyCode::Enter => {
                                     let rename = rename.iter().collect::<String>();
                                     let mut to = state.current_dir.clone();
                                     to.push(rename);
                                     if let Err(e) = std::fs::rename(&item.file_path, &to) {
-                                        print!("{}", cursor::Hide);
+                                        hide_cursor();
                                         print_warning(e, y);
                                         break;
                                     }
@@ -1009,61 +1017,55 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         new_name: to,
                                     }));
 
-                                    print!("{}", cursor::Hide);
+                                    hide_cursor();
                                     state.reload(&nums, y)?;
                                     break;
                                 }
 
-                                Key::Esc => {
+                                KeyCode::Esc => {
                                     reset_info_line();
-                                    print!("{}", cursor::Hide);
+                                    hide_cursor();
                                     state.move_cursor(&nums, y);
                                     break;
                                 }
 
-                                Key::Left => {
+                                KeyCode::Left => {
                                     if current_pos == initial_pos {
                                         continue;
                                     };
                                     current_pos -= 1;
-                                    print!("{}", cursor::Left(1));
+                                    move_left(1);
                                 }
 
-                                Key::Right => {
+                                KeyCode::Right => {
                                     if current_pos as usize == rename.len() + initial_pos as usize {
                                         continue;
                                     };
                                     current_pos += 1;
-                                    print!("{}", cursor::Right(1));
+                                    move_right(1);
                                 }
 
-                                Key::Char(c) => {
+                                KeyCode::Char(c) => {
                                     rename.insert((current_pos - initial_pos).into(), c);
                                     current_pos += 1;
 
-                                    print!(
-                                        "{}{}New name: {}{}",
-                                        clear::CurrentLine,
-                                        cursor::Goto(2, 2),
-                                        &rename.iter().collect::<String>(),
-                                        cursor::Goto(current_pos, 2)
-                                    );
+                                    to_info_bar();
+                                    clear_current_line();
+                                    print!("New name: {}", &rename.iter().collect::<String>(),);
+                                    move_to(current_pos, 2);
                                 }
 
-                                Key::Backspace => {
+                                KeyCode::Backspace => {
                                     if current_pos == initial_pos {
                                         continue;
                                     };
                                     rename.remove((current_pos - initial_pos - 1).into());
                                     current_pos -= 1;
 
-                                    print!(
-                                        "{}{}New name: {}{}",
-                                        clear::CurrentLine,
-                                        cursor::Goto(2, 2),
-                                        &rename.iter().collect::<String>(),
-                                        cursor::Goto(current_pos, 2)
-                                    );
+                                    to_info_bar();
+                                    clear_current_line();
+                                    print!("New name: {}", &rename.iter().collect::<String>(),);
+                                    move_to(current_pos, 2);
                                 }
 
                                 _ => continue,
@@ -1074,25 +1076,27 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 }
 
                 //filter mode
-                Key::Char('/') => {
+                KeyCode::Char('/') => {
                     if len == 0 {
                         continue;
                     }
-                    print!(" {}{}/", cursor::Goto(2, 2), clear::CurrentLine,);
-                    print!("{}", cursor::Show);
+                    print!(" ");
+                    to_info_bar();
+                    clear_current_line();
+                    print!("/");
+                    show_cursor();
                     state.filtered = true;
                     screen.flush()?;
 
                     let original_list = state.list.clone();
                     let mut keyword: Vec<char> = Vec::new();
                     let initial_pos = 3;
-                    let mut current_pos = 3;
+                    let mut current_pos = initial_pos;
                     loop {
                         let keyword_len = keyword.len();
-                        let input = stdin.next();
-                        if let Some(Ok(key)) = input {
-                            match key {
-                                Key::Char('\n') => {
+                        if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                            match code {
+                                KeyCode::Enter => {
                                     reset_info_line();
                                     screen.flush()?;
                                     nums.reset();
@@ -1100,33 +1104,33 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     break;
                                 }
 
-                                Key::Esc => {
-                                    print!("{}", cursor::Hide);
+                                KeyCode::Esc => {
+                                    hide_cursor();
                                     state.filtered = false;
                                     state.list = original_list;
                                     state.reload(&nums, y)?;
                                     break;
                                 }
 
-                                Key::Left => {
+                                KeyCode::Left => {
                                     if current_pos == initial_pos {
                                         continue;
                                     }
                                     current_pos -= 1;
-                                    print!("{}", cursor::Left(1));
+                                    move_left(1);
                                 }
 
-                                Key::Right => {
+                                KeyCode::Right => {
                                     if current_pos == keyword_len + initial_pos as usize {
                                         continue;
                                     }
                                     current_pos += 1;
-                                    print!("{}", cursor::Right(1));
+                                    move_right(1);
                                 }
 
-                                Key::Backspace => {
+                                KeyCode::Backspace => {
                                     if current_pos == initial_pos {
-                                        print!("{}", cursor::Hide);
+                                        hide_cursor();
                                         state.filtered = false;
                                         state.list = original_list;
                                         state.reload(&nums, y)?;
@@ -1135,29 +1139,25 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         keyword.remove(current_pos - initial_pos - 1);
                                         current_pos -= 1;
 
+                                        let result = &keyword.iter().collect::<String>();
+
                                         state.list = original_list
                                             .clone()
                                             .into_iter()
-                                            .filter(|entry| {
-                                                entry
-                                                    .file_name
-                                                    .contains(&keyword.iter().collect::<String>())
-                                            })
+                                            .filter(|entry| entry.file_name.contains(result))
                                             .collect();
 
                                         state.clear_and_show_headline();
                                         state.list_up(0);
 
-                                        print!(
-                                            "{}/{}{}",
-                                            cursor::Goto(2, 2),
-                                            &keyword.iter().collect::<String>(),
-                                            cursor::Goto((current_pos).try_into().unwrap(), 2)
-                                        );
+                                        to_info_bar();
+                                        print!("/");
+                                        print!("{}", result);
+                                        move_to((current_pos).try_into().unwrap(), 2)
                                     }
                                 }
 
-                                Key::Char(c) => {
+                                KeyCode::Char(c) => {
                                     keyword.insert(current_pos - initial_pos, c);
                                     current_pos += 1;
 
@@ -1172,12 +1172,10 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     state.clear_and_show_headline();
                                     state.list_up(0);
 
-                                    print!(
-                                        "{}/{}{}",
-                                        cursor::Goto(2, 2),
-                                        result,
-                                        cursor::Goto((current_pos).try_into().unwrap(), 2)
-                                    );
+                                    to_info_bar();
+                                    print!("/");
+                                    print!("{}", result);
+                                    move_to((current_pos).try_into().unwrap(), 2);
                                 }
 
                                 _ => continue,
@@ -1185,13 +1183,16 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                             screen.flush()?;
                         }
                     }
-                    print!("{}", cursor::Hide);
+                    hide_cursor();
                 }
 
                 //shell mode
-                Key::Char(':') => {
-                    print!(" {}{}:", cursor::Goto(2, 2), clear::CurrentLine,);
-                    print!("{}", cursor::Show);
+                KeyCode::Char(':') => {
+                    print!(" ");
+                    to_info_bar();
+                    clear_current_line();
+                    print!(":");
+                    show_cursor();
 
                     let mut command: Vec<char> = Vec::new();
                     screen.flush()?;
@@ -1199,57 +1200,53 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     let initial_pos = 3;
                     let mut current_pos = 3;
                     'command: loop {
-                        let input = stdin.next();
-                        if let Some(Ok(key)) = input {
-                            match key {
-                                Key::Esc => {
+                        if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                            match code {
+                                KeyCode::Esc => {
                                     reset_info_line();
-                                    print!("{}", cursor::Hide);
+                                    hide_cursor();
                                     state.move_cursor(&nums, y);
                                     break 'command;
                                 }
 
-                                Key::Left => {
+                                KeyCode::Left => {
                                     if current_pos == initial_pos {
                                         continue;
                                     };
                                     current_pos -= 1;
-                                    print!("{}", cursor::Left(1));
+                                    move_left(1);
                                 }
 
-                                Key::Right => {
+                                KeyCode::Right => {
                                     if current_pos as usize == command.len() + initial_pos as usize
                                     {
                                         continue;
                                     };
                                     current_pos += 1;
-                                    print!("{}", cursor::Right(1));
+                                    move_right(1);
                                 }
 
-                                Key::Backspace => {
+                                KeyCode::Backspace => {
                                     if current_pos == initial_pos {
                                         reset_info_line();
-                                        print!("{}", cursor::Hide);
+                                        hide_cursor();
                                         state.move_cursor(&nums, y);
                                         break 'command;
                                     } else {
                                         command.remove((current_pos - initial_pos - 1).into());
                                         current_pos -= 1;
 
-                                        print!(
-                                            "{}{}:{}{}",
-                                            clear::CurrentLine,
-                                            cursor::Goto(2, 2),
-                                            &command.iter().collect::<String>(),
-                                            cursor::Goto(current_pos, 2)
-                                        );
+                                        clear_current_line();
+                                        to_info_bar();
+                                        print!(":{}", &command.iter().collect::<String>());
+                                        move_to(current_pos, 2);
                                     }
                                 }
 
-                                Key::Char('\n') => {
+                                KeyCode::Enter => {
+                                    hide_cursor();
                                     if command.is_empty() {
                                         reset_info_line();
-                                        print!("{}", cursor::Hide);
                                         state.move_cursor(&nums, y);
                                         break;
                                     }
@@ -1267,24 +1264,18 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             print_warning(e, y);
                                             break 'command;
                                         }
-                                        print!("{}", cursor::Hide);
                                         state.redraw(&nums, BEGINNING_ROW);
                                         break 'command;
                                     } else if command == vec!['e'] {
                                         //reload current dir
-                                        print!("{}", cursor::Hide);
                                         nums.reset();
                                         state.filtered = false;
                                         state.reload(&nums, BEGINNING_ROW)?;
                                         break 'command;
                                     } else if command == vec!['h'] {
                                         //Show help
-                                        print!(
-                                            "{}{}{}",
-                                            cursor::Hide,
-                                            clear::All,
-                                            cursor::Goto(1, 1)
-                                        );
+                                        clear_all();
+                                        move_to(1, 1);
                                         screen.flush()?;
                                         let help =
                                             format_txt(HELP, state.layout.terminal_column, true);
@@ -1294,9 +1285,11 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                                         let mut skip = 0;
                                         loop {
-                                            if let Some(Ok(key)) = stdin.next() {
-                                                match key {
-                                                    Key::Char('j') | Key::Down => {
+                                            if let Event::Key(KeyEvent { code, .. }) =
+                                                event::read()?
+                                            {
+                                                match code {
+                                                    KeyCode::Char('j') | KeyCode::Down => {
                                                         if help_len
                                                             < state.layout.terminal_row.into()
                                                             || skip
@@ -1306,7 +1299,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                         {
                                                             continue;
                                                         } else {
-                                                            print!("{}", clear::All);
+                                                            clear_all();
                                                             skip += 1;
                                                             print_help(
                                                                 &help,
@@ -1317,11 +1310,11 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                             continue;
                                                         }
                                                     }
-                                                    Key::Char('k') | Key::Up => {
+                                                    KeyCode::Char('k') | KeyCode::Up => {
                                                         if skip == 0 {
                                                             continue;
                                                         } else {
-                                                            print!("{}", clear::All);
+                                                            clear_all();
                                                             skip -= 1;
                                                             print_help(
                                                                 &help,
@@ -1338,15 +1331,12 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                 }
                                             }
                                         }
-                                        print!("{}", cursor::Hide);
                                         state.redraw(&nums, y);
                                         break 'command;
                                     }
 
                                     let commands: String = command.iter().collect();
-
                                     let commands = commands.split_ascii_whitespace();
-
                                     let mut c = "";
                                     let mut args = Vec::new();
                                     let mut i = 0;
@@ -1360,10 +1350,9 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     }
 
                                     if (c == "cd" || c == "z") && args.is_empty() {
-                                        //Change directory (z uses zoxide)
+                                        //Change directory
                                         p_memo_v = Vec::new();
                                         c_memo_v = Vec::new();
-                                        print!("{}", cursor::Hide);
                                         nums.reset();
                                         state.filtered = false;
                                         state.current_dir = dirs::home_dir().unwrap();
@@ -1372,7 +1361,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     }
 
                                     if c == "z" && args.len() == 1 {
-                                        //using zoxide
+                                        //Change diretory using zoxide
                                         if let Ok(output) = std::process::Command::new("zoxide")
                                             .args(["query", args[0].trim()])
                                             .output()
@@ -1388,19 +1377,21 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                 let target_dir = std::str::from_utf8(&output);
                                                 match target_dir {
                                                     Err(e) => {
-                                                        print!("{}", cursor::Hide);
                                                         print_warning(e, y);
                                                         break 'command;
                                                     }
                                                     Ok(target_dir) => {
-                                                        print!("{}", cursor::Hide);
                                                         p_memo_v = Vec::new();
                                                         c_memo_v = Vec::new();
                                                         nums.reset();
                                                         let target_path =
                                                             PathBuf::from(target_dir.trim());
-                                                        state.current_dir =
-                                                            target_path.canonicalize()?;
+                                                        state.current_dir = if cfg!(not(windows)) {
+                                                            target_path.canonicalize()?
+                                                        } else {
+                                                            target_path
+                                                        };
+                                                        state.filtered = false;
                                                         state.reload(&nums, BEGINNING_ROW)?;
                                                         break 'command;
                                                     }
@@ -1417,17 +1408,15 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         print_warning(WHEN_EMPTY, y);
                                         screen.flush()?;
 
-                                        let input = stdin.next();
-                                        if let Some(Ok(key)) = input {
-                                            match key {
-                                                Key::Char('y') | Key::Char('Y') => {
+                                        if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                                            match code {
+                                                KeyCode::Char('y') | KeyCode::Char('Y') => {
                                                     print_info("EMPTY: Processing...", y);
                                                     screen.flush()?;
 
                                                     if let Err(e) =
                                                         std::fs::remove_dir_all(&state.trash_dir)
                                                     {
-                                                        print!("{}", cursor::Hide);
                                                         print_warning(e, y);
                                                         screen.flush()?;
                                                         continue 'main;
@@ -1435,12 +1424,10 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                     if let Err(e) =
                                                         std::fs::create_dir(&state.trash_dir)
                                                     {
-                                                        print!("{}", cursor::Hide);
                                                         print_warning(e, y);
                                                         screen.flush()?;
                                                         continue 'main;
                                                     }
-                                                    print!("{}", cursor::Hide);
                                                     reset_info_line();
                                                     if state.current_dir == state.trash_dir {
                                                         state.reload(&nums, BEGINNING_ROW)?;
@@ -1462,10 +1449,9 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     }
 
                                     //Execute the command as it is
-                                    print!("{}", screen::ToAlternateScreen);
+                                    execute!(screen, EnterAlternateScreen)?;
                                     if std::env::set_current_dir(&state.current_dir).is_err() {
-                                        print!("{}", screen::ToAlternateScreen);
-                                        print!("{}", cursor::Hide,);
+                                        execute!(screen, EnterAlternateScreen)?;
                                         print_warning("Cannot execute command", y);
                                         break 'command;
                                     }
@@ -1474,29 +1460,24 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         .status()
                                         .is_err()
                                     {
-                                        print!("{}", screen::ToAlternateScreen);
-                                        print!("{}", cursor::Hide,);
+                                        execute!(screen, EnterAlternateScreen)?;
                                         state.redraw(&nums, y);
                                         print_warning("Cannot execute command", y);
                                         break 'command;
                                     }
-                                    print!("{}", screen::ToAlternateScreen);
-                                    print!("{}", cursor::Hide);
+                                    execute!(screen, EnterAlternateScreen)?;
                                     info!("SHELL: {} {:?}", c, args);
                                     state.reload(&nums, y)?;
                                     break 'command;
                                 }
 
-                                Key::Char(c) => {
+                                KeyCode::Char(c) => {
                                     command.insert((current_pos - initial_pos).into(), c);
                                     current_pos += 1;
-                                    print!(
-                                        "{}{}:{}{}",
-                                        clear::CurrentLine,
-                                        cursor::Goto(2, 2),
-                                        &command.iter().collect::<String>(),
-                                        cursor::Goto(current_pos, 2)
-                                    );
+                                    clear_current_line();
+                                    to_info_bar();
+                                    print!(":{}", &command.iter().collect::<String>(),);
+                                    move_to(current_pos, 2);
                                 }
 
                                 _ => continue,
@@ -1507,7 +1488,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 }
 
                 //undo
-                Key::Char('u') => {
+                KeyCode::Char('u') => {
                     let op_len = state.operations.op_list.len();
                     if op_len < state.operations.pos + 1 {
                         print_info("No operations left.", y);
@@ -1542,7 +1523,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 }
 
                 //redo
-                Key::Ctrl('r') => {
+                KeyCode::Char('r') if modifiers == KeyModifiers::CONTROL => {
                     let op_len = state.operations.op_list.len();
                     if op_len == 0 || state.operations.pos == 0 || op_len < state.operations.pos {
                         print_info("No operations left.", y);
@@ -1573,35 +1554,37 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 }
 
                 //Debug print for undo/redo
-                Key::Char('P') => {
+                KeyCode::Char('P') => {
                     if state.rust_log.is_some() {
                         print_info(format!("{:?}", state), y);
                     }
                 }
 
                 //exit by ZZ
-                Key::Char('Z') => {
-                    print!(" {}{}Z", cursor::Goto(2, 2), clear::CurrentLine,);
-                    print!("{}", cursor::Show);
+                KeyCode::Char('Z') => {
+                    print!(" ");
+                    to_info_bar();
+                    clear_current_line();
+                    print!("Z");
+                    show_cursor();
                     screen.flush()?;
 
-                    let input = stdin.next();
-                    if let Some(Ok(key)) = input {
-                        match key {
-                            Key::Char('Z') => {
+                    if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                        match code {
+                            KeyCode::Char('Z') => {
                                 break 'main;
                             }
 
                             _ => {
                                 reset_info_line();
-                                print!("{}", cursor::Hide);
+                                hide_cursor();
                                 state.move_cursor(&nums, y);
                             }
                         }
                     }
                 }
                 // Show/hide hidden files or directories
-                Key::Backspace => {
+                KeyCode::Backspace => {
                     match state.show_hidden {
                         true => {
                             state.list.retain(|x| !x.is_hidden);
@@ -1628,12 +1611,12 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
     //Save session, restore screen state and cursor
     state.write_session(session_file_path)?;
-    write!(screen, "{}", screen::ToMainScreen)?;
-    write!(screen, "{}", cursor::Restore)?;
+    execute!(screen, LeaveAlternateScreen)?;
+    write!(screen, "{}", RestorePosition)?;
     screen.flush()?;
 
     //Back to normal mode
-    screen.suspend_raw_mode()?;
+    disable_raw_mode()?;
     info!("===FINISH===");
     Ok(())
 }

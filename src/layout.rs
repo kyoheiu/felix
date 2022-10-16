@@ -2,7 +2,7 @@ use super::config::*;
 use super::errors::FxError;
 use super::functions::*;
 use super::state::{FileType, ItemInfo, BEGINNING_ROW};
-use termion::{clear, color, cursor};
+use super::term::*;
 
 /// cf: https://docs.rs/image/latest/src/image/image.rs.html#84-112
 pub const MAX_SIZE_TO_PREVIEW: u64 = 1_000_000_000;
@@ -26,7 +26,7 @@ pub struct Layout {
     pub time_start_pos: u16,
     pub use_full: Option<bool>,
     pub option_name_len: Option<usize>,
-    pub colors: Color,
+    pub colors: ConfigColor,
     pub preview: bool,
     pub preview_start_column: u16,
     pub preview_width: u16,
@@ -65,10 +65,7 @@ impl Layout {
                 } else {
                     let help = format_txt(CHAFA_WARNING, self.terminal_column - 1, false);
                     for (i, line) in help.iter().enumerate() {
-                        print!(
-                            "{}",
-                            cursor::Goto(self.preview_start_column, BEGINNING_ROW + i as u16)
-                        );
+                        move_to(self.preview_start_column, BEGINNING_ROW + i as u16);
                         print!("{}", line,);
                         if BEGINNING_ROW + i as u16 == self.terminal_row - 1 {
                             break;
@@ -87,11 +84,8 @@ impl Layout {
 
     /// Print item name at the top.
     fn print_file_name(&self, item: &ItemInfo) {
-        print!(
-            "{}{}",
-            cursor::Goto(self.preview_start_column, 1),
-            clear::UntilNewline
-        );
+        move_to(self.preview_start_column, 1);
+        clear_until_newline();
         let mut file_name = format!("[{}]", item.file_name);
         if file_name.len() > self.preview_width.into() {
             file_name = file_name.chars().take(self.preview_width.into()).collect();
@@ -125,16 +119,10 @@ impl Layout {
 
         //Print preview (wrapping)
         for (i, line) in content.iter().enumerate() {
-            print!(
-                "{}",
-                cursor::Goto(self.preview_start_column, BEGINNING_ROW + i as u16)
-            );
-            print!(
-                "{}{}{}",
-                color::Fg(color::LightBlack),
-                line,
-                color::Fg(color::Reset)
-            );
+            move_to(self.preview_start_column, BEGINNING_ROW + i as u16);
+            set_color(&TermColor::ForeGround(&Colorname::LightBlack));
+            print!("{}", line);
+            reset_color();
             if BEGINNING_ROW + i as u16 == self.terminal_row - 1 {
                 break;
             }
@@ -163,7 +151,7 @@ impl Layout {
         for (i, line) in output.lines().enumerate() {
             let next_line: u16 = BEGINNING_ROW + (i as u16) + 1;
             print!("{}", line);
-            print!("{}", cursor::Goto(self.preview_start_column, next_line));
+            move_to(self.preview_start_column, next_line);
         }
         Ok(())
     }
@@ -171,13 +159,10 @@ impl Layout {
     /// Clear the preview space.
     fn clear_preview(&self, preview_start_column: u16) {
         for i in 0..self.terminal_row {
-            print!(
-                "{}",
-                cursor::Goto(preview_start_column, BEGINNING_ROW + i as u16)
-            );
-            print!("{}", clear::UntilNewline);
+            move_to(preview_start_column, BEGINNING_ROW + i as u16);
+            clear_until_newline();
         }
-        print!("{}", cursor::Goto(self.preview_start_column, BEGINNING_ROW));
+        move_to(self.preview_start_column, BEGINNING_ROW);
     }
 }
 
