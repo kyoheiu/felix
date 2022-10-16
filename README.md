@@ -15,7 +15,7 @@ For the detailed document, please see https://kyoheiu.dev/felix.
 ### Changed
 
 - Huge refactoring: Instead of `thiserror`, use custom error type to make it easier to handle.
-- Bump up chrono version to 0.4.22, clarifing the feature to use.
+- Bump up chrono version to 0.4.22, clarifying the feature to use.
 - Avoid extra heap allocation by using write! instead of push_str/format!.
 - Copied item will be renamed with the suffix "\_{count}" such as "test_1.txt", instead of "test_copied.txt".
 
@@ -96,7 +96,7 @@ j / Up            :Go up.
 k / Down          :Go down.
 h / Left          :Go to the parent directory if exists.
 l / Right / Enter :Open a file or change directory.
-o                 :Open a fila in a new window.
+o                 :Open a file in a new window.
 gg                :Go to the top.
 G                 :Go to the bottom.
 z + Enter         :Go to the home directory.

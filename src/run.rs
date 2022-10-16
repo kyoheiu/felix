@@ -61,7 +61,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     let mut state = State::new()?;
     state.trash_dir = trash_dir_path;
     state.current_dir = if cfg!(not(windows)) {
-        // If executed this on widnows, "//?" will be inserted at the beginning of the path.
+        // If executed this on windows, "//?" will be inserted at the beginning of the path.
         arg.canonicalize()?
     } else {
         arg
@@ -1341,7 +1341,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         }
 
                                         if c == "z" && args.len() == 1 {
-                                            //Change diretory using zoxide
+                                            //Change directory using zoxide
                                             if let Ok(output) = std::process::Command::new("zoxide")
                                                 .args(["query", args[0].trim()])
                                                 .output()
