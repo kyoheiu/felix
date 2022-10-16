@@ -10,12 +10,12 @@ use chrono::prelude::*;
 use log::{error, info};
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::env;
 use std::fmt::Write as _;
 use std::fs;
 use std::path::PathBuf;
 use std::process::{Child, Command, ExitStatus, Stdio};
 use termion::{clear, color, cursor, style};
-use std::env;
 
 pub const BEGINNING_ROW: u16 = 3;
 pub const FX_CONFIG_DIR: &str = "felix";
@@ -137,7 +137,9 @@ impl State {
             },
             current_dir: PathBuf::new(),
             trash_dir: PathBuf::new(),
-            default: config.default.unwrap_or_else(|| env::var("EDITOR").expect("")),
+            default: config
+                .default
+                .unwrap_or_else(|| env::var("EDITOR").expect("Falling back to env var")),
             commands: to_extension_map(&config.exec),
             sort_by: session.sort_by,
             layout: Layout {
