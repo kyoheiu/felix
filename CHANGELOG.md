@@ -11,6 +11,7 @@
 - Huge refactoring: Migrated to crossterm from termion due to the maintainability and future-support for Windows. New module `term.rs` contains (almost) all of the terminal API, so that other modules will not get effected by the future backend change.
 - Alongside, some changes are added to show the file path properly in Windows.
 - As a result of this migration, the number of dependencies increased to 66 from 51.
+- `default` key in the config file become `Option`, so that users can select \$EDITOR without explicitly setting it up. The initial process of asking users to select the default command has also been fixed accordingly.
 
 ### Fixed
 
