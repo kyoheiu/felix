@@ -221,7 +221,7 @@ impl State {
     }
 
     /// Move items from the current directory to trash directory.
-    /// This does not acutually delete items.
+    /// This does not actually delete items.
     /// If you'd like to delete, use `:empty` after this, or just `:rm`.  
     pub fn remove_and_yank(&mut self, targets: &[ItemInfo], new_op: bool) -> Result<(), FxError> {
         self.registered.clear();
@@ -374,7 +374,7 @@ impl State {
         Ok(trash_path)
     }
 
-    /// Register removed items to the registory.
+    /// Register removed items to the registry.
     fn push_to_registered(&mut self, item: &ItemInfo, file_path: PathBuf, file_name: String) {
         let mut buf = item.clone();
         buf.file_path = file_path;
@@ -383,7 +383,7 @@ impl State {
         self.registered.push(buf);
     }
 
-    /// Register selected items to the registory.
+    /// Register selected items to the registry.
     pub fn yank_item(&mut self, index: usize, selected: bool) {
         self.registered.clear();
         if selected {
@@ -396,7 +396,7 @@ impl State {
         }
     }
 
-    /// Put items in registory to the current directory or target direcoty.
+    /// Put items in registry to the current directory or target directory.
     /// Only Redo command uses target directory.
     pub fn put_items(
         &mut self,
@@ -865,7 +865,7 @@ impl State {
         self.layout.y = y;
     }
 
-    /// Print item informatin at the bottom of the terminal.
+    /// Print item information at the bottom of the terminal.
     fn print_footer(&self, nums: &Num, item: &ItemInfo) {
         move_to(1, self.layout.terminal_row);
         clear_current_line();
@@ -1029,7 +1029,7 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
     }
 }
 
-/// Generate item information from trash direcotry, in order to use when redoing.
+/// Generate item information from trash directory, in order to use when redoing.
 pub fn trash_to_info(trash_dir: &PathBuf, vec: &[PathBuf]) -> Result<Vec<ItemInfo>, FxError> {
     let total = vec.len();
     let mut count = 0;
