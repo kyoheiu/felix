@@ -174,6 +174,7 @@ impl State {
         }
     }
 
+    #[allow(dead_code)]
     /// Open the selected file in a new window, according to the config.
     pub fn open_file_in_new_window(&self, index: usize) -> Result<Child, FxError> {
         let item = self.get_item(index)?;

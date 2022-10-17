@@ -1,4 +1,4 @@
-use super::config::make_config_if_not_exist;
+use super::config::make_config_if_not_exists;
 use super::errors::FxError;
 use super::functions::*;
 use super::help::HELP;
@@ -40,7 +40,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     }
 
     //Make config file and trash directory if not exist.
-    make_config_if_not_exist(&config_file_path, &trash_dir_path)
+    make_config_if_not_exists(&config_file_path, &trash_dir_path)
         .unwrap_or_else(|_| panic!("Cannot make config file or trash dir."));
 
     //If session file, which stores sortkey and whether to show hidden items, does not exist (i.e. first launch), make it.
@@ -66,15 +66,12 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     } else {
         arg
     };
-
-    //Initialize num as Arc
     let mut nums = Num::new();
 
-    execute!(stdout(), EnterAlternateScreen)?;
-    enable_raw_mode()?;
-
-    //Initialize screen as Arc
+    //Enter the alternate screen with crossterm
     let mut screen = stdout();
+    execute!(screen, EnterAlternateScreen)?;
+    enable_raw_mode()?;
 
     //Update list, print and flush
     hide_cursor();
@@ -133,28 +130,24 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                     //Go to top
                     KeyCode::Char('g') => {
-                        if nums.index == 0 {
-                            continue;
-                        } else {
-                            to_info_bar();
-                            clear_current_line();
-                            print!("g");
-                            show_cursor();
-                            screen.flush()?;
+                        to_info_bar();
+                        clear_current_line();
+                        print!("g");
+                        show_cursor();
+                        screen.flush()?;
 
-                            if let Event::Key(KeyEvent { code, .. }) = event::read()? {
-                                match code {
-                                    KeyCode::Char('g') => {
-                                        hide_cursor();
-                                        nums.reset();
-                                        state.redraw(&nums, BEGINNING_ROW);
-                                    }
+                        if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                            match code {
+                                KeyCode::Char('g') => {
+                                    hide_cursor();
+                                    nums.reset();
+                                    state.redraw(&nums, BEGINNING_ROW);
+                                }
 
-                                    _ => {
-                                        clear_current_line();
-                                        hide_cursor();
-                                        state.move_cursor(&nums, y);
-                                    }
+                                _ => {
+                                    clear_current_line();
+                                    hide_cursor();
+                                    state.move_cursor(&nums, y);
                                 }
                             }
                         }
@@ -307,25 +300,27 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     }
 
                     //Open a file in a new window
-                    KeyCode::Char('o') => {
-                        if let Ok(item) = state.get_item(nums.index) {
-                            match item.file_type {
-                                FileType::File => {
-                                    if let Err(e) = state.open_file_in_new_window(nums.index) {
-                                        print_warning(e, y);
-                                        continue;
-                                    }
-                                    hide_cursor();
-                                    state.redraw(&nums, y);
-                                    screen.flush()?;
-                                    continue;
-                                }
-                                _ => {
-                                    continue;
-                                }
-                            }
-                        }
-                    }
+                    //With crossterm, when opening a file in e.g. vim it seems as if this app "freezes".
+                    //Since this behavior is not what I want, this command disabled unless I can find anything valid.
+                    // KeyCode::Char('o') => {
+                    //     if let Ok(item) = state.get_item(nums.index) {
+                    //         match item.file_type {
+                    //             FileType::File => {
+                    //                 if let Err(e) = state.open_file_in_new_window(nums.index) {
+                    //                     print_warning(e, y);
+                    //                     continue;
+                    //                 }
+                    //                 hide_cursor();
+                    //                 state.redraw(&nums, y);
+                    //                 screen.flush()?;
+                    //                 continue;
+                    //             }
+                    //             _ => {
+                    //                 continue;
+                    //             }
+                    //         }
+                    //     }
+                    // }
 
                     //Go to parent directory if exists.
                     //If the list is filtered, reload current directory.
