@@ -301,7 +301,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                     //Open a file in a new window
                     //With crossterm, when opening a file in e.g. vim it seems as if this app "freezes".
-                    //Since this behavior is not what I want, this command disabled unless I can find anything valid.
+                    //Since this behavior is not what I want, this command disabled until I can find something valid.
                     // KeyCode::Char('o') => {
                     //     if let Ok(item) = state.get_item(nums.index) {
                     //         match item.file_type {
