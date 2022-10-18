@@ -14,7 +14,7 @@
   - Alongside, some changes are added to show the file path properly in Windows.
   - With crossterm, opening a file in e.g. Vim, it feels as if this app "freezes". This behavior is not what I want, so from v1.3.0, `open_file_in_new_window` can work only if \[exec\] is set in config file, and the extension of the item matches the key.
   - As a result of this migration, the number of dependencies increased to 66 from 51.
-- `default` key in the config file become `Option`, so that users can select \$EDITOR without explicitly setting it up. The initial process of asking users to select the default command has also been fixed accordingly.
+- `default` key in the config file become `Option`, so that users can select `$EDITOR` without explicitly setting it up. The initial process of asking users to select the default command has also been fixed accordingly.
 
 ### Fixed
 
@@ -24,7 +24,7 @@
 ### Added
 
 - New error: `OpenNewWindow`
-- Dockerfile and .dockerignore, to test the cross-compiling for Windows
+- New GitHub actions: Add windows-install
 
 ## v1.2.0 (2022-10-01)
 
