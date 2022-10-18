@@ -4,11 +4,35 @@ use crossterm::{
     cursor::{Hide, MoveLeft, MoveRight, MoveTo, Show},
     style::{Color, ResetColor, SetBackgroundColor, SetForegroundColor},
     terminal::Clear,
+    terminal,
 };
 
 pub enum TermColor<'a> {
     ForeGround(&'a Colorname),
     BackGround(&'a Colorname),
+}
+
+/// Puts the terminal into raw mode and returns a closure that must be called to undo the changes.
+///
+/// **WARNING**: Not calling the closure will leave *nix terminals in an unusable state!
+///
+/// Changing the underlying terminal to raw mode is needed to allow for direct input.
+/// This change is not undone automatically on program exit and must be managed gracefully to avoid
+/// leaving the user with a broken terminal.
+///
+/// ### Panic-safe usage example:
+/// ```
+/// let leave_raw_mode = enter_raw_mode();
+/// scopeguard::defer! { leave_raw_mode() };
+/// ```
+///
+pub fn enter_raw_mode() -> Box<dyn Fn()> {
+    _ = terminal::enable_raw_mode();
+    hide_cursor();
+    Box::new(|| {
+        show_cursor();
+        _ = terminal::disable_raw_mode();
+    })
 }
 
 pub fn move_to(x: u16, y: u16) {

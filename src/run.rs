@@ -12,7 +12,7 @@ use crossterm::cursor::RestorePosition;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::execute;
 use crossterm::terminal::{
-    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+    EnterAlternateScreen, LeaveAlternateScreen,
 };
 use log::{error, info};
 use std::ffi::OsStr;
@@ -71,10 +71,10 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     //Enter the alternate screen with crossterm
     let mut screen = stdout();
     execute!(screen, EnterAlternateScreen)?;
-    enable_raw_mode()?;
+    let leave_raw_mode = enter_raw_mode();
+    scopeguard::defer! { leave_raw_mode() };
 
     //Update list, print and flush
-    hide_cursor();
     state.reload(&nums, BEGINNING_ROW)?;
     screen.flush()?;
 
@@ -1600,8 +1600,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     write!(screen, "{}", RestorePosition)?;
     screen.flush()?;
 
-    //Back to normal mode
-    disable_raw_mode()?;
     info!("===FINISH===");
     Ok(())
 }
