@@ -17,7 +17,7 @@ For the detailed document, please see https://kyoheiu.dev/felix.
 
 - Huge refactoring: Migrated to crossterm from termion due to the maintainability and future-support for Windows. **_IMPORTANT: Nothing needs to be done: you can use felix with your existing config file._**
   - With crossterm, opening a file in e.g. Vim, it feels as if this app "freezes". This behavior is not what I want, so from v1.3.0, `open_file_in_new_window` can work only if \[exec\] is set in the config file, and the extension of the item matches the key.
-- `default` key in the config file become `Option`, so that users can select `$EDITOR` without explicitly setting it up. The initial process of asking users to select the default command has also been fixed accordingly.
+- `default` key in the config file changed to `Option`, so that users can select `$EDITOR` without explicitly setting it up. The initial process of asking users to select the default command has also been fixed accordingly.
 
 For more details, see `CHANGELOG.md`.
 
