@@ -1602,6 +1602,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
     //Back to normal mode
     disable_raw_mode()?;
+    show_cursor();
     info!("===FINISH===");
     Ok(())
 }
