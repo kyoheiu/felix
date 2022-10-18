@@ -5,6 +5,8 @@ on:
     branches-ignore: 'main' 
     paths-ignore:
       - '*.md'
+  pull_request:
+    types: [opened, edited, reopened]
 
 env:
   CARGO_TERM_COLOR: always
