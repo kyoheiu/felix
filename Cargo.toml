@@ -1,13 +1,13 @@
 [package]
 name = "felix"
-version = "1.2.0"
+version = "1.3.0"
 authors = ["Kyohei Uto <kyoheiu@outlook.com>"]
 edition = "2021"
 description = "tui file manager with vim-like key mapping"
 readme = "README.md"
 repository = "https://github.com/kyoheiu/felix"
 license = "MIT"
-keywords = ["tui", "termion", "file-manager"]
+keywords = ["tui", "crossterm", "file-manager"]
 categories = ["command-line-utilities", "filesystem"]
 
 [[bin]]
