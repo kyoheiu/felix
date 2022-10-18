@@ -60,5 +60,10 @@ config file    : $HOME/Library/Application Support/felix/config.toml
 trash directory: $HOME/Library/Application Support/felix/trash
 log files      : $HOME/Library/Application Support/felix/log
 
+### Windows
+config file     : $PROFILE\\AppData\\Roaming\\felix\\config.toml
+trash directory : $PROFILE\\AppData\\Roaming\\felix\\trash
+log files       : $PROFILE\\AppData\\Roaming\\felix\\log
+
 For more details, visit https://github.com/kyoheiu/felix
 ";
