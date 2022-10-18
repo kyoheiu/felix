@@ -5,6 +5,7 @@ pub enum FxError {
     Io,
     GetItem,
     OpenItem,
+    OpenNewWindow,
     TomlDe,
     TomlSer,
     WalkDir,
@@ -23,6 +24,9 @@ impl std::fmt::Display for FxError {
             FxError::Io => "Error: Io".to_owned(),
             FxError::GetItem => "Error: Cannot get item info".to_owned(),
             FxError::OpenItem => "Error: Cannot open item".to_owned(),
+            FxError::OpenNewWindow => {
+                "Error: Cannot open this type of item in new window".to_owned()
+            }
             FxError::TomlDe => "Error: Cannot deserialize toml".to_owned(),
             FxError::TomlSer => "Error: Cannot serialize toml".to_owned(),
             FxError::WalkDir => "Error: Cannot read directory".to_owned(),

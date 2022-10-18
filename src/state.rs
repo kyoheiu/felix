@@ -174,7 +174,6 @@ impl State {
         }
     }
 
-    #[allow(dead_code)]
     /// Open the selected file in a new window, according to the config.
     pub fn open_file_in_new_window(&self, index: usize) -> Result<Child, FxError> {
         let item = self.get_item(index)?;
@@ -182,17 +181,10 @@ impl State {
         let map = &self.commands;
         let extension = &item.file_ext;
 
-        let mut default = Command::new(&self.default);
-
         info!("OPEN(new window): {:?}", path);
 
         match map {
-            None => default
-                .arg(path)
-                .stdout(Stdio::null())
-                .stdin(Stdio::null())
-                .spawn()
-                .or(Err(FxError::OpenItem)),
+            None => Err(FxError::OpenNewWindow),
             Some(map) => match extension {
                 Some(extension) => match map.get(extension) {
                     Some(command) => {
@@ -203,20 +195,10 @@ impl State {
                             .spawn()
                             .or(Err(FxError::OpenItem))
                     }
-                    None => default
-                        .arg(path)
-                        .stdout(Stdio::null())
-                        .stdin(Stdio::null())
-                        .spawn()
-                        .or(Err(FxError::OpenItem)),
+                    None => Err(FxError::OpenNewWindow),
                 },
 
-                None => default
-                    .arg(path)
-                    .stdout(Stdio::null())
-                    .stdin(Stdio::null())
-                    .spawn()
-                    .or(Err(FxError::OpenItem)),
+                None => Err(FxError::OpenNewWindow),
             },
         }
     }
