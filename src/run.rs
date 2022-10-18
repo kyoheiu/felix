@@ -83,6 +83,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     let mut c_memo_v: Vec<ChildMemo> = Vec::new();
 
     'main: loop {
+        screen.flush()?;
         let len = state.list.len();
         let y = state.layout.y;
 
@@ -177,7 +178,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     execute!(screen, EnterAlternateScreen)?;
                                     if let Err(e) = state.open_file(item) {
                                         print_warning(e, y);
-                                        screen.flush()?;
                                         continue;
                                     }
                                     execute!(screen, EnterAlternateScreen)?;
@@ -194,7 +194,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     Some(true_path) => match std::fs::File::open(true_path) {
                                         Err(e) => {
                                             print_warning(e, y);
-                                            screen.flush()?;
                                             continue;
                                         }
                                         Ok(_) => {
@@ -218,7 +217,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                 std::env::set_current_dir(&state.current_dir)
                                             {
                                                 print_warning(e, y);
-                                                screen.flush()?;
                                                 continue;
                                             }
                                             state.filtered = false;
@@ -230,7 +228,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         execute!(screen, EnterAlternateScreen)?;
                                         if let Err(e) = state.open_file(item) {
                                             print_warning(e, y);
-                                            screen.flush()?;
                                             continue;
                                         }
                                         execute!(screen, EnterAlternateScreen)?;
@@ -243,7 +240,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     match std::fs::File::open(&item.file_path) {
                                         Err(e) => {
                                             print_warning(e, y);
-                                            screen.flush()?;
                                             continue;
                                         }
                                         Ok(_) => {
@@ -268,7 +264,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                 std::env::set_current_dir(&state.current_dir)
                                             {
                                                 print_warning(e, y);
-                                                screen.flush()?;
                                                 continue;
                                             }
                                             state.update_list()?;
@@ -300,27 +295,27 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     }
 
                     //Open a file in a new window
-                    //With crossterm, when opening a file in e.g. vim it seems as if this app "freezes".
-                    //Since this behavior is not what I want, this command disabled until I can find something valid.
-                    // KeyCode::Char('o') => {
-                    //     if let Ok(item) = state.get_item(nums.index) {
-                    //         match item.file_type {
-                    //             FileType::File => {
-                    //                 if let Err(e) = state.open_file_in_new_window(nums.index) {
-                    //                     print_warning(e, y);
-                    //                     continue;
-                    //                 }
-                    //                 hide_cursor();
-                    //                 state.redraw(&nums, y);
-                    //                 screen.flush()?;
-                    //                 continue;
-                    //             }
-                    //             _ => {
-                    //                 continue;
-                    //             }
-                    //         }
-                    //     }
-                    // }
+                    //This works only if [exec] is set in config file
+                    //and the extension of the item matches the key.
+                    //If not, warning message appears.
+                    KeyCode::Char('o') => {
+                        if let Ok(item) = state.get_item(nums.index) {
+                            match item.file_type {
+                                FileType::File => {
+                                    if let Err(e) = state.open_file_in_new_window(nums.index) {
+                                        print_warning(e, y);
+                                        continue;
+                                    }
+                                    hide_cursor();
+                                    state.redraw(&nums, y);
+                                    continue;
+                                }
+                                _ => {
+                                    continue;
+                                }
+                            }
+                        }
+                    }
 
                     //Go to parent directory if exists.
                     //If the list is filtered, reload current directory.
@@ -329,8 +324,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                             nums.reset();
                             state.filtered = false;
                             state.reload(&nums, BEGINNING_ROW)?;
-                            screen.flush()?;
-                            continue;
                         }
                         let pre = state.current_dir.clone();
 
@@ -365,7 +358,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             std::env::set_current_dir(&state.current_dir)
                                         {
                                             print_warning(e, y);
-                                            screen.flush()?;
                                             continue;
                                         }
                                         nums.index = memo.num.index;
@@ -379,7 +371,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             std::env::set_current_dir(&state.current_dir)
                                         {
                                             print_warning(e, y);
-                                            screen.flush()?;
                                             continue;
                                         }
                                         state.update_list()?;
@@ -842,15 +833,14 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     KeyCode::Char('d') => {
                                         hide_cursor();
                                         print_info("DELETE: Processing...", y);
-                                        let start = Instant::now();
                                         screen.flush()?;
+                                        let start = Instant::now();
 
                                         let target = state.get_item(nums.index)?.clone();
                                         let target = vec![target];
 
                                         if let Err(e) = state.remove_and_yank(&target, true) {
                                             print_warning(e, y);
-                                            screen.flush()?;
                                             continue;
                                         }
 
@@ -891,7 +881,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                         clear_current_line();
                         print!("y");
                         show_cursor();
-
                         screen.flush()?;
 
                         if let Event::Key(KeyEvent { code, .. }) = event::read()? {
@@ -918,13 +907,12 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                             continue;
                         }
                         print_info("PUT: Processing...", y);
-                        let start = Instant::now();
                         screen.flush()?;
+                        let start = Instant::now();
 
                         let targets = state.registered.clone();
                         if let Err(e) = state.put_items(&targets, None) {
                             print_warning(e, y);
-                            screen.flush()?;
                             continue;
                         }
 
@@ -952,7 +940,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 "Item name cannot be renamed due to the character type.",
                                 y,
                             );
-                            screen.flush()?;
                             continue;
                         }
 
@@ -1068,7 +1055,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 match code {
                                     KeyCode::Enter => {
                                         reset_info_line();
-                                        screen.flush()?;
                                         nums.reset();
                                         state.move_cursor(&nums, BEGINNING_ROW);
                                         break;
@@ -1163,9 +1149,9 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                         clear_current_line();
                         print!(":");
                         show_cursor();
+                        screen.flush()?;
 
                         let mut command: Vec<char> = Vec::new();
-                        screen.flush()?;
 
                         let initial_pos = 3;
                         let mut current_pos = 3;
@@ -1470,7 +1456,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                         let op_len = state.operations.op_list.len();
                         if op_len < state.operations.pos + 1 {
                             print_info("No operations left.", y);
-                            screen.flush()?;
                             continue;
                         }
                         if let Some(op) = state
@@ -1481,7 +1466,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                             let op = op.clone();
                             if let Err(e) = state.undo(&nums, &op) {
                                 print_warning(e, y);
-                                screen.flush()?;
                                 continue;
                             }
 
@@ -1496,7 +1480,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                             } else {
                                 state.move_cursor(&nums, y);
                             }
-                            screen.flush()?;
                         }
                     }
 
@@ -1506,7 +1489,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                         if op_len == 0 || state.operations.pos == 0 || op_len < state.operations.pos
                         {
                             print_info("No operations left.", y);
-                            screen.flush()?;
                             continue;
                         }
                         if let Some(op) =
@@ -1515,7 +1497,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                             let op = op.clone();
                             if let Err(e) = state.redo(&nums, &op) {
                                 print_warning(e, y);
-                                screen.flush()?;
                                 continue;
                             }
 
@@ -1530,7 +1511,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                             } else {
                                 state.move_cursor(&nums, y);
                             }
-                            screen.flush()?;
                         }
                     }
 
@@ -1612,7 +1592,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
             }
             _ => {}
         }
-        screen.flush()?;
     }
 
     //Save session, restore screen state and cursor
