@@ -10,27 +10,36 @@ For the detailed document, please see https://kyoheiu.dev/felix.
 
 ## New Release
 
-## v1.2.0 (2022-10-01)
+## v1.3.0 (2022-10-18)
 
 ### Changed
 
-- Huge refactoring: Instead of `thiserror`, use custom error type to make it easier to handle.
-- Bump up chrono version to 0.4.22, clarifying the feature to use.
-- Avoid extra heap allocation by using write! instead of push_str/format!.
-- Copied item will be renamed with the suffix "\_{count}" such as "test_1.txt", instead of "test_copied.txt".
+- Huge refactoring: Migrated to crossterm from termion due to the maintainability and future-support for Windows. New module `term.rs` contains (almost) all of the terminal API, so that other modules will not get effected by the future backend change.
+  - Alongside, some changes are added to show the file path properly in Windows.
+  - With crossterm, opening a file e.g. Vim, it feels as if this app "freezes". This behavior is not what I want, so from v1.3.0, `open_file_in_new_window` can work only if \[exec\] is set in config file, and the extension of the item matches the key.
+  - As a result of this migration, the number of dependencies increased to 66 from 51.
+- `default` key in the config file become `Option`, so that users can select \$EDITOR without explicitly setting it up. The initial process of asking users to select the default command has also been fixed accordingly.
 
 ### Fixed
 
-- Choose `None` for directory extension.
+- After zoxide jump, turn off the filter mode.
+- Many typos fixed.
+
+### Added
+
+- New error: `OpenNewWindow`
+- `Dockerfile` and `.dockerignore`, to test the cross-compiling for Windows
 
 ## Status
 
-| OS      | Status            |
-| ------- | ----------------- |
-| Linux   | works             |
-| NetBSD  | works             |
-| MacOS   | works             |
-| Windows | not supported yet |
+| OS      | Status                  |
+| ------- | ----------------------- |
+| Linux   | works                   |
+| NetBSD  | works                   |
+| MacOS   | works                   |
+| Windows | not fully supported yet |
+
+_For Windows users: At least this app can be cross-compiled for Windows. See `Dockerfile`. Please try the native build and report any problems._
 
 MSRV(Minimum Supported Rust Version): **1.59.0**
 
