@@ -5,8 +5,10 @@ use super::layout::*;
 use super::nums::*;
 use super::op::*;
 use super::session::*;
+use super::term::*;
 
 use chrono::prelude::*;
+use crossterm::style::Stylize;
 use log::{error, info};
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -15,7 +17,6 @@ use std::fmt::Write as _;
 use std::fs;
 use std::path::PathBuf;
 use std::process::{Child, Command, ExitStatus, Stdio};
-use termion::{clear, color, cursor, style};
 
 pub const BEGINNING_ROW: u16 = 3;
 pub const FX_CONFIG_DIR: &str = "felix";
@@ -59,50 +60,6 @@ pub enum FileType {
     Symlink,
 }
 
-/// Print an item. modified time will be omitted if width is not enough.
-macro_rules! print_item {
-    ($color: expr, $name: expr, $time: expr, $selected: expr, $layout: expr) => {
-        if $layout.terminal_column < PROPER_WIDTH {
-            if *($selected) {
-                print!("{}{}{}{}", $color, style::Invert, $name, style::Reset,);
-            } else {
-                print!("{}{}{}", $color, $name, color::Fg(color::Reset));
-            }
-            if $layout.terminal_column > $layout.time_start_pos + TIME_WIDTH {
-                print!("{}", clear::AfterCursor);
-            }
-        } else {
-            if *($selected) {
-                print!(
-                    "{}{}{}{}{}{} {}{}{}",
-                    $color,
-                    style::Invert,
-                    $name,
-                    style::Reset,
-                    cursor::Left(100),
-                    cursor::Right($layout.time_start_pos - 1),
-                    style::Invert,
-                    $time,
-                    style::Reset
-                );
-            } else {
-                print!(
-                    "{}{}{}{} {}{}",
-                    $color,
-                    $name,
-                    cursor::Left(100),
-                    cursor::Right($layout.time_start_pos - 1),
-                    $time,
-                    color::Fg(color::Reset)
-                );
-            }
-            if $layout.terminal_column > $layout.time_start_pos + TIME_WIDTH {
-                print!("{}", clear::AfterCursor);
-            }
-        }
-    };
-}
-
 impl State {
     /// Initialize state app.
     pub fn new() -> Result<Self, FxError> {
@@ -110,7 +67,7 @@ impl State {
         let session =
             read_session().unwrap_or_else(|_| panic!("Something wrong with session file."));
         let (column, row) =
-            termion::terminal_size().unwrap_or_else(|_| panic!("Cannot detect terminal size."));
+            crossterm::terminal::size().unwrap_or_else(|_| panic!("Cannot detect terminal size."));
 
         // Return error if terminal size may cause panic
         if column < 4 {
@@ -150,7 +107,7 @@ impl State {
                 time_start_pos: time_start,
                 use_full: config.use_full_width,
                 option_name_len: config.item_name_length,
-                colors: Color {
+                colors: ConfigColor {
                     dir_fg: config.color.dir_fg,
                     file_fg: config.color.file_fg,
                     symlink_fg: config.color.symlink_fg,
@@ -224,17 +181,10 @@ impl State {
         let map = &self.commands;
         let extension = &item.file_ext;
 
-        let mut default = Command::new(&self.default);
-
         info!("OPEN(new window): {:?}", path);
 
         match map {
-            None => default
-                .arg(path)
-                .stdout(Stdio::null())
-                .stdin(Stdio::null())
-                .spawn()
-                .or(Err(FxError::OpenItem)),
+            None => Err(FxError::OpenNewWindow),
             Some(map) => match extension {
                 Some(extension) => match map.get(extension) {
                     Some(command) => {
@@ -245,26 +195,16 @@ impl State {
                             .spawn()
                             .or(Err(FxError::OpenItem))
                     }
-                    None => default
-                        .arg(path)
-                        .stdout(Stdio::null())
-                        .stdin(Stdio::null())
-                        .spawn()
-                        .or(Err(FxError::OpenItem)),
+                    None => Err(FxError::OpenNewWindow),
                 },
 
-                None => default
-                    .arg(path)
-                    .stdout(Stdio::null())
-                    .stdin(Stdio::null())
-                    .spawn()
-                    .or(Err(FxError::OpenItem)),
+                None => Err(FxError::OpenNewWindow),
             },
         }
     }
 
     /// Move items from the current directory to trash directory.
-    /// This does not acutually delete items.
+    /// This does not actually delete items.
     /// If you'd like to delete, use `:empty` after this, or just `:rm`.  
     pub fn remove_and_yank(&mut self, targets: &[ItemInfo], new_op: bool) -> Result<(), FxError> {
         self.registered.clear();
@@ -272,12 +212,12 @@ impl State {
         let mut trash_vec = Vec::new();
         for (i, item) in targets.iter().enumerate() {
             let item = item.clone();
-            print!(
-                " {}{}{}",
-                cursor::Goto(2, 2),
-                clear::CurrentLine,
-                display_count(i, total_selected)
-            );
+
+            print!(" ");
+            to_info_bar();
+            clear_current_line();
+            print!("{}", display_count(i, total_selected));
+
             match item.file_type {
                 FileType::Directory => match self.remove_and_yank_dir(item.clone(), new_op) {
                     Err(e) => {
@@ -417,7 +357,7 @@ impl State {
         Ok(trash_path)
     }
 
-    /// Register removed items to the registory.
+    /// Register removed items to the registry.
     fn push_to_registered(&mut self, item: &ItemInfo, file_path: PathBuf, file_name: String) {
         let mut buf = item.clone();
         buf.file_path = file_path;
@@ -426,7 +366,7 @@ impl State {
         self.registered.push(buf);
     }
 
-    /// Register selected items to the registory.
+    /// Register selected items to the registry.
     pub fn yank_item(&mut self, index: usize, selected: bool) {
         self.registered.clear();
         if selected {
@@ -439,7 +379,7 @@ impl State {
         }
     }
 
-    /// Put items in registory to the current directory or target direcoty.
+    /// Put items in registry to the current directory or target directory.
     /// Only Redo command uses target directory.
     pub fn put_items(
         &mut self,
@@ -472,12 +412,11 @@ impl State {
 
         let total_selected = targets.len();
         for (i, item) in targets.iter().enumerate() {
-            print!(
-                " {}{}{}",
-                cursor::Goto(2, 2),
-                clear::CurrentLine,
-                display_count(i, total_selected)
-            );
+            print!(" ");
+            to_info_bar();
+            clear_current_line();
+            print!("{}", display_count(i, total_selected));
+
             match item.file_type {
                 FileType::Directory => {
                     if let Ok(p) = self.put_dir(item, &target_dir, &mut name_set) {
@@ -717,17 +656,15 @@ impl State {
 
     /// Clear all and show the current directory information.
     pub fn clear_and_show_headline(&mut self) {
-        print!("{}{}", clear::All, cursor::Goto(1, 1));
+        clear_all();
+        move_to(1, 1);
 
-        //Show current directory path
-        print!(
-            " {}{}{}{}{}",
-            style::Bold,
-            color::Fg(color::Cyan),
-            self.current_dir.display(),
-            style::Reset,
-            color::Fg(color::Reset),
-        );
+        //Show current directory path.
+        //crossterm's Stylize cannot be applied to PathBuf,
+        //current directory does not have any text attribute for now.
+        set_color(&TermColor::ForeGround(&Colorname::Cyan));
+        print!(" {}", self.current_dir.display(),);
+        reset_color();
 
         //If .git directory exists, get the branch information and print it.
         let git = self.current_dir.join(".git");
@@ -736,14 +673,10 @@ impl State {
             if let Ok(head) = std::fs::read(head) {
                 let branch: Vec<u8> = head.into_iter().skip(16).collect();
                 if let Ok(branch) = std::str::from_utf8(&branch) {
-                    print!(
-                        " on {}{}{}{}{}",
-                        style::Bold,
-                        color::Fg(color::Magenta),
-                        branch.trim(),
-                        style::Reset,
-                        color::Fg(color::Reset)
-                    );
+                    print!(" on ",);
+                    set_color(&TermColor::ForeGround(&Colorname::LightMagenta));
+                    print!("{}", branch.trim().bold());
+                    reset_color();
                 }
             }
         }
@@ -774,120 +707,35 @@ impl State {
             FileType::File => &self.layout.colors.file_fg,
             FileType::Symlink => &self.layout.colors.symlink_fg,
         };
-        match color {
-            Colorname::AnsiValue(n) => {
-                print_item!(
-                    color::Fg(color::AnsiValue(*n)),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
+        if self.layout.terminal_column < PROPER_WIDTH {
+            if *selected {
+                set_color(&TermColor::ForeGround(color));
+                print!("{}", name.negative(),);
+            } else {
+                set_color(&TermColor::ForeGround(color));
+                print!("{}", name);
+                reset_color();
             }
-            Colorname::Black => {
-                print_item!(color::Fg(color::Black), name, time, selected, self.layout);
+            if self.layout.terminal_column > self.layout.time_start_pos + TIME_WIDTH {
+                clear_until_newline();
             }
-            Colorname::Blue => {
-                print_item!(color::Fg(color::Blue), name, time, selected, self.layout);
+        } else {
+            if *selected {
+                set_color(&TermColor::ForeGround(color));
+                print!("{}", name.negative(),);
+                move_left(100);
+                move_right(self.layout.time_start_pos - 1);
+                print!(" {}", time.negative());
+            } else {
+                set_color(&TermColor::ForeGround(color));
+                print!("{}", name);
+                move_left(100);
+                move_right(self.layout.time_start_pos - 1);
+                print!(" {}", time);
+                reset_color();
             }
-            Colorname::Cyan => {
-                print_item!(color::Fg(color::Cyan), name, time, selected, self.layout);
-            }
-            Colorname::Green => {
-                print_item!(color::Fg(color::Green), name, time, selected, self.layout);
-            }
-            Colorname::LightBlack => {
-                print_item!(
-                    color::Fg(color::LightBlack),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
-            }
-            Colorname::LightBlue => {
-                print_item!(
-                    color::Fg(color::LightBlue),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
-            }
-            Colorname::LightCyan => {
-                print_item!(
-                    color::Fg(color::LightCyan),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
-            }
-            Colorname::LightGreen => {
-                print_item!(
-                    color::Fg(color::LightGreen),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
-            }
-            Colorname::LightMagenta => {
-                print_item!(
-                    color::Fg(color::LightMagenta),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
-            }
-            Colorname::LightRed => {
-                print_item!(
-                    color::Fg(color::LightRed),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
-            }
-            Colorname::LightWhite => {
-                print_item!(
-                    color::Fg(color::LightWhite),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
-            }
-            Colorname::LightYellow => {
-                print_item!(
-                    color::Fg(color::LightYellow),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
-            }
-            Colorname::Magenta => {
-                print_item!(color::Fg(color::Magenta), name, time, selected, self.layout);
-            }
-            Colorname::Red => {
-                print_item!(color::Fg(color::Red), name, time, selected, self.layout);
-            }
-            Colorname::Rgb(x, y, z) => {
-                print_item!(
-                    color::Fg(color::Rgb(*x, *y, *z)),
-                    name,
-                    time,
-                    selected,
-                    self.layout
-                );
-            }
-            Colorname::White => {
-                print_item!(color::Fg(color::White), name, time, selected, self.layout);
-            }
-            Colorname::Yellow => {
-                print_item!(color::Fg(color::Yellow), name, time, selected, self.layout);
+            if self.layout.terminal_column > self.layout.time_start_pos + TIME_WIDTH {
+                clear_until_newline();
             }
         }
     }
@@ -901,12 +749,7 @@ impl State {
             if i < skip_number as usize {
                 continue;
             }
-
-            print!(
-                "{}",
-                cursor::Goto(3, i as u16 + BEGINNING_ROW - skip_number)
-            );
-
+            move_to(3, i as u16 + BEGINNING_ROW - skip_number);
             if row_count == row - BEGINNING_ROW {
                 break;
             } else {
@@ -997,25 +840,26 @@ impl State {
                 self.layout.print_preview(item, y);
             }
         }
-        print!("{}>{}", cursor::Goto(1, y), cursor::Left(1));
+        move_to(1, y);
+        print_pointer();
+        move_left(1);
 
         //Store cursor position when cursor moves
         self.layout.y = y;
     }
 
-    /// Print item informatin at the bottom of the terminal.
+    /// Print item information at the bottom of the terminal.
     fn print_footer(&self, nums: &Num, item: &ItemInfo) {
-        print!("{}", cursor::Goto(1, self.layout.terminal_row));
-        print!("{}", clear::CurrentLine);
+        move_to(1, self.layout.terminal_row);
+        clear_current_line();
 
         match &item.file_ext {
             Some(ext) => {
-                print!("{}", style::Invert);
                 print!(
-                    "{}{}",
-                    " ".repeat(self.layout.terminal_column as usize),
-                    cursor::Goto(1, self.layout.terminal_row)
+                    "{}",
+                    " ".repeat(self.layout.terminal_column as usize).negative(),
                 );
+                move_to(1, self.layout.terminal_row);
                 let mut footer = format!(
                     "[{}/{}] {} {}",
                     nums.index + 1,
@@ -1037,16 +881,14 @@ impl State {
                     .chars()
                     .take(self.layout.terminal_column.into())
                     .collect();
-                print!("{}", footer);
-                print!("{}", style::Reset);
+                print!("{}", footer.negative());
             }
             None => {
-                print!("{}", style::Invert);
                 print!(
-                    "{}{}",
-                    " ".repeat(self.layout.terminal_column as usize),
-                    cursor::Goto(1, self.layout.terminal_row)
+                    "{}",
+                    " ".repeat(self.layout.terminal_column as usize).negative(),
                 );
+                move_to(1, self.layout.terminal_row);
                 let mut footer = format!(
                     "[{}/{}] {}",
                     nums.index + 1,
@@ -1067,8 +909,7 @@ impl State {
                     .chars()
                     .take(self.layout.terminal_column.into())
                     .collect();
-                print!("{}", footer);
-                print!("{}", style::Reset);
+                print!("{}", footer.negative());
             }
         }
     }
@@ -1171,7 +1012,7 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
     }
 }
 
-/// Generate item information from trash direcotry, in order to use when redoing.
+/// Generate item information from trash directory, in order to use when redoing.
 pub fn trash_to_info(trash_dir: &PathBuf, vec: &[PathBuf]) -> Result<Vec<ItemInfo>, FxError> {
     let total = vec.len();
     let mut count = 0;

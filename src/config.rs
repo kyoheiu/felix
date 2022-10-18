@@ -9,7 +9,8 @@ use crate::state::FX_CONFIG_DIR;
 const CONFIG_FILE: &str = "config.toml";
 
 pub const CONFIG_EXAMPLE: &str = "
-# Default exec command when open files.
+# (Optional) Default exec command when open files.
+# If not set, will default to $EDITOR
 default = \"nvim\"
 
 # (Optional) Whether to use the full width of terminal.
@@ -30,24 +31,24 @@ default = \"nvim\"
 
 # The foreground color of directory, file and symlink.
 # Pick one of the following:
-#   AnsiValue(u8)
-#   Black
-#   Blue
-#   Cyan
-#   Green
-#   LightBlack
-#   LightBlue
-#   LightCyan
-#   LightGreen
-#   LightMagenta
-#   LightRed
-#   LightWhite
-#   LightYellow
-#   Magenta
-#   Red
-#   Rgb(u8, u8, u8)
-#   White
-#   Yellow
+#     Black
+#     Red
+#     Green
+#     Yellow
+#     Blue
+#     Magenta
+#     Cyan
+#     White
+#     LightBlack
+#     LightRed
+#     LightGreen
+#     LightYellow
+#     LightBlue
+#     LightMagenta
+#     LightCyan
+#     LightWhite
+#     Rgb(u8, u8, u8)
+#     AnsiValue(u8)
 # For more details, see https://docs.rs/termion/1.5.6/termion/color/index.html
 [color]
 dir_fg = \"LightCyan\"
@@ -59,13 +60,13 @@ symlink_fg = \"LightYellow\"
 pub struct Config {
     pub default: Option<String>,
     pub exec: Option<HashMap<String, Vec<String>>>,
-    pub color: Color,
+    pub color: ConfigColor,
     pub use_full_width: Option<bool>,
     pub item_name_length: Option<usize>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct Color {
+pub struct ConfigColor {
     pub dir_fg: Colorname,
     pub file_fg: Colorname,
     pub symlink_fg: Colorname,
@@ -73,24 +74,24 @@ pub struct Color {
 
 #[derive(Deserialize, Debug, Clone)]
 pub enum Colorname {
-    AnsiValue(u8),
-    Black,
-    Blue,
-    Cyan,
-    Green,
-    LightBlack,
-    LightBlue,
-    LightCyan,
-    LightGreen,
-    LightMagenta,
-    LightRed,
-    LightWhite,
-    LightYellow,
-    Magenta,
-    Red,
+    Black,        // 0
+    Red,          // 1
+    Green,        // 2
+    Yellow,       // 3
+    Blue,         // 4
+    Magenta,      // 5
+    Cyan,         // 6
+    White,        // 7
+    LightBlack,   // 8
+    LightRed,     // 9
+    LightGreen,   // 10
+    LightYellow,  // 11
+    LightBlue,    // 12
+    LightMagenta, // 13
+    LightCyan,    // 14
+    LightWhite,   // 15
     Rgb(u8, u8, u8),
-    White,
-    Yellow,
+    AnsiValue(u8),
 }
 
 pub fn read_config() -> Result<Config, FxError> {
@@ -106,7 +107,7 @@ pub fn read_config() -> Result<Config, FxError> {
     }
 }
 
-pub fn make_config_if_not_exist(config_file: &Path, trash_dir: &Path) -> Result<(), FxError> {
+pub fn make_config_if_not_exists(config_file: &Path, trash_dir: &Path) -> Result<(), FxError> {
     if !trash_dir.exists() {
         std::fs::create_dir_all(trash_dir)?;
     }

@@ -1,5 +1,5 @@
 /// Help text.
-pub const HELP: &str = "# felix v1.2.0
+pub const HELP: &str = "# felix v1.3.0
 A simple TUI file manager with vim-like keymapping.
 
 ## Usage
@@ -17,7 +17,7 @@ j / Up            :Go up.
 k / Down          :Go down.
 h / Left          :Go to the parent directory if exists.
 l / Right / Enter :Open a file or change directory.
-o                 :Open a fila in a new window. 
+o                 :Open a file in a new window. 
 gg                :Go to the top.
 G                 :Go to the bottom.
 z + Enter         :Go to the home directory.

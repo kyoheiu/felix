@@ -1,8 +1,9 @@
-[![crates.io](https://img.shields.io/crates/v/felix)](https://crates.io/crates/felix) ![aur:felix-rs](https://img.shields.io/aur/version/felix-rs)
+[![crates.io](https://img.shields.io/crates/v/felix)](https://crates.io/crates/felix) ![aur:felix-rs](https://img.shields.io/aur/version/felix-rs) ![MSRV](https://img.shields.io/badge/MSRV-1.59.0-orange)
 
 # _felix_
 
-A tui file manager with vim-like key mapping, written in Rust. Fast, simple, and easy to configure & use.
+A tui file manager with vim-like key mapping, written in Rust.  
+Fast, simple, and easy to configure & use.
 
 For the detailed document, please see https://kyoheiu.dev/felix.
 
@@ -10,29 +11,28 @@ For the detailed document, please see https://kyoheiu.dev/felix.
 
 ## New Release
 
-## v1.2.0 (2022-10-01)
+## v1.3.0 (2022-10-18)
 
 ### Changed
 
-- Huge refactoring: Instead of `thiserror`, use custom error type to make it easier to handle.
-- Bump up chrono version to 0.4.22, clarifing the feature to use.
-- Avoid extra heap allocation by using write! instead of push_str/format!.
-- Copied item will be renamed with the suffix "\_{count}" such as "test_1.txt", instead of "test_copied.txt".
+- Huge refactoring: Migrated to crossterm from termion due to the maintainability and future-support for Windows. **_IMPORTANT: Nothing needs to be done: you can use felix with your existing config file._**
+  - With crossterm, opening a file in e.g. Vim, it feels as if this app "freezes". This behavior is not what I want, so from v1.3.0, `open_file_in_new_window` can work only if \[exec\] is set in the config file, and the extension of the item matches the key.
+- `default` key in the config file become `Option`, so that users can select `$EDITOR` without explicitly setting it up. The initial process of asking users to select the default command has also been fixed accordingly.
 
-### Fixed
-
-- Choose `None` for directory extension.
+For more details, see `CHANGELOG.md`.
 
 ## Status
 
-| OS      | Status            |
-| ------- | ----------------- |
-| Linux   | works             |
-| NetBSD  | works             |
-| MacOS   | works             |
-| Windows | not supported yet |
+| OS      | Status               |
+| ------- | -------------------- |
+| Linux   | works                |
+| NetBSD  | works                |
+| MacOS   | works                |
+| Windows | not fully tested yet |
 
-MSRV(Minimum Supported Rust Version): **1.59.0**
+_For Windows users: From v1.3.0, it can be at least compiled on Windows (see `.github/workflows/install_test.yml`.) If you're interested, Please try the native build and report any problems._
+
+MSRV(Minimum Supported rustc Version): **1.59.0**
 
 ## Installation
 
@@ -96,7 +96,7 @@ j / Up            :Go up.
 k / Down          :Go down.
 h / Left          :Go to the parent directory if exists.
 l / Right / Enter :Open a file or change directory.
-o                 :Open a fila in a new window.
+o                 :Open a file in a new window.
 gg                :Go to the top.
 G                 :Go to the bottom.
 z + Enter         :Go to the home directory.
@@ -145,6 +145,14 @@ log files       : \$XDG_CONFIG_HOME/felix/log
 config file     : $HOME/Library/Application Support/felix/config.toml
 trash directory : $HOME/Library/Application Support/felix/trash
 log files       : \$HOME/Library/Application Support/felix/log
+```
+
+### Windows
+
+```
+config file     : $PROFILE\AppData\Roaming\felix\config.toml
+trash directory : $PROFILE\AppData\Roaming\felix\trash
+log files       : $PROFILE\AppData\Roaming\felix\log
 ```
 
 For more details, visit https://kyoheiu.dev/felix.
