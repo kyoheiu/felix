@@ -37,3 +37,16 @@ jobs:
         rustup install stable
         rustup default stable
         cargo install --path .
+  windows-install:
+    runs_on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+      - name: Install latest rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          default: true
+          override: true
+      - name: Install
+        run: cargo install --path .
