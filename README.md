@@ -2,7 +2,8 @@
 
 # _felix_
 
-A tui file manager with vim-like key mapping, written in Rust. Fast, simple, and easy to configure & use.
+A tui file manager with vim-like key mapping, written in Rust.  
+Fast, simple, and easy to configure & use.
 
 For the detailed document, please see https://kyoheiu.dev/felix.
 
@@ -14,32 +15,22 @@ For the detailed document, please see https://kyoheiu.dev/felix.
 
 ### Changed
 
-- Huge refactoring: Migrated to crossterm from termion due to the maintainability and future-support for Windows. New module `term.rs` contains (almost) all of the terminal API, so that other modules will not get effected by the future backend change. **_IMPORTANT: Nothing needs to be done: you can use felix with your existing config file._**
-  - Alongside, some changes are added to show the file path properly in Windows.
+- Huge refactoring: Migrated to crossterm from termion due to the maintainability and future-support for Windows. **_IMPORTANT: Nothing needs to be done: you can use felix with your existing config file._**
   - With crossterm, opening a file in e.g. Vim, it feels as if this app "freezes". This behavior is not what I want, so from v1.3.0, `open_file_in_new_window` can work only if \[exec\] is set in config file, and the extension of the item matches the key.
-  - As a result of this migration, the number of dependencies increased to 66 from 51.
 - `default` key in the config file become `Option`, so that users can select `$EDITOR` without explicitly setting it up. The initial process of asking users to select the default command has also been fixed accordingly.
 
-### Fixed
-
-- After zoxide jump, turn off the filter mode.
-- Many typos fixed.
-
-### Added
-
-- New error: `OpenNewWindow`
-- New GitHub actions: Add windows-install
+For more details, see `CHANGELOG.md`.
 
 ## Status
 
-| OS      | Status                  |
-| ------- | ----------------------- |
-| Linux   | works                   |
-| NetBSD  | works                   |
-| MacOS   | works                   |
-| Windows | not fully supported yet |
+| OS      | Status               |
+| ------- | -------------------- |
+| Linux   | works                |
+| NetBSD  | works                |
+| MacOS   | works                |
+| Windows | not fully tested yet |
 
-_For Windows users: At least this app can be compiled in GitHub actions. See `.github/workflows/install_test.yml`. Please try the native build and report any problems._
+_For Windows users: From v1.3.0, it can be at least compiled on Windows (see `.github/workflows/install_test.yml`.) If you're interested, Please try the native build and report any problems._
 
 MSRV(Minimum Supported Rust Version): **1.59.0**
 
@@ -159,9 +150,9 @@ log files       : \$HOME/Library/Application Support/felix/log
 ### Windows
 
 ```
-config file     : $PROFILE\\AppData\\Roaming\\felix\\config.toml
-trash directory : $PROFILE\\AppData\\Roaming\\felix\\trash
-log files       : $PROFILE\\AppData\\Roaming\\felix\\log
+config file     : $PROFILE\AppData\Roaming\felix\config.toml
+trash directory : $PROFILE\AppData\Roaming\felix\trash
+log files       : $PROFILE\AppData\Roaming\felix\log
 ```
 
 For more details, visit https://kyoheiu.dev/felix.
