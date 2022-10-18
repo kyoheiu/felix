@@ -38,7 +38,7 @@ jobs:
         rustup default stable
         cargo install --path .
   windows-install:
-    runs_on: windows-latest
+    runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v1
