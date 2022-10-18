@@ -9,7 +9,8 @@ use crate::state::FX_CONFIG_DIR;
 const CONFIG_FILE: &str = "config.toml";
 
 pub const CONFIG_EXAMPLE: &str = "
-# Default exec command when open files.
+# (Optional) Default exec command when open files.
+# If not set, will default to $EDITOR
 default = \"nvim\"
 
 # (Optional) Whether to use the full width of terminal.
