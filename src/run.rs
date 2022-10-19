@@ -20,12 +20,31 @@ use std::fmt::Write as _;
 use std::io::{stdout, Write};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
+use std::panic;
 
 /// Where the item list starts to scroll.
 const SCROLL_POINT: u16 = 3;
 
 /// Run the app.
 pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
+    let result = panic::catch_unwind(|| { _run(arg, log) });
+
+    if let Err(panic) = result {
+        match panic.downcast::<String>() {
+            Ok(msg) => {
+                println!("Panic: {}", msg);
+            }
+            Err(_) => {
+                println!("Panic: unknown panic");
+            }
+        }
+        return Err(FxError::Panic)
+    }
+
+    result.ok().unwrap()
+}
+
+pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     //Prepare config file and trash directory path.
     let config_dir_path = {
         let mut path = dirs::config_dir().unwrap_or_else(|| panic!("Cannot read config dir."));
