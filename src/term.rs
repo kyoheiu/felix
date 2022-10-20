@@ -12,27 +12,22 @@ pub enum TermColor<'a> {
     BackGround(&'a Colorname),
 }
 
-/// Puts the terminal into raw mode and returns a closure that must be called to undo the changes.
+/// Puts the terminal into raw mode. Requires calling `leave_raw_mode` on program exit!
 ///
-/// **WARNING**: Not calling the closure will leave *nix terminals in an unusable state!
+/// **Warning!** Not calling `leave_raw_mode` will leave *nix terminals in an unusable state!
 ///
 /// Changing the underlying terminal to raw mode is needed to allow for direct input.
 /// This change is not undone automatically on program exit and must be managed gracefully to avoid
 /// leaving the user with a broken terminal.
 ///
-/// ### Panic-safe usage example:
-/// ```
-/// let leave_raw_mode = enter_raw_mode();
-/// scopeguard::defer! { leave_raw_mode() };
-/// ```
-///
-pub fn enter_raw_mode() -> Box<dyn Fn()> {
-    _ = terminal::enable_raw_mode();
+pub fn enter_raw_mode() {
+    terminal::enable_raw_mode().ok();
     hide_cursor();
-    Box::new(|| {
-        show_cursor();
-        _ = terminal::disable_raw_mode();
-    })
+}
+
+pub fn leave_raw_mode() {
+    show_cursor();
+    terminal::disable_raw_mode().ok();
 }
 
 pub fn move_to(x: u16, y: u16) {

@@ -29,6 +29,8 @@ const SCROLL_POINT: u16 = 3;
 pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     let result = panic::catch_unwind(|| { _run(arg, log) });
 
+    leave_raw_mode();
+
     if let Err(panic) = result {
         match panic.downcast::<String>() {
             Ok(msg) => {
@@ -90,8 +92,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     //Enter the alternate screen with crossterm
     let mut screen = stdout();
     execute!(screen, EnterAlternateScreen)?;
-    let leave_raw_mode = enter_raw_mode();
-    scopeguard::defer! { leave_raw_mode() };
+    enter_raw_mode();
 
     //Update list, print and flush
     state.reload(&nums, BEGINNING_ROW)?;
