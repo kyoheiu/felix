@@ -96,9 +96,13 @@ impl Layout {
     /// Print text preview on the right half of the terminal.
     fn preview_content(&self, item: &ItemInfo, is_dir: bool) {
         let content = if is_dir {
-            if let Ok(content) = list_up_contents(item.file_path.clone()) {
-                if let Ok(content) = make_tree(content) {
-                    format_txt(&content, self.preview_width, false)
+            let contents = match &item.symlink_dir_path {
+                None => list_up_contents(&item.file_path),
+                Some(p) => list_up_contents(p),
+            };
+            if let Ok(contents) = contents {
+                if let Ok(contents) = make_tree(contents) {
+                    format_txt(&contents, self.preview_width, false)
                 } else {
                     vec![]
                 }
@@ -219,12 +223,17 @@ pub fn make_layout(
 fn check_preview_type(item: &ItemInfo) -> PreviewType {
     if item.file_size > MAX_SIZE_TO_PREVIEW {
         PreviewType::TooBigSize
-    } else if item.file_type == FileType::Directory {
+    } else if item.file_type == FileType::Directory
+        || (item.file_type == FileType::Symlink && item.symlink_dir_path.is_some())
+    {
         PreviewType::Directory
     } else if is_supported_ext(item) {
         PreviewType::Image
     } else {
-        let content_type = content_inspector::inspect(&std::fs::read(&item.file_path).unwrap());
+        let content_type = content_inspector::inspect(
+            &std::fs::read(&item.file_path)
+                .unwrap_or_else(|_| panic!("failed check preview type.")),
+        );
         if content_type.is_text() {
             PreviewType::Text
         } else {

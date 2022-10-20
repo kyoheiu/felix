@@ -11,6 +11,12 @@ For the detailed document, please see https://kyoheiu.dev/felix.
 
 ## New Release
 
+## v1.3.1 (2022-10-21)
+
+### Fixed
+
+- Attempting to preview a symbolic link to a directory caused a panic. It has been fixed and the preview will now show the contents of the linked directory.
+
 ## v1.3.0 (2022-10-18)
 
 ### Changed
