@@ -169,7 +169,7 @@ pub fn to_proper_size(byte: u64) -> String {
 }
 
 /// Generate the contents of item to show as a preview.
-pub fn list_up_contents(path: PathBuf) -> Result<Vec<String>, FxError> {
+pub fn list_up_contents(path: &Path) -> Result<Vec<String>, FxError> {
     let mut file_v = Vec::new();
     let mut dir_v = Vec::new();
     let mut result = Vec::new();
