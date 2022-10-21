@@ -237,22 +237,25 @@ fn check_preview_type(item: &ItemInfo) -> PreviewType {
         if item.symlink_dir_path.is_some() {
             // assmuning symlink to be a directory
             PreviewType::Directory
-        } else {
-            PreviewType::UnresolvedSymlink
-        }
-    } else if is_supported_ext(item) {
-        PreviewType::Image
-    } else {
-        if let Ok(content) = &std::fs::read(&item.file_path) {
-            let content_type = content_inspector::inspect(&content);
-            if content_type.is_text() {
+        } else if let Ok(content) = &std::fs::read(&item.file_path) {
+            if content_inspector::inspect(content).is_text() {
                 PreviewType::Text
             } else {
                 PreviewType::Binary
             }
         } else {
-            PreviewType::NotReadable
+            PreviewType::UnresolvedSymlink
         }
+    } else if is_supported_ext(item) {
+        PreviewType::Image
+    } else if let Ok(content) = &std::fs::read(&item.file_path) {
+        if content_inspector::inspect(content).is_text() {
+            PreviewType::Text
+        } else {
+            PreviewType::Binary
+        }
+    } else {
+        PreviewType::NotReadable
     }
 }
 
