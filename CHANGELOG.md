@@ -6,6 +6,9 @@
 
 ## Unreleased
 
+### Fixed
+- Remove debug print in `make_config_if_not_exists`
+
 ## v1.3.2 (2022-10-23)
 
 ### Added
