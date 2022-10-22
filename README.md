@@ -11,19 +11,15 @@ For the detailed document, please see https://kyoheiu.dev/felix.
 
 ## New Release
 
-## v1.3.1 (2022-10-21)
+## v1.3.2 (2022-10-23)
+
+### Added
+
+- Add `std::panic::catch_unwind` to manually restore after a panic rewind. This allows the cursor to be restored and the screen cleared when this app panics.
 
 ### Fixed
 
-- Attempting to preview a symbolic link to a directory caused a panic. It has been fixed and the preview will now show the contents of the linked directory.
-
-## v1.3.0 (2022-10-18)
-
-### Changed
-
-- Huge refactoring: Migrated to crossterm from termion due to the maintainability and future-support for Windows. **_IMPORTANT: Nothing needs to be done: you can use felix with your existing config file._**
-  - With crossterm, opening a file in e.g. Vim, it feels as if this app "freezes". This behavior is not what I want, so from v1.3.0, `open_file_in_new_window` can work only if \[exec\] is set in the config file, and the extension of the item matches the key.
-- `default` key in the config file changed to `Option`, so that users can select `$EDITOR` without explicitly setting it up. The initial process of asking users to select the default command has also been fixed accordingly.
+- Fixed: Similar to v1.3.1, attempting to preview a symbolic link to a nonexistent file caused a panic. Now the preview shows `(file not readable)` for such a link.
 
 For more details, see `CHANGELOG.md`.
 
