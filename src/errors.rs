@@ -36,7 +36,7 @@ impl std::fmt::Display for FxError {
             FxError::RemoveItem(s) => format!("Error: Cannot remove -> {:?}", s),
             FxError::TooSmallWindowSize => "Error: Too small window size".to_owned(),
             FxError::Log => "Error: Cannot initialize logger".to_owned(),
-            FxError::Panic => "Error: Felix panicked".to_owned(),
+            FxError::Panic => "Error: felix panicked".to_owned(),
         };
         write!(f, "{}", printable)
     }
