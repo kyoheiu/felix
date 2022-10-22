@@ -119,7 +119,6 @@ pub fn make_config_if_not_exists(config_file: &Path, trash_dir: &Path) -> Result
         let mut buffer = String::new();
         let stdin = std::io::stdin();
         stdin.read_line(&mut buffer)?;
-        println!("{}", buffer);
 
         let mut trimmed = buffer.trim();
         if trimmed.is_empty() {
