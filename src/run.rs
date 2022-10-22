@@ -25,7 +25,6 @@ const SCROLL_POINT: u16 = 3;
 
 /// Run the app.
 pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
-    enter_raw_mode();
     let result = panic::catch_unwind(|| _run(arg, log));
     leave_raw_mode();
 
@@ -91,6 +90,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
     //Enter the alternate screen with crossterm
     let mut screen = stdout();
+    enter_raw_mode();
     execute!(screen, EnterAlternateScreen)?;
 
     //Update list, print and flush
