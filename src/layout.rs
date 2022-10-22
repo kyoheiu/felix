@@ -243,9 +243,9 @@ fn check_preview_content_type(item: &ItemInfo) -> PreviewType {
 
 /// Check preview type.
 fn check_preview_type(item: &ItemInfo) -> PreviewType {
-    if item.file_type == FileType::Directory {
-        PreviewType::Directory
-    } else if item.file_type == FileType::Symlink && item.symlink_dir_path.is_some() {
+    if item.file_type == FileType::Directory
+        || (item.file_type == FileType::Symlink && item.symlink_dir_path.is_some())
+    {
         // symlink was resolved to directory already in the ItemInfo
         PreviewType::Directory
     } else {
