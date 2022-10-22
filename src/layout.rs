@@ -35,6 +35,7 @@ pub struct Layout {
 }
 
 pub enum PreviewType {
+    NotReadable,
     TooBigSize,
     Directory,
     Image,
@@ -51,8 +52,11 @@ impl Layout {
         self.clear_preview(self.preview_start_column);
 
         match check_preview_type(item) {
+            PreviewType::NotReadable => {
+                print!("(file not readable)");
+            }
             PreviewType::TooBigSize => {
-                print!("(Too big size to preview)");
+                print!("(file too big for preview)");
             }
             PreviewType::Directory => {
                 self.preview_content(item, true);
@@ -219,26 +223,33 @@ pub fn make_layout(
     }
 }
 
-/// Check preview type.
-fn check_preview_type(item: &ItemInfo) -> PreviewType {
+fn check_preview_content_type(item: &ItemInfo) -> PreviewType {
     if item.file_size > MAX_SIZE_TO_PREVIEW {
         PreviewType::TooBigSize
-    } else if item.file_type == FileType::Directory
-        || (item.file_type == FileType::Symlink && item.symlink_dir_path.is_some())
-    {
-        PreviewType::Directory
     } else if is_supported_ext(item) {
         PreviewType::Image
-    } else {
-        let content_type = content_inspector::inspect(
-            &std::fs::read(&item.file_path)
-                .unwrap_or_else(|_| panic!("failed check preview type.")),
-        );
-        if content_type.is_text() {
+    } else if let Ok(content) = &std::fs::read(&item.file_path) {
+        if content_inspector::inspect(content).is_text() {
             PreviewType::Text
         } else {
             PreviewType::Binary
         }
+    } else {
+        // failed to resolve item to any form of supported preview
+        // it is probably not accessible due to permissions, broken symlink etc.
+        PreviewType::NotReadable
+    }
+}
+
+/// Check preview type.
+fn check_preview_type(item: &ItemInfo) -> PreviewType {
+    if item.file_type == FileType::Directory
+        || (item.file_type == FileType::Symlink && item.symlink_dir_path.is_some())
+    {
+        // symlink was resolved to directory already in the ItemInfo
+        PreviewType::Directory
+    } else {
+        check_preview_content_type(item)
     }
 }
 
