@@ -6,6 +6,16 @@
 
 ## Unreleased
 
+## v1.3.2 (2022-10-23)
+
+### Added
+
+- Add `std::panic::catch_unwind` to manually restore after a panic rewind. This allows the cursor to be restored and the screen cleared when this app panics.
+
+### Fixed
+
+- Fixed: Similar to v1.3.1, attempting to preview a symbolic link to a nonexistent file caused a panic. Now the preview shows `(file not readable)` for such a link.
+
 ## v1.3.1 (2022-10-21)
 
 ### Fixed

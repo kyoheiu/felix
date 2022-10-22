@@ -8,8 +8,7 @@ use crate::state::FX_CONFIG_DIR;
 
 const CONFIG_FILE: &str = "config.toml";
 
-pub const CONFIG_EXAMPLE: &str = "
-# (Optional) Default exec command when open files.
+pub const CONFIG_EXAMPLE: &str = "# (Optional) Default exec command when open files.
 # If not set, will default to $EDITOR
 default = \"nvim\"
 
@@ -120,6 +119,7 @@ pub fn make_config_if_not_exists(config_file: &Path, trash_dir: &Path) -> Result
         let mut buffer = String::new();
         let stdin = std::io::stdin();
         stdin.read_line(&mut buffer)?;
+        println!("{}", buffer);
 
         let mut trimmed = buffer.trim();
         if trimmed.is_empty() {
