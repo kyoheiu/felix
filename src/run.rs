@@ -11,13 +11,12 @@ use super::term::*;
 use crossterm::cursor::RestorePosition;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::execute;
-use crossterm::terminal::{
-    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
-};
+use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
 use log::{error, info};
 use std::ffi::OsStr;
 use std::fmt::Write as _;
 use std::io::{stdout, Write};
+use std::panic;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
@@ -26,6 +25,28 @@ const SCROLL_POINT: u16 = 3;
 
 /// Run the app.
 pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
+    enter_raw_mode();
+    let result = panic::catch_unwind(|| _run(arg, log));
+    leave_raw_mode();
+
+    if let Err(panic) = result {
+        clear_all();
+        move_to(1, 1);
+        match panic.downcast::<String>() {
+            Ok(msg) => {
+                println!("Panic: {}", msg);
+            }
+            Err(_) => {
+                println!("Panic: unknown panic");
+            }
+        }
+        return Err(FxError::Panic);
+    }
+
+    result.ok().unwrap()
+}
+
+pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     //Prepare config file and trash directory path.
     let config_dir_path = {
         let mut path = dirs::config_dir().unwrap_or_else(|| panic!("Cannot read config dir."));
@@ -71,10 +92,8 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     //Enter the alternate screen with crossterm
     let mut screen = stdout();
     execute!(screen, EnterAlternateScreen)?;
-    enable_raw_mode()?;
 
     //Update list, print and flush
-    hide_cursor();
     state.reload(&nums, BEGINNING_ROW)?;
     screen.flush()?;
 
@@ -1600,8 +1619,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     write!(screen, "{}", RestorePosition)?;
     screen.flush()?;
 
-    //Back to normal mode
-    disable_raw_mode()?;
     info!("===FINISH===");
     Ok(())
 }
