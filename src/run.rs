@@ -11,16 +11,14 @@ use super::term::*;
 use crossterm::cursor::RestorePosition;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::execute;
-use crossterm::terminal::{
-    EnterAlternateScreen, LeaveAlternateScreen,
-};
+use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
 use log::{error, info};
 use std::ffi::OsStr;
 use std::fmt::Write as _;
 use std::io::{stdout, Write};
+use std::panic;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
-use std::panic;
 
 /// Where the item list starts to scroll.
 const SCROLL_POINT: u16 = 3;
@@ -28,10 +26,12 @@ const SCROLL_POINT: u16 = 3;
 /// Run the app.
 pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     enter_raw_mode();
-    let result = panic::catch_unwind(|| { _run(arg, log) });
+    let result = panic::catch_unwind(|| _run(arg, log));
     leave_raw_mode();
 
     if let Err(panic) = result {
+        clear_all();
+        move_to(1, 1);
         match panic.downcast::<String>() {
             Ok(msg) => {
                 println!("Panic: {}", msg);
@@ -40,7 +40,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 println!("Panic: unknown panic");
             }
         }
-        return Err(FxError::Panic)
+        return Err(FxError::Panic);
     }
 
     result.ok().unwrap()
