@@ -30,6 +30,7 @@ pub struct Layout {
     pub preview: bool,
     pub split: Split,
     pub preview_start_column: u16,
+    pub preview_start_row: u16,
     pub preview_width: u16,
     pub has_chafa: bool,
     pub is_kitty: bool,
@@ -46,17 +47,24 @@ pub enum PreviewType {
 
 #[derive(Debug)]
 pub enum Split {
-    Horizontal,
     Vertical,
+    Horizontal,
 }
 
 impl Layout {
     /// Print preview according to the preview type.
     pub fn print_preview(&self, item: &ItemInfo, y: u16) {
-        //At least print the item name
-        self.print_file_name(item);
-        //Clear preview space
-        self.clear_preview(self.preview_start_column);
+        match self.split {
+            Split::Vertical => {
+                //At least print the item name
+                self.print_file_name(item);
+                //Clear preview space
+                self.clear_preview(self.preview_start_column);
+            }
+            Split::Horizontal => {
+                self.clear_preview(self.preview_start_row);
+            }
+        }
 
         match check_preview_type(item) {
             PreviewType::NotReadable => {
@@ -172,12 +180,23 @@ impl Layout {
     }
 
     /// Clear the preview space.
-    fn clear_preview(&self, preview_start_column: u16) {
-        for i in 0..self.terminal_row {
-            move_to(preview_start_column, BEGINNING_ROW + i as u16);
-            clear_until_newline();
+    fn clear_preview(&self, preview_start_point: u16) {
+        match self.split {
+            Split::Vertical => {
+                for i in 0..self.terminal_row {
+                    move_to(preview_start_point, BEGINNING_ROW + i as u16);
+                    clear_until_newline();
+                }
+                move_to(self.preview_start_column, BEGINNING_ROW);
+            }
+            Split::Horizontal => {
+                for i in 0..self.terminal_row {
+                    move_to(1, preview_start_point + i as u16);
+                    clear_until_newline();
+                }
+                move_to(1, preview_start_point);
+            }
         }
-        move_to(self.preview_start_column, BEGINNING_ROW);
     }
 }
 

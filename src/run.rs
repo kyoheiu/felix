@@ -2,6 +2,7 @@ use super::config::make_config_if_not_exists;
 use super::errors::FxError;
 use super::functions::*;
 use super::help::HELP;
+use super::layout::Split;
 use super::nums::*;
 use super::op::*;
 use super::session::*;
@@ -827,14 +828,33 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     KeyCode::Char('v') => {
                         state.layout.preview = !state.layout.preview;
                         if state.layout.preview {
-                            let new_column = state.layout.terminal_column / 2;
-                            let new_row = state.layout.terminal_row;
-                            state.refresh(new_column, new_row, &nums, y);
+                            match state.layout.split {
+                                Split::Vertical => {
+                                    let new_column = state.layout.terminal_column / 2;
+                                    let new_row = state.layout.terminal_row;
+                                    state.refresh(new_column, new_row, &nums, y);
+                                }
+                                Split::Horizontal => {
+                                    let new_row = state.layout.terminal_row / 2;
+                                    let new_column = state.layout.terminal_column;
+                                    state.refresh(new_column, new_row, &nums, y);
+                                }
+                            }
                         } else {
                             let (new_column, new_row) = crossterm::terminal::size().unwrap();
                             state.refresh(new_column, new_row, &nums, y);
                         }
                     }
+
+                    //toggle vertical or horizontal split
+                    KeyCode::Char('S') => match state.layout.split {
+                        Split::Vertical => {
+                            state.layout.split = Split::Horizontal;
+                        }
+                        Split::Horizontal => {
+                            state.layout.split = Split::Vertical;
+                        }
+                    },
 
                     //delete
                     KeyCode::Char('d') => {

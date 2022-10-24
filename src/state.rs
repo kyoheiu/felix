@@ -115,6 +115,7 @@ impl State {
                 preview: false,
                 split: Split::Vertical,
                 preview_start_column: column + 2,
+                preview_start_row: row + 2,
                 preview_width: column - 1,
                 has_chafa,
                 is_kitty,
@@ -133,6 +134,7 @@ impl State {
         self.layout.terminal_row = row;
         self.layout.terminal_column = column;
         self.layout.preview_start_column = column + 2;
+        self.layout.preview_start_row = row + 2;
         self.layout.preview_width = column - 1;
         self.layout.name_max_len = name_max;
         self.layout.time_start_pos = time_start;
