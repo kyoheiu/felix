@@ -24,7 +24,7 @@ pub const CONFIG_FILE: &str = "config.toml";
 pub const TRASH: &str = "trash";
 pub const WHEN_EMPTY: &str = "Are you sure to empty the trash directory? (if yes: y)";
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct State {
     pub list: Vec<ItemInfo>,
     pub registered: Vec<ItemInfo>,
@@ -113,6 +113,7 @@ impl State {
                     symlink_fg: config.color.symlink_fg,
                 },
                 preview: false,
+                split: Split::Vertical,
                 preview_start_column: column + 2,
                 preview_width: column - 1,
                 has_chafa,

@@ -17,7 +17,7 @@ pub const PROPER_WIDTH: u16 = 28;
 pub const TIME_WIDTH: u16 = 16;
 pub const DEFAULT_NAME_LENGTH: u16 = 30;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Layout {
     pub y: u16,
     pub terminal_row: u16,
@@ -28,6 +28,7 @@ pub struct Layout {
     pub option_name_len: Option<usize>,
     pub colors: ConfigColor,
     pub preview: bool,
+    pub split: Split,
     pub preview_start_column: u16,
     pub preview_width: u16,
     pub has_chafa: bool,
@@ -41,6 +42,12 @@ pub enum PreviewType {
     Image,
     Text,
     Binary,
+}
+
+#[derive(Debug)]
+pub enum Split {
+    Horizontal,
+    Vertical,
 }
 
 impl Layout {
