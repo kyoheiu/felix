@@ -141,6 +141,8 @@ impl Layout {
         };
 
         //Print preview (wrapping)
+        match self.split {
+            Split::Vertical => {
         for (i, line) in content.iter().enumerate() {
             move_to(self.preview_start_column, BEGINNING_ROW + i as u16);
             set_color(&TermColor::ForeGround(&Colorname::LightBlack));
@@ -150,15 +152,36 @@ impl Layout {
                 break;
             }
         }
+
+            },
+            Split::Horizontal => {
+        for (i, line) in content.iter().enumerate() {
+            let row = self.preview_start_row + i as u16;
+            move_to(1, row);
+            set_color(&TermColor::ForeGround(&Colorname::LightBlack));
+            print!("{}", line);
+            reset_color();
+            if row == self.terminal_row - 1 {
+                break;
+            }
+        }
+
+            }
+        }
     }
 
     /// Print text preview on the right half of the terminal (Experimental).
     fn preview_image(&self, item: &ItemInfo, y: u16) -> Result<(), FxError> {
-        let wxh = format!(
+        let wxh = match self.split {
+            Split::Vertical => {
+            format!(
             "--size={}x{}",
             self.preview_width,
             self.terminal_row - BEGINNING_ROW
-        );
+        )
+            }
+            Split::Horizontal => todo!(),
+        };
 
         let file_path = item.file_path.to_str();
         if file_path.is_none() {
@@ -171,10 +194,24 @@ impl Layout {
             .output()?
             .stdout;
         let output = String::from_utf8(output).unwrap();
+
+        match self.split {
+            Split::Vertical => {
         for (i, line) in output.lines().enumerate() {
-            let next_line: u16 = BEGINNING_ROW + (i as u16) + 1;
             print!("{}", line);
+            let next_line: u16 = BEGINNING_ROW + (i as u16) + 1;
             move_to(self.preview_start_column, next_line);
+        }
+
+            },
+            Split::Horizontal => {
+        for (i, line) in output.lines().enumerate() {
+            print!("{}", line);
+            let next_line: u16 = self.preview_start_row + (i as u16) + 1;
+            move_to(1, next_line);
+        }
+
+            }
         }
         Ok(())
     }
