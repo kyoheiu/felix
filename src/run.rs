@@ -847,7 +847,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     }
 
                     //toggle vertical or horizontal split
-                    KeyCode::Char('S') => match state.layout.split {
+                    KeyCode::Char('s') => match state.layout.split {
                         Split::Vertical => {
                             state.layout.split = Split::Horizontal;
                             if state.layout.preview {
