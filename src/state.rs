@@ -83,7 +83,6 @@ impl State {
             make_layout(column, config.use_full_width, config.item_name_length);
 
         let has_chafa = check_chafa();
-        let has_bat = check_bat();
         let is_kitty = check_kitty_support();
 
         Ok(State {
@@ -119,7 +118,6 @@ impl State {
                 preview_start_row: row + 2,
                 preview_width: column - 1,
                 has_chafa,
-                has_bat,
                 is_kitty,
             },
             show_hidden: session.show_hidden,
@@ -1043,10 +1041,6 @@ fn check_chafa() -> bool {
         .arg("--help")
         .output()
         .is_ok()
-}
-
-fn check_bat() -> bool {
-    std::process::Command::new("bat").arg("-h").output().is_ok()
 }
 
 // Check if the terminal is Kitty or not
