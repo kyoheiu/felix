@@ -850,9 +850,21 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     KeyCode::Char('S') => match state.layout.split {
                         Split::Vertical => {
                             state.layout.split = Split::Horizontal;
+                            if state.layout.preview {
+                                let (new_column, mut new_row) =
+                                    crossterm::terminal::size().unwrap();
+                                new_row /= 2;
+                                state.refresh(new_column, new_row, &nums, y);
+                            }
                         }
                         Split::Horizontal => {
                             state.layout.split = Split::Vertical;
+                            if state.layout.preview {
+                                let (mut new_column, new_row) =
+                                    crossterm::terminal::size().unwrap();
+                                new_column /= 2;
+                                state.refresh(new_column, new_row, &nums, y);
+                            }
                         }
                     },
 
