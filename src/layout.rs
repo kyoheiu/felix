@@ -179,7 +179,9 @@ impl Layout {
                     self.terminal_row - BEGINNING_ROW
                 )
             }
-            Split::Horizontal => todo!(),
+            Split::Horizontal => {
+                format!("--size={}x{}", self.preview_width, self.terminal_row)
+            }
         };
 
         let file_path = item.file_path.to_str();

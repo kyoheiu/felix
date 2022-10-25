@@ -135,7 +135,10 @@ impl State {
         self.layout.terminal_column = column;
         self.layout.preview_start_column = column + 2;
         self.layout.preview_start_row = row + 2;
-        self.layout.preview_width = column - 1;
+        self.layout.preview_width = match self.layout.split {
+            Split::Vertical => column - 1,
+            Split::Horizontal => column,
+        };
         self.layout.name_max_len = name_max;
         self.layout.time_start_pos = time_start;
 
