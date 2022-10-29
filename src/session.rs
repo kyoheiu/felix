@@ -1,3 +1,5 @@
+use crate::layout::Split;
+
 use super::errors::FxError;
 use super::state::FX_CONFIG_DIR;
 use serde::{Deserialize, Serialize};
@@ -13,6 +15,8 @@ show_hidden = false
 pub struct Session {
     pub sort_by: SortKey,
     pub show_hidden: bool,
+    pub preview: Option<bool>,
+    pub split: Option<Split>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
