@@ -1626,19 +1626,33 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     panic!("Error: Too small terminal size (less than 4 rows). Please restart.");
                 };
 
-                let column = match state.layout.preview {
-                    true => column / 2,
-                    false => column,
-                };
-                if column != state.layout.terminal_column || row != state.layout.terminal_row {
-                    if state.layout.y < row {
-                        let cursor_pos = state.layout.y;
-                        state.refresh(column, row, &nums, cursor_pos);
+                if state.layout.preview {
+                    let new_column = match state.layout.split {
+                        Split::Vertical => column / 2,
+                        Split::Horizontal => column,
+                    };
+                    let new_row = match state.layout.split {
+                        Split::Vertical => row,
+                        Split::Horizontal => row / 2,
+                    };
+                    let cursor_pos = if state.layout.y < new_row {
+                        state.layout.y
+                    } else {
+                        let diff = state.layout.y + 1 - new_row;
+                        nums.index -= diff as usize;
+                        new_row - 1
+                    };
+
+                    state.refresh(new_column, new_row, &nums, cursor_pos);
+                } else {
+                    let cursor_pos = if state.layout.y < row {
+                        state.layout.y
                     } else {
                         let diff = state.layout.y + 1 - row;
                         nums.index -= diff as usize;
-                        state.refresh(column, row, &nums, row - 1);
-                    }
+                        row - 1
+                    };
+                    state.refresh(column, row, &nums, cursor_pos);
                 }
             }
             _ => {}
