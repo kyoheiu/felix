@@ -4,6 +4,7 @@ use super::functions::*;
 use super::state::{FileType, ItemInfo, BEGINNING_ROW};
 use super::term::*;
 
+use serde::{Deserialize, Serialize};
 use syntect::easy::HighlightLines;
 use syntect::highlighting::ThemeSet;
 use syntect::parsing::SyntaxSet;
@@ -50,7 +51,7 @@ pub enum PreviewType {
     Binary,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Deserialize, Serialize, Clone, Copy)]
 pub enum Split {
     Vertical,
     Horizontal,

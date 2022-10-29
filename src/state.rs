@@ -112,8 +112,8 @@ impl State {
                     file_fg: config.color.file_fg,
                     symlink_fg: config.color.symlink_fg,
                 },
-                preview: false,
-                split: Split::Vertical,
+                preview: session.preview.unwrap_or(false),
+                split: session.split.unwrap_or(Split::Vertical),
                 preview_start_column: column + 2,
                 preview_start_row: row + 2,
                 preview_width: column - 1,
@@ -925,6 +925,8 @@ impl State {
         let session = Session {
             sort_by: self.sort_by.clone(),
             show_hidden: self.show_hidden,
+            preview: Some(self.layout.preview),
+            split: Some(self.layout.split),
         };
         let serialized = toml::to_string(&session)?;
         fs::write(&session_path, serialized)?;
