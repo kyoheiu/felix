@@ -4,6 +4,11 @@ use super::functions::*;
 use super::state::{FileType, ItemInfo, BEGINNING_ROW};
 use super::term::*;
 
+use syntect::easy::HighlightLines;
+use syntect::highlighting::ThemeSet;
+use syntect::parsing::SyntaxSet;
+use syntect::util::{as_24_bit_terminal_escaped, split_at, LinesWithEndings};
+
 /// cf: https://docs.rs/image/latest/src/image/image.rs.html#84-112
 pub const MAX_SIZE_TO_PREVIEW: u64 = 1_000_000_000;
 pub const IMAGE_EXTENSION: [&str; 20] = [
@@ -74,7 +79,7 @@ impl Layout {
                 print!("(file too big for preview)");
             }
             PreviewType::Directory => {
-                self.preview_content(item, true);
+                self.preview_directory(item);
             }
             PreviewType::Image => {
                 if self.has_chafa {
@@ -93,7 +98,7 @@ impl Layout {
                 }
             }
             PreviewType::Text => {
-                self.preview_content(item, false);
+                self.preview_text(item);
             }
             PreviewType::Binary => {
                 print!("(Binary file)");
@@ -113,9 +118,87 @@ impl Layout {
         print!("{}", file_name);
     }
 
-    /// Print text preview on the right half of the terminal.
-    fn preview_content(&self, item: &ItemInfo, is_dir: bool) {
-        let content = if is_dir {
+    fn preview_text(&self, item: &ItemInfo) {
+        let ps = SyntaxSet::load_defaults_newlines();
+        if let Ok(Some(syntax)) = ps.find_syntax_for_file(item.file_path.clone()) {
+            let ts = ThemeSet::load_defaults();
+            let mut h = HighlightLines::new(syntax, &ts.themes["base16-ocean.dark"]);
+            if let Ok(content) = std::fs::read_to_string(item.file_path.clone()) {
+                move_to(self.preview_start_column, BEGINNING_ROW);
+                let mut result = vec![];
+                let max_row = match self.split {
+                    Split::Vertical => self.terminal_row - BEGINNING_ROW,
+                    Split::Horizontal => self.terminal_row - 1,
+                };
+                'outer: for line in LinesWithEndings::from(&content) {
+                    let count = line.len() / self.preview_width as usize;
+                    let mut range = h.highlight_line(line, &ps).unwrap();
+                    for _ in 0..=count + 1 {
+                        let ranges = split_at(&range, self.preview_width.into());
+                        if !ranges.0.is_empty() {
+                            result.push(ranges.0);
+                        }
+                        if result.len() == max_row as usize {
+                            break 'outer;
+                        } else {
+                            range = ranges.1;
+                            continue;
+                        }
+                    }
+                }
+                for (i, line) in result.iter().enumerate() {
+                    let escaped = as_24_bit_terminal_escaped(line, false);
+                    match self.split {
+                        Split::Vertical => {
+                            move_to(self.preview_start_column, BEGINNING_ROW + i as u16);
+                        }
+                        Split::Horizontal => {
+                            move_to(1, self.preview_start_row + i as u16);
+                        }
+                    }
+                    print!("{}", escaped);
+                }
+                reset_color();
+            }
+        } else {
+            let content = {
+                if let Ok(content) = std::fs::read_to_string(item.file_path.clone()) {
+                    let content = content.replace('\t', "    ");
+                    format_txt(&content, self.terminal_column - 1, false)
+                } else {
+                    vec![]
+                }
+            };
+            match self.split {
+                Split::Vertical => {
+                    for (i, line) in content.iter().enumerate() {
+                        move_to(self.preview_start_column, BEGINNING_ROW + i as u16);
+                        set_color(&TermColor::ForeGround(&Colorname::LightBlack));
+                        print!("{}", line);
+                        reset_color();
+                        if BEGINNING_ROW + i as u16 == self.terminal_row - 1 {
+                            break;
+                        }
+                    }
+                }
+                Split::Horizontal => {
+                    for (i, line) in content.iter().enumerate() {
+                        let row = self.preview_start_row + i as u16;
+                        move_to(1, row);
+                        set_color(&TermColor::ForeGround(&Colorname::LightBlack));
+                        print!("{}", line);
+                        reset_color();
+                        if row == self.terminal_row - 1 {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn preview_directory(&self, item: &ItemInfo) {
+        let content = {
             let contents = match &item.symlink_dir_path {
                 None => list_up_contents(&item.file_path),
                 Some(p) => list_up_contents(p),
@@ -126,16 +209,6 @@ impl Layout {
                 } else {
                     vec![]
                 }
-            } else {
-                vec![]
-            }
-        } else {
-            let item = item.file_path.clone();
-            let column = self.terminal_column;
-            let content = std::fs::read_to_string(item);
-            if let Ok(content) = content {
-                let content = content.replace('\t', "    ");
-                format_txt(&content, column - 1, false)
             } else {
                 vec![]
             }
@@ -168,7 +241,6 @@ impl Layout {
             }
         }
     }
-
     /// Print text preview on the right half of the terminal (Experimental).
     fn preview_image(&self, item: &ItemInfo, y: u16) -> Result<(), FxError> {
         let wxh = match self.split {
