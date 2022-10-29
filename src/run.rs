@@ -95,6 +95,18 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     execute!(screen, EnterAlternateScreen)?;
 
     //Update list, print and flush
+    if state.layout.preview {
+        let new_column = match state.layout.split {
+            Split::Vertical => state.layout.terminal_column / 2,
+            Split::Horizontal => state.layout.terminal_column,
+        };
+        let new_row = match state.layout.split {
+            Split::Vertical => state.layout.terminal_row,
+            Split::Horizontal => state.layout.terminal_row / 2,
+        };
+
+        state.refresh(new_column, new_row, &nums, BEGINNING_ROW);
+    }
     state.reload(&nums, BEGINNING_ROW)?;
     screen.flush()?;
 
