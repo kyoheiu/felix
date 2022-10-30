@@ -133,17 +133,20 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 match code {
                     //Go up. If lists exceed max-row, lists "scrolls" before the top of the list
                     KeyCode::Char('j') | KeyCode::Down => {
-                        if len == 0 || nums.index == len - 1 {
-                            continue;
-                        } else if y >= state.layout.terminal_row - 1 - SCROLL_POINT
-                            && len > (state.layout.terminal_row - BEGINNING_ROW) as usize - 1
-                        {
-                            nums.go_down();
-                            nums.inc_skip();
-                            state.redraw(&nums, y);
+                        if modifiers == KeyModifiers::ALT {
                         } else {
-                            nums.go_down();
-                            state.move_cursor(&nums, y + 1);
+                            if len == 0 || nums.index == len - 1 {
+                                continue;
+                            } else if y >= state.layout.terminal_row - 1 - SCROLL_POINT
+                                && len > (state.layout.terminal_row - BEGINNING_ROW) as usize - 1
+                            {
+                                nums.go_down();
+                                nums.inc_skip();
+                                state.redraw(&nums, y);
+                            } else {
+                                nums.go_down();
+                                state.move_cursor(&nums, y + 1);
+                            }
                         }
                     }
 

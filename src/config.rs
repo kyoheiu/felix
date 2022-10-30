@@ -2,15 +2,21 @@ use super::errors::FxError;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::read_to_string;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::state::FX_CONFIG_DIR;
 
 const CONFIG_FILE: &str = "config.toml";
 
 pub const CONFIG_EXAMPLE: &str = "# (Optional) Default exec command when open files.
-# If not set, will default to $EDITOR
+# If not set, will default to $EDITOR.
 default = \"nvim\"
+
+# (Optional)
+# key (the command you want to use) = [values] (extensions)
+# [exec]
+# feh = [\"jpg\", \"jpeg\", \"png\", \"gif\", \"svg\"]
+# zathura = [\"pdf\"]
 
 # (Optional) Whether to use the full width of terminal.
 # If not set, this will be true.
@@ -22,11 +28,13 @@ default = \"nvim\"
 # If not set, this will be 30.
 # item_name_length = 30
 
-# (Optional)
-# key (the command you want to use) = [values] (extensions)
-# [exec]
-# feh = [\"jpg\", \"jpeg\", \"png\", \"gif\", \"svg\"]
-# zathura = [\"pdf\"]
+# (Optional) Whether to use syntax highlighting in the preview mode.
+# If not set, will default to false.
+# syntax_highlight = false
+
+# (Optional) Path to .tmtheme file for the syntax highlighting.
+# If not set, felix uses `base16-mocha.dark`.
+# theme_path = \"\"
 
 # The foreground color of directory, file and symlink.
 # Pick one of the following:
@@ -62,6 +70,8 @@ pub struct Config {
     pub color: ConfigColor,
     pub use_full_width: Option<bool>,
     pub item_name_length: Option<usize>,
+    pub syntax_highlight: Option<bool>,
+    pub theme_path: Option<PathBuf>,
 }
 
 #[derive(Deserialize, Debug, Clone)]

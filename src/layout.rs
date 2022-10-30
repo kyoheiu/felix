@@ -6,7 +6,7 @@ use super::term::*;
 
 use serde::{Deserialize, Serialize};
 use syntect::easy::HighlightLines;
-use syntect::highlighting::ThemeSet;
+use syntect::highlighting::Theme;
 use syntect::parsing::SyntaxSet;
 use syntect::util::{as_24_bit_terminal_escaped, split_at, LinesWithEndings};
 
@@ -38,6 +38,9 @@ pub struct Layout {
     pub preview_start_column: u16,
     pub preview_start_row: u16,
     pub preview_width: u16,
+    pub syntax_highlight: bool,
+    pub syntax_set: SyntaxSet,
+    pub theme: Theme,
     pub has_chafa: bool,
     pub is_kitty: bool,
 }
@@ -99,7 +102,11 @@ impl Layout {
                 }
             }
             PreviewType::Text => {
-                self.preview_text(item);
+                if self.syntax_highlight {
+                    self.preview_text_with_sh(item);
+                } else {
+                    self.preview_text(item);
+                }
             }
             PreviewType::Binary => {
                 print!("(Binary file)");
@@ -120,10 +127,45 @@ impl Layout {
     }
 
     fn preview_text(&self, item: &ItemInfo) {
-        let ps = SyntaxSet::load_defaults_newlines();
-        if let Ok(Some(syntax)) = ps.find_syntax_for_file(item.file_path.clone()) {
-            let ts = ThemeSet::load_defaults();
-            let mut h = HighlightLines::new(syntax, &ts.themes["base16-ocean.dark"]);
+        let content = {
+            if let Ok(content) = std::fs::read_to_string(item.file_path.clone()) {
+                let content = content.replace('\t', "    ");
+                format_txt(&content, self.terminal_column - 1, false)
+            } else {
+                vec![]
+            }
+        };
+        match self.split {
+            Split::Vertical => {
+                for (i, line) in content.iter().enumerate() {
+                    move_to(self.preview_start_column, BEGINNING_ROW + i as u16);
+                    set_color(&TermColor::ForeGround(&Colorname::LightBlack));
+                    print!("{}", line);
+                    reset_color();
+                    if BEGINNING_ROW + i as u16 == self.terminal_row - 1 {
+                        break;
+                    }
+                }
+            }
+            Split::Horizontal => {
+                for (i, line) in content.iter().enumerate() {
+                    let row = self.preview_start_row + i as u16;
+                    move_to(1, row);
+                    set_color(&TermColor::ForeGround(&Colorname::LightBlack));
+                    print!("{}", line);
+                    reset_color();
+                    if row == self.terminal_row - 1 {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    /// Preview text with syntax highlighting.
+    fn preview_text_with_sh(&self, item: &ItemInfo) {
+        if let Ok(Some(syntax)) = self.syntax_set.find_syntax_for_file(item.file_path.clone()) {
+            let mut h = HighlightLines::new(syntax, &self.theme);
             if let Ok(content) = std::fs::read_to_string(item.file_path.clone()) {
                 move_to(self.preview_start_column, BEGINNING_ROW);
                 let mut result = vec![];
@@ -133,7 +175,7 @@ impl Layout {
                 };
                 'outer: for line in LinesWithEndings::from(&content) {
                     let count = line.len() / self.preview_width as usize;
-                    let mut range = h.highlight_line(line, &ps).unwrap();
+                    let mut range = h.highlight_line(line, &self.syntax_set).unwrap();
                     for _ in 0..=count + 1 {
                         let ranges = split_at(&range, self.preview_width.into());
                         if !ranges.0.is_empty() {
@@ -162,39 +204,7 @@ impl Layout {
                 reset_color();
             }
         } else {
-            let content = {
-                if let Ok(content) = std::fs::read_to_string(item.file_path.clone()) {
-                    let content = content.replace('\t', "    ");
-                    format_txt(&content, self.terminal_column - 1, false)
-                } else {
-                    vec![]
-                }
-            };
-            match self.split {
-                Split::Vertical => {
-                    for (i, line) in content.iter().enumerate() {
-                        move_to(self.preview_start_column, BEGINNING_ROW + i as u16);
-                        set_color(&TermColor::ForeGround(&Colorname::LightBlack));
-                        print!("{}", line);
-                        reset_color();
-                        if BEGINNING_ROW + i as u16 == self.terminal_row - 1 {
-                            break;
-                        }
-                    }
-                }
-                Split::Horizontal => {
-                    for (i, line) in content.iter().enumerate() {
-                        let row = self.preview_start_row + i as u16;
-                        move_to(1, row);
-                        set_color(&TermColor::ForeGround(&Colorname::LightBlack));
-                        print!("{}", line);
-                        reset_color();
-                        if row == self.terminal_row - 1 {
-                            break;
-                        }
-                    }
-                }
-            }
+            self.preview_text(item);
         }
     }
 

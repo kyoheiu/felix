@@ -17,6 +17,7 @@ use std::fmt::Write as _;
 use std::fs;
 use std::path::PathBuf;
 use std::process::{Child, Command, ExitStatus, Stdio};
+use syntect::highlighting::ThemeSet;
 
 pub const BEGINNING_ROW: u16 = 3;
 pub const FX_CONFIG_DIR: &str = "felix";
@@ -82,6 +83,14 @@ impl State {
         let (time_start, name_max) =
             make_layout(column, config.use_full_width, config.item_name_length);
 
+        let ts = match config.theme_path {
+            Some(p) => match syntect::highlighting::ThemeSet::get_theme(p) {
+                Ok(ts) => ts,
+                Err(_) => ThemeSet::load_defaults().themes["base16-mocha.dark"].clone(),
+            },
+            None => ThemeSet::load_defaults().themes["base16-mocha.dark"].clone(),
+        };
+
         let has_chafa = check_chafa();
         let is_kitty = check_kitty_support();
 
@@ -117,6 +126,9 @@ impl State {
                 preview_start_column: column + 2,
                 preview_start_row: row + 2,
                 preview_width: column - 1,
+                syntax_highlight: config.syntax_highlight.unwrap_or(false),
+                syntax_set: syntect::parsing::SyntaxSet::load_defaults_newlines(),
+                theme: ts,
                 has_chafa,
                 is_kitty,
             },
