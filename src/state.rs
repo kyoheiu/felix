@@ -124,8 +124,14 @@ impl State {
                 },
                 preview: session.preview.unwrap_or(false),
                 split,
-                preview_start: (column + 2, row + 2),
-                preview_space: (column - 1, row - BEGINNING_ROW),
+                preview_start: match split {
+                    Split::Vertical => (column + 2, BEGINNING_ROW),
+                    Split::Horizontal => (1, row + 2),
+                },
+                preview_space: match split {
+                    Split::Vertical => (column - 1, row - BEGINNING_ROW),
+                    Split::Horizontal => (column, row - 1),
+                },
                 preview_scroll: 0,
                 syntax_highlight: config.syntax_highlight.unwrap_or(false),
                 syntax_set: syntect::parsing::SyntaxSet::load_defaults_newlines(),
