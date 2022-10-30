@@ -854,7 +854,7 @@ impl State {
             delete_cursor();
 
             //Print item information at the bottom
-            self.print_footer(nums, item);
+            self.print_footer(item, nums);
 
             //Print preview if preview is on
             if self.layout.preview {
@@ -884,7 +884,7 @@ impl State {
     }
 
     /// Print item information at the bottom of the terminal.
-    fn print_footer(&self, nums: &Num, item: &ItemInfo) {
+    fn print_footer(&self, item: &ItemInfo, nums: &Num) {
         move_to(1, self.layout.terminal_row);
         clear_current_line();
 
