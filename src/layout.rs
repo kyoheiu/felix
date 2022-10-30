@@ -35,9 +35,9 @@ pub struct Layout {
     pub colors: ConfigColor,
     pub preview: bool,
     pub split: Split,
-    pub preview_start_column: u16,
-    pub preview_start_row: u16,
-    pub preview_width: u16,
+    pub preview_start: (u16, u16),
+    pub preview_space: (u16, u16),
+    pub preview_scroll: usize,
     pub syntax_highlight: bool,
     pub syntax_set: SyntaxSet,
     pub theme: Theme,
@@ -68,10 +68,10 @@ impl Layout {
                 //At least print the item name
                 self.print_file_name(item);
                 //Clear preview space
-                self.clear_preview(self.preview_start_column);
+                self.clear_preview(self.preview_start.0);
             }
             Split::Horizontal => {
-                self.clear_preview(self.preview_start_row);
+                self.clear_preview(self.preview_start.1);
             }
         }
 
@@ -93,7 +93,7 @@ impl Layout {
                 } else {
                     let help = format_txt(CHAFA_WARNING, self.terminal_column - 1, false);
                     for (i, line) in help.iter().enumerate() {
-                        move_to(self.preview_start_column, BEGINNING_ROW + i as u16);
+                        move_to(self.preview_start.0, BEGINNING_ROW + i as u16);
                         print!("{}", line,);
                         if BEGINNING_ROW + i as u16 == self.terminal_row - 1 {
                             break;
@@ -116,12 +116,15 @@ impl Layout {
 
     /// Print item name at the top.
     fn print_file_name(&self, item: &ItemInfo) {
-        move_to(self.preview_start_column - 1, 1);
+        move_to(self.preview_start.0 - 1, 1);
         clear_until_newline();
         move_right(1);
         let mut file_name = format!("[{}]", item.file_name);
-        if file_name.len() > self.preview_width.into() {
-            file_name = file_name.chars().take(self.preview_width.into()).collect();
+        if file_name.len() > self.preview_space.0.into() {
+            file_name = file_name
+                .chars()
+                .take(self.preview_space.0.into())
+                .collect();
         }
         print!("{}", file_name);
     }
@@ -130,7 +133,7 @@ impl Layout {
         let content = {
             if let Ok(content) = std::fs::read_to_string(item.file_path.clone()) {
                 let content = content.replace('\t', "    ");
-                format_txt(&content, self.terminal_column - 1, false)
+                format_txt(&content, self.preview_space.0, false)
             } else {
                 vec![]
             }
@@ -138,23 +141,30 @@ impl Layout {
         match self.split {
             Split::Vertical => {
                 for (i, line) in content.iter().enumerate() {
-                    move_to(self.preview_start_column, BEGINNING_ROW + i as u16);
+                    if i < self.preview_scroll {
+                        continue;
+                    }
+                    let row = BEGINNING_ROW + (i - self.preview_scroll) as u16;
+                    move_to(self.preview_start.0, row);
                     set_color(&TermColor::ForeGround(&Colorname::LightBlack));
                     print!("{}", line);
                     reset_color();
-                    if BEGINNING_ROW + i as u16 == self.terminal_row - 1 {
+                    if row == self.preview_space.1 {
                         break;
                     }
                 }
             }
             Split::Horizontal => {
                 for (i, line) in content.iter().enumerate() {
-                    let row = self.preview_start_row + i as u16;
+                    if i < self.preview_scroll {
+                        continue;
+                    }
+                    let row = self.preview_start.1 + (i - self.preview_scroll) as u16;
                     move_to(1, row);
                     set_color(&TermColor::ForeGround(&Colorname::LightBlack));
                     print!("{}", line);
                     reset_color();
-                    if row == self.terminal_row - 1 {
+                    if row == self.preview_space.1 {
                         break;
                     }
                 }
@@ -167,17 +177,17 @@ impl Layout {
         if let Ok(Some(syntax)) = self.syntax_set.find_syntax_for_file(item.file_path.clone()) {
             let mut h = HighlightLines::new(syntax, &self.theme);
             if let Ok(content) = std::fs::read_to_string(item.file_path.clone()) {
-                move_to(self.preview_start_column, BEGINNING_ROW);
+                move_to(self.preview_start.0, BEGINNING_ROW);
                 let mut result = vec![];
                 let max_row = match self.split {
                     Split::Vertical => self.terminal_row - BEGINNING_ROW,
                     Split::Horizontal => self.terminal_row - 1,
                 };
                 'outer: for line in LinesWithEndings::from(&content) {
-                    let count = line.len() / self.preview_width as usize;
+                    let count = line.len() / self.preview_space.1 as usize;
                     let mut range = h.highlight_line(line, &self.syntax_set).unwrap();
                     for _ in 0..=count + 1 {
-                        let ranges = split_at(&range, self.preview_width.into());
+                        let ranges = split_at(&range, self.preview_space.1.into());
                         if !ranges.0.is_empty() {
                             result.push(ranges.0);
                         }
@@ -193,10 +203,10 @@ impl Layout {
                     let escaped = as_24_bit_terminal_escaped(line, false);
                     match self.split {
                         Split::Vertical => {
-                            move_to(self.preview_start_column, BEGINNING_ROW + i as u16);
+                            move_to(self.preview_start.0, BEGINNING_ROW + i as u16);
                         }
                         Split::Horizontal => {
-                            move_to(1, self.preview_start_row + i as u16);
+                            move_to(1, self.preview_start.1 + i as u16);
                         }
                     }
                     print!("{}", escaped);
@@ -216,7 +226,7 @@ impl Layout {
             };
             if let Ok(contents) = contents {
                 if let Ok(contents) = make_tree(contents) {
-                    format_txt(&contents, self.preview_width, false)
+                    format_txt(&contents, self.preview_space.1, false)
                 } else {
                     vec![]
                 }
@@ -229,7 +239,7 @@ impl Layout {
         match self.split {
             Split::Vertical => {
                 for (i, line) in content.iter().enumerate() {
-                    move_to(self.preview_start_column, BEGINNING_ROW + i as u16);
+                    move_to(self.preview_start.0, BEGINNING_ROW + i as u16);
                     set_color(&TermColor::ForeGround(&Colorname::LightBlack));
                     print!("{}", line);
                     reset_color();
@@ -240,7 +250,7 @@ impl Layout {
             }
             Split::Horizontal => {
                 for (i, line) in content.iter().enumerate() {
-                    let row = self.preview_start_row + i as u16;
+                    let row = self.preview_start.1 + i as u16;
                     move_to(1, row);
                     set_color(&TermColor::ForeGround(&Colorname::LightBlack));
                     print!("{}", line);
@@ -256,14 +266,10 @@ impl Layout {
     fn preview_image(&self, item: &ItemInfo, y: u16) -> Result<(), FxError> {
         let wxh = match self.split {
             Split::Vertical => {
-                format!(
-                    "--size={}x{}",
-                    self.preview_width,
-                    self.terminal_row - BEGINNING_ROW
-                )
+                format!("--size={}x{}", self.preview_space.0, self.preview_space.1)
             }
             Split::Horizontal => {
-                format!("--size={}x{}", self.preview_width, self.terminal_row)
+                format!("--size={}x{}", self.preview_space.0, self.preview_space.1)
             }
         };
 
@@ -284,13 +290,13 @@ impl Layout {
                 for (i, line) in output.lines().enumerate() {
                     print!("{}", line);
                     let next_line: u16 = BEGINNING_ROW + (i as u16) + 1;
-                    move_to(self.preview_start_column, next_line);
+                    move_to(self.preview_start.0, next_line);
                 }
             }
             Split::Horizontal => {
                 for (i, line) in output.lines().enumerate() {
                     print!("{}", line);
-                    let next_line: u16 = self.preview_start_row + (i as u16) + 1;
+                    let next_line: u16 = self.preview_start.1 + (i as u16) + 1;
                     move_to(1, next_line);
                 }
             }
@@ -302,14 +308,14 @@ impl Layout {
     fn clear_preview(&self, preview_start_point: u16) {
         match self.split {
             Split::Vertical => {
-                for i in 0..self.terminal_row {
+                for i in 0..=self.terminal_row {
                     move_to(preview_start_point, BEGINNING_ROW + i as u16);
                     clear_until_newline();
                 }
-                move_to(self.preview_start_column, BEGINNING_ROW);
+                move_to(self.preview_start.0, BEGINNING_ROW);
             }
             Split::Horizontal => {
-                for i in 0..self.terminal_row {
+                for i in 0..=self.terminal_row {
                     move_to(1, preview_start_point + i as u16);
                     clear_until_newline();
                 }

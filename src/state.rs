@@ -90,6 +90,7 @@ impl State {
             },
             None => ThemeSet::load_defaults().themes["base16-mocha.dark"].clone(),
         };
+        let split = session.split.unwrap_or(Split::Vertical);
 
         let has_chafa = check_chafa();
         let is_kitty = check_kitty_support();
@@ -122,10 +123,10 @@ impl State {
                     symlink_fg: config.color.symlink_fg,
                 },
                 preview: session.preview.unwrap_or(false),
-                split: session.split.unwrap_or(Split::Vertical),
-                preview_start_column: column + 2,
-                preview_start_row: row + 2,
-                preview_width: column - 1,
+                split,
+                preview_start: (column + 2, row + 2),
+                preview_space: (column - 1, row - BEGINNING_ROW),
+                preview_scroll: 0,
                 syntax_highlight: config.syntax_highlight.unwrap_or(false),
                 syntax_set: syntect::parsing::SyntaxSet::load_defaults_newlines(),
                 theme: ts,
@@ -145,12 +146,8 @@ impl State {
 
         self.layout.terminal_row = row;
         self.layout.terminal_column = column;
-        self.layout.preview_start_column = column + 2;
-        self.layout.preview_start_row = row + 2;
-        self.layout.preview_width = match self.layout.split {
-            Split::Vertical => column - 1,
-            Split::Horizontal => column,
-        };
+        self.layout.preview_start = (column + 2, row + 2);
+        self.layout.preview_space = (column - 1, row - BEGINNING_ROW);
         self.layout.name_max_len = name_max;
         self.layout.time_start_pos = time_start;
 
@@ -864,6 +861,20 @@ impl State {
 
         //Store cursor position when cursor moves
         self.layout.y = y;
+
+        //Roll back preview scroll
+        self.layout.preview_scroll = 0;
+    }
+
+    pub fn scroll_preview(&self, nums: &Num, y: u16) {
+        if self.layout.preview {
+            if let Ok(item) = self.get_item(nums.index) {
+                self.layout.print_preview(item, y);
+                move_to(1, y);
+                print_pointer();
+                move_left(1);
+            }
+        }
     }
 
     /// Print item information at the bottom of the terminal.
