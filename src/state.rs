@@ -17,7 +17,7 @@ use std::fmt::Write as _;
 use std::fs;
 use std::path::PathBuf;
 use std::process::{Child, Command, ExitStatus, Stdio};
-use syntect::highlighting::ThemeSet;
+use syntect::highlighting::{Theme, ThemeSet};
 
 pub const BEGINNING_ROW: u16 = 3;
 pub const FX_CONFIG_DIR: &str = "felix";
@@ -83,16 +83,9 @@ impl State {
             return Err(FxError::TooSmallWindowSize);
         };
 
-        let (time_start, name_max) =
-            make_layout(column, config.use_full_width, config.item_name_length);
+        let (time_start, name_max) = make_layout(column);
 
-        let ts = match config.theme_path {
-            Some(p) => match syntect::highlighting::ThemeSet::get_theme(p) {
-                Ok(ts) => ts,
-                Err(_) => ThemeSet::load_defaults().themes["base16-mocha.dark"].clone(),
-            },
-            None => ThemeSet::load_defaults().themes["base16-mocha.dark"].clone(),
-        };
+        let ts = set_theme(&config);
         let split = session.split.unwrap_or(Split::Vertical);
 
         let has_chafa = check_chafa();
@@ -1144,6 +1137,35 @@ fn is_supported_ext(item: &ItemInfo) -> bool {
     match &item.file_ext {
         None => false,
         Some(ext) => IMAGE_EXTENSION.contains(&ext.as_str()),
+    }
+}
+
+fn set_theme(config: &Config) -> Theme {
+    match &config.theme_path {
+        Some(p) => match ThemeSet::get_theme(p) {
+            Ok(theme) => theme,
+            Err(_) => match &config.default_theme {
+                Some(dt) => choose_theme(dt),
+                None => ThemeSet::load_defaults().themes["base16-ocean.dark"].clone(),
+            },
+        },
+        None => match &config.default_theme {
+            Some(dt) => choose_theme(dt),
+            None => ThemeSet::load_defaults().themes["base16-ocean.dark"].clone(),
+        },
+    }
+}
+
+fn choose_theme(dt: &DefaultTheme) -> Theme {
+    let defaults = ThemeSet::load_defaults();
+    match dt {
+        DefaultTheme::Base16OceanDark => defaults.themes["base16-ocean.dark"].clone(),
+        DefaultTheme::Base16EightiesDark => defaults.themes["base16-eighties.dark"].clone(),
+        DefaultTheme::Base16MochaDark => defaults.themes["base16-mocha.dark"].clone(),
+        DefaultTheme::Base16OceanLight => defaults.themes["base16-ocean.light"].clone(),
+        DefaultTheme::InspiredGitHub => defaults.themes["InspiredGitHub"].clone(),
+        DefaultTheme::SolarizedDark => defaults.themes["Solarized (dark)"].clone(),
+        DefaultTheme::SolarizedLight => defaults.themes["Solarized (light)"].clone(),
     }
 }
 

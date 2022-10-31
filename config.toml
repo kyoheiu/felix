@@ -10,6 +10,18 @@
 # If not set, will default to false.
 # syntax_highlight = false
 
+# (Optional) Default theme for syntax highlighting.
+# Pick one from the following:
+#    Base16OceanDark
+#    Base16EightiesDark
+#    Base16MochaDark
+#    Base16OceanLight
+#    InspiredGitHub
+#    SolarizedDark
+#    SolarizedLight
+# If not set, will default to \"Base16OceanDark\".
+# default_theme = \"Base16OceanDark\"
+
 # (Optional) Path to .tmtheme file for the syntax highlighting.
 # If not set, felix uses `base16-mocha.dark`.
 # theme_path = \"\"
