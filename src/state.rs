@@ -67,7 +67,7 @@ pub enum FileType {
 impl State {
     /// Initialize state app.
     pub fn new() -> Result<Self, FxError> {
-        let config = read_config().unwrap_or_else(|_| panic!("Something wrong with config file."));
+        let config = read_config()?;
         let session =
             read_session().unwrap_or_else(|_| panic!("Something wrong with session file."));
         let (column, row) =

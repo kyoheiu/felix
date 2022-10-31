@@ -17,13 +17,11 @@ fn main() -> Result<(), errors::FxError> {
     let len = args.len();
     match len {
         1 => {
-            if run::run(
+            if let Err(e) = run::run(
                 std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
                 false,
-            )
-            .is_err()
-            {
-                eprintln!("Cannot read the current directory.");
+            ) {
+                eprintln!("{}", e);
             }
         }
 
@@ -35,25 +33,23 @@ fn main() -> Result<(), errors::FxError> {
                 functions::check_version()?;
             }
             "-l" | "--log" => {
-                if run::run(
+                if let Err(e) = run::run(
                     std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
                     true,
-                )
-                .is_err()
-                {
-                    eprintln!("Cannot read the current directory.");
+                ) {
+                    eprintln!("{}", e);
                 }
             }
             _ => {
-                if run::run(PathBuf::from(&args[1]), false).is_err() {
-                    eprintln!("Cannot read the target directory.");
+                if let Err(e) = run::run(PathBuf::from(&args[1]), false) {
+                    eprintln!("{}", e);
                 }
             }
         },
         3 => {
             if args[1] == "-l" || args[1] == "--log" {
-                if run::run(PathBuf::from(&args[2]), true).is_err() {
-                    eprintln!("Cannot read the target directory.");
+                if let Err(e) = run::run(PathBuf::from(&args[2]), true) {
+                    eprintln!("{}", e);
                 }
             } else {
                 print!("{}", help::HELP);
