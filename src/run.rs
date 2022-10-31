@@ -134,8 +134,9 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     //Go up. If lists exceed max-row, lists "scrolls" before the top of the list
                     KeyCode::Char('j') | KeyCode::Down => {
                         if modifiers == KeyModifiers::ALT {
-                            state.layout.preview_scroll += 1;
-                            state.scroll_preview(&nums, y);
+                            if state.layout.preview {
+                                state.scroll_down_preview(&nums, y);
+                            }
                         } else if len == 0 || nums.index == len - 1 {
                             continue;
                         } else if y >= state.layout.terminal_row - 1 - SCROLL_POINT
@@ -153,9 +154,8 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     //Go down. If lists exceed max-row, lists "scrolls" before the bottom of the list
                     KeyCode::Char('k') | KeyCode::Up => {
                         if modifiers == KeyModifiers::ALT {
-                            if state.layout.preview_scroll != 0 {
-                                state.layout.preview_scroll -= 1;
-                                state.scroll_preview(&nums, y);
+                            if state.layout.preview {
+                                state.scroll_up_preview(&nums, y);
                             }
                         } else if nums.index == 0 {
                             continue;

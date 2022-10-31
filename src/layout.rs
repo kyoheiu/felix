@@ -1,7 +1,7 @@
 use super::config::*;
 use super::errors::FxError;
 use super::functions::*;
-use super::state::{FileType, ItemInfo, BEGINNING_ROW};
+use super::state::{ItemInfo, BEGINNING_ROW};
 use super::term::*;
 
 use serde::{Deserialize, Serialize};
@@ -37,7 +37,6 @@ pub struct Layout {
     pub split: Split,
     pub preview_start: (u16, u16),
     pub preview_space: (u16, u16),
-    pub preview_scroll: usize,
     pub syntax_highlight: bool,
     pub syntax_set: SyntaxSet,
     pub theme: Theme,
@@ -45,6 +44,7 @@ pub struct Layout {
     pub is_kitty: bool,
 }
 
+#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone)]
 pub enum PreviewType {
     NotReadable,
     TooBigSize,
@@ -75,17 +75,17 @@ impl Layout {
             }
         }
 
-        match check_preview_type(item) {
-            PreviewType::NotReadable => {
+        match item.preview_type {
+            Some(PreviewType::NotReadable) => {
                 print!("(file not readable)");
             }
-            PreviewType::TooBigSize => {
+            Some(PreviewType::TooBigSize) => {
                 print!("(file too big for preview)");
             }
-            PreviewType::Directory => {
+            Some(PreviewType::Directory) => {
                 self.preview_directory(item);
             }
-            PreviewType::Image => {
+            Some(PreviewType::Image) => {
                 if self.has_chafa {
                     if let Err(e) = self.preview_image(item, y) {
                         print_warning(e, y);
@@ -101,15 +101,18 @@ impl Layout {
                     }
                 }
             }
-            PreviewType::Text => {
+            Some(PreviewType::Text) => {
                 if self.syntax_highlight {
                     self.preview_text_with_sh(item);
                 } else {
                     self.preview_text(item);
                 }
             }
-            PreviewType::Binary => {
+            Some(PreviewType::Binary) => {
                 print!("(Binary file)");
+            }
+            _ => {
+                print!("(Not Available)");
             }
         }
     }
@@ -129,63 +132,26 @@ impl Layout {
         print!("{}", file_name);
     }
 
-    fn print_txt_in_preview_area(&self, content: Vec<String>) {
-        match self.split {
-            Split::Vertical => {
-                for (i, line) in content.iter().enumerate() {
-                    if i < self.preview_scroll {
-                        continue;
-                    }
-                    let sum = (i - self.preview_scroll) as u16;
-                    let row = BEGINNING_ROW + sum as u16;
-                    move_to(self.preview_start.0, row);
-                    set_color(&TermColor::ForeGround(&Colorname::LightBlack));
-                    print!("{}", line);
-                    reset_color();
-                    if sum == self.preview_space.1 - 1 {
-                        break;
-                    }
-                }
-            }
-            Split::Horizontal => {
-                for (i, line) in content.iter().enumerate() {
-                    if i < self.preview_scroll {
-                        continue;
-                    }
-                    let sum = (i - self.preview_scroll) as u16;
-                    let row = self.preview_start.1 + sum as u16;
-                    move_to(1, row);
-                    set_color(&TermColor::ForeGround(&Colorname::LightBlack));
-                    print!("{}", line);
-                    reset_color();
-                    if sum == self.preview_space.1 + BEGINNING_ROW - 1 {
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
     fn preview_text(&self, item: &ItemInfo) {
         let content = {
-            if let Ok(content) = std::fs::read_to_string(item.file_path.clone()) {
+            if let Some(content) = &item.content {
                 let content = content.replace('\t', "    ");
                 format_txt(&content, self.preview_space.0, false)
             } else {
                 vec![]
             }
         };
-        self.print_txt_in_preview_area(content);
+        self.print_txt_in_preview_area(item, content);
     }
 
     /// Preview text with syntax highlighting.
     fn preview_text_with_sh(&self, item: &ItemInfo) {
         if let Ok(Some(syntax)) = self.syntax_set.find_syntax_for_file(item.file_path.clone()) {
             let mut h = HighlightLines::new(syntax, &self.theme);
-            if let Ok(content) = std::fs::read_to_string(item.file_path.clone()) {
+            if let Some(content) = &item.content {
                 move_to(self.preview_start.0, BEGINNING_ROW);
                 let mut result = vec![];
-                for line in LinesWithEndings::from(&content) {
+                for line in LinesWithEndings::from(content) {
                     let count = line.len() / self.preview_space.1 as usize;
                     let mut range = h.highlight_line(line, &self.syntax_set).unwrap();
                     for _ in 0..=count + 1 {
@@ -199,10 +165,10 @@ impl Layout {
                 match self.split {
                     Split::Vertical => {
                         for (i, line) in result.iter().enumerate() {
-                            if i < self.preview_scroll {
+                            if i < item.preview_scroll {
                                 continue;
                             }
-                            let sum = (i - self.preview_scroll) as u16;
+                            let sum = (i - item.preview_scroll) as u16;
                             let row = BEGINNING_ROW + sum as u16;
                             let escaped = as_24_bit_terminal_escaped(line, false);
                             move_to(self.preview_start.0, row);
@@ -215,10 +181,10 @@ impl Layout {
                     }
                     Split::Horizontal => {
                         for (i, line) in result.iter().enumerate() {
-                            if i < self.preview_scroll {
+                            if i < item.preview_scroll {
                                 continue;
                             }
-                            let sum = (i - self.preview_scroll) as u16;
+                            let sum = (i - item.preview_scroll) as u16;
                             let row = self.preview_start.1 + sum as u16;
                             let escaped = as_24_bit_terminal_escaped(line, false);
                             move_to(1, row);
@@ -231,7 +197,7 @@ impl Layout {
                     }
                 }
             } else {
-                print!("(file not readable)");
+                print!("");
             }
         } else {
             self.preview_text(item);
@@ -255,7 +221,44 @@ impl Layout {
             }
         };
 
-        self.print_txt_in_preview_area(content);
+        self.print_txt_in_preview_area(item, content);
+    }
+
+    fn print_txt_in_preview_area(&self, item: &ItemInfo, content: Vec<String>) {
+        match self.split {
+            Split::Vertical => {
+                for (i, line) in content.iter().enumerate() {
+                    if i < item.preview_scroll {
+                        continue;
+                    }
+                    let sum = (i - item.preview_scroll) as u16;
+                    let row = BEGINNING_ROW + sum as u16;
+                    move_to(self.preview_start.0, row);
+                    set_color(&TermColor::ForeGround(&Colorname::LightBlack));
+                    print!("{}", line);
+                    reset_color();
+                    if sum == self.preview_space.1 - 1 {
+                        break;
+                    }
+                }
+            }
+            Split::Horizontal => {
+                for (i, line) in content.iter().enumerate() {
+                    if i < item.preview_scroll {
+                        continue;
+                    }
+                    let sum = (i - item.preview_scroll) as u16;
+                    let row = self.preview_start.1 + sum as u16;
+                    move_to(1, row);
+                    set_color(&TermColor::ForeGround(&Colorname::LightBlack));
+                    print!("{}", line);
+                    reset_color();
+                    if sum == self.preview_space.1 + BEGINNING_ROW - 1 {
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     /// Print text preview on the right half of the terminal (Experimental).
@@ -367,42 +370,5 @@ pub fn make_layout(
         }
 
         (time_start, name_max)
-    }
-}
-
-fn check_preview_content_type(item: &ItemInfo) -> PreviewType {
-    if item.file_size > MAX_SIZE_TO_PREVIEW {
-        PreviewType::TooBigSize
-    } else if is_supported_ext(item) {
-        PreviewType::Image
-    } else if let Ok(content) = &std::fs::read(&item.file_path) {
-        if content_inspector::inspect(content).is_text() {
-            PreviewType::Text
-        } else {
-            PreviewType::Binary
-        }
-    } else {
-        // failed to resolve item to any form of supported preview
-        // it is probably not accessible due to permissions, broken symlink etc.
-        PreviewType::NotReadable
-    }
-}
-
-/// Check preview type.
-fn check_preview_type(item: &ItemInfo) -> PreviewType {
-    if item.file_type == FileType::Directory
-        || (item.file_type == FileType::Symlink && item.symlink_dir_path.is_some())
-    {
-        // symlink was resolved to directory already in the ItemInfo
-        PreviewType::Directory
-    } else {
-        check_preview_content_type(item)
-    }
-}
-
-fn is_supported_ext(item: &ItemInfo) -> bool {
-    match &item.file_ext {
-        None => false,
-        Some(ext) => IMAGE_EXTENSION.contains(&ext.as_str()),
     }
 }

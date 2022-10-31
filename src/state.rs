@@ -52,6 +52,9 @@ pub struct ItemInfo {
     pub modified: Option<String>,
     pub is_hidden: bool,
     pub selected: bool,
+    pub preview_type: Option<PreviewType>,
+    pub preview_scroll: usize,
+    pub content: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -132,7 +135,6 @@ impl State {
                     Split::Vertical => (column - 1, row - BEGINNING_ROW),
                     Split::Horizontal => (column, row - 1),
                 },
-                preview_scroll: 0,
                 syntax_highlight: config.syntax_highlight.unwrap_or(false),
                 syntax_set: syntect::parsing::SyntaxSet::load_defaults_newlines(),
                 theme: ts,
@@ -850,6 +852,13 @@ impl State {
     /// If preview is enabled, print text preview, contents of the directory or image preview on the right half of the terminal
     /// (To preview image, you must install chafa. See help).
     pub fn move_cursor(&mut self, nums: &Num, y: u16) {
+        if self.layout.preview {
+            if let Ok(item) = self.get_item_mut(nums.index) {
+                set_preview_type(item);
+                item.preview_scroll = 0;
+            }
+        }
+
         if let Ok(item) = self.get_item(nums.index) {
             delete_cursor();
 
@@ -867,20 +876,6 @@ impl State {
 
         //Store cursor position when cursor moves
         self.layout.y = y;
-
-        //Roll back preview scroll
-        self.layout.preview_scroll = 0;
-    }
-
-    pub fn scroll_preview(&self, nums: &Num, y: u16) {
-        if self.layout.preview {
-            if let Ok(item) = self.get_item(nums.index) {
-                self.layout.print_preview(item, y);
-                move_to(1, y);
-                print_pointer();
-                move_left(1);
-            }
-        }
     }
 
     /// Print item information at the bottom of the terminal.
@@ -946,6 +941,31 @@ impl State {
                     .collect();
                 print!("{}", footer.negative());
             }
+        }
+    }
+
+    pub fn scroll_down_preview(&mut self, nums: &Num, y: u16) {
+        if let Ok(item) = self.get_item_mut(nums.index) {
+            item.preview_scroll += 1;
+            self.scroll_preview(nums, y)
+        }
+    }
+
+    pub fn scroll_up_preview(&mut self, nums: &Num, y: u16) {
+        if let Ok(item) = self.get_item_mut(nums.index) {
+            if item.preview_scroll != 0 {
+                item.preview_scroll -= 1;
+                self.scroll_preview(nums, y)
+            }
+        }
+    }
+
+    fn scroll_preview(&self, nums: &Num, y: u16) {
+        if let Ok(item) = self.get_item(nums.index) {
+            self.layout.print_preview(item, y);
+            move_to(1, y);
+            print_pointer();
+            move_left(1);
         }
     }
 
@@ -1033,6 +1053,9 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
                 modified: time,
                 selected: false,
                 is_hidden: hidden,
+                preview_type: None,
+                preview_scroll: 0,
+                content: None,
             }
         }
         Err(_) => ItemInfo {
@@ -1045,6 +1068,9 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
             modified: None,
             selected: false,
             is_hidden: false,
+            preview_type: None,
+            preview_scroll: 0,
+            content: None,
         },
     }
 }
@@ -1080,6 +1106,46 @@ fn check_kitty_support() -> bool {
         term.contains("kitty")
     } else {
         false
+    }
+}
+
+fn set_preview_content_type(item: &mut ItemInfo) {
+    if item.file_size > MAX_SIZE_TO_PREVIEW {
+        item.preview_type = Some(PreviewType::TooBigSize);
+    } else if is_supported_ext(item) {
+        item.preview_type = Some(PreviewType::Image);
+    } else if let Ok(content) = &std::fs::read(&item.file_path) {
+        if content_inspector::inspect(content).is_text() {
+            if let Ok(content) = String::from_utf8(content.to_vec()) {
+                item.content = Some(content);
+            }
+            item.preview_type = Some(PreviewType::Text);
+        } else {
+            item.preview_type = Some(PreviewType::Binary);
+        }
+    } else {
+        // failed to resolve item to any form of supported preview
+        // it is probably not accessible due to permissions, broken symlink etc.
+        item.preview_type = Some(PreviewType::NotReadable);
+    }
+}
+
+/// Check preview type.
+fn set_preview_type(item: &mut ItemInfo) {
+    if item.file_type == FileType::Directory
+        || (item.file_type == FileType::Symlink && item.symlink_dir_path.is_some())
+    {
+        // symlink was resolved to directory already in the ItemInfo
+        item.preview_type = Some(PreviewType::Directory);
+    } else {
+        set_preview_content_type(item);
+    }
+}
+
+fn is_supported_ext(item: &ItemInfo) -> bool {
+    match &item.file_ext {
+        None => false,
+        Some(ext) => IMAGE_EXTENSION.contains(&ext.as_str()),
     }
 }
 
