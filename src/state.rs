@@ -852,6 +852,7 @@ impl State {
     /// If preview is enabled, print text preview, contents of the directory or image preview on the right half of the terminal
     /// (To preview image, you must install chafa. See help).
     pub fn move_cursor(&mut self, nums: &Num, y: u16) {
+        // If preview is enabled, set the preview type, read the content (if text type) and reset the scroll.
         if self.layout.preview {
             if let Ok(item) = self.get_item_mut(nums.index) {
                 set_preview_type(item);

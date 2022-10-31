@@ -151,7 +151,7 @@ impl Layout {
             if let Some(content) = &item.content {
                 move_to(self.preview_start.0, BEGINNING_ROW);
                 let mut result = vec![];
-                for line in LinesWithEndings::from(content) {
+                for (index, line) in LinesWithEndings::from(content).enumerate() {
                     let count = line.len() / self.preview_space.1 as usize;
                     let mut range = h.highlight_line(line, &self.syntax_set).unwrap();
                     for _ in 0..=count + 1 {
@@ -160,6 +160,9 @@ impl Layout {
                             result.push(ranges.0);
                         }
                         range = ranges.1;
+                    }
+                    if index > self.preview_space.1 as usize + item.preview_scroll {
+                        break;
                     }
                 }
                 match self.split {
