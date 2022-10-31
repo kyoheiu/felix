@@ -18,16 +18,6 @@ default = \"nvim\"
 # feh = [\"jpg\", \"jpeg\", \"png\", \"gif\", \"svg\"]
 # zathura = [\"pdf\"]
 
-# (Optional) Whether to use the full width of terminal.
-# If not set, this will be true.
-# use_full_width = true
-
-# (Optional) Set the max length of item name to be displayed.
-# This works only when use_full_width is set to false.
-# If the terminal size is not enough, the length will be changed to fit it.
-# If not set, this will be 30.
-# item_name_length = 30
-
 # (Optional) Whether to use syntax highlighting in the preview mode.
 # If not set, will default to false.
 # syntax_highlight = false
@@ -68,8 +58,6 @@ pub struct Config {
     pub default: Option<String>,
     pub exec: Option<HashMap<String, Vec<String>>>,
     pub color: ConfigColor,
-    pub use_full_width: Option<bool>,
-    pub item_name_length: Option<usize>,
     pub syntax_highlight: Option<bool>,
     pub theme_path: Option<PathBuf>,
 }

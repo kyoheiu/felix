@@ -118,8 +118,6 @@ impl State {
                 terminal_column: column,
                 name_max_len: name_max,
                 time_start_pos: time_start,
-                use_full: config.use_full_width,
-                option_name_len: config.item_name_length,
                 colors: ConfigColor {
                     dir_fg: config.color.dir_fg,
                     file_fg: config.color.file_fg,
@@ -149,8 +147,7 @@ impl State {
 
     /// Reload the app layout when terminal size changes.
     pub fn refresh(&mut self, column: u16, row: u16, nums: &Num, cursor_pos: u16) {
-        let (time_start, name_max) =
-            make_layout(column, self.layout.use_full, self.layout.option_name_len);
+        let (time_start, name_max) = make_layout(column);
 
         self.layout.terminal_row = row;
         self.layout.terminal_column = column;
