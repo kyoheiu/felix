@@ -138,7 +138,7 @@ impl Layout {
                 vec![]
             }
         };
-        self.print_txt_in_preview_area(item, content);
+        self.print_txt_in_preview_area(item, content, false);
     }
 
     /// Preview text with syntax highlighting.
@@ -149,53 +149,24 @@ impl Layout {
                 move_to(self.preview_start.0, BEGINNING_ROW);
                 let mut result = vec![];
                 for (index, line) in LinesWithEndings::from(content).enumerate() {
-                    let count = line.len() / self.preview_space.1 as usize;
+                    let count = line.len() / self.preview_space.0 as usize;
                     let mut range = h.highlight_line(line, &self.syntax_set).unwrap();
                     for _ in 0..=count + 1 {
-                        let ranges = split_at(&range, self.preview_space.0.into());
+                        let ranges = split_at(&range, (self.preview_space.0 + 1) as usize);
                         if !ranges.0.is_empty() {
                             result.push(ranges.0);
                         }
                         range = ranges.1;
                     }
-                    if index > self.preview_space.1 as usize + item.preview_scroll {
+                    if index > self.preview_space.1 as usize + item.preview_scroll + 1 {
                         break;
                     }
                 }
-                match self.split {
-                    Split::Vertical => {
-                        for (i, line) in result.iter().enumerate() {
-                            if i < item.preview_scroll {
-                                continue;
-                            }
-                            let sum = (i - item.preview_scroll) as u16;
-                            let row = BEGINNING_ROW + sum as u16;
-                            let escaped = as_24_bit_terminal_escaped(line, false);
-                            move_to(self.preview_start.0, row);
-                            print!("{}", escaped);
-                            if sum == self.preview_space.1 - 1 {
-                                break;
-                            }
-                        }
-                        reset_color();
-                    }
-                    Split::Horizontal => {
-                        for (i, line) in result.iter().enumerate() {
-                            if i < item.preview_scroll {
-                                continue;
-                            }
-                            let sum = (i - item.preview_scroll) as u16;
-                            let row = self.preview_start.1 + sum as u16;
-                            let escaped = as_24_bit_terminal_escaped(line, false);
-                            move_to(1, row);
-                            print!("{}", escaped);
-                            if sum == self.preview_space.1 + 1 {
-                                break;
-                            }
-                        }
-                        reset_color();
-                    }
-                }
+                let result: Vec<String> = result
+                    .iter()
+                    .map(|x| as_24_bit_terminal_escaped(x, false))
+                    .collect();
+                self.print_txt_in_preview_area(item, result, true);
             } else {
                 print!("");
             }
@@ -221,10 +192,15 @@ impl Layout {
             }
         };
 
-        self.print_txt_in_preview_area(item, content);
+        self.print_txt_in_preview_area(item, content, false);
     }
 
-    fn print_txt_in_preview_area(&self, item: &ItemInfo, content: Vec<String>) {
+    fn print_txt_in_preview_area(
+        &self,
+        item: &ItemInfo,
+        content: Vec<String>,
+        syntex_highlight: bool,
+    ) {
         match self.split {
             Split::Vertical => {
                 for (i, line) in content.iter().enumerate() {
@@ -234,10 +210,15 @@ impl Layout {
                     let sum = (i - item.preview_scroll) as u16;
                     let row = BEGINNING_ROW + sum as u16;
                     move_to(self.preview_start.0, row);
-                    set_color(&TermColor::ForeGround(&Colorname::LightBlack));
-                    print!("{}", line);
-                    reset_color();
+                    if syntex_highlight {
+                        print!("{}", line);
+                    } else {
+                        set_color(&TermColor::ForeGround(&Colorname::LightBlack));
+                        print!("{}", line);
+                        reset_color();
+                    }
                     if sum == self.preview_space.1 - 1 {
+                        reset_color();
                         break;
                     }
                 }
@@ -250,10 +231,15 @@ impl Layout {
                     let sum = (i - item.preview_scroll) as u16;
                     let row = self.preview_start.1 + sum as u16;
                     move_to(1, row);
-                    set_color(&TermColor::ForeGround(&Colorname::LightBlack));
-                    print!("{}", line);
-                    reset_color();
-                    if sum == self.preview_space.1 + BEGINNING_ROW - 1 {
+                    if syntex_highlight {
+                        print!("{}", line);
+                    } else {
+                        set_color(&TermColor::ForeGround(&Colorname::LightBlack));
+                        print!("{}", line);
+                        reset_color();
+                    }
+                    if sum > self.preview_space.1 {
+                        reset_color();
                         break;
                     }
                 }

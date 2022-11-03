@@ -124,7 +124,7 @@ impl State {
                 },
                 preview_space: match split {
                     Split::Vertical => (column - 1, row - BEGINNING_ROW),
-                    Split::Horizontal => (column, row - 1),
+                    Split::Horizontal => (column, row),
                 },
                 syntax_highlight: config.syntax_highlight.unwrap_or(false),
                 syntax_set: syntect::parsing::SyntaxSet::load_defaults_newlines(),
