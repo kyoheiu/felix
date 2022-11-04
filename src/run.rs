@@ -231,11 +231,11 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             };
                                             p_memo_v.push(cursor_memo);
 
-                                            if let Err(e) = std::env::set_current_dir(true_path) {
+                                            if let Err(e) = std::env::set_current_dir(&true_path) {
                                                 print_warning(e, y);
                                                 continue;
                                             }
-                                            state.current_dir = true_path.clone();
+                                            state.current_dir = true_path.to_path_buf();
                                             state.filtered = false;
                                             nums.reset();
                                             state.reload(&nums, BEGINNING_ROW)?;
@@ -271,9 +271,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         };
                                         p_memo_v.push(cursor_memo);
 
-                                        if let Err(e) =
-                                            std::env::set_current_dir(item.file_path.clone())
-                                        {
+                                        if let Err(e) = std::env::set_current_dir(&item.file_path) {
                                             print_warning(e, y);
                                             continue;
                                         }
@@ -362,7 +360,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         match memo.to_sym_dir {
                                             Some(true_path) => {
                                                 if let Err(e) =
-                                                    std::env::set_current_dir(true_path.clone())
+                                                    std::env::set_current_dir(&true_path)
                                                 {
                                                     print_warning(e, y);
                                                     continue;
@@ -498,7 +496,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             p_memo_v = Vec::new();
                                             c_memo_v = Vec::new();
                                             let home_dir = dirs::home_dir().unwrap();
-                                            std::env::set_current_dir(home_dir.clone())?;
+                                            std::env::set_current_dir(&home_dir)?;
                                             state.current_dir = home_dir;
                                             nums.reset();
                                             if let Err(e) = state.update_list() {
@@ -541,7 +539,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                                     target_dir.trim(),
                                                                 );
                                                                 std::env::set_current_dir(
-                                                                    target_path.clone(),
+                                                                    &target_path,
                                                                 )?;
                                                                 state.current_dir =
                                                                     if cfg!(not(windows)) {
@@ -1237,7 +1235,9 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             //go to the home directory
                                             p_memo_v = Vec::new();
                                             c_memo_v = Vec::new();
-                                            state.current_dir = dirs::home_dir().unwrap();
+                                            let home_dir = dirs::home_dir().unwrap();
+                                            std::env::set_current_dir(&home_dir)?;
+                                            state.current_dir = home_dir;
                                             nums.reset();
                                             if let Err(e) = state.update_list() {
                                                 print_warning(e, y);
@@ -1338,8 +1338,8 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             nums.reset();
                                             state.filtered = false;
                                             let home_dir = dirs::home_dir().unwrap();
-                                            std::env::set_current_dir(home_dir)?;
-                                            state.current_dir = dirs::home_dir().unwrap();
+                                            std::env::set_current_dir(&home_dir)?;
+                                            state.current_dir = home_dir;
                                             state.reload(&nums, BEGINNING_ROW)?;
                                             break 'command;
                                         }
