@@ -17,6 +17,7 @@ use std::fmt::Write as _;
 use std::fs;
 use std::path::PathBuf;
 use std::process::{Child, Command, ExitStatus, Stdio};
+use syntect::highlighting::{Theme, ThemeSet};
 
 pub const BEGINNING_ROW: u16 = 3;
 pub const FX_CONFIG_DIR: &str = "felix";
@@ -24,7 +25,7 @@ pub const CONFIG_FILE: &str = "config.toml";
 pub const TRASH: &str = "trash";
 pub const WHEN_EMPTY: &str = "Are you sure to empty the trash directory? (if yes: y)";
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct State {
     pub list: Vec<ItemInfo>,
     pub registered: Vec<ItemInfo>,
@@ -51,6 +52,9 @@ pub struct ItemInfo {
     pub modified: Option<String>,
     pub is_hidden: bool,
     pub selected: bool,
+    pub preview_type: Option<PreviewType>,
+    pub preview_scroll: usize,
+    pub content: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -61,26 +65,28 @@ pub enum FileType {
 }
 
 impl State {
-    /// Initialize state app.
+    /// Initialize the state of the app.
     pub fn new() -> Result<Self, FxError> {
-        let config = read_config().unwrap_or_else(|_| panic!("Something wrong with config file."));
+        let config = read_config()?;
         let session =
             read_session().unwrap_or_else(|_| panic!("Something wrong with session file."));
-        let (column, row) =
+        let (original_column, original_row) =
             crossterm::terminal::size().unwrap_or_else(|_| panic!("Cannot detect terminal size."));
 
         // Return error if terminal size may cause panic
-        if column < 4 {
+        if original_column < 4 {
             error!("Too small terminal size (less than 4 columns).");
             return Err(FxError::TooSmallWindowSize);
         };
-        if row < 4 {
+        if original_row < 4 {
             error!("Too small terminal size. (less than 4 rows)");
             return Err(FxError::TooSmallWindowSize);
         };
 
-        let (time_start, name_max) =
-            make_layout(column, config.use_full_width, config.item_name_length);
+        let (time_start, name_max) = make_layout(original_column);
+
+        let ts = set_theme(&config);
+        let split = session.split.unwrap_or(Split::Vertical);
 
         let has_chafa = check_chafa();
         let is_kitty = check_kitty_support();
@@ -101,20 +107,28 @@ impl State {
             sort_by: session.sort_by,
             layout: Layout {
                 y: BEGINNING_ROW,
-                terminal_row: row,
-                terminal_column: column,
+                terminal_row: original_row,
+                terminal_column: original_column,
                 name_max_len: name_max,
                 time_start_pos: time_start,
-                use_full: config.use_full_width,
-                option_name_len: config.item_name_length,
                 colors: ConfigColor {
                     dir_fg: config.color.dir_fg,
                     file_fg: config.color.file_fg,
                     symlink_fg: config.color.symlink_fg,
                 },
-                preview: false,
-                preview_start_column: column + 2,
-                preview_width: column - 1,
+                preview: session.preview.unwrap_or(false),
+                split,
+                preview_start: match split {
+                    Split::Vertical => (0, 0),
+                    Split::Horizontal => (0, 0),
+                },
+                preview_space: match split {
+                    Split::Vertical => (0, 0),
+                    Split::Horizontal => (0, 0),
+                },
+                syntax_highlight: config.syntax_highlight.unwrap_or(false),
+                syntax_set: syntect::parsing::SyntaxSet::load_defaults_newlines(),
+                theme: ts,
                 has_chafa,
                 is_kitty,
             },
@@ -126,13 +140,24 @@ impl State {
 
     /// Reload the app layout when terminal size changes.
     pub fn refresh(&mut self, column: u16, row: u16, nums: &Num, cursor_pos: u16) {
-        let (time_start, name_max) =
-            make_layout(column, self.layout.use_full, self.layout.option_name_len);
+        let (time_start, name_max) = make_layout(column);
+
+        let (original_column, original_row) =
+            crossterm::terminal::size().unwrap_or_else(|_| panic!("Cannot detect terminal size."));
 
         self.layout.terminal_row = row;
         self.layout.terminal_column = column;
-        self.layout.preview_start_column = column + 2;
-        self.layout.preview_width = column - 1;
+        self.layout.preview_start = match self.layout.split {
+            Split::Vertical => (column + 2, BEGINNING_ROW),
+            Split::Horizontal => (1, row + 2),
+        };
+        self.layout.preview_space = match self.layout.preview {
+            true => match self.layout.split {
+                Split::Vertical => (original_column - column - 1, row - BEGINNING_ROW),
+                Split::Horizontal => (column, original_row - row - 1),
+            },
+            false => (0, 0),
+        };
         self.layout.name_max_len = name_max;
         self.layout.time_start_pos = time_start;
 
@@ -829,11 +854,19 @@ impl State {
     /// If preview is enabled, print text preview, contents of the directory or image preview on the right half of the terminal
     /// (To preview image, you must install chafa. See help).
     pub fn move_cursor(&mut self, nums: &Num, y: u16) {
+        // If preview is enabled, set the preview type, read the content (if text type) and reset the scroll.
+        if self.layout.preview {
+            if let Ok(item) = self.get_item_mut(nums.index) {
+                set_preview_type(item);
+                item.preview_scroll = 0;
+            }
+        }
+
         if let Ok(item) = self.get_item(nums.index) {
             delete_cursor();
 
             //Print item information at the bottom
-            self.print_footer(nums, item);
+            self.print_footer(item, nums);
 
             //Print preview if preview is on
             if self.layout.preview {
@@ -849,7 +882,7 @@ impl State {
     }
 
     /// Print item information at the bottom of the terminal.
-    fn print_footer(&self, nums: &Num, item: &ItemInfo) {
+    fn print_footer(&self, item: &ItemInfo, nums: &Num) {
         move_to(1, self.layout.terminal_row);
         clear_current_line();
 
@@ -914,11 +947,38 @@ impl State {
         }
     }
 
+    pub fn scroll_down_preview(&mut self, nums: &Num, y: u16) {
+        if let Ok(item) = self.get_item_mut(nums.index) {
+            item.preview_scroll += 1;
+            self.scroll_preview(nums, y)
+        }
+    }
+
+    pub fn scroll_up_preview(&mut self, nums: &Num, y: u16) {
+        if let Ok(item) = self.get_item_mut(nums.index) {
+            if item.preview_scroll != 0 {
+                item.preview_scroll -= 1;
+                self.scroll_preview(nums, y)
+            }
+        }
+    }
+
+    fn scroll_preview(&self, nums: &Num, y: u16) {
+        if let Ok(item) = self.get_item(nums.index) {
+            self.layout.print_preview(item, y);
+            move_to(1, y);
+            print_pointer();
+            move_left(1);
+        }
+    }
+
     /// Store the sort key and whether to show hidden items to session file.
     pub fn write_session(&self, session_path: PathBuf) -> Result<(), FxError> {
         let session = Session {
             sort_by: self.sort_by.clone(),
             show_hidden: self.show_hidden,
+            preview: Some(self.layout.preview),
+            split: Some(self.layout.split),
         };
         let serialized = toml::to_string(&session)?;
         fs::write(&session_path, serialized)?;
@@ -996,6 +1056,9 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
                 modified: time,
                 selected: false,
                 is_hidden: hidden,
+                preview_type: None,
+                preview_scroll: 0,
+                content: None,
             }
         }
         Err(_) => ItemInfo {
@@ -1008,6 +1071,9 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
             modified: None,
             selected: false,
             is_hidden: false,
+            preview_type: None,
+            preview_scroll: 0,
+            content: None,
         },
     }
 }
@@ -1043,6 +1109,75 @@ fn check_kitty_support() -> bool {
         term.contains("kitty")
     } else {
         false
+    }
+}
+
+fn set_preview_content_type(item: &mut ItemInfo) {
+    if item.file_size > MAX_SIZE_TO_PREVIEW {
+        item.preview_type = Some(PreviewType::TooBigSize);
+    } else if is_supported_ext(item) {
+        item.preview_type = Some(PreviewType::Image);
+    } else if let Ok(content) = &std::fs::read(&item.file_path) {
+        if content_inspector::inspect(content).is_text() {
+            if let Ok(content) = String::from_utf8(content.to_vec()) {
+                item.content = Some(content);
+            }
+            item.preview_type = Some(PreviewType::Text);
+        } else {
+            item.preview_type = Some(PreviewType::Binary);
+        }
+    } else {
+        // failed to resolve item to any form of supported preview
+        // it is probably not accessible due to permissions, broken symlink etc.
+        item.preview_type = Some(PreviewType::NotReadable);
+    }
+}
+
+/// Check preview type.
+fn set_preview_type(item: &mut ItemInfo) {
+    if item.file_type == FileType::Directory
+        || (item.file_type == FileType::Symlink && item.symlink_dir_path.is_some())
+    {
+        // symlink was resolved to directory already in the ItemInfo
+        item.preview_type = Some(PreviewType::Directory);
+    } else {
+        set_preview_content_type(item);
+    }
+}
+
+fn is_supported_ext(item: &ItemInfo) -> bool {
+    match &item.file_ext {
+        None => false,
+        Some(ext) => IMAGE_EXTENSION.contains(&ext.as_str()),
+    }
+}
+
+fn set_theme(config: &Config) -> Theme {
+    match &config.theme_path {
+        Some(p) => match ThemeSet::get_theme(p) {
+            Ok(theme) => theme,
+            Err(_) => match &config.default_theme {
+                Some(dt) => choose_theme(dt),
+                None => ThemeSet::load_defaults().themes["base16-ocean.dark"].clone(),
+            },
+        },
+        None => match &config.default_theme {
+            Some(dt) => choose_theme(dt),
+            None => ThemeSet::load_defaults().themes["base16-ocean.dark"].clone(),
+        },
+    }
+}
+
+fn choose_theme(dt: &DefaultTheme) -> Theme {
+    let defaults = ThemeSet::load_defaults();
+    match dt {
+        DefaultTheme::Base16OceanDark => defaults.themes["base16-ocean.dark"].clone(),
+        DefaultTheme::Base16EightiesDark => defaults.themes["base16-eighties.dark"].clone(),
+        DefaultTheme::Base16MochaDark => defaults.themes["base16-mocha.dark"].clone(),
+        DefaultTheme::Base16OceanLight => defaults.themes["base16-ocean.light"].clone(),
+        DefaultTheme::InspiredGitHub => defaults.themes["InspiredGitHub"].clone(),
+        DefaultTheme::SolarizedDark => defaults.themes["Solarized (dark)"].clone(),
+        DefaultTheme::SolarizedLight => defaults.themes["Solarized (light)"].clone(),
     }
 }
 

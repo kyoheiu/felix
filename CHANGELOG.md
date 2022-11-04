@@ -6,8 +6,16 @@
 
 ## Unreleased
 
-### Fixed
-- Remove debug print in `make_config_if_not_exists`
+### Added
+
+- Horizontal split, in addtion to the vertical split. To toggle, press `s`.
+- Syntax highlighting (if possible) in previewed texts. To turn on, state `syntax_hightlight = true` in `config.toml`. you can also choose your theme, either from the default theme set or your favorite .tmtheme.
+- Enable scrolling in the preview space. `Alt + j / Up` goes down, `Alt + k` goes up. Experimental and may have some bugs.
+
+### Removed
+
+- Removed debug print in `make_config_if_not_exists`
+- Removed `use_full_width` and `item_name_length` in `config.toml`. Will always use full width of the terminal.
 
 ## v1.3.2 (2022-10-23)
 

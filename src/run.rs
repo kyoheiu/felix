@@ -2,6 +2,7 @@ use super::config::make_config_if_not_exists;
 use super::errors::FxError;
 use super::functions::*;
 use super::help::HELP;
+use super::layout::Split;
 use super::nums::*;
 use super::op::*;
 use super::session::*;
@@ -94,6 +95,18 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     execute!(screen, EnterAlternateScreen)?;
 
     //Update list, print and flush
+    if state.layout.preview {
+        let new_column = match state.layout.split {
+            Split::Vertical => state.layout.terminal_column / 2,
+            Split::Horizontal => state.layout.terminal_column,
+        };
+        let new_row = match state.layout.split {
+            Split::Vertical => state.layout.terminal_row,
+            Split::Horizontal => state.layout.terminal_row / 2,
+        };
+
+        state.refresh(new_column, new_row, &nums, BEGINNING_ROW);
+    }
     state.reload(&nums, BEGINNING_ROW)?;
     screen.flush()?;
 
@@ -120,7 +133,11 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                 match code {
                     //Go up. If lists exceed max-row, lists "scrolls" before the top of the list
                     KeyCode::Char('j') | KeyCode::Down => {
-                        if len == 0 || nums.index == len - 1 {
+                        if modifiers == KeyModifiers::ALT {
+                            if state.layout.preview {
+                                state.scroll_down_preview(&nums, y);
+                            }
+                        } else if len == 0 || nums.index == len - 1 {
                             continue;
                         } else if y >= state.layout.terminal_row - 1 - SCROLL_POINT
                             && len > (state.layout.terminal_row - BEGINNING_ROW) as usize - 1
@@ -136,7 +153,11 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                     //Go down. If lists exceed max-row, lists "scrolls" before the bottom of the list
                     KeyCode::Char('k') | KeyCode::Up => {
-                        if nums.index == 0 {
+                        if modifiers == KeyModifiers::ALT {
+                            if state.layout.preview {
+                                state.scroll_up_preview(&nums, y);
+                            }
+                        } else if nums.index == 0 {
                             continue;
                         } else if y <= BEGINNING_ROW + SCROLL_POINT && nums.skip != 0 {
                             nums.go_up();
@@ -827,14 +848,45 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     KeyCode::Char('v') => {
                         state.layout.preview = !state.layout.preview;
                         if state.layout.preview {
-                            let new_column = state.layout.terminal_column / 2;
-                            let new_row = state.layout.terminal_row;
-                            state.refresh(new_column, new_row, &nums, y);
+                            match state.layout.split {
+                                Split::Vertical => {
+                                    let new_column = state.layout.terminal_column / 2;
+                                    let new_row = state.layout.terminal_row;
+                                    state.refresh(new_column, new_row, &nums, y);
+                                }
+                                Split::Horizontal => {
+                                    let new_row = state.layout.terminal_row / 2;
+                                    let new_column = state.layout.terminal_column;
+                                    state.refresh(new_column, new_row, &nums, y);
+                                }
+                            }
                         } else {
                             let (new_column, new_row) = crossterm::terminal::size().unwrap();
                             state.refresh(new_column, new_row, &nums, y);
                         }
                     }
+
+                    //toggle vertical or horizontal split
+                    KeyCode::Char('s') => match state.layout.split {
+                        Split::Vertical => {
+                            state.layout.split = Split::Horizontal;
+                            if state.layout.preview {
+                                let (new_column, mut new_row) =
+                                    crossterm::terminal::size().unwrap();
+                                new_row /= 2;
+                                state.refresh(new_column, new_row, &nums, y);
+                            }
+                        }
+                        Split::Horizontal => {
+                            state.layout.split = Split::Vertical;
+                            if state.layout.preview {
+                                let (mut new_column, new_row) =
+                                    crossterm::terminal::size().unwrap();
+                                new_column /= 2;
+                                state.refresh(new_column, new_row, &nums, y);
+                            }
+                        }
+                    },
 
                     //delete
                     KeyCode::Char('d') => {
@@ -1594,19 +1646,33 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     panic!("Error: Too small terminal size (less than 4 rows). Please restart.");
                 };
 
-                let column = match state.layout.preview {
-                    true => column / 2,
-                    false => column,
-                };
-                if column != state.layout.terminal_column || row != state.layout.terminal_row {
-                    if state.layout.y < row {
-                        let cursor_pos = state.layout.y;
-                        state.refresh(column, row, &nums, cursor_pos);
+                if state.layout.preview {
+                    let new_column = match state.layout.split {
+                        Split::Vertical => column / 2,
+                        Split::Horizontal => column,
+                    };
+                    let new_row = match state.layout.split {
+                        Split::Vertical => row,
+                        Split::Horizontal => row / 2,
+                    };
+                    let cursor_pos = if state.layout.y < new_row {
+                        state.layout.y
+                    } else {
+                        let diff = state.layout.y + 1 - new_row;
+                        nums.index -= diff as usize;
+                        new_row - 1
+                    };
+
+                    state.refresh(new_column, new_row, &nums, cursor_pos);
+                } else {
+                    let cursor_pos = if state.layout.y < row {
+                        state.layout.y
                     } else {
                         let diff = state.layout.y + 1 - row;
                         nums.index -= diff as usize;
-                        state.refresh(column, row, &nums, row - 1);
-                    }
+                        row - 1
+                    };
+                    state.refresh(column, row, &nums, cursor_pos);
                 }
             }
             _ => {}

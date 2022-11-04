@@ -2,31 +2,41 @@ use super::errors::FxError;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::read_to_string;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::state::FX_CONFIG_DIR;
 
 const CONFIG_FILE: &str = "config.toml";
 
 pub const CONFIG_EXAMPLE: &str = "# (Optional) Default exec command when open files.
-# If not set, will default to $EDITOR
+# If not set, will default to $EDITOR.
 default = \"nvim\"
-
-# (Optional) Whether to use the full width of terminal.
-# If not set, this will be true.
-# use_full_width = true
-
-# (Optional) Set the max length of item name to be displayed.
-# This works only when use_full_width is set to false.
-# If the terminal size is not enough, the length will be changed to fit it.
-# If not set, this will be 30.
-# item_name_length = 30
 
 # (Optional)
 # key (the command you want to use) = [values] (extensions)
 # [exec]
 # feh = [\"jpg\", \"jpeg\", \"png\", \"gif\", \"svg\"]
 # zathura = [\"pdf\"]
+
+# (Optional) Whether to use syntax highlighting in the preview mode.
+# If not set, will default to false.
+# syntax_highlight = false
+
+# (Optional) Default theme for syntax highlighting.
+# Pick one from the following:
+#    Base16OceanDark
+#    Base16EightiesDark
+#    Base16MochaDark
+#    Base16OceanLight
+#    InspiredGitHub
+#    SolarizedDark
+#    SolarizedLight
+# If not set, will default to \"Base16OceanDark\".
+# default_theme = \"Base16OceanDark\"
+
+# (Optional) Path to .tmtheme file for the syntax highlighting.
+# If not set, default_theme will be used.
+# theme_path = \"\"
 
 # The foreground color of directory, file and symlink.
 # Pick one of the following:
@@ -60,8 +70,9 @@ pub struct Config {
     pub default: Option<String>,
     pub exec: Option<HashMap<String, Vec<String>>>,
     pub color: ConfigColor,
-    pub use_full_width: Option<bool>,
-    pub item_name_length: Option<usize>,
+    pub syntax_highlight: Option<bool>,
+    pub default_theme: Option<DefaultTheme>,
+    pub theme_path: Option<PathBuf>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -93,16 +104,26 @@ pub enum Colorname {
     AnsiValue(u8),
 }
 
+#[derive(Deserialize, Debug, Clone)]
+pub enum DefaultTheme {
+    Base16OceanDark,
+    Base16EightiesDark,
+    Base16MochaDark,
+    Base16OceanLight,
+    InspiredGitHub,
+    SolarizedDark,
+    SolarizedLight,
+}
+
 pub fn read_config() -> Result<Config, FxError> {
     let mut config = dirs::config_dir().unwrap_or_else(|| panic!("Cannot read config dir."));
     config.push(FX_CONFIG_DIR);
     config.push(CONFIG_FILE);
-    let config = read_to_string(config.as_path());
-    if let Ok(config) = config {
+    if let Ok(config) = read_to_string(config.as_path()) {
         let deserialized: Config = toml::from_str(&config)?;
         Ok(deserialized)
     } else {
-        panic!("Cannot deserialize config file.");
+        Err(FxError::TomlDe)
     }
 }
 
