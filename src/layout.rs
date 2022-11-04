@@ -152,13 +152,13 @@ impl Layout {
                     let count = line.len() / self.preview_space.0 as usize;
                     let mut range = h.highlight_line(line, &self.syntax_set).unwrap();
                     for _ in 0..=count + 1 {
-                        let ranges = split_at(&range, (self.preview_space.0 + 1) as usize);
+                        let ranges = split_at(&range, (self.preview_space.0) as usize);
                         if !ranges.0.is_empty() {
                             result.push(ranges.0);
                         }
                         range = ranges.1;
                     }
-                    if index > self.preview_space.1 as usize + item.preview_scroll + 1 {
+                    if index > self.preview_space.1 as usize + item.preview_scroll {
                         break;
                     }
                 }
@@ -208,7 +208,7 @@ impl Layout {
                         continue;
                     }
                     let sum = (i - item.preview_scroll) as u16;
-                    let row = BEGINNING_ROW + sum as u16;
+                    let row = self.preview_start.1 + sum as u16;
                     move_to(self.preview_start.0, row);
                     if syntex_highlight {
                         print!("{}", line);
@@ -238,7 +238,7 @@ impl Layout {
                         print!("{}", line);
                         reset_color();
                     }
-                    if sum > self.preview_space.1 {
+                    if row == self.terminal_row + self.preview_space.1 {
                         reset_color();
                         break;
                     }

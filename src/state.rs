@@ -65,25 +65,25 @@ pub enum FileType {
 }
 
 impl State {
-    /// Initialize state app.
+    /// Initialize the state of the app.
     pub fn new() -> Result<Self, FxError> {
         let config = read_config()?;
         let session =
             read_session().unwrap_or_else(|_| panic!("Something wrong with session file."));
-        let (column, row) =
+        let (original_column, original_row) =
             crossterm::terminal::size().unwrap_or_else(|_| panic!("Cannot detect terminal size."));
 
         // Return error if terminal size may cause panic
-        if column < 4 {
+        if original_column < 4 {
             error!("Too small terminal size (less than 4 columns).");
             return Err(FxError::TooSmallWindowSize);
         };
-        if row < 4 {
+        if original_row < 4 {
             error!("Too small terminal size. (less than 4 rows)");
             return Err(FxError::TooSmallWindowSize);
         };
 
-        let (time_start, name_max) = make_layout(column);
+        let (time_start, name_max) = make_layout(original_column);
 
         let ts = set_theme(&config);
         let split = session.split.unwrap_or(Split::Vertical);
@@ -107,8 +107,8 @@ impl State {
             sort_by: session.sort_by,
             layout: Layout {
                 y: BEGINNING_ROW,
-                terminal_row: row,
-                terminal_column: column,
+                terminal_row: original_row,
+                terminal_column: original_column,
                 name_max_len: name_max,
                 time_start_pos: time_start,
                 colors: ConfigColor {
@@ -119,12 +119,12 @@ impl State {
                 preview: session.preview.unwrap_or(false),
                 split,
                 preview_start: match split {
-                    Split::Vertical => (column + 2, BEGINNING_ROW),
-                    Split::Horizontal => (1, row + 2),
+                    Split::Vertical => (0, 0),
+                    Split::Horizontal => (0, 0),
                 },
                 preview_space: match split {
-                    Split::Vertical => (column - 1, row - BEGINNING_ROW),
-                    Split::Horizontal => (column, row),
+                    Split::Vertical => (0, 0),
+                    Split::Horizontal => (0, 0),
                 },
                 syntax_highlight: config.syntax_highlight.unwrap_or(false),
                 syntax_set: syntect::parsing::SyntaxSet::load_defaults_newlines(),
@@ -142,10 +142,22 @@ impl State {
     pub fn refresh(&mut self, column: u16, row: u16, nums: &Num, cursor_pos: u16) {
         let (time_start, name_max) = make_layout(column);
 
+        let (original_column, original_row) =
+            crossterm::terminal::size().unwrap_or_else(|_| panic!("Cannot detect terminal size."));
+
         self.layout.terminal_row = row;
         self.layout.terminal_column = column;
-        self.layout.preview_start = (column + 2, row + 2);
-        self.layout.preview_space = (column - 1, row - BEGINNING_ROW);
+        self.layout.preview_start = match self.layout.split {
+            Split::Vertical => (column + 2, BEGINNING_ROW),
+            Split::Horizontal => (1, row + 2),
+        };
+        self.layout.preview_space = match self.layout.preview {
+            true => match self.layout.split {
+                Split::Vertical => (original_column - column - 1, row - BEGINNING_ROW),
+                Split::Horizontal => (column, original_row - row - 1),
+            },
+            false => (0, 0),
+        };
         self.layout.name_max_len = name_max;
         self.layout.time_start_pos = time_start;
 
