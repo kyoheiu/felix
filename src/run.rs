@@ -1212,6 +1212,29 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                         }
                     },
 
+                    KeyCode::Char('N') => match &state.keyword {
+                        None => {
+                            continue;
+                        }
+                        Some(keyword) => {
+                            let previous = state
+                                .list
+                                .iter()
+                                .take(state.nums.index)
+                                .rposition(|x| x.file_name.contains(keyword));
+                            match previous {
+                                None => {
+                                    continue;
+                                }
+                                Some(i) => {
+                                    state.nums.skip = i as u16;
+                                    state.nums.index = i;
+                                    state.redraw(y);
+                                }
+                            }
+                        }
+                    },
+
                     //shell mode
                     KeyCode::Char(':') => {
                         print!(" ");
