@@ -210,12 +210,8 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     screen.flush()?;
                                 }
                                 FileType::Symlink => match &item.symlink_dir_path {
-                                    Some(true_path) => match std::fs::File::open(true_path) {
-                                        Err(e) => {
-                                            print_warning(e, y);
-                                            continue;
-                                        }
-                                        Ok(_) => {
+                                    Some(true_path) => {
+                                        if true_path.exists() {
                                             let cursor_memo = if !state.filtered {
                                                 ParentMemo {
                                                     to_sym_dir: Some(state.current_dir.clone()),
@@ -239,8 +235,11 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             state.filtered = false;
                                             nums.reset();
                                             state.reload(&nums, BEGINNING_ROW)?;
+                                        } else {
+                                            print_warning("Broken link.", y);
+                                            continue;
                                         }
-                                    },
+                                    }
                                     None => {
                                         execute!(screen, EnterAlternateScreen)?;
                                         if let Err(e) = state.open_file(item) {
