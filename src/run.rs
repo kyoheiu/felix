@@ -223,7 +223,6 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     }
                                     execute!(screen, EnterAlternateScreen)?;
                                     hide_cursor();
-                                    state.filtered = false;
                                     //Add thread sleep time after state.open_file().
                                     // This is necessary because, with tiling window managers, the window resizing is sometimes slow and felix reloads the layout so quickly that the display may become broken.
                                     //By the sleep (50ms for now and I think it's not easy to recognize this sleep), this will be avoided.
@@ -234,18 +233,10 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 FileType::Symlink => match &item.symlink_dir_path {
                                     Some(true_path) => {
                                         if true_path.exists() {
-                                            let cursor_memo = if !state.filtered {
-                                                ParentMemo {
-                                                    to_sym_dir: Some(state.current_dir.clone()),
-                                                    num: state.nums,
-                                                    cursor_pos: y,
-                                                }
-                                            } else {
-                                                ParentMemo {
-                                                    to_sym_dir: Some(state.current_dir.clone()),
-                                                    num: Num::new(),
-                                                    cursor_pos: BEGINNING_ROW,
-                                                }
+                                            let cursor_memo = ParentMemo {
+                                                to_sym_dir: Some(state.current_dir.clone()),
+                                                num: state.nums,
+                                                cursor_pos: y,
                                             };
                                             p_memo_v.push(cursor_memo);
 
@@ -254,7 +245,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                 continue;
                                             }
                                             state.current_dir = true_path.to_path_buf();
-                                            state.filtered = false;
+                                            state.keyword = None;
                                             state.nums.reset();
                                             state.reload(BEGINNING_ROW)?;
                                         } else {
@@ -270,25 +261,16 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         }
                                         execute!(screen, EnterAlternateScreen)?;
                                         hide_cursor();
-                                        state.filtered = false;
                                         state.redraw(y);
                                     }
                                 },
                                 FileType::Directory => {
                                     if item.file_path.exists() {
                                         //store the last cursor position and skip number
-                                        let cursor_memo = if !state.filtered {
-                                            ParentMemo {
-                                                to_sym_dir: None,
-                                                num: state.nums,
-                                                cursor_pos: y,
-                                            }
-                                        } else {
-                                            ParentMemo {
-                                                to_sym_dir: None,
-                                                num: Num::new(),
-                                                cursor_pos: BEGINNING_ROW,
-                                            }
+                                        let cursor_memo = ParentMemo {
+                                            to_sym_dir: None,
+                                            num: state.nums,
+                                            cursor_pos: y,
                                         };
                                         p_memo_v.push(cursor_memo);
 
@@ -297,6 +279,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             continue;
                                         }
                                         state.current_dir = item.file_path.clone();
+                                        state.keyword = None;
                                         state.update_list()?;
 
                                         match c_memo_v.pop() {
@@ -304,17 +287,14 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                 if state.current_dir == memo.dir_path {
                                                     state.nums.index = memo.num.index;
                                                     state.nums.skip = memo.num.skip;
-                                                    state.filtered = false;
                                                     state.redraw(memo.cursor_pos);
                                                 } else {
                                                     state.nums.reset();
-                                                    state.filtered = false;
                                                     state.redraw(BEGINNING_ROW);
                                                 }
                                             }
                                             None => {
                                                 state.nums.reset();
-                                                state.filtered = false;
                                                 state.redraw(BEGINNING_ROW);
                                             }
                                         }
@@ -352,27 +332,14 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     //Go to parent directory if exists.
                     //If the list is filtered, reload current directory.
                     KeyCode::Char('h') | KeyCode::Left => {
-                        if state.filtered {
-                            state.nums.reset();
-                            state.filtered = false;
-                            state.reload(BEGINNING_ROW)?;
-                        }
                         let pre = state.current_dir.clone();
 
-                        match state.current_dir.parent() {
+                        match pre.parent() {
                             Some(parent_p) => {
-                                let cursor_memo = if !state.filtered {
-                                    ChildMemo {
-                                        dir_path: pre.clone(),
-                                        num: state.nums,
-                                        cursor_pos: y,
-                                    }
-                                } else {
-                                    ChildMemo {
-                                        dir_path: PathBuf::from(""),
-                                        num: Num::new(),
-                                        cursor_pos: BEGINNING_ROW,
-                                    }
+                                let cursor_memo = ChildMemo {
+                                    dir_path: pre.clone(),
+                                    num: state.nums,
+                                    cursor_pos: y,
                                 };
                                 c_memo_v.push(cursor_memo);
 
@@ -396,7 +363,6 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         }
                                         state.nums.index = memo.num.index;
                                         state.nums.skip = memo.num.skip;
-                                        state.filtered = false;
                                         state.reload(memo.cursor_pos)?;
                                     }
                                     None => {
@@ -424,11 +390,9 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                         .into()
                                                 {
                                                     state.nums.skip = (state.nums.index - 1) as u16;
-                                                    state.filtered = false;
                                                     state.redraw(BEGINNING_ROW + 1);
                                                 } else {
                                                     state.nums.skip = 0;
-                                                    state.filtered = false;
                                                     state.redraw(
                                                         (state.nums.index as u16) + BEGINNING_ROW,
                                                     );
@@ -436,7 +400,6 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             }
                                             None => {
                                                 state.nums.reset();
-                                                state.filtered = false;
                                                 state.redraw(BEGINNING_ROW);
                                             }
                                         }
@@ -566,7 +529,6 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                                     } else {
                                                                         target_path
                                                                     };
-                                                                state.filtered = false;
                                                                 state.reload(BEGINNING_ROW)?;
                                                                 break 'zoxide;
                                                             }
@@ -1198,7 +1160,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                     state.nums.skip +=
                                                         (i - state.nums.index) as u16;
                                                     state.nums.index = i;
-                                                    state.redraw(y as u16);
+                                                    state.redraw(y);
                                                 } else {
                                                     state.redraw(y);
                                                 }
@@ -1312,7 +1274,6 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         } else if command == vec!['e'] {
                                             //reload current dir
                                             state.nums.reset();
-                                            state.filtered = false;
                                             state.reload(BEGINNING_ROW)?;
                                             break 'command;
                                         } else if command == vec!['h'] {
@@ -1400,13 +1361,12 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             p_memo_v = Vec::new();
                                             c_memo_v = Vec::new();
                                             state.nums.reset();
-                                            state.filtered = false;
                                             let home_dir = dirs::home_dir().unwrap();
                                             if let Err(e) = set_current_dir(&home_dir) {
                                                 print_warning(e, y);
                                                 break 'command;
                                             }
-                                            state.current_dir = home_dir;
+                                            state.chdir(&home_dir);
                                             state.reload(BEGINNING_ROW)?;
                                             break 'command;
                                         }
@@ -1449,7 +1409,6 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                                 } else {
                                                                     target_path
                                                                 };
-                                                            state.filtered = false;
                                                             state.reload(BEGINNING_ROW)?;
                                                             break 'command;
                                                         }

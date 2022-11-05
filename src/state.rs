@@ -38,7 +38,6 @@ pub struct State {
     pub sort_by: SortKey,
     pub layout: Layout,
     pub show_hidden: bool,
-    pub filtered: bool,
     pub keyword: Option<String>,
     pub rust_log: Option<String>,
 }
@@ -136,7 +135,6 @@ impl State {
                 is_kitty,
             },
             show_hidden: session.show_hidden,
-            filtered: false,
             keyword: None,
             rust_log: std::env::var("RUST_LOG").ok(),
         })
@@ -708,10 +706,6 @@ impl State {
                     reset_color();
                 }
             }
-        }
-
-        if self.filtered {
-            print!(" (filtered)");
         }
     }
 
