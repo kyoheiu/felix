@@ -842,6 +842,11 @@ impl State {
         }
     }
 
+    pub fn chdir(&mut self, p: &std::path::Path) {
+        self.current_dir = p.to_owned();
+        self.keyword = None;
+    }
+
     /// Change the cursor position, and print item information at the bottom.
     /// If preview is enabled, print text preview, contents of the directory or image preview on the right half of the terminal
     /// (To preview image, you must install chafa. See help).

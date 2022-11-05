@@ -351,14 +351,14 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                     print_warning(e, y);
                                                     continue;
                                                 }
-                                                state.current_dir = true_path;
+                                                state.chdir(&true_path);
                                             }
                                             None => {
                                                 if let Err(e) = set_current_dir(parent_p) {
                                                     print_warning(e, y);
                                                     continue;
                                                 }
-                                                state.current_dir = parent_p.to_path_buf();
+                                                state.chdir(parent_p);
                                             }
                                         }
                                         state.nums.index = memo.num.index;
@@ -370,7 +370,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             print_warning(e, y);
                                             continue;
                                         }
-                                        state.current_dir = parent_p.to_path_buf();
+                                        state.chdir(parent_p);
                                         state.update_list()?;
                                         match pre.file_name() {
                                             Some(name) => {
@@ -480,12 +480,9 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                 print_warning(e, y);
                                                 break 'zoxide;
                                             }
-                                            state.current_dir = home_dir;
+                                            state.chdir(&home_dir);
                                             state.nums.reset();
-                                            if let Err(e) = state.update_list() {
-                                                print_warning(e, y);
-                                                break 'zoxide;
-                                            }
+                                            state.update_list()?;
                                             state.redraw(BEGINNING_ROW);
                                             break 'zoxide;
                                         } else if command.len() > 2 {
@@ -1263,7 +1260,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                 print_warning(e, y);
                                                 break 'command;
                                             }
-                                            state.current_dir = home_dir;
+                                            state.chdir(&home_dir);
                                             state.nums.reset();
                                             if let Err(e) = state.update_list() {
                                                 print_warning(e, y);
