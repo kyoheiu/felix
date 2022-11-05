@@ -714,8 +714,7 @@ impl State {
     }
 
     /// Print an item in the directory.
-    fn print(&self, index: usize) {
-        let item = &self.get_item(index).unwrap();
+    fn print(&self, item: &ItemInfo) {
         let chars: Vec<char> = item.file_name.chars().collect();
         let name = if chars.len() > self.layout.name_max_len {
             let mut result = chars
@@ -769,21 +768,16 @@ impl State {
 
     /// Print items in the directory.
     pub fn list_up(&self, skip_number: u16) {
-        let row = self.layout.terminal_row;
+        let visible = &self.list[..];
 
-        let mut row_count = 0;
-        for (i, _) in self.list.iter().enumerate() {
-            if i < skip_number as usize {
-                continue;
-            }
-            move_to(3, i as u16 + BEGINNING_ROW - skip_number);
-            if row_count == row - BEGINNING_ROW {
-                break;
-            } else {
-                self.print(i);
-                row_count += 1;
-            }
-        }
+        visible
+            .iter()
+            .enumerate()
+            .skip(skip_number.into())
+            .for_each(|(index, item)| {
+                move_to(3, (index as u16 + BEGINNING_ROW) - skip_number);
+                self.print(item);
+            });
     }
 
     /// Update state's list of items.
