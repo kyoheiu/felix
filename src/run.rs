@@ -231,12 +231,8 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     screen.flush()?;
                                 }
                                 FileType::Symlink => match &item.symlink_dir_path {
-                                    Some(true_path) => match std::fs::File::open(true_path) {
-                                        Err(e) => {
-                                            print_warning(e, y);
-                                            continue;
-                                        }
-                                        Ok(_) => {
+                                    Some(true_path) => {
+                                        if true_path.exists() {
                                             let cursor_memo = if !state.filtered {
                                                 ParentMemo {
                                                     to_sym_dir: Some(state.current_dir.clone()),
@@ -252,18 +248,19 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             };
                                             p_memo_v.push(cursor_memo);
 
-                                            state.current_dir = true_path.clone();
-                                            if let Err(e) =
-                                                std::env::set_current_dir(&state.current_dir)
-                                            {
+                                            if let Err(e) = std::env::set_current_dir(&true_path) {
                                                 print_warning(e, y);
                                                 continue;
                                             }
+                                            state.current_dir = true_path.to_path_buf();
                                             state.filtered = false;
                                             nums.reset();
                                             state.reload(&nums, BEGINNING_ROW)?;
+                                        } else {
+                                            print_warning("Broken link.", y);
+                                            continue;
                                         }
-                                    },
+                                    }
                                     None => {
                                         execute!(screen, EnterAlternateScreen)?;
                                         if let Err(e) = state.open_file(item) {
@@ -277,57 +274,51 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     }
                                 },
                                 FileType::Directory => {
-                                    match std::fs::File::open(&item.file_path) {
-                                        Err(e) => {
+                                    if item.file_path.exists() {
+                                        //store the last cursor position and skip number
+                                        let cursor_memo = if !state.filtered {
+                                            ParentMemo {
+                                                to_sym_dir: None,
+                                                num: nums,
+                                                cursor_pos: y,
+                                            }
+                                        } else {
+                                            ParentMemo {
+                                                to_sym_dir: None,
+                                                num: Num::new(),
+                                                cursor_pos: BEGINNING_ROW,
+                                            }
+                                        };
+                                        p_memo_v.push(cursor_memo);
+
+                                        if let Err(e) = std::env::set_current_dir(&item.file_path) {
                                             print_warning(e, y);
                                             continue;
                                         }
-                                        Ok(_) => {
-                                            //store the last cursor position and skip number
-                                            let cursor_memo = if !state.filtered {
-                                                ParentMemo {
-                                                    to_sym_dir: None,
-                                                    num: nums,
-                                                    cursor_pos: y,
-                                                }
-                                            } else {
-                                                ParentMemo {
-                                                    to_sym_dir: None,
-                                                    num: Num::new(),
-                                                    cursor_pos: BEGINNING_ROW,
-                                                }
-                                            };
-                                            p_memo_v.push(cursor_memo);
+                                        state.current_dir = item.file_path.clone();
+                                        state.update_list()?;
 
-                                            state.current_dir = item.file_path.clone();
-                                            if let Err(e) =
-                                                std::env::set_current_dir(&state.current_dir)
-                                            {
-                                                print_warning(e, y);
-                                                continue;
-                                            }
-                                            state.update_list()?;
-
-                                            match c_memo_v.pop() {
-                                                Some(memo) => {
-                                                    if state.current_dir == memo.dir_path {
-                                                        nums.index = memo.num.index;
-                                                        nums.skip = memo.num.skip;
-                                                        state.filtered = false;
-                                                        state.redraw(&nums, memo.cursor_pos);
-                                                    } else {
-                                                        nums.reset();
-                                                        state.filtered = false;
-                                                        state.redraw(&nums, BEGINNING_ROW);
-                                                    }
-                                                }
-                                                None => {
+                                        match c_memo_v.pop() {
+                                            Some(memo) => {
+                                                if state.current_dir == memo.dir_path {
+                                                    nums.index = memo.num.index;
+                                                    nums.skip = memo.num.skip;
+                                                    state.filtered = false;
+                                                    state.redraw(&nums, memo.cursor_pos);
+                                                } else {
                                                     nums.reset();
                                                     state.filtered = false;
                                                     state.redraw(&nums, BEGINNING_ROW);
                                                 }
                                             }
+                                            None => {
+                                                nums.reset();
+                                                state.filtered = false;
+                                                state.redraw(&nums, BEGINNING_ROW);
+                                            }
                                         }
+                                    } else {
+                                        print_warning("Invalid directory.", y);
                                     }
                                 }
                             }
@@ -388,17 +379,22 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     Some(memo) => {
                                         match memo.to_sym_dir {
                                             Some(true_path) => {
+                                                if let Err(e) =
+                                                    std::env::set_current_dir(&true_path)
+                                                {
+                                                    print_warning(e, y);
+                                                    continue;
+                                                }
                                                 state.current_dir = true_path;
                                             }
                                             None => {
+                                                if let Err(e) = std::env::set_current_dir(parent_p)
+                                                {
+                                                    print_warning(e, y);
+                                                    continue;
+                                                }
                                                 state.current_dir = parent_p.to_path_buf();
                                             }
-                                        }
-                                        if let Err(e) =
-                                            std::env::set_current_dir(&state.current_dir)
-                                        {
-                                            print_warning(e, y);
-                                            continue;
                                         }
                                         nums.index = memo.num.index;
                                         nums.skip = memo.num.skip;
@@ -406,13 +402,11 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         state.reload(&nums, memo.cursor_pos)?;
                                     }
                                     None => {
-                                        state.current_dir = parent_p.to_path_buf();
-                                        if let Err(e) =
-                                            std::env::set_current_dir(&state.current_dir)
-                                        {
+                                        if let Err(e) = std::env::set_current_dir(parent_p) {
                                             print_warning(e, y);
                                             continue;
                                         }
+                                        state.current_dir = parent_p.to_path_buf();
                                         state.update_list()?;
                                         match pre.file_name() {
                                             Some(name) => {
@@ -521,7 +515,9 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             //go to the home directory
                                             p_memo_v = Vec::new();
                                             c_memo_v = Vec::new();
-                                            state.current_dir = dirs::home_dir().unwrap();
+                                            let home_dir = dirs::home_dir().unwrap();
+                                            std::env::set_current_dir(&home_dir)?;
+                                            state.current_dir = home_dir;
                                             nums.reset();
                                             if let Err(e) = state.update_list() {
                                                 print_warning(e, y);
@@ -562,6 +558,9 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                                 let target_path = PathBuf::from(
                                                                     target_dir.trim(),
                                                                 );
+                                                                std::env::set_current_dir(
+                                                                    &target_path,
+                                                                )?;
                                                                 state.current_dir =
                                                                     if cfg!(not(windows)) {
                                                                         target_path
@@ -1287,7 +1286,9 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             //go to the home directory
                                             p_memo_v = Vec::new();
                                             c_memo_v = Vec::new();
-                                            state.current_dir = dirs::home_dir().unwrap();
+                                            let home_dir = dirs::home_dir().unwrap();
+                                            std::env::set_current_dir(&home_dir)?;
+                                            state.current_dir = home_dir;
                                             nums.reset();
                                             if let Err(e) = state.update_list() {
                                                 print_warning(e, y);
@@ -1387,7 +1388,9 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             c_memo_v = Vec::new();
                                             nums.reset();
                                             state.filtered = false;
-                                            state.current_dir = dirs::home_dir().unwrap();
+                                            let home_dir = dirs::home_dir().unwrap();
+                                            std::env::set_current_dir(&home_dir)?;
+                                            state.current_dir = home_dir;
                                             state.reload(&nums, BEGINNING_ROW)?;
                                             break 'command;
                                         }
@@ -1418,6 +1421,9 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                             nums.reset();
                                                             let target_path =
                                                                 PathBuf::from(target_dir.trim());
+                                                            std::env::set_current_dir(
+                                                                target_path.clone(),
+                                                            )?;
                                                             state.current_dir =
                                                                 if cfg!(not(windows)) {
                                                                     target_path.canonicalize()?
