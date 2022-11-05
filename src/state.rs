@@ -28,6 +28,7 @@ pub const WHEN_EMPTY: &str = "Are you sure to empty the trash directory? (if yes
 #[derive(Debug)]
 pub struct State {
     pub list: Vec<ItemInfo>,
+    pub nums: Num,
     pub registered: Vec<ItemInfo>,
     pub operations: Operation,
     pub current_dir: PathBuf,
@@ -94,6 +95,7 @@ impl State {
 
         Ok(State {
             list: Vec::new(),
+            nums: Num::new(),
             registered: Vec::new(),
             operations: Operation {
                 pos: 0,
@@ -141,7 +143,7 @@ impl State {
     }
 
     /// Reload the app layout when terminal size changes.
-    pub fn refresh(&mut self, column: u16, row: u16, nums: &Num, cursor_pos: u16) {
+    pub fn refresh(&mut self, column: u16, row: u16, cursor_pos: u16) {
         let (time_start, name_max) = make_layout(column);
 
         let (original_column, original_row) =
@@ -163,17 +165,17 @@ impl State {
         self.layout.name_max_len = name_max;
         self.layout.time_start_pos = time_start;
 
-        self.redraw(nums, cursor_pos);
+        self.redraw(cursor_pos);
     }
 
     /// Select an item that the cursor points to.
-    pub fn get_item(&self, index: usize) -> Result<&ItemInfo, FxError> {
-        self.list.get(index).ok_or(FxError::GetItem)
+    pub fn get_item(&self) -> Result<&ItemInfo, FxError> {
+        self.list.get(self.nums.index).ok_or(FxError::GetItem)
     }
 
     /// Select an item that the cursor points to, as mut.
-    pub fn get_item_mut(&mut self, index: usize) -> Result<&mut ItemInfo, FxError> {
-        self.list.get_mut(index).ok_or(FxError::GetItem)
+    pub fn get_item_mut(&mut self) -> Result<&mut ItemInfo, FxError> {
+        self.list.get_mut(self.nums.index).ok_or(FxError::GetItem)
     }
 
     /// Open the selected file according to the config.
@@ -202,8 +204,8 @@ impl State {
     }
 
     /// Open the selected file in a new window, according to the config.
-    pub fn open_file_in_new_window(&self, index: usize) -> Result<Child, FxError> {
-        let item = self.get_item(index)?;
+    pub fn open_file_in_new_window(&self) -> Result<Child, FxError> {
+        let item = self.get_item()?;
         let path = &item.file_path;
         let map = &self.commands;
         let extension = &item.file_ext;
@@ -394,14 +396,14 @@ impl State {
     }
 
     /// Register selected items to the registry.
-    pub fn yank_item(&mut self, index: usize, selected: bool) {
+    pub fn yank_item(&mut self, selected: bool) {
         self.registered.clear();
         if selected {
             for item in self.list.iter_mut().filter(|item| item.selected) {
                 self.registered.push(item.clone());
             }
         } else {
-            let item = self.get_item(index).unwrap().clone();
+            let item = self.get_item().unwrap().clone();
             self.registered.push(item);
         }
     }
@@ -595,14 +597,14 @@ impl State {
     }
 
     /// Undo operations (put/delete/rename).
-    pub fn undo(&mut self, nums: &Num, op: &OpKind) -> Result<(), FxError> {
+    pub fn undo(&mut self, op: &OpKind) -> Result<(), FxError> {
         match op {
             OpKind::Rename(op) => {
                 std::fs::rename(&op.new_name, &op.original_name)?;
                 self.operations.pos += 1;
                 self.update_list()?;
                 self.clear_and_show_headline();
-                self.list_up(nums.skip);
+                self.list_up();
                 print_info("UNDONE: RENAME", BEGINNING_ROW);
             }
             OpKind::Put(op) => {
@@ -616,7 +618,7 @@ impl State {
                 self.operations.pos += 1;
                 self.update_list()?;
                 self.clear_and_show_headline();
-                self.list_up(nums.skip);
+                self.list_up();
                 print_info("UNDONE: PUT", BEGINNING_ROW);
             }
             OpKind::Delete(op) => {
@@ -625,7 +627,7 @@ impl State {
                 self.operations.pos += 1;
                 self.update_list()?;
                 self.clear_and_show_headline();
-                self.list_up(nums.skip);
+                self.list_up();
                 print_info("UNDONE: DELETE", BEGINNING_ROW);
             }
         }
@@ -634,14 +636,14 @@ impl State {
     }
 
     /// Redo operations (put/delete/rename)
-    pub fn redo(&mut self, nums: &Num, op: &OpKind) -> Result<(), FxError> {
+    pub fn redo(&mut self, op: &OpKind) -> Result<(), FxError> {
         match op {
             OpKind::Rename(op) => {
                 std::fs::rename(&op.original_name, &op.new_name)?;
                 self.operations.pos -= 1;
                 self.update_list()?;
                 self.clear_and_show_headline();
-                self.list_up(nums.skip);
+                self.list_up();
                 print_info("REDONE: RENAME", BEGINNING_ROW);
             }
             OpKind::Put(op) => {
@@ -649,7 +651,7 @@ impl State {
                 self.operations.pos -= 1;
                 self.update_list()?;
                 self.clear_and_show_headline();
-                self.list_up(nums.skip);
+                self.list_up();
                 print_info("REDONE: PUT", BEGINNING_ROW);
             }
             OpKind::Delete(op) => {
@@ -657,7 +659,7 @@ impl State {
                 self.operations.pos -= 1;
                 self.update_list()?;
                 self.clear_and_show_headline();
-                self.list_up(nums.skip);
+                self.list_up();
                 print_info("REDONE DELETE", BEGINNING_ROW);
             }
         }
@@ -666,18 +668,18 @@ impl State {
     }
 
     /// Redraw the contents.
-    pub fn redraw(&mut self, nums: &Num, y: u16) {
+    pub fn redraw(&mut self, y: u16) {
         self.clear_and_show_headline();
-        self.list_up(nums.skip);
-        self.move_cursor(nums, y);
+        self.list_up();
+        self.move_cursor(y);
     }
 
     /// Reload the item list and redraw it.
-    pub fn reload(&mut self, nums: &Num, y: u16) -> Result<(), FxError> {
+    pub fn reload(&mut self, y: u16) -> Result<(), FxError> {
         self.update_list()?;
         self.clear_and_show_headline();
-        self.list_up(nums.skip);
-        self.move_cursor(nums, y);
+        self.list_up();
+        self.move_cursor(y);
         Ok(())
     }
 
@@ -767,14 +769,14 @@ impl State {
     }
 
     /// Print items in the directory.
-    pub fn list_up(&self, skip_number: u16) {
+    pub fn list_up(&self) {
         let visible = &self.list[..];
 
         visible.iter().enumerate().for_each(|(index, item)| {
-            if index >= skip_number.into()
-                && index < (self.layout.terminal_row + skip_number - BEGINNING_ROW).into()
+            if index >= self.nums.skip.into()
+                && index < (self.layout.terminal_row + self.nums.skip - BEGINNING_ROW).into()
             {
-                move_to(3, (index as u16 + BEGINNING_ROW) - skip_number);
+                move_to(3, (index as u16 + BEGINNING_ROW) - self.nums.skip);
                 self.print(item);
             }
         });
@@ -849,20 +851,20 @@ impl State {
     /// Change the cursor position, and print item information at the bottom.
     /// If preview is enabled, print text preview, contents of the directory or image preview on the right half of the terminal
     /// (To preview image, you must install chafa. See help).
-    pub fn move_cursor(&mut self, nums: &Num, y: u16) {
+    pub fn move_cursor(&mut self, y: u16) {
         // If preview is enabled, set the preview type, read the content (if text type) and reset the scroll.
         if self.layout.preview {
-            if let Ok(item) = self.get_item_mut(nums.index) {
+            if let Ok(item) = self.get_item_mut() {
                 set_preview_type(item);
                 item.preview_scroll = 0;
             }
         }
 
-        if let Ok(item) = self.get_item(nums.index) {
+        if let Ok(item) = self.get_item() {
             delete_cursor();
 
             //Print item information at the bottom
-            self.print_footer(item, nums);
+            self.print_footer(item);
 
             //Print preview if preview is on
             if self.layout.preview {
@@ -878,7 +880,7 @@ impl State {
     }
 
     /// Print item information at the bottom of the terminal.
-    fn print_footer(&self, item: &ItemInfo, nums: &Num) {
+    fn print_footer(&self, item: &ItemInfo) {
         move_to(1, self.layout.terminal_row);
         clear_current_line();
 
@@ -891,7 +893,7 @@ impl State {
                 move_to(1, self.layout.terminal_row);
                 let mut footer = format!(
                     "[{}/{}] {} {}",
-                    nums.index + 1,
+                    self.nums.index + 1,
                     self.list.len(),
                     ext.clone(),
                     to_proper_size(item.file_size),
@@ -900,8 +902,8 @@ impl State {
                     let _ = write!(
                         footer,
                         " index:{} skip:{} column:{} row:{}",
-                        nums.index,
-                        nums.skip,
+                        self.nums.index,
+                        self.nums.skip,
                         self.layout.terminal_column,
                         self.layout.terminal_row
                     );
@@ -920,7 +922,7 @@ impl State {
                 move_to(1, self.layout.terminal_row);
                 let mut footer = format!(
                     "[{}/{}] {}",
-                    nums.index + 1,
+                    self.nums.index + 1,
                     self.list.len(),
                     to_proper_size(item.file_size),
                 );
@@ -928,8 +930,8 @@ impl State {
                     let _ = write!(
                         footer,
                         " index:{} skip:{} column:{} row:{}",
-                        nums.index,
-                        nums.skip,
+                        self.nums.index,
+                        self.nums.skip,
                         self.layout.terminal_column,
                         self.layout.terminal_row
                     );
@@ -943,24 +945,24 @@ impl State {
         }
     }
 
-    pub fn scroll_down_preview(&mut self, nums: &Num, y: u16) {
-        if let Ok(item) = self.get_item_mut(nums.index) {
+    pub fn scroll_down_preview(&mut self, y: u16) {
+        if let Ok(item) = self.get_item_mut() {
             item.preview_scroll += 1;
-            self.scroll_preview(nums, y)
+            self.scroll_preview(y)
         }
     }
 
-    pub fn scroll_up_preview(&mut self, nums: &Num, y: u16) {
-        if let Ok(item) = self.get_item_mut(nums.index) {
+    pub fn scroll_up_preview(&mut self, y: u16) {
+        if let Ok(item) = self.get_item_mut() {
             if item.preview_scroll != 0 {
                 item.preview_scroll -= 1;
-                self.scroll_preview(nums, y)
+                self.scroll_preview(y)
             }
         }
     }
 
-    fn scroll_preview(&self, nums: &Num, y: u16) {
-        if let Ok(item) = self.get_item(nums.index) {
+    fn scroll_preview(&self, y: u16) {
+        if let Ok(item) = self.get_item() {
             self.layout.print_preview(item, y);
             move_to(1, y);
             print_pointer();
