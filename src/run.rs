@@ -470,6 +470,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     }
 
                                     KeyCode::Enter => {
+                                        hide_cursor();
                                         let command: String = command.iter().collect();
                                         if command.trim() == "z" {
                                             //go to the home directory
@@ -1075,6 +1076,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 match code {
                                     KeyCode::Enter => {
                                         reset_info_line();
+                                        state.keyword = Some(keyword.iter().collect());
                                         state.move_cursor(y);
                                         break;
                                     }
@@ -1180,6 +1182,29 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                         }
                         hide_cursor();
                     }
+
+                    KeyCode::Char('n') => match &state.keyword {
+                        None => {
+                            continue;
+                        }
+                        Some(keyword) => {
+                            let next = state
+                                .list
+                                .iter()
+                                .skip(state.nums.index + 1)
+                                .position(|x| x.file_name.contains(keyword));
+                            match next {
+                                None => {
+                                    continue;
+                                }
+                                Some(i) => {
+                                    state.nums.skip += (i + 1) as u16;
+                                    state.nums.index += i + 1;
+                                    state.redraw(y);
+                                }
+                            }
+                        }
+                    },
 
                     //shell mode
                     KeyCode::Char(':') => {
