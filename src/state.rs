@@ -883,6 +883,20 @@ impl State {
         move_to(1, self.layout.terminal_row);
         clear_current_line();
 
+        if self.keyword.is_some() {
+            print!(
+                "{}",
+                " ".repeat(self.layout.terminal_column as usize).negative(),
+            );
+            move_to(1, self.layout.terminal_row);
+            print!(
+                "{}{}",
+                "/".negative(),
+                self.keyword.clone().unwrap().negative()
+            );
+            return;
+        }
+
         match &item.file_ext {
             Some(ext) => {
                 print!(
