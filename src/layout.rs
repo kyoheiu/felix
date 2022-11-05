@@ -132,8 +132,7 @@ impl Layout {
     fn preview_text(&self, item: &ItemInfo) {
         let content = {
             if let Some(content) = &item.content {
-                let content = content.replace('\t', "    ");
-                format_txt(&content, self.preview_space.0, false)
+                format_txt(content, self.preview_space.0, false)
             } else {
                 vec![]
             }

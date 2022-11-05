@@ -1120,6 +1120,7 @@ fn set_preview_content_type(item: &mut ItemInfo) {
     } else if let Ok(content) = &std::fs::read(&item.file_path) {
         if content_inspector::inspect(content).is_text() {
             if let Ok(content) = String::from_utf8(content.to_vec()) {
+                let content = content.replace('\t', "    ");
                 item.content = Some(content);
             }
             item.preview_type = Some(PreviewType::Text);
