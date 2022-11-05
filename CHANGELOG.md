@@ -12,6 +12,10 @@
 - Syntax highlighting (if possible) in previewed texts. To turn on, state `syntax_hightlight = true` in `config.toml`. you can also choose your theme, either from the default theme set or your favorite .tmtheme.
 - Enable scrolling in the preview space. `Alt + j / Up` goes down, `Alt + k` goes up. Experimental and may have some bugs.
 
+### Fixed
+
+- Use `exists()` instead of `File::open()` to check whether the item path is valid when moving between direcotries. This allows Windows users to use this app at least with the basic commands.
+
 ### Removed
 
 - Removed debug print in `make_config_if_not_exists`
