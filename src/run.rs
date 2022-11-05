@@ -14,6 +14,7 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::execute;
 use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
 use log::{error, info};
+use std::env::set_current_dir;
 use std::ffi::OsStr;
 use std::fmt::Write as _;
 use std::io::{stdout, Write};
@@ -248,7 +249,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             };
                                             p_memo_v.push(cursor_memo);
 
-                                            if let Err(e) = std::env::set_current_dir(&true_path) {
+                                            if let Err(e) = set_current_dir(&true_path) {
                                                 print_warning(e, y);
                                                 continue;
                                             }
@@ -291,7 +292,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         };
                                         p_memo_v.push(cursor_memo);
 
-                                        if let Err(e) = std::env::set_current_dir(&item.file_path) {
+                                        if let Err(e) = set_current_dir(&item.file_path) {
                                             print_warning(e, y);
                                             continue;
                                         }
@@ -379,17 +380,14 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     Some(memo) => {
                                         match memo.to_sym_dir {
                                             Some(true_path) => {
-                                                if let Err(e) =
-                                                    std::env::set_current_dir(&true_path)
-                                                {
+                                                if let Err(e) = set_current_dir(&true_path) {
                                                     print_warning(e, y);
                                                     continue;
                                                 }
                                                 state.current_dir = true_path;
                                             }
                                             None => {
-                                                if let Err(e) = std::env::set_current_dir(parent_p)
-                                                {
+                                                if let Err(e) = set_current_dir(parent_p) {
                                                     print_warning(e, y);
                                                     continue;
                                                 }
@@ -402,7 +400,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         state.reload(&nums, memo.cursor_pos)?;
                                     }
                                     None => {
-                                        if let Err(e) = std::env::set_current_dir(parent_p) {
+                                        if let Err(e) = set_current_dir(parent_p) {
                                             print_warning(e, y);
                                             continue;
                                         }
@@ -516,14 +514,16 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             p_memo_v = Vec::new();
                                             c_memo_v = Vec::new();
                                             let home_dir = dirs::home_dir().unwrap();
-                                            std::env::set_current_dir(&home_dir)?;
+                                            if let Err(e) = set_current_dir(&home_dir) {
+                                                print_warning(e, y);
+                                                break 'zoxide;
+                                            }
                                             state.current_dir = home_dir;
                                             nums.reset();
                                             if let Err(e) = state.update_list() {
                                                 print_warning(e, y);
                                                 break 'zoxide;
                                             }
-                                            hide_cursor();
                                             state.redraw(&nums, BEGINNING_ROW);
                                             break 'zoxide;
                                         } else if command.len() > 2 {
@@ -546,7 +546,6 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                             std::str::from_utf8(&output);
                                                         match target_dir {
                                                             Err(e) => {
-                                                                hide_cursor();
                                                                 print_warning(e, y);
                                                                 break 'zoxide;
                                                             }
@@ -759,7 +758,6 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                                         if let Err(e) = state.remove_and_yank(&selected, true) {
                                             print_warning(e, current_pos);
-                                            screen.flush()?;
                                             break;
                                         }
 
@@ -1287,7 +1285,10 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             p_memo_v = Vec::new();
                                             c_memo_v = Vec::new();
                                             let home_dir = dirs::home_dir().unwrap();
-                                            std::env::set_current_dir(&home_dir)?;
+                                            if let Err(e) = set_current_dir(&home_dir) {
+                                                print_warning(e, y);
+                                                break 'command;
+                                            }
                                             state.current_dir = home_dir;
                                             nums.reset();
                                             if let Err(e) = state.update_list() {
@@ -1389,7 +1390,10 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             nums.reset();
                                             state.filtered = false;
                                             let home_dir = dirs::home_dir().unwrap();
-                                            std::env::set_current_dir(&home_dir)?;
+                                            if let Err(e) = set_current_dir(&home_dir) {
+                                                print_warning(e, y);
+                                                break 'command;
+                                            }
                                             state.current_dir = home_dir;
                                             state.reload(&nums, BEGINNING_ROW)?;
                                             break 'command;
@@ -1421,9 +1425,12 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                             nums.reset();
                                                             let target_path =
                                                                 PathBuf::from(target_dir.trim());
-                                                            std::env::set_current_dir(
-                                                                target_path.clone(),
-                                                            )?;
+                                                            if let Err(e) =
+                                                                set_current_dir(target_path.clone())
+                                                            {
+                                                                print_warning(e, y);
+                                                                break 'command;
+                                                            }
                                                             state.current_dir =
                                                                 if cfg!(not(windows)) {
                                                                     target_path.canonicalize()?
@@ -1459,14 +1466,12 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                             &state.trash_dir,
                                                         ) {
                                                             print_warning(e, y);
-                                                            screen.flush()?;
                                                             continue 'main;
                                                         }
                                                         if let Err(e) =
                                                             std::fs::create_dir(&state.trash_dir)
                                                         {
                                                             print_warning(e, y);
-                                                            screen.flush()?;
                                                             continue 'main;
                                                         }
                                                         reset_info_line();
