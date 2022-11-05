@@ -12,6 +12,7 @@ use super::term::*;
 use crossterm::cursor::RestorePosition;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::execute;
+use crossterm::style::Stylize;
 use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
 use log::{error, info};
 use std::env::set_current_dir;
@@ -1055,15 +1056,14 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                         }
                     }
 
-                    //filter mode
+                    //search mode
                     KeyCode::Char('/') => {
                         if len == 0 {
                             continue;
                         }
                         print!(" ");
-                        to_info_bar();
-                        clear_current_line();
-                        print!("/");
+                        state.clear_status_line();
+                        print!("{}", "/".negative());
                         show_cursor();
                         screen.flush()?;
 
@@ -1125,7 +1125,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                         state.nums.skip +=
                                                             (i - state.nums.index) as u16;
                                                         state.nums.index = i;
-                                                        state.redraw(y as u16);
+                                                        state.redraw(y);
                                                     } else {
                                                         state.redraw(y);
                                                     }
@@ -1135,10 +1135,13 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                 }
                                             }
 
-                                            to_info_bar();
-                                            print!("/");
-                                            print!("{}", result);
-                                            move_to((current_pos).try_into().unwrap(), 2)
+                                            state.clear_status_line();
+                                            print!("{}", "/".negative());
+                                            print!("{}", result.clone().negative());
+                                            move_to(
+                                                (current_pos).try_into().unwrap(),
+                                                state.layout.terminal_row,
+                                            )
                                         }
                                     }
 
@@ -1169,10 +1172,13 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             }
                                         }
 
-                                        to_info_bar();
-                                        print!("/");
-                                        print!("{}", result);
-                                        move_to((current_pos).try_into().unwrap(), 2);
+                                        state.clear_status_line();
+                                        print!("{}", "/".negative());
+                                        print!("{}", result.clone().negative());
+                                        move_to(
+                                            (current_pos).try_into().unwrap(),
+                                            state.layout.terminal_row,
+                                        )
                                     }
 
                                     _ => continue,
@@ -1295,6 +1301,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             break 'command;
                                         } else if command == vec!['e'] {
                                             //reload current dir
+                                            state.keyword = None;
                                             state.nums.reset();
                                             state.reload(BEGINNING_ROW)?;
                                             break 'command;
