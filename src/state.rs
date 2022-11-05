@@ -38,6 +38,7 @@ pub struct State {
     pub layout: Layout,
     pub show_hidden: bool,
     pub filtered: bool,
+    pub keyword: Option<String>,
     pub rust_log: Option<String>,
 }
 
@@ -134,6 +135,7 @@ impl State {
             },
             show_hidden: session.show_hidden,
             filtered: false,
+            keyword: None,
             rust_log: std::env::var("RUST_LOG").ok(),
         })
     }

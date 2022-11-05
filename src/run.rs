@@ -1110,10 +1110,8 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                         clear_current_line();
                         print!("/");
                         show_cursor();
-                        state.filtered = true;
                         screen.flush()?;
 
-                        let original_list = state.list.clone();
                         let mut keyword: Vec<char> = Vec::new();
                         let initial_pos = 3;
                         let mut current_pos = initial_pos;
@@ -1123,16 +1121,13 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 match code {
                                     KeyCode::Enter => {
                                         reset_info_line();
-                                        nums.reset();
-                                        state.move_cursor(&nums, BEGINNING_ROW);
+                                        state.move_cursor(&nums, y);
                                         break;
                                     }
 
                                     KeyCode::Esc => {
                                         hide_cursor();
-                                        state.filtered = false;
-                                        state.list = original_list;
-                                        state.reload(&nums, y)?;
+                                        state.redraw(&nums, y);
                                         break;
                                     }
 
@@ -1155,9 +1150,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     KeyCode::Backspace => {
                                         if current_pos == initial_pos {
                                             hide_cursor();
-                                            state.filtered = false;
-                                            state.list = original_list;
-                                            state.reload(&nums, y)?;
+                                            state.redraw(&nums, y);
                                             break;
                                         } else {
                                             keyword.remove(current_pos - initial_pos - 1);
@@ -1165,14 +1158,25 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                                             let result = &keyword.iter().collect::<String>();
 
-                                            state.list = original_list
-                                                .clone()
-                                                .into_iter()
-                                                .filter(|entry| entry.file_name.contains(result))
-                                                .collect();
+                                            let target = state
+                                                .list
+                                                .iter()
+                                                .position(|x| x.file_name.contains(result));
 
-                                            state.clear_and_show_headline();
-                                            state.list_up(0);
+                                            match target {
+                                                Some(i) => {
+                                                    if i >= nums.index {
+                                                        nums.skip += (i - nums.index) as u16;
+                                                        nums.index = i;
+                                                        state.redraw(&nums, y as u16);
+                                                    } else {
+                                                        state.redraw(&nums, y);
+                                                    }
+                                                }
+                                                None => {
+                                                    state.redraw(&nums, y);
+                                                }
+                                            }
 
                                             to_info_bar();
                                             print!("/");
@@ -1187,14 +1191,25 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                                         let result = &keyword.iter().collect::<String>();
 
-                                        state.list = original_list
-                                            .clone()
-                                            .into_iter()
-                                            .filter(|entry| entry.file_name.contains(result))
-                                            .collect();
+                                        let target = state
+                                            .list
+                                            .iter()
+                                            .position(|x| x.file_name.contains(result));
 
-                                        state.clear_and_show_headline();
-                                        state.list_up(0);
+                                        match target {
+                                            Some(i) => {
+                                                if i >= nums.index {
+                                                    nums.skip += (i - nums.index) as u16;
+                                                    nums.index = i;
+                                                    state.redraw(&nums, y as u16);
+                                                } else {
+                                                    state.redraw(&nums, y);
+                                                }
+                                            }
+                                            None => {
+                                                state.redraw(&nums, y);
+                                            }
+                                        }
 
                                         to_info_bar();
                                         print!("/");

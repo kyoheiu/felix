@@ -1,3 +1,9 @@
+#[derive(Clone, Copy)]
+pub struct Num {
+    pub index: usize,
+    pub skip: u16,
+}
+
 pub struct ParentMemo {
     pub to_sym_dir: Option<std::path::PathBuf>,
     pub num: Num,
@@ -9,12 +15,6 @@ pub struct ChildMemo {
     pub num: Num,
     pub cursor_pos: u16,
 }
-#[derive(Clone, Copy)]
-pub struct Num {
-    pub index: usize,
-    pub skip: u16,
-}
-
 impl Num {
     pub fn new() -> Self {
         Num { index: 0, skip: 0 }
