@@ -770,14 +770,14 @@ impl State {
     pub fn list_up(&self, skip_number: u16) {
         let visible = &self.list[..];
 
-        visible
-            .iter()
-            .enumerate()
-            .skip(skip_number.into())
-            .for_each(|(index, item)| {
+        visible.iter().enumerate().for_each(|(index, item)| {
+            if index >= skip_number.into()
+                && index < (self.layout.terminal_row + skip_number - BEGINNING_ROW).into()
+            {
                 move_to(3, (index as u16 + BEGINNING_ROW) - skip_number);
                 self.print(item);
-            });
+            }
+        });
     }
 
     /// Update state's list of items.
