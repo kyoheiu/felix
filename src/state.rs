@@ -878,10 +878,23 @@ impl State {
         self.layout.y = y;
     }
 
+    pub fn to_status_bar(&self) {
+        move_to(1, self.layout.terminal_row);
+    }
+
+    pub fn clear_status_line(&self) {
+        self.to_status_bar();
+        clear_current_line();
+        print!(
+            "{}",
+            " ".repeat(self.layout.terminal_column as usize).negative(),
+        );
+        move_to(2, self.layout.terminal_row);
+    }
+
     /// Print item information at the bottom of the terminal.
     fn print_footer(&self, item: &ItemInfo) {
-        move_to(1, self.layout.terminal_row);
-        clear_current_line();
+        self.clear_status_line();
 
         if self.keyword.is_some() {
             print!(
@@ -891,7 +904,7 @@ impl State {
             move_to(1, self.layout.terminal_row);
             print!(
                 "{}{}",
-                "/".negative(),
+                " /".negative(),
                 self.keyword.clone().unwrap().negative()
             );
             return;
@@ -899,11 +912,6 @@ impl State {
 
         match &item.file_ext {
             Some(ext) => {
-                print!(
-                    "{}",
-                    " ".repeat(self.layout.terminal_column as usize).negative(),
-                );
-                move_to(1, self.layout.terminal_row);
                 let mut footer = format!(
                     "[{}/{}] {} {}",
                     self.nums.index + 1,
@@ -928,11 +936,6 @@ impl State {
                 print!("{}", footer.negative());
             }
             None => {
-                print!(
-                    "{}",
-                    " ".repeat(self.layout.terminal_column as usize).negative(),
-                );
-                move_to(1, self.layout.terminal_row);
                 let mut footer = format!(
                     "[{}/{}] {}",
                     self.nums.index + 1,
