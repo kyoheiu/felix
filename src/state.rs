@@ -711,7 +711,7 @@ impl State {
     }
 
     /// Print an item in the directory.
-    fn print(&self, item: &ItemInfo) {
+    fn print_item(&self, item: &ItemInfo) {
         let chars: Vec<char> = item.file_name.chars().collect();
         let name = if chars.len() > self.layout.name_max_len {
             let mut result = chars
@@ -758,7 +758,8 @@ impl State {
             print!("{}", name.bold(),);
             move_left(1000);
             move_right(self.layout.time_start_pos - 1);
-            print!(" {}", time.bold());
+            set_color(&TermColor::ForeGround(color));
+            print!(" {}", time);
             reset_color();
         } else {
             set_color(&TermColor::ForeGround(color));
@@ -779,7 +780,7 @@ impl State {
                 && index < (self.layout.terminal_row + self.nums.skip - BEGINNING_ROW).into()
             {
                 move_to(3, (index as u16 + BEGINNING_ROW) - self.nums.skip);
-                self.print(item);
+                self.print_item(item);
             }
         });
     }
