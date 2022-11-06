@@ -214,6 +214,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                     //Open file or change directory
                     KeyCode::Char('l') | KeyCode::Enter | KeyCode::Right => {
+                        let mut dest = Dest::new();
                         if let Ok(item) = state.get_item() {
                             match item.file_type {
                                 FileType::File => {
@@ -245,10 +246,8 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                 print_warning(e, state.layout.y);
                                                 continue;
                                             }
-                                            state.current_dir = true_path.to_path_buf();
-                                            state.keyword = None;
+                                            dest.dest = Some(true_path.to_path_buf());
                                             state.nums.reset();
-                                            state.reload(BEGINNING_ROW)?;
                                         } else {
                                             print_warning("Broken link.", state.layout.y);
                                             continue;
@@ -279,30 +278,33 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             print_warning(e, state.layout.y);
                                             continue;
                                         }
-                                        state.current_dir = item.file_path.clone();
-                                        state.keyword = None;
-                                        state.update_list()?;
+                                        dest.dest = Some(item.file_path.clone());
 
                                         match c_memo_v.pop() {
                                             Some(memo) => {
-                                                if state.current_dir == memo.dir_path {
+                                                if dest.dest == Some(memo.dir_path) {
                                                     state.nums.index = memo.num.index;
                                                     state.nums.skip = memo.num.skip;
-                                                    state.redraw(memo.cursor_pos);
+                                                    dest.cursor_pos = memo.cursor_pos;
                                                 } else {
                                                     state.nums.reset();
-                                                    state.redraw(BEGINNING_ROW);
                                                 }
                                             }
                                             None => {
                                                 state.nums.reset();
-                                                state.redraw(BEGINNING_ROW);
                                             }
                                         }
                                     } else {
                                         print_warning("Invalid directory.", state.layout.y);
                                     }
                                 }
+                            }
+                        }
+                        match dest.dest {
+                            None => {}
+                            Some(p) => {
+                                state.chdir(&p);
+                                state.reload(dest.cursor_pos)?;
                             }
                         }
                     }

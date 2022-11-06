@@ -66,6 +66,20 @@ pub enum FileType {
     Symlink,
 }
 
+pub struct Dest {
+    pub dest: Option<PathBuf>,
+    pub cursor_pos: u16,
+}
+
+impl Dest {
+    pub fn new() -> Dest {
+        Dest {
+            dest: None,
+            cursor_pos: BEGINNING_ROW,
+        }
+    }
+}
+
 impl State {
     /// Initialize the state of the app.
     pub fn new() -> Result<Self, FxError> {
