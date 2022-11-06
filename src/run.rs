@@ -12,7 +12,6 @@ use super::term::*;
 use crossterm::cursor::RestorePosition;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::execute;
-use crossterm::style::Stylize;
 use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
 use log::{error, info};
 use std::env::set_current_dir;
@@ -1128,26 +1127,23 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             match target {
                                                 Some(i) => {
                                                     if i >= state.nums.index {
-                                                        state.nums.skip +=
-                                                            (i - state.nums.index) as u16;
+                                                        state.nums.skip = i as u16;
                                                         state.nums.index = i;
-                                                        state.redraw(y);
+                                                        state.highlight_matches(result);
+                                                        state.redraw(BEGINNING_ROW);
                                                     } else {
-                                                        state.redraw(y);
+                                                        state.redraw(state.layout.y);
                                                     }
                                                 }
                                                 None => {
-                                                    state.redraw(y);
+                                                    state.redraw(state.layout.y);
                                                 }
                                             }
 
-                                            state.clear_status_line();
-                                            print!("{}", "/".negative());
-                                            print!("{}", result.clone().negative());
-                                            move_to(
-                                                (current_pos).try_into().unwrap(),
-                                                state.layout.terminal_row,
-                                            )
+                                            to_info_bar();
+                                            clear_current_line();
+                                            print!("/{}", result.clone());
+                                            move_to(current_pos as u16, 2);
                                         }
                                     }
 
@@ -1164,27 +1160,20 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                                         match target {
                                             Some(i) => {
-                                                if i >= state.nums.index {
-                                                    state.nums.skip +=
-                                                        (i - state.nums.index) as u16;
-                                                    state.nums.index = i;
-                                                    state.redraw(y);
-                                                } else {
-                                                    state.redraw(y);
-                                                }
+                                                state.nums.skip = i as u16;
+                                                state.nums.index = i;
+                                                state.highlight_matches(result);
+                                                state.redraw(BEGINNING_ROW);
                                             }
                                             None => {
-                                                state.redraw(y);
+                                                state.redraw(state.layout.y);
                                             }
                                         }
 
-                                        state.clear_status_line();
-                                        print!("{}", "/".negative());
-                                        print!("{}", result.clone().negative());
-                                        move_to(
-                                            (current_pos).try_into().unwrap(),
-                                            state.layout.terminal_row,
-                                        )
+                                        to_info_bar();
+                                        clear_current_line();
+                                        print!("/{}", result.clone());
+                                        move_to(current_pos as u16, 2);
                                     }
 
                                     _ => continue,
@@ -1210,9 +1199,10 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     continue;
                                 }
                                 Some(i) => {
-                                    state.nums.skip += (i + 1) as u16;
-                                    state.nums.index += i + 1;
-                                    state.redraw(y);
+                                    let i = i + state.nums.index + 1;
+                                    state.nums.skip = i as u16;
+                                    state.nums.index = i;
+                                    state.redraw(BEGINNING_ROW);
                                 }
                             }
                         }
@@ -1235,7 +1225,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 Some(i) => {
                                     state.nums.skip = i as u16;
                                     state.nums.index = i;
-                                    state.redraw(y);
+                                    state.redraw(BEGINNING_ROW);
                                 }
                             }
                         }

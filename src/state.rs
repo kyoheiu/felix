@@ -53,6 +53,7 @@ pub struct ItemInfo {
     pub modified: Option<String>,
     pub is_hidden: bool,
     pub selected: bool,
+    pub hit: bool,
     pub preview_type: Option<PreviewType>,
     pub preview_scroll: usize,
     pub content: Option<String>,
@@ -723,16 +724,20 @@ impl State {
             item.file_name.clone()
         };
         let time = format_time(&item.modified);
-        let selected = &item.selected;
         let color = match item.file_type {
             FileType::Directory => &self.layout.colors.dir_fg,
             FileType::File => &self.layout.colors.file_fg,
             FileType::Symlink => &self.layout.colors.symlink_fg,
         };
         if self.layout.terminal_column < PROPER_WIDTH {
-            if *selected {
+            if item.selected {
                 set_color(&TermColor::ForeGround(color));
                 print!("{}", name.negative(),);
+                reset_color();
+            } else if item.hit {
+                set_color(&TermColor::ForeGround(color));
+                print!("{}", name.bold(),);
+                reset_color();
             } else {
                 set_color(&TermColor::ForeGround(color));
                 print!("{}", name);
@@ -741,24 +746,27 @@ impl State {
             if self.layout.terminal_column > self.layout.time_start_pos + TIME_WIDTH {
                 clear_until_newline();
             }
+        } else if item.selected {
+            set_color(&TermColor::ForeGround(color));
+            print!("{}", name.negative(),);
+            move_left(1000);
+            move_right(self.layout.time_start_pos - 1);
+            print!(" {}", time.negative());
+            reset_color();
+        } else if item.hit {
+            set_color(&TermColor::ForeGround(color));
+            print!("{}", name.bold(),);
+            move_left(1000);
+            move_right(self.layout.time_start_pos - 1);
+            print!(" {}", time.bold());
+            reset_color();
         } else {
-            if *selected {
-                set_color(&TermColor::ForeGround(color));
-                print!("{}", name.negative(),);
-                move_left(100);
-                move_right(self.layout.time_start_pos - 1);
-                print!(" {}", time.negative());
-            } else {
-                set_color(&TermColor::ForeGround(color));
-                print!("{}", name);
-                move_left(100);
-                move_right(self.layout.time_start_pos - 1);
-                print!(" {}", time);
-                reset_color();
-            }
-            if self.layout.terminal_column > self.layout.time_start_pos + TIME_WIDTH {
-                clear_until_newline();
-            }
+            set_color(&TermColor::ForeGround(color));
+            print!("{}", name);
+            move_left(1000);
+            move_right(self.layout.time_start_pos - 1);
+            print!(" {}", time);
+            reset_color();
         }
     }
 
@@ -817,6 +825,16 @@ impl State {
     pub fn reset_selection(&mut self) {
         for mut item in self.list.iter_mut() {
             item.selected = false;
+        }
+    }
+
+    pub fn highlight_matches(&mut self, keyword: &str) {
+        for item in self.list.iter_mut() {
+            if item.file_name.contains(keyword) {
+                item.hit = true;
+            } else {
+                item.hit = false;
+            }
         }
     }
 
@@ -897,15 +915,27 @@ impl State {
         self.clear_status_line();
 
         if self.keyword.is_some() {
+            let count = self
+                .list
+                .iter()
+                .filter(|x| x.file_name.contains(self.keyword.as_ref().unwrap()))
+                .count();
+            let count = if count <= 1 {
+                format!("{} match", count)
+            } else {
+                format!("{} matches", count)
+            };
             print!(
                 "{}",
                 " ".repeat(self.layout.terminal_column as usize).negative(),
             );
             move_to(1, self.layout.terminal_row);
             print!(
-                "{}{}",
+                "{}{}{}{}",
                 " /".negative(),
-                self.keyword.clone().unwrap().negative()
+                self.keyword.clone().unwrap().negative(),
+                " - ".negative(),
+                count.negative()
             );
             return;
         }
@@ -1069,6 +1099,7 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
                 },
                 modified: time,
                 selected: false,
+                hit: false,
                 is_hidden: hidden,
                 preview_type: None,
                 preview_scroll: 0,
@@ -1084,6 +1115,7 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
             file_ext: ext,
             modified: None,
             selected: false,
+            hit: false,
             is_hidden: false,
             preview_type: None,
             preview_scroll: 0,
