@@ -4,17 +4,19 @@ pub struct Num {
     pub skip: u16,
 }
 
-pub struct ParentMemo {
-    pub to_sym_dir: Option<std::path::PathBuf>,
+#[derive(Debug)]
+pub struct StateMemo {
+    pub path: std::path::PathBuf,
     pub num: Num,
     pub cursor_pos: u16,
 }
 
-pub struct ChildMemo {
-    pub dir_path: std::path::PathBuf,
-    pub num: Num,
-    pub cursor_pos: u16,
+pub enum Move {
+    Up,
+    Down,
+    Jump,
 }
+
 impl Num {
     pub fn new() -> Self {
         Num { index: 0, skip: 0 }

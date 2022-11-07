@@ -34,6 +34,8 @@ pub struct State {
     pub commands: Option<HashMap<String, String>>,
     pub registered: Vec<ItemInfo>,
     pub operations: Operation,
+    pub c_memo: Vec<StateMemo>,
+    pub p_memo: Vec<StateMemo>,
     pub keyword: Option<String>,
     pub layout: Layout,
     pub rust_log: Option<String>,
@@ -147,6 +149,8 @@ impl State {
                 has_chafa,
                 is_kitty,
             },
+            c_memo: Vec::new(),
+            p_memo: Vec::new(),
             keyword: None,
             rust_log: std::env::var("RUST_LOG").ok(),
         })
@@ -876,7 +880,29 @@ impl State {
         }
     }
 
-    pub fn chdir(&mut self, p: &std::path::Path) {
+    pub fn chdir(&mut self, p: &std::path::Path, mv: Move) {
+        match mv {
+            Move::Up => {
+                let cursor_memo = StateMemo {
+                    path: self.current_dir.clone(),
+                    num: self.layout.nums,
+                    cursor_pos: self.layout.y,
+                };
+                self.c_memo.push(cursor_memo);
+            }
+            Move::Down => {
+                let cursor_memo = StateMemo {
+                    path: self.current_dir.clone(),
+                    num: self.layout.nums,
+                    cursor_pos: self.layout.y,
+                };
+                self.p_memo.push(cursor_memo);
+            }
+            Move::Jump => {
+                self.p_memo = Vec::new();
+                self.c_memo = Vec::new();
+            }
+        }
         self.current_dir = p.to_owned();
         self.keyword = None;
     }
