@@ -28,17 +28,14 @@ pub const WHEN_EMPTY: &str = "Are you sure to empty the trash directory? (if yes
 #[derive(Debug)]
 pub struct State {
     pub list: Vec<ItemInfo>,
-    pub nums: Num,
-    pub registered: Vec<ItemInfo>,
-    pub operations: Operation,
     pub current_dir: PathBuf,
     pub trash_dir: PathBuf,
     pub default: String,
     pub commands: Option<HashMap<String, String>>,
-    pub sort_by: SortKey,
-    pub layout: Layout,
-    pub show_hidden: bool,
+    pub registered: Vec<ItemInfo>,
+    pub operations: Operation,
     pub keyword: Option<String>,
+    pub layout: Layout,
     pub rust_log: Option<String>,
 }
 
@@ -53,7 +50,7 @@ pub struct ItemInfo {
     pub modified: Option<String>,
     pub is_hidden: bool,
     pub selected: bool,
-    pub hit: bool,
+    pub matches: bool,
     pub preview_type: Option<PreviewType>,
     pub preview_scroll: usize,
     pub content: Option<String>,
@@ -109,7 +106,6 @@ impl State {
 
         Ok(State {
             list: Vec::new(),
-            nums: Num::new(),
             registered: Vec::new(),
             operations: Operation {
                 pos: 0,
@@ -121,8 +117,8 @@ impl State {
                 .default
                 .unwrap_or_else(|| env::var("EDITOR").expect("Falling back to env var")),
             commands: to_extension_map(&config.exec),
-            sort_by: session.sort_by,
             layout: Layout {
+                nums: Num::new(),
                 y: BEGINNING_ROW,
                 terminal_row: original_row,
                 terminal_column: original_column,
@@ -133,6 +129,8 @@ impl State {
                     file_fg: config.color.file_fg,
                     symlink_fg: config.color.symlink_fg,
                 },
+                sort_by: session.sort_by,
+                show_hidden: session.show_hidden,
                 preview: session.preview.unwrap_or(false),
                 split,
                 preview_start: match split {
@@ -149,46 +147,23 @@ impl State {
                 has_chafa,
                 is_kitty,
             },
-            show_hidden: session.show_hidden,
             keyword: None,
             rust_log: std::env::var("RUST_LOG").ok(),
         })
     }
 
-    /// Reload the app layout when terminal size changes.
-    pub fn refresh(&mut self, column: u16, row: u16, cursor_pos: u16) {
-        let (time_start, name_max) = make_layout(column);
-
-        let (original_column, original_row) =
-            crossterm::terminal::size().unwrap_or_else(|_| panic!("Cannot detect terminal size."));
-
-        self.layout.terminal_row = row;
-        self.layout.terminal_column = column;
-        self.layout.preview_start = match self.layout.split {
-            Split::Vertical => (column + 2, BEGINNING_ROW),
-            Split::Horizontal => (1, row + 2),
-        };
-        self.layout.preview_space = match self.layout.preview {
-            true => match self.layout.split {
-                Split::Vertical => (original_column - column - 1, row - BEGINNING_ROW),
-                Split::Horizontal => (column, original_row - row - 1),
-            },
-            false => (0, 0),
-        };
-        self.layout.name_max_len = name_max;
-        self.layout.time_start_pos = time_start;
-
-        self.redraw(cursor_pos);
-    }
-
     /// Select an item that the cursor points to.
     pub fn get_item(&self) -> Result<&ItemInfo, FxError> {
-        self.list.get(self.nums.index).ok_or(FxError::GetItem)
+        self.list
+            .get(self.layout.nums.index)
+            .ok_or(FxError::GetItem)
     }
 
     /// Select an item that the cursor points to, as mut.
     pub fn get_item_mut(&mut self) -> Result<&mut ItemInfo, FxError> {
-        self.list.get_mut(self.nums.index).ok_or(FxError::GetItem)
+        self.list
+            .get_mut(self.layout.nums.index)
+            .ok_or(FxError::GetItem)
     }
 
     /// Open the selected file according to the config.
@@ -696,6 +671,32 @@ impl State {
         Ok(())
     }
 
+    /// Reload the app layout when terminal size changes.
+    pub fn refresh(&mut self, column: u16, row: u16, cursor_pos: u16) {
+        let (time_start, name_max) = make_layout(column);
+
+        let (original_column, original_row) =
+            crossterm::terminal::size().unwrap_or_else(|_| panic!("Cannot detect terminal size."));
+
+        self.layout.terminal_row = row;
+        self.layout.terminal_column = column;
+        self.layout.preview_start = match self.layout.split {
+            Split::Vertical => (column + 2, BEGINNING_ROW),
+            Split::Horizontal => (1, row + 2),
+        };
+        self.layout.preview_space = match self.layout.preview {
+            true => match self.layout.split {
+                Split::Vertical => (original_column - column - 1, row - BEGINNING_ROW),
+                Split::Horizontal => (column, original_row - row - 1),
+            },
+            false => (0, 0),
+        };
+        self.layout.name_max_len = name_max;
+        self.layout.time_start_pos = time_start;
+
+        self.redraw(cursor_pos);
+    }
+
     /// Clear all and show the current directory information.
     pub fn clear_and_show_headline(&mut self) {
         clear_all();
@@ -748,7 +749,7 @@ impl State {
                 set_color(&TermColor::ForeGround(color));
                 print!("{}", name.negative(),);
                 reset_color();
-            } else if item.hit {
+            } else if item.matches {
                 set_color(&TermColor::ForeGround(color));
                 print!("{}", name.bold(),);
                 reset_color();
@@ -767,7 +768,7 @@ impl State {
             move_right(self.layout.time_start_pos - 1);
             print!(" {}", time.negative());
             reset_color();
-        } else if item.hit {
+        } else if item.matches {
             set_color(&TermColor::ForeGround(color));
             print!("{}", name.bold(),);
             move_left(1000);
@@ -790,10 +791,10 @@ impl State {
         let visible = &self.list[..];
 
         visible.iter().enumerate().for_each(|(index, item)| {
-            if index >= self.nums.skip.into()
-                && index < (self.layout.terminal_row + self.nums.skip - BEGINNING_ROW).into()
+            if index >= self.layout.nums.skip.into()
+                && index < (self.layout.terminal_row + self.layout.nums.skip - BEGINNING_ROW).into()
             {
-                move_to(3, (index as u16 + BEGINNING_ROW) - self.nums.skip);
+                move_to(3, (index as u16 + BEGINNING_ROW) - self.layout.nums.skip);
                 self.print_item(item);
             }
         });
@@ -814,7 +815,7 @@ impl State {
             }
         }
 
-        match self.sort_by {
+        match self.layout.sort_by {
             SortKey::Name => {
                 dir_v.sort_by(|a, b| natord::compare(&a.file_name, &b.file_name));
                 file_v.sort_by(|a, b| natord::compare(&a.file_name, &b.file_name));
@@ -828,7 +829,7 @@ impl State {
         result.append(&mut dir_v);
         result.append(&mut file_v);
 
-        if !self.show_hidden {
+        if !self.layout.show_hidden {
             result.retain(|x| !x.is_hidden);
         }
 
@@ -846,9 +847,9 @@ impl State {
     pub fn highlight_matches(&mut self, keyword: &str) {
         for item in self.list.iter_mut() {
             if item.file_name.contains(keyword) {
-                item.hit = true;
+                item.matches = true;
             } else {
-                item.hit = false;
+                item.matches = false;
             }
         }
     }
@@ -959,7 +960,7 @@ impl State {
             Some(ext) => {
                 let mut footer = format!(
                     "[{}/{}] {} {}",
-                    self.nums.index + 1,
+                    self.layout.nums.index + 1,
                     self.list.len(),
                     ext.clone(),
                     to_proper_size(item.file_size),
@@ -968,8 +969,8 @@ impl State {
                     let _ = write!(
                         footer,
                         " index:{} skip:{} column:{} row:{}",
-                        self.nums.index,
-                        self.nums.skip,
+                        self.layout.nums.index,
+                        self.layout.nums.skip,
                         self.layout.terminal_column,
                         self.layout.terminal_row
                     );
@@ -983,7 +984,7 @@ impl State {
             None => {
                 let mut footer = format!(
                     "[{}/{}] {}",
-                    self.nums.index + 1,
+                    self.layout.nums.index + 1,
                     self.list.len(),
                     to_proper_size(item.file_size),
                 );
@@ -991,8 +992,8 @@ impl State {
                     let _ = write!(
                         footer,
                         " index:{} skip:{} column:{} row:{}",
-                        self.nums.index,
-                        self.nums.skip,
+                        self.layout.nums.index,
+                        self.layout.nums.skip,
                         self.layout.terminal_column,
                         self.layout.terminal_row
                     );
@@ -1034,8 +1035,8 @@ impl State {
     /// Store the sort key and whether to show hidden items to session file.
     pub fn write_session(&self, session_path: PathBuf) -> Result<(), FxError> {
         let session = Session {
-            sort_by: self.sort_by.clone(),
-            show_hidden: self.show_hidden,
+            sort_by: self.layout.sort_by.clone(),
+            show_hidden: self.layout.show_hidden,
             preview: Some(self.layout.preview),
             split: Some(self.layout.split),
         };
@@ -1114,7 +1115,7 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
                 },
                 modified: time,
                 selected: false,
-                hit: false,
+                matches: false,
                 is_hidden: hidden,
                 preview_type: None,
                 preview_scroll: 0,
@@ -1130,7 +1131,7 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
             file_ext: ext,
             modified: None,
             selected: false,
-            hit: false,
+            matches: false,
             is_hidden: false,
             preview_type: None,
             preview_scroll: 0,

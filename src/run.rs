@@ -94,8 +94,9 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     enter_raw_mode();
     execute!(screen, EnterAlternateScreen)?;
 
-    //Update list, print and flush
+    //If preview is on, refresh the layout.
     if state.layout.preview {
+        state.update_list()?;
         let new_column = match state.layout.split {
             Split::Vertical => state.layout.terminal_column / 2,
             Split::Horizontal => state.layout.terminal_column,
@@ -104,10 +105,10 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
             Split::Vertical => state.layout.terminal_row,
             Split::Horizontal => state.layout.terminal_row / 2,
         };
-
         state.refresh(new_column, new_row, BEGINNING_ROW);
+    } else {
+        state.reload(BEGINNING_ROW)?;
     }
-    state.reload(BEGINNING_ROW)?;
     screen.flush()?;
 
     //Initialize cursor move memo
@@ -136,16 +137,16 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                             if state.layout.preview {
                                 state.scroll_down_preview(state.layout.y);
                             }
-                        } else if len == 0 || state.nums.index == len - 1 {
+                        } else if len == 0 || state.layout.nums.index == len - 1 {
                             continue;
                         } else if state.layout.y >= state.layout.terminal_row - 1 - SCROLL_POINT
                             && len > (state.layout.terminal_row - BEGINNING_ROW) as usize - 1
                         {
-                            state.nums.go_down();
-                            state.nums.inc_skip();
+                            state.layout.nums.go_down();
+                            state.layout.nums.inc_skip();
                             state.redraw(state.layout.y);
                         } else {
-                            state.nums.go_down();
+                            state.layout.nums.go_down();
                             state.move_cursor(state.layout.y + 1);
                         }
                     }
@@ -156,16 +157,16 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                             if state.layout.preview {
                                 state.scroll_up_preview(state.layout.y);
                             }
-                        } else if state.nums.index == 0 {
+                        } else if state.layout.nums.index == 0 {
                             continue;
                         } else if state.layout.y <= BEGINNING_ROW + SCROLL_POINT
-                            && state.nums.skip != 0
+                            && state.layout.nums.skip != 0
                         {
-                            state.nums.go_up();
-                            state.nums.dec_skip();
+                            state.layout.nums.go_up();
+                            state.layout.nums.dec_skip();
                             state.redraw(state.layout.y);
                         } else {
-                            state.nums.go_up();
+                            state.layout.nums.go_up();
                             state.move_cursor(state.layout.y - 1);
                         }
                     }
@@ -182,7 +183,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                             match code {
                                 KeyCode::Char('g') => {
                                     hide_cursor();
-                                    state.nums.reset();
+                                    state.layout.nums.reset();
                                     state.redraw(BEGINNING_ROW);
                                 }
 
@@ -201,13 +202,13 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                             continue;
                         }
                         if len > (state.layout.terminal_row - BEGINNING_ROW) as usize {
-                            state.nums.skip =
+                            state.layout.nums.skip =
                                 (len as u16) + BEGINNING_ROW - state.layout.terminal_row;
-                            state.nums.go_bottom(len - 1);
+                            state.layout.nums.go_bottom(len - 1);
                             let cursor_pos = state.layout.terminal_row - 1;
                             state.redraw(cursor_pos);
                         } else {
-                            state.nums.go_bottom(len - 1);
+                            state.layout.nums.go_bottom(len - 1);
                             state.move_cursor(len as u16 + BEGINNING_ROW - 1);
                         }
                     }
@@ -237,7 +238,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         if true_path.exists() {
                                             let cursor_memo = ParentMemo {
                                                 to_sym_dir: Some(state.current_dir.clone()),
-                                                num: state.nums,
+                                                num: state.layout.nums,
                                                 cursor_pos: state.layout.y,
                                             };
                                             p_memo_v.push(cursor_memo);
@@ -247,7 +248,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                 continue;
                                             }
                                             dest.dest = Some(true_path.to_path_buf());
-                                            state.nums.reset();
+                                            state.layout.nums.reset();
                                         } else {
                                             print_warning("Broken link.", state.layout.y);
                                             continue;
@@ -269,7 +270,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         //store the last cursor position and skip number
                                         let cursor_memo = ParentMemo {
                                             to_sym_dir: None,
-                                            num: state.nums,
+                                            num: state.layout.nums,
                                             cursor_pos: state.layout.y,
                                         };
                                         p_memo_v.push(cursor_memo);
@@ -283,15 +284,15 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         match c_memo_v.pop() {
                                             Some(memo) => {
                                                 if dest.dest == Some(memo.dir_path) {
-                                                    state.nums.index = memo.num.index;
-                                                    state.nums.skip = memo.num.skip;
+                                                    state.layout.nums.index = memo.num.index;
+                                                    state.layout.nums.skip = memo.num.skip;
                                                     dest.cursor_pos = memo.cursor_pos;
                                                 } else {
-                                                    state.nums.reset();
+                                                    state.layout.nums.reset();
                                                 }
                                             }
                                             None => {
-                                                state.nums.reset();
+                                                state.layout.nums.reset();
                                             }
                                         }
                                     } else {
@@ -341,7 +342,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                             Some(parent_p) => {
                                 let cursor_memo = ChildMemo {
                                     dir_path: pre.clone(),
-                                    num: state.nums,
+                                    num: state.layout.nums,
                                     cursor_pos: state.layout.y,
                                 };
                                 c_memo_v.push(cursor_memo);
@@ -364,8 +365,8 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                 state.chdir(parent_p);
                                             }
                                         }
-                                        state.nums.index = memo.num.index;
-                                        state.nums.skip = memo.num.skip;
+                                        state.layout.nums.index = memo.num.index;
+                                        state.layout.nums.skip = memo.num.skip;
                                         state.reload(memo.cursor_pos)?;
                                     }
                                     None => {
@@ -385,24 +386,26 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                         new_pos = i;
                                                     }
                                                 }
-                                                state.nums.index = new_pos;
+                                                state.layout.nums.index = new_pos;
 
-                                                if state.nums.index
+                                                if state.layout.nums.index
                                                     >= (state.layout.terminal_row
                                                         - (BEGINNING_ROW + 1))
                                                         .into()
                                                 {
-                                                    state.nums.skip = (state.nums.index - 1) as u16;
+                                                    state.layout.nums.skip =
+                                                        (state.layout.nums.index - 1) as u16;
                                                     state.redraw(BEGINNING_ROW + 1);
                                                 } else {
-                                                    state.nums.skip = 0;
+                                                    state.layout.nums.skip = 0;
                                                     state.redraw(
-                                                        (state.nums.index as u16) + BEGINNING_ROW,
+                                                        (state.layout.nums.index as u16)
+                                                            + BEGINNING_ROW,
                                                     );
                                                 }
                                             }
                                             None => {
-                                                state.nums.reset();
+                                                state.layout.nums.reset();
                                                 state.redraw(BEGINNING_ROW);
                                             }
                                         }
@@ -485,7 +488,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                 break 'zoxide;
                                             }
                                             state.chdir(&home_dir);
-                                            state.nums.reset();
+                                            state.layout.nums.reset();
                                             state.update_list()?;
                                             state.redraw(BEGINNING_ROW);
                                             break 'zoxide;
@@ -516,7 +519,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                                 hide_cursor();
                                                                 p_memo_v = Vec::new();
                                                                 c_memo_v = Vec::new();
-                                                                state.nums.reset();
+                                                                state.layout.nums.reset();
                                                                 let target_path = PathBuf::from(
                                                                     target_dir.trim(),
                                                                 );
@@ -578,14 +581,14 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                         state.redraw(state.layout.y);
                         screen.flush()?;
 
-                        let start_pos = state.nums.index;
+                        let start_pos = state.layout.nums.index;
                         let mut current_pos = state.layout.y;
 
                         loop {
                             if let Event::Key(KeyEvent { code, .. }) = event::read()? {
                                 match code {
                                     KeyCode::Char('j') | KeyCode::Down => {
-                                        if len == 0 || state.nums.index == len - 1 {
+                                        if len == 0 || state.layout.nums.index == len - 1 {
                                             continue;
                                         } else if current_pos >= state.layout.terminal_row - 4
                                             && len
@@ -593,10 +596,10 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                     as usize
                                                     - 1
                                         {
-                                            state.nums.go_down();
-                                            state.nums.inc_skip();
+                                            state.layout.nums.go_down();
+                                            state.layout.nums.inc_skip();
 
-                                            if state.nums.index > start_pos {
+                                            if state.layout.nums.index > start_pos {
                                                 let mut item = state.get_item_mut()?;
                                                 item.selected = true;
                                             } else {
@@ -607,13 +610,13 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             state.redraw(current_pos);
                                             screen.flush()?;
                                         } else {
-                                            state.nums.go_down();
+                                            state.layout.nums.go_down();
                                             current_pos += 1;
 
-                                            if state.nums.index > start_pos {
+                                            if state.layout.nums.index > start_pos {
                                                 let mut item = state.get_item_mut()?;
                                                 item.selected = true;
-                                            } else if state.nums.index <= start_pos {
+                                            } else if state.layout.nums.index <= start_pos {
                                                 let mut item = state.get_item_mut()?;
                                                 item.selected = false;
                                             }
@@ -623,15 +626,15 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     }
 
                                     KeyCode::Char('k') | KeyCode::Up => {
-                                        if state.nums.index == 0 {
+                                        if state.layout.nums.index == 0 {
                                             continue;
                                         } else if current_pos <= BEGINNING_ROW + 3
-                                            && state.nums.skip != 0
+                                            && state.layout.nums.skip != 0
                                         {
-                                            state.nums.go_up();
-                                            state.nums.dec_skip();
+                                            state.layout.nums.go_up();
+                                            state.layout.nums.dec_skip();
 
-                                            if state.nums.index >= start_pos {
+                                            if state.layout.nums.index >= start_pos {
                                                 let mut item = state.get_item_mut()?;
                                                 item.selected = false;
                                             } else {
@@ -640,13 +643,13 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             }
                                             state.redraw(current_pos);
                                         } else {
-                                            state.nums.go_up();
+                                            state.layout.nums.go_up();
                                             current_pos -= 1;
 
-                                            if state.nums.index >= start_pos {
+                                            if state.layout.nums.index >= start_pos {
                                                 let mut item = state.get_item_mut()?;
                                                 item.selected = false;
-                                            } else if state.nums.index < start_pos {
+                                            } else if state.layout.nums.index < start_pos {
                                                 let mut item = state.get_item_mut()?;
                                                 item.selected = true;
                                             }
@@ -655,7 +658,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                     }
 
                                     KeyCode::Char('g') => {
-                                        if state.nums.index == 0 {
+                                        if state.layout.nums.index == 0 {
                                             continue;
                                         } else {
                                             to_info_bar();
@@ -670,7 +673,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                 match code {
                                                     KeyCode::Char('g') => {
                                                         hide_cursor();
-                                                        state.nums.reset();
+                                                        state.layout.nums.reset();
                                                         state.select_from_top(start_pos);
                                                         current_pos = BEGINNING_ROW;
                                                         state.redraw(current_pos);
@@ -690,14 +693,14 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         if len
                                             > (state.layout.terminal_row - BEGINNING_ROW) as usize
                                         {
-                                            state.nums.skip = (len as u16) + BEGINNING_ROW
+                                            state.layout.nums.skip = (len as u16) + BEGINNING_ROW
                                                 - state.layout.terminal_row;
-                                            state.nums.go_bottom(len - 1);
+                                            state.layout.nums.go_bottom(len - 1);
                                             state.select_to_bottom(start_pos);
                                             current_pos = state.layout.terminal_row - 1;
                                             state.redraw(current_pos);
                                         } else {
-                                            state.nums.go_bottom(len - 1);
+                                            state.layout.nums.go_bottom(len - 1);
                                             state.select_to_bottom(start_pos);
                                             current_pos = len as u16 + BEGINNING_ROW - 1;
                                             state.redraw(current_pos);
@@ -724,8 +727,8 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                                         state.update_list()?;
                                         let new_len = state.list.len();
-                                        if usize::from(state.nums.skip) >= new_len {
-                                            state.nums.reset();
+                                        if usize::from(state.layout.nums.skip) >= new_len {
+                                            state.layout.nums.reset();
                                         }
                                         state.clear_and_show_headline();
                                         state.list_up();
@@ -744,15 +747,15 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         print_info(delete_message, state.layout.y);
 
                                         if new_len == 0 {
-                                            state.nums.reset();
+                                            state.layout.nums.reset();
                                             state.move_cursor(BEGINNING_ROW);
-                                        } else if state.nums.index > new_len - 1 {
+                                        } else if state.layout.nums.index > new_len - 1 {
                                             let mut new_y = current_pos
-                                                - (state.nums.index - (new_len - 1)) as u16;
+                                                - (state.layout.nums.index - (new_len - 1)) as u16;
                                             if new_y < BEGINNING_ROW {
                                                 new_y = BEGINNING_ROW;
                                             }
-                                            state.nums.index = new_len - 1;
+                                            state.layout.nums.index = new_len - 1;
                                             state.move_cursor(new_y);
                                             screen.flush()?;
                                         } else {
@@ -790,15 +793,15 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                     //toggle sortkey
                     KeyCode::Char('t') => {
-                        match state.sort_by {
+                        match state.layout.sort_by {
                             SortKey::Name => {
-                                state.sort_by = SortKey::Time;
+                                state.layout.sort_by = SortKey::Time;
                             }
                             SortKey::Time => {
-                                state.sort_by = SortKey::Name;
+                                state.layout.sort_by = SortKey::Name;
                             }
                         }
-                        state.nums.reset();
+                        state.layout.nums.reset();
                         state.reload(BEGINNING_ROW)?;
                     }
 
@@ -878,8 +881,8 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         state.list_up();
                                         let cursor_pos = if state.list.is_empty() {
                                             BEGINNING_ROW
-                                        } else if state.nums.index == len - 1 {
-                                            state.nums.go_up();
+                                        } else if state.layout.nums.index == len - 1 {
+                                            state.layout.nums.go_up();
                                             state.layout.y - 1
                                         } else {
                                             state.layout.y
@@ -1128,9 +1131,9 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                                             match target {
                                                 Some(i) => {
-                                                    if i >= state.nums.index {
-                                                        state.nums.skip = i as u16;
-                                                        state.nums.index = i;
+                                                    if i >= state.layout.nums.index {
+                                                        state.layout.nums.skip = i as u16;
+                                                        state.layout.nums.index = i;
                                                         state.highlight_matches(result);
                                                         state.redraw(BEGINNING_ROW);
                                                     } else {
@@ -1162,8 +1165,8 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                                         match target {
                                             Some(i) => {
-                                                state.nums.skip = i as u16;
-                                                state.nums.index = i;
+                                                state.layout.nums.skip = i as u16;
+                                                state.layout.nums.index = i;
                                                 state.highlight_matches(result);
                                                 state.redraw(BEGINNING_ROW);
                                             }
@@ -1194,16 +1197,16 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                             let next = state
                                 .list
                                 .iter()
-                                .skip(state.nums.index + 1)
+                                .skip(state.layout.nums.index + 1)
                                 .position(|x| x.file_name.contains(keyword));
                             match next {
                                 None => {
                                     continue;
                                 }
                                 Some(i) => {
-                                    let i = i + state.nums.index + 1;
-                                    state.nums.skip = i as u16;
-                                    state.nums.index = i;
+                                    let i = i + state.layout.nums.index + 1;
+                                    state.layout.nums.skip = i as u16;
+                                    state.layout.nums.index = i;
                                     state.redraw(BEGINNING_ROW);
                                 }
                             }
@@ -1218,15 +1221,15 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                             let previous = state
                                 .list
                                 .iter()
-                                .take(state.nums.index)
+                                .take(state.layout.nums.index)
                                 .rposition(|x| x.file_name.contains(keyword));
                             match previous {
                                 None => {
                                     continue;
                                 }
                                 Some(i) => {
-                                    state.nums.skip = i as u16;
-                                    state.nums.index = i;
+                                    state.layout.nums.skip = i as u16;
+                                    state.layout.nums.index = i;
                                     state.redraw(BEGINNING_ROW);
                                 }
                             }
@@ -1313,7 +1316,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                 break 'command;
                                             }
                                             state.chdir(&home_dir);
-                                            state.nums.reset();
+                                            state.layout.nums.reset();
                                             if let Err(e) = state.update_list() {
                                                 print_warning(e, state.layout.y);
                                                 break 'command;
@@ -1323,7 +1326,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         } else if command == vec!['e'] {
                                             //reload current dir
                                             state.keyword = None;
-                                            state.nums.reset();
+                                            state.layout.nums.reset();
                                             state.reload(BEGINNING_ROW)?;
                                             break 'command;
                                         } else if command == vec!['h'] {
@@ -1410,7 +1413,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             //Change directory
                                             p_memo_v = Vec::new();
                                             c_memo_v = Vec::new();
-                                            state.nums.reset();
+                                            state.layout.nums.reset();
                                             let home_dir = dirs::home_dir().unwrap();
                                             if let Err(e) = set_current_dir(&home_dir) {
                                                 print_warning(e, state.layout.y);
@@ -1444,7 +1447,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                                         Ok(target_dir) => {
                                                             p_memo_v = Vec::new();
                                                             c_memo_v = Vec::new();
-                                                            state.nums.reset();
+                                                            state.layout.nums.reset();
                                                             let target_path =
                                                                 PathBuf::from(target_dir.trim());
                                                             if let Err(e) =
@@ -1586,12 +1589,12 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                             let new_len = state.list.len();
                             if new_len == 0 {
-                                state.nums.reset();
+                                state.layout.nums.reset();
                                 state.move_cursor(BEGINNING_ROW);
-                            } else if state.nums.index > new_len - 1 {
-                                let new_y =
-                                    state.layout.y - (state.nums.index - (new_len - 1)) as u16;
-                                state.nums.index = new_len - 1;
+                            } else if state.layout.nums.index > new_len - 1 {
+                                let new_y = state.layout.y
+                                    - (state.layout.nums.index - (new_len - 1)) as u16;
+                                state.layout.nums.index = new_len - 1;
                                 state.move_cursor(new_y)
                             } else {
                                 state.move_cursor(state.layout.y);
@@ -1618,12 +1621,12 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                             let new_len = state.list.len();
                             if new_len == 0 {
-                                state.nums.reset();
+                                state.layout.nums.reset();
                                 state.move_cursor(BEGINNING_ROW);
-                            } else if state.nums.index > new_len - 1 {
-                                let new_y =
-                                    state.layout.y - (state.nums.index - (new_len - 1)) as u16;
-                                state.nums.index = new_len - 1;
+                            } else if state.layout.nums.index > new_len - 1 {
+                                let new_y = state.layout.y
+                                    - (state.layout.nums.index - (new_len - 1)) as u16;
+                                state.layout.nums.index = new_len - 1;
                                 state.move_cursor(new_y)
                             } else {
                                 state.move_cursor(state.layout.y);
@@ -1663,17 +1666,17 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                     }
                     // Show/hide hidden files or directories
                     KeyCode::Backspace => {
-                        match state.show_hidden {
+                        match state.layout.show_hidden {
                             true => {
                                 state.list.retain(|x| !x.is_hidden);
-                                state.show_hidden = false;
+                                state.layout.show_hidden = false;
                             }
                             false => {
-                                state.show_hidden = true;
+                                state.layout.show_hidden = true;
                                 state.update_list()?;
                             }
                         }
-                        state.nums.reset();
+                        state.layout.nums.reset();
                         state.redraw(BEGINNING_ROW);
                     }
                     _ => {
@@ -1705,7 +1708,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                         state.layout.y
                     } else {
                         let diff = state.layout.y + 1 - new_row;
-                        state.nums.index -= diff as usize;
+                        state.layout.nums.index -= diff as usize;
                         new_row - 1
                     };
 
@@ -1715,7 +1718,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                         state.layout.y
                     } else {
                         let diff = state.layout.y + 1 - row;
-                        state.nums.index -= diff as usize;
+                        state.layout.nums.index -= diff as usize;
                         row - 1
                     };
                     state.refresh(column, row, cursor_pos);

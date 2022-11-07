@@ -1,6 +1,9 @@
+use super::session::SortKey;
+
 use super::config::*;
 use super::errors::FxError;
 use super::functions::*;
+use super::nums::*;
 use super::state::{ItemInfo, BEGINNING_ROW};
 use super::term::*;
 
@@ -24,12 +27,15 @@ pub const TIME_WIDTH: u16 = 16;
 
 #[derive(Debug)]
 pub struct Layout {
+    pub nums: Num,
     pub y: u16,
     pub terminal_row: u16,
     pub terminal_column: u16,
     pub name_max_len: usize,
     pub time_start_pos: u16,
     pub colors: ConfigColor,
+    pub sort_by: SortKey,
+    pub show_hidden: bool,
     pub preview: bool,
     pub split: Split,
     pub preview_start: (u16, u16),
