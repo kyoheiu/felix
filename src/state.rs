@@ -998,6 +998,7 @@ impl State {
     pub fn clear_status_line(&self) {
         self.to_status_bar();
         clear_current_line();
+        reset_color();
         print!(
             "{}",
             " ".repeat(self.layout.terminal_column as usize).negative(),
