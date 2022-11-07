@@ -922,7 +922,7 @@ impl State {
             "{}",
             " ".repeat(self.layout.terminal_column as usize).negative(),
         );
-        move_to(2, self.layout.terminal_row);
+        move_to(1, self.layout.terminal_row);
     }
 
     /// Print item information at the bottom of the terminal.
