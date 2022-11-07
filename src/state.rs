@@ -894,13 +894,14 @@ impl State {
                         self.update_list()?;
                         match pre.file_name() {
                             Some(name) => {
-                                let new_pos = match self.list.iter().position(|x| {
-                                    let file_name = x.file_name.as_ref() as &OsStr;
-                                    file_name == name
-                                }) {
-                                    Some(i) => i,
-                                    None => 0,
-                                };
+                                let new_pos = self
+                                    .list
+                                    .iter()
+                                    .position(|x| {
+                                        let file_name = x.file_name.as_ref() as &OsStr;
+                                        file_name == name
+                                    })
+                                    .unwrap_or(0);
                                 self.keyword = None;
                                 self.layout.nums.skip = new_pos as u16;
                                 self.layout.nums.index = new_pos;
