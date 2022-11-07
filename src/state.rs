@@ -964,7 +964,9 @@ impl State {
         // If preview is enabled, set the preview type, read the content (if text type) and reset the scroll.
         if self.layout.preview {
             if let Ok(item) = self.get_item_mut() {
-                set_preview_type(item);
+                if item.preview_type.is_none() {
+                    set_preview_type(item);
+                }
                 item.preview_scroll = 0;
             }
         }
