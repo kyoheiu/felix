@@ -13,6 +13,7 @@ use log::{error, info};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::env;
+use std::ffi::OsStr;
 use std::fmt::Write as _;
 use std::fs;
 use std::path::PathBuf;
@@ -63,20 +64,6 @@ pub enum FileType {
     Directory,
     File,
     Symlink,
-}
-
-pub struct Dest {
-    pub dest: Option<PathBuf>,
-    pub cursor_pos: u16,
-}
-
-impl Dest {
-    pub fn new() -> Dest {
-        Dest {
-            dest: None,
-            cursor_pos: BEGINNING_ROW,
-        }
-    }
 }
 
 impl State {
@@ -880,31 +867,94 @@ impl State {
         }
     }
 
-    pub fn chdir(&mut self, p: &std::path::Path, mv: Move) {
+    pub fn chdir(&mut self, p: &std::path::Path, mv: Move) -> Result<(), FxError> {
+        std::env::set_current_dir(p)?;
         match mv {
             Move::Up => {
+                // Push current state to c_memo
                 let cursor_memo = StateMemo {
                     path: self.current_dir.clone(),
                     num: self.layout.nums,
                     cursor_pos: self.layout.y,
                 };
                 self.c_memo.push(cursor_memo);
+
+                //Pop p_memo if exists; identify the dir from which we come
+                match self.p_memo.pop() {
+                    Some(memo) => {
+                        self.current_dir = memo.path;
+                        self.keyword = None;
+                        self.layout.nums.index = memo.num.index;
+                        self.layout.nums.skip = memo.num.skip;
+                        self.reload(memo.cursor_pos)?;
+                    }
+                    None => {
+                        let pre = self.current_dir.clone();
+                        self.current_dir = p.to_owned();
+                        self.update_list()?;
+                        match pre.file_name() {
+                            Some(name) => {
+                                let new_pos = match self.list.iter().position(|x| {
+                                    let file_name = x.file_name.as_ref() as &OsStr;
+                                    file_name == name
+                                }) {
+                                    Some(i) => i,
+                                    None => 0,
+                                };
+                                self.keyword = None;
+                                self.layout.nums.skip = new_pos as u16;
+                                self.layout.nums.index = new_pos;
+                                self.redraw(BEGINNING_ROW);
+                            }
+                            None => {
+                                self.current_dir = p.to_owned();
+                                self.keyword = None;
+                                self.layout.nums.reset();
+                                self.redraw(BEGINNING_ROW);
+                            }
+                        }
+                    }
+                }
             }
             Move::Down => {
+                // Push current state to p_memo
                 let cursor_memo = StateMemo {
                     path: self.current_dir.clone(),
                     num: self.layout.nums,
                     cursor_pos: self.layout.y,
                 };
                 self.p_memo.push(cursor_memo);
+                self.current_dir = p.to_owned();
+                self.keyword = None;
+
+                // Pop c_memo
+                match self.c_memo.pop() {
+                    Some(memo) => {
+                        if p == memo.path {
+                            self.layout.nums.index = memo.num.index;
+                            self.layout.nums.skip = memo.num.skip;
+                            self.reload(memo.cursor_pos)?;
+                        } else {
+                            self.layout.nums.reset();
+                            self.reload(BEGINNING_ROW)?;
+                        }
+                    }
+                    None => {
+                        self.layout.nums.reset();
+                        self.reload(BEGINNING_ROW)?;
+                    }
+                }
             }
             Move::Jump => {
+                self.current_dir = p.to_owned();
                 self.p_memo = Vec::new();
                 self.c_memo = Vec::new();
+                self.keyword = None;
+                self.layout.nums.reset();
+                self.reload(BEGINNING_ROW)?;
             }
         }
-        self.current_dir = p.to_owned();
-        self.keyword = None;
+        Ok(())
     }
 
     /// Change the cursor position, and print item information at the bottom.
