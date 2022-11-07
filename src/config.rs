@@ -119,12 +119,9 @@ pub fn read_config() -> Result<Config, FxError> {
     let mut config = dirs::config_dir().unwrap_or_else(|| panic!("Cannot read config dir."));
     config.push(FX_CONFIG_DIR);
     config.push(CONFIG_FILE);
-    if let Ok(config) = read_to_string(config.as_path()) {
-        let deserialized: Config = toml::from_str(&config)?;
-        Ok(deserialized)
-    } else {
-        Err(FxError::TomlDe)
-    }
+    let config = read_to_string(config.as_path())?;
+    let deserialized: Config = toml::from_str(&config)?;
+    Ok(deserialized)
 }
 
 pub fn make_config_if_not_exists(config_file: &Path, trash_dir: &Path) -> Result<(), FxError> {
