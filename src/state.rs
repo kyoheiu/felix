@@ -903,9 +903,15 @@ impl State {
                                     })
                                     .unwrap_or(0);
                                 self.keyword = None;
-                                self.layout.nums.skip = new_pos as u16;
-                                self.layout.nums.index = new_pos;
-                                self.redraw(BEGINNING_ROW);
+                                if new_pos < 3 {
+                                    self.layout.nums.skip = 0;
+                                    self.layout.nums.index = new_pos;
+                                    self.redraw((new_pos as u16) + BEGINNING_ROW);
+                                } else {
+                                    self.layout.nums.skip = (new_pos - 3) as u16;
+                                    self.layout.nums.index = new_pos;
+                                    self.redraw(BEGINNING_ROW + 3);
+                                }
                             }
                             None => {
                                 self.current_dir = p.to_owned();
