@@ -3,6 +3,7 @@ use std::path::PathBuf;
 #[derive(Debug)]
 pub enum FxError {
     Io(String),
+    Dirs(String),
     GetItem,
     OpenItem,
     OpenNewWindow,
@@ -23,6 +24,7 @@ impl std::fmt::Display for FxError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let printable = match self {
             FxError::Io(s) => s.to_owned(),
+            FxError::Dirs(s) => s.to_owned(),
             FxError::GetItem => "Error: Cannot get item info".to_owned(),
             FxError::OpenItem => "Error: Cannot open item".to_owned(),
             FxError::OpenNewWindow => {

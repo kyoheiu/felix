@@ -24,32 +24,12 @@ use std::time::{Duration, Instant};
 /// Where the item list starts to scroll.
 const SCROLL_POINT: u16 = 3;
 
-/// Run the app.
+/// Launch the app. If initializing goes wrong, return error.
 pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
-    let result = panic::catch_unwind(|| _run(arg, log));
-    leave_raw_mode();
-
-    if let Err(panic) = result {
-        clear_all();
-        move_to(1, 1);
-        match panic.downcast::<String>() {
-            Ok(msg) => {
-                println!("Panic: {}", msg);
-            }
-            Err(e) => {
-                println!("{:#?}", e);
-            }
-        }
-        return Err(FxError::Panic);
-    }
-
-    result.ok().unwrap()
-}
-
-pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     //Prepare config file and trash directory path.
     let config_dir_path = {
-        let mut path = dirs::config_dir().unwrap_or_else(|| panic!("Cannot read config dir."));
+        let mut path = dirs::config_dir()
+            .ok_or_else(|| FxError::Dirs("Cannot read config dir.".to_string()))?;
         path.push(FX_CONFIG_DIR);
         path
     };
@@ -87,6 +67,28 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         arg
     };
 
+    let result = panic::catch_unwind(|| _run(state, session_file_path));
+    leave_raw_mode();
+
+    if let Err(panic) = result {
+        clear_all();
+        move_to(1, 1);
+        match panic.downcast::<String>() {
+            Ok(msg) => {
+                println!("Panic: {}", msg);
+            }
+            Err(e) => {
+                println!("{:#?}", e);
+            }
+        }
+        return Err(FxError::Panic);
+    }
+
+    result.ok().unwrap()
+}
+
+/// Run the app. (Containing the main loop)
+fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
     //Enter the alternate screen with crossterm
     let mut screen = stdout();
     enter_raw_mode();
@@ -1589,7 +1591,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     }
 
     //Save session, restore screen state and cursor
-    state.write_session(session_file_path)?;
+    state.write_session(session_path)?;
     execute!(screen, LeaveAlternateScreen)?;
     write!(screen, "{}", RestorePosition)?;
     screen.flush()?;
