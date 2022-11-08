@@ -29,17 +29,12 @@ pub fn read_session() -> Result<Session, FxError> {
     let mut session = dirs::config_dir().unwrap_or_else(|| panic!("Cannot read config dir."));
     session.push(FX_CONFIG_DIR);
     session.push(SESSION_FILE);
-    let session = read_to_string(session.as_path());
-    if let Ok(session) = session {
-        let deserialized: Session = toml::from_str(&session)?;
-        Ok(deserialized)
-    } else {
-        panic!("Cannot deserialize session file.");
-    }
+    let session = read_to_string(session.as_path())?;
+    let deserialized: Session = toml::from_str(&session)?;
+    Ok(deserialized)
 }
 
 pub fn make_session(session_file: &Path) -> Result<(), FxError> {
-    std::fs::write(&session_file, SESSION_EXAMPLE)
-        .unwrap_or_else(|_| panic!("Cannot write new session file."));
+    std::fs::write(&session_file, SESSION_EXAMPLE)?;
     Ok(())
 }
