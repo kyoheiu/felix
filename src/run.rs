@@ -1,4 +1,4 @@
-use super::config::make_config_if_not_exists;
+use super::config::{make_config_if_not_exists, CONFIG_FILE};
 use super::errors::FxError;
 use super::functions::*;
 use super::help::HELP;

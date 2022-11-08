@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use crate::state::FX_CONFIG_DIR;
 
-const CONFIG_FILE: &str = "config.toml";
+pub const CONFIG_FILE: &str = "config.toml";
 
 pub const CONFIG_EXAMPLE: &str = "# (Optional) Default exec command when open files.
 # If not set, will default to $EDITOR.
