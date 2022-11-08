@@ -16,6 +16,7 @@ use std::env;
 use std::ffi::OsStr;
 use std::fmt::Write as _;
 use std::fs;
+use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use std::process::{Child, Command, ExitStatus, Stdio};
 use syntect::highlighting::{Theme, ThemeSet};
@@ -57,6 +58,7 @@ pub struct ItemInfo {
     pub preview_type: Option<PreviewType>,
     pub preview_scroll: usize,
     pub content: Option<String>,
+    pub permissions: Option<u32>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -1042,53 +1044,79 @@ impl State {
             return;
         }
 
+        let footer = self.make_footer(item);
+        print!("{}", footer.negative());
+    }
+
+    fn make_footer(&self, item: &ItemInfo) -> String {
         match &item.file_ext {
             Some(ext) => {
-                let mut footer = format!(
-                    "[{}/{}] {} {}",
-                    self.layout.nums.index + 1,
-                    self.list.len(),
-                    ext.clone(),
-                    to_proper_size(item.file_size),
-                );
+                let mut footer = match item.permissions {
+                    Some(permissions) => {
+                        format!(
+                            " {}/{} │ {} │ {} │ {}",
+                            self.layout.nums.index + 1,
+                            self.list.len(),
+                            ext.clone(),
+                            to_proper_size(item.file_size),
+                            convert_to_permissions(permissions)
+                        )
+                    }
+                    None => format!(
+                        " {}/{} │ {} │ {}",
+                        self.layout.nums.index + 1,
+                        self.list.len(),
+                        ext.clone(),
+                        to_proper_size(item.file_size),
+                    ),
+                };
                 if self.rust_log.is_some() {
                     let _ = write!(
                         footer,
-                        " index:{} skip:{} column:{} row:{}",
+                        " i:{} s:{} c:{} r:{}",
                         self.layout.nums.index,
                         self.layout.nums.skip,
                         self.layout.terminal_column,
                         self.layout.terminal_row
                     );
                 }
-                let footer: String = footer
+                footer
                     .chars()
                     .take(self.layout.terminal_column.into())
-                    .collect();
-                print!("{}", footer.negative());
+                    .collect()
             }
             None => {
-                let mut footer = format!(
-                    "[{}/{}] {}",
-                    self.layout.nums.index + 1,
-                    self.list.len(),
-                    to_proper_size(item.file_size),
-                );
+                let mut footer = match item.permissions {
+                    Some(permissions) => {
+                        format!(
+                            " {}/{} │ {} │ {}",
+                            self.layout.nums.index + 1,
+                            self.list.len(),
+                            to_proper_size(item.file_size),
+                            convert_to_permissions(permissions)
+                        )
+                    }
+                    None => format!(
+                        " {}/{} │ {}",
+                        self.layout.nums.index + 1,
+                        self.list.len(),
+                        to_proper_size(item.file_size),
+                    ),
+                };
                 if self.rust_log.is_some() {
                     let _ = write!(
                         footer,
-                        " index:{} skip:{} column:{} row:{}",
+                        " i:{} s:{} c:{} r:{}",
                         self.layout.nums.index,
                         self.layout.nums.skip,
                         self.layout.terminal_column,
                         self.layout.terminal_row
                     );
                 }
-                let footer: String = footer
+                footer
                     .chars()
                     .take(self.layout.terminal_column.into())
-                    .collect();
-                print!("{}", footer.negative());
+                    .collect()
             }
         }
     }
@@ -1188,6 +1216,12 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
                 }
             };
 
+            let permissions = if cfg!(target_family = "unix") {
+                Some(metadata.permissions().mode())
+            } else {
+                None
+            };
+
             let size = metadata.len();
             ItemInfo {
                 file_type: filetype,
@@ -1206,6 +1240,7 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
                 preview_type: None,
                 preview_scroll: 0,
                 content: None,
+                permissions,
             }
         }
         Err(_) => ItemInfo {
@@ -1222,6 +1257,7 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
             preview_type: None,
             preview_scroll: 0,
             content: None,
+            permissions: None,
         },
     }
 }
