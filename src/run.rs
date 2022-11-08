@@ -220,12 +220,12 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         continue;
                                     }
                                     execute!(screen, EnterAlternateScreen)?;
+                                    hide_cursor();
                                     //Add thread sleep time after state.open_file().
                                     // This is necessary because, with tiling window managers, the window resizing is sometimes slow and felix reloads the layout so quickly that the display may become broken.
                                     //By the sleep (50ms for now and I think it's not easy to recognize this sleep), this will be avoided.
                                     std::thread::sleep(Duration::from_millis(50));
                                     state.reload(state.layout.y)?;
-                                    hide_cursor();
                                     continue;
                                 }
                                 FileType::Symlink => match &item.symlink_dir_path {
@@ -1408,6 +1408,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                             break 'command;
                                         }
                                         execute!(screen, EnterAlternateScreen)?;
+                                        hide_cursor();
                                         info!("SHELL: {} {:?}", c, args);
                                         state.reload(state.layout.y)?;
                                         break 'command;
