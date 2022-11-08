@@ -36,8 +36,8 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
             Ok(msg) => {
                 println!("Panic: {}", msg);
             }
-            Err(_) => {
-                println!("Panic: unknown panic");
+            Err(e) => {
+                println!("{:#?}", e);
             }
         }
         return Err(FxError::Panic);
@@ -56,18 +56,17 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     let config_file_path = config_dir_path.join(PathBuf::from(CONFIG_FILE));
     let trash_dir_path = config_dir_path.join(PathBuf::from(TRASH));
 
-    if log && init_log(&config_dir_path).is_err() {
-        panic!("Cannot initialize log file.");
+    if log {
+        init_log(&config_dir_path)?;
     }
 
     //Make config file and trash directory if not exist.
-    make_config_if_not_exists(&config_file_path, &trash_dir_path)
-        .unwrap_or_else(|_| panic!("Cannot make config file or trash dir."));
+    make_config_if_not_exists(&config_file_path, &trash_dir_path)?;
 
     //If session file, which stores sortkey and whether to show hidden items, does not exist (i.e. first launch), make it.
     let session_file_path = config_dir_path.join(PathBuf::from(SESSION_FILE));
     if !session_file_path.exists() {
-        make_session(&session_file_path).unwrap_or_else(|_| panic!("Cannot make session file."));
+        make_session(&session_file_path)?;
     }
 
     if !&arg.exists() {

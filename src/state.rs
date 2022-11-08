@@ -24,7 +24,6 @@ use syntect::highlighting::{Theme, ThemeSet};
 
 pub const BEGINNING_ROW: u16 = 3;
 pub const FX_CONFIG_DIR: &str = "felix";
-pub const CONFIG_FILE: &str = "config.toml";
 pub const TRASH: &str = "trash";
 pub const WHEN_EMPTY: &str = "Are you sure to empty the trash directory? (if yes: y)";
 
@@ -73,8 +72,7 @@ impl State {
     /// Initialize the state of the app.
     pub fn new() -> Result<Self, FxError> {
         let config = read_config()?;
-        let session =
-            read_session().unwrap_or_else(|_| panic!("Something wrong with session file."));
+        let session = read_session()?;
         let (original_column, original_row) =
             crossterm::terminal::size().unwrap_or_else(|_| panic!("Cannot detect terminal size."));
 
