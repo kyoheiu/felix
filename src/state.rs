@@ -16,6 +16,7 @@ use std::env;
 use std::ffi::OsStr;
 use std::fmt::Write as _;
 use std::fs;
+#[cfg(target_family = "unix")]
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use std::process::{Child, Command, ExitStatus, Stdio};
@@ -801,7 +802,7 @@ impl State {
 
         for entry in fs::read_dir(&self.current_dir)? {
             let e = entry?;
-            let entry = make_item(e);
+            let entry = read_item(e);
             match entry.file_type {
                 FileType::Directory => dir_v.push(entry),
                 FileType::File | FileType::Symlink => file_v.push(entry),
@@ -1160,8 +1161,8 @@ impl State {
     }
 }
 
-/// Create item information from `std::fs::DirEntry`.
-fn make_item(entry: fs::DirEntry) -> ItemInfo {
+/// Read item information from `std::fs::DirEntry`.
+fn read_item(entry: fs::DirEntry) -> ItemInfo {
     let path = entry.path();
     let metadata = fs::symlink_metadata(&path);
 
@@ -1216,11 +1217,10 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
                 }
             };
 
-            let permissions = if cfg!(target_family = "unix") {
-                Some(metadata.permissions().mode())
-            } else {
-                None
-            };
+            #[cfg(target_family = "unix")]
+            let permissions = Some(metadata.permissions().mode());
+            #[cfg(not(target_family = "unix"))]
+            let permissions = None;
 
             let size = metadata.len();
             ItemInfo {
@@ -1270,7 +1270,7 @@ pub fn trash_to_info(trash_dir: &PathBuf, vec: &[PathBuf]) -> Result<Vec<ItemInf
     for entry in fs::read_dir(trash_dir)? {
         let entry = entry?;
         if vec.contains(&entry.path()) {
-            result.push(make_item(entry));
+            result.push(read_item(entry));
             count += 1;
             if count == total {
                 break;
