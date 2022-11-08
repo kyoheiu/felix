@@ -210,7 +210,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
                     //Open file or change directory
                     KeyCode::Char('l') | KeyCode::Enter | KeyCode::Right => {
-                        let mut dest = PathBuf::new();
+                        let mut dest: Option<PathBuf> = None;
                         if let Ok(item) = state.get_item() {
                             match item.file_type {
                                 FileType::File => {
@@ -220,18 +220,18 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                         continue;
                                     }
                                     execute!(screen, EnterAlternateScreen)?;
-                                    hide_cursor();
                                     //Add thread sleep time after state.open_file().
                                     // This is necessary because, with tiling window managers, the window resizing is sometimes slow and felix reloads the layout so quickly that the display may become broken.
                                     //By the sleep (50ms for now and I think it's not easy to recognize this sleep), this will be avoided.
                                     std::thread::sleep(Duration::from_millis(50));
                                     state.reload(state.layout.y)?;
+                                    hide_cursor();
                                     continue;
                                 }
                                 FileType::Symlink => match &item.symlink_dir_path {
                                     Some(true_path) => {
                                         if true_path.exists() {
-                                            dest = true_path.to_path_buf();
+                                            dest = Some(true_path.to_path_buf());
                                         } else {
                                             print_warning("Broken link.", state.layout.y);
                                             continue;
@@ -251,7 +251,7 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 },
                                 FileType::Directory => {
                                     if item.file_path.exists() {
-                                        dest = item.file_path.clone();
+                                        dest = Some(item.file_path.clone());
                                     } else {
                                         print_warning("Invalid directory.", state.layout.y);
                                         continue;
@@ -259,8 +259,10 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                                 }
                             }
                         }
-                        if let Err(e) = state.chdir(&dest, Move::Down) {
-                            print_warning(e, state.layout.y);
+                        if let Some(dest) = dest {
+                            if let Err(e) = state.chdir(&dest, Move::Down) {
+                                print_warning(e, state.layout.y);
+                            }
                         }
                     }
 
