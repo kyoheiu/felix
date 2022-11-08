@@ -260,7 +260,6 @@ pub fn _run(arg: PathBuf, log: bool) -> Result<(), FxError> {
                             }
                         }
                         if let Err(e) = state.chdir(&dest, Move::Down) {
-                            state.p_memo.pop();
                             print_warning(e, state.layout.y);
                         }
                     }
