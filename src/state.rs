@@ -20,12 +20,13 @@ use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use std::process::{Child, Command, ExitStatus, Stdio};
+use std::time::UNIX_EPOCH;
 use syntect::highlighting::{Theme, ThemeSet};
 
 pub const BEGINNING_ROW: u16 = 3;
 pub const FX_CONFIG_DIR: &str = "felix";
 pub const TRASH: &str = "trash";
-pub const WHEN_EMPTY: &str = "Are you sure to empty the trash directory? (if yes: y)";
+pub const EMPTY_WARNING: &str = "Are you sure to empty the trash directory? (if yes: y)";
 
 #[derive(Debug)]
 pub struct State {
@@ -536,7 +537,9 @@ impl State {
             if i == 0 {
                 base = entry_path.iter().count();
 
-                let parent = &original_path.parent().unwrap();
+                let parent = &original_path
+                    .parent()
+                    .ok_or_else(|| FxError::Io("Cannot read parent dir.".to_string()))?;
                 if parent == &self.trash_dir {
                     let rename: String = buf.file_name.chars().skip(11).collect();
                     target = match &target_dir {
@@ -1022,11 +1025,11 @@ impl State {
     fn print_footer(&self, item: &ItemInfo) {
         self.clear_status_line();
 
-        if self.keyword.is_some() {
+        if let Some(keyword) = &self.keyword {
             let count = self
                 .list
                 .iter()
-                .filter(|x| x.file_name.contains(self.keyword.as_ref().unwrap()))
+                .filter(|x| x.file_name.contains(keyword))
                 .count();
             let count = if count <= 1 {
                 format!("{} match", count)
@@ -1041,7 +1044,7 @@ impl State {
             print!(
                 "{}{}{}{}",
                 " /".negative(),
-                self.keyword.clone().unwrap().negative(),
+                keyword.clone().negative(),
                 " - ".negative(),
                 count.negative()
             );
@@ -1186,7 +1189,7 @@ fn read_item(entry: fs::DirEntry) -> ItemInfo {
     match metadata {
         Ok(metadata) => {
             let time = {
-                let sometime = metadata.modified().unwrap();
+                let sometime = metadata.modified().unwrap_or(UNIX_EPOCH);
                 let chrono_time: DateTime<Local> = DateTime::from(sometime);
                 Some(chrono_time.to_rfc3339_opts(SecondsFormat::Secs, false))
             };

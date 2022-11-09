@@ -184,8 +184,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
 
                                 _ => {
-                                    clear_current_line();
                                     hide_cursor();
+                                    clear_current_line();
                                     state.move_cursor(state.layout.y);
                                 }
                             }
@@ -369,7 +369,9 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         let command: String = command.iter().collect();
                                         if command.trim() == "z" {
                                             //go to the home directory
-                                            let home_dir = dirs::home_dir().unwrap();
+                                            let home_dir = dirs::home_dir().ok_or_else(|| {
+                                                FxError::Dirs("Cannot read home dir.".to_string())
+                                            })?;
                                             if let Err(e) = state.chdir(&home_dir, Move::Jump) {
                                                 print_warning(e, state.layout.y);
                                             }
@@ -685,6 +687,22 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         state.reload(BEGINNING_ROW)?;
                     }
 
+                    // Show/hide hidden files or directories
+                    KeyCode::Backspace => {
+                        match state.layout.show_hidden {
+                            true => {
+                                state.list.retain(|x| !x.is_hidden);
+                                state.layout.show_hidden = false;
+                            }
+                            false => {
+                                state.layout.show_hidden = true;
+                                state.update_list()?;
+                            }
+                        }
+                        state.layout.nums.reset();
+                        state.redraw(BEGINNING_ROW);
+                    }
+
                     //toggle whether to show preview of text file
                     KeyCode::Char('v') => {
                         state.layout.preview = !state.layout.preview;
@@ -702,7 +720,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                             }
                         } else {
-                            let (new_column, new_row) = crossterm::terminal::size().unwrap();
+                            let (new_column, new_row) = crossterm::terminal::size()?;
                             state.refresh(new_column, new_row, state.layout.y);
                         }
                     }
@@ -712,8 +730,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         Split::Vertical => {
                             state.layout.split = Split::Horizontal;
                             if state.layout.preview {
-                                let (new_column, mut new_row) =
-                                    crossterm::terminal::size().unwrap();
+                                let (new_column, mut new_row) = crossterm::terminal::size()?;
                                 new_row /= 2;
                                 state.refresh(new_column, new_row, state.layout.y);
                             }
@@ -721,8 +738,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         Split::Horizontal => {
                             state.layout.split = Split::Vertical;
                             if state.layout.preview {
-                                let (mut new_column, new_row) =
-                                    crossterm::terminal::size().unwrap();
+                                let (mut new_column, new_row) = crossterm::terminal::size()?;
                                 new_column /= 2;
                                 state.refresh(new_column, new_row, state.layout.y);
                             }
@@ -862,6 +878,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         print!("New name: {}", &rename.iter().collect::<String>(),);
                         screen.flush()?;
 
+                        // position after "New name: "
                         let initial_pos = 12;
                         let mut current_pos: u16 = 12 + item.file_name.len() as u16;
                         loop {
@@ -959,6 +976,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         let original_nums = state.layout.nums;
                         let original_y = state.layout.y;
                         let mut keyword: Vec<char> = Vec::new();
+                        // position after " /"
                         let initial_pos = 3;
                         let mut current_pos = initial_pos;
                         loop {
@@ -1190,7 +1208,9 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         } else if command == vec!['c', 'd'] || command == vec!['z']
                                         {
                                             //go to the home directory
-                                            let home_dir = dirs::home_dir().unwrap();
+                                            let home_dir = dirs::home_dir().ok_or_else(|| {
+                                                FxError::Dirs("Cannot read home dir.".to_string())
+                                            })?;
                                             if let Err(e) = state.chdir(&home_dir, Move::Jump) {
                                                 print_warning(e, state.layout.y);
                                             }
@@ -1284,7 +1304,9 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         if (c == "cd" || c == "z") && args.is_empty() {
                                             //Change directory
                                             state.layout.nums.reset();
-                                            let home_dir = dirs::home_dir().unwrap();
+                                            let home_dir = dirs::home_dir().ok_or_else(|| {
+                                                FxError::Dirs("Cannot read home dir.".to_string())
+                                            })?;
                                             if let Err(e) = state.chdir(&home_dir, Move::Jump) {
                                                 print_warning(e, state.layout.y);
                                             }
@@ -1341,7 +1363,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                         if c == "empty" && args.is_empty() {
                                             //Empty the trash dir
-                                            print_warning(WHEN_EMPTY, state.layout.y);
+                                            print_warning(EMPTY_WARNING, state.layout.y);
                                             screen.flush()?;
 
                                             if let Event::Key(KeyEvent { code, .. }) =
@@ -1528,21 +1550,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                             }
                         }
                     }
-                    // Show/hide hidden files or directories
-                    KeyCode::Backspace => {
-                        match state.layout.show_hidden {
-                            true => {
-                                state.list.retain(|x| !x.is_hidden);
-                                state.layout.show_hidden = false;
-                            }
-                            false => {
-                                state.layout.show_hidden = true;
-                                state.update_list()?;
-                            }
-                        }
-                        state.layout.nums.reset();
-                        state.redraw(BEGINNING_ROW);
-                    }
+
+                    //If input does not match any of the keys up to this point, ignore it
                     _ => {
                         continue;
                     }
