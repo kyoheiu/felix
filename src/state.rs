@@ -664,7 +664,7 @@ impl State {
     }
 
     /// Reload the app layout when terminal size changes.
-    pub fn refresh(&mut self, column: u16, row: u16, cursor_pos: u16) {
+    pub fn refresh(&mut self, column: u16, row: u16, mut cursor_pos: u16) {
         let (time_start, name_max) = make_layout(column);
 
         let (original_column, original_row) =
