@@ -686,6 +686,11 @@ impl State {
         self.layout.name_max_len = name_max;
         self.layout.time_start_pos = time_start;
 
+        if cursor_pos > row - 1 {
+            self.layout.nums.index -= (cursor_pos - row + 1) as usize;
+            cursor_pos = row - 1;
+        }
+
         self.redraw(cursor_pos);
     }
 
