@@ -1,6 +1,9 @@
+use super::session::SortKey;
+
 use super::config::*;
 use super::errors::FxError;
 use super::functions::*;
+use super::nums::*;
 use super::state::{ItemInfo, BEGINNING_ROW};
 use super::term::*;
 
@@ -24,12 +27,15 @@ pub const TIME_WIDTH: u16 = 16;
 
 #[derive(Debug)]
 pub struct Layout {
+    pub nums: Num,
     pub y: u16,
     pub terminal_row: u16,
     pub terminal_column: u16,
     pub name_max_len: usize,
     pub time_start_pos: u16,
     pub colors: ConfigColor,
+    pub sort_by: SortKey,
+    pub show_hidden: bool,
     pub preview: bool,
     pub split: Split,
     pub preview_start: (u16, u16),
@@ -100,7 +106,12 @@ impl Layout {
             }
             Some(PreviewType::Text) => {
                 if self.syntax_highlight {
-                    self.preview_text_with_sh(item);
+                    match self.preview_text_with_sh(item) {
+                        Ok(_) => {}
+                        Err(e) => {
+                            print!("{}", e);
+                        }
+                    }
                 } else {
                     self.preview_text(item);
                 }
@@ -141,7 +152,7 @@ impl Layout {
     }
 
     /// Preview text with syntax highlighting.
-    fn preview_text_with_sh(&self, item: &ItemInfo) {
+    fn preview_text_with_sh(&self, item: &ItemInfo) -> Result<(), FxError> {
         if let Ok(Some(syntax)) = self.syntax_set.find_syntax_for_file(item.file_path.clone()) {
             let mut h = HighlightLines::new(syntax, &self.theme);
             if let Some(content) = &item.content {
@@ -149,7 +160,7 @@ impl Layout {
                 let mut result = vec![];
                 for (index, line) in LinesWithEndings::from(content).enumerate() {
                     let count = line.len() / self.preview_space.0 as usize;
-                    let mut range = h.highlight_line(line, &self.syntax_set).unwrap();
+                    let mut range = h.highlight_line(line, &self.syntax_set)?;
                     for _ in 0..=count + 1 {
                         let ranges = split_at(&range, (self.preview_space.0) as usize);
                         if !ranges.0.is_empty() {
@@ -172,6 +183,7 @@ impl Layout {
         } else {
             self.preview_text(item);
         }
+        Ok(())
     }
 
     fn preview_directory(&self, item: &ItemInfo) {
@@ -267,7 +279,7 @@ impl Layout {
             .args(["--animate=false", &wxh, file_path.unwrap()])
             .output()?
             .stdout;
-        let output = String::from_utf8(output).unwrap();
+        let output = String::from_utf8(output)?;
 
         match self.split {
             Split::Vertical => {

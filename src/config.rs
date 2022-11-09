@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use crate::state::FX_CONFIG_DIR;
 
-const CONFIG_FILE: &str = "config.toml";
+pub const CONFIG_FILE: &str = "config.toml";
 
 pub const CONFIG_EXAMPLE: &str = "# (Optional) Default exec command when open files.
 # If not set, will default to $EDITOR.
@@ -119,12 +119,9 @@ pub fn read_config() -> Result<Config, FxError> {
     let mut config = dirs::config_dir().unwrap_or_else(|| panic!("Cannot read config dir."));
     config.push(FX_CONFIG_DIR);
     config.push(CONFIG_FILE);
-    if let Ok(config) = read_to_string(config.as_path()) {
-        let deserialized: Config = toml::from_str(&config)?;
-        Ok(deserialized)
-    } else {
-        Err(FxError::TomlDe)
-    }
+    let config = read_to_string(config.as_path())?;
+    let deserialized: Config = toml::from_str(&config)?;
+    Ok(deserialized)
 }
 
 pub fn make_config_if_not_exists(config_file: &Path, trash_dir: &Path) -> Result<(), FxError> {
@@ -148,16 +145,7 @@ pub fn make_config_if_not_exists(config_file: &Path, trash_dir: &Path) -> Result
                     let config = CONFIG_EXAMPLE.replace("default = \"nvim\"", "# default = \"\"");
                     std::fs::write(&config_file, config)
                         .unwrap_or_else(|_| panic!("Cannot write new config file."));
-                    if cfg!(target_os = "mac_os") {
-                        println!(
-                "Config file created.\nSee ~/Library/Application Support/felix/config.toml");
-                    } else if cfg!(target_os = "windows") {
-                        println!(
-                            "Config file created.\nSee ~\\AppData\\Roaming\\felix\\config.toml"
-                        );
-                    } else {
-                        println!("Config file created.\nSee ~/.config/felix/config.toml");
-                    }
+                    println!("Config file created. See {}", config_file_path());
                 }
                 Err(_) => {
                     while trimmed.is_empty() {
@@ -169,45 +157,33 @@ pub fn make_config_if_not_exists(config_file: &Path, trash_dir: &Path) -> Result
                     let config = CONFIG_EXAMPLE.replace("nvim", trimmed);
                     std::fs::write(&config_file, config)
                         .unwrap_or_else(|_| panic!("cannot write new config file."));
-                    if cfg!(target_os = "mac_os") {
-                        println!(
-                "Default command set as [{}].\nSee ~/Library/Application Support/felix/config.toml",
-                trimmed
-            );
-                    } else if cfg!(target_os = "windows") {
-                        println!(
-                "Default command set as [{}].\nSee ~\\AppData\\Roaming\\felix\\config.toml",
-                trimmed
-            );
-                    } else {
-                        println!(
-                            "Default command set as [{}].\nSee ~/.config/felix/config.toml",
-                            trimmed
-                        );
-                    }
+                    println!(
+                        "Default command set as [{}]. See {}",
+                        trimmed,
+                        config_file_path()
+                    );
                 }
             }
         } else {
             let config = CONFIG_EXAMPLE.replace("nvim", trimmed);
             std::fs::write(&config_file, config)
                 .unwrap_or_else(|_| panic!("cannot write new config file."));
-            if cfg!(target_os = "mac_os") {
-                println!(
-                "Default command set as [{}].\nSee ~/Library/Application Support/felix/config.toml",
-                trimmed
+            println!(
+                "Default command set as [{}]. See {}",
+                trimmed,
+                config_file_path()
             );
-            } else if cfg!(target_os = "windows") {
-                println!(
-                    "Default command set as [{}].\nSee ~\\AppData\\Roaming\\felix\\config.toml",
-                    trimmed
-                );
-            } else {
-                println!(
-                    "Default command set as [{}].\nSee ~/.config/felix/config.toml",
-                    trimmed
-                );
-            }
         }
     }
     Ok(())
+}
+
+fn config_file_path() -> String {
+    if cfg!(target_os = "mac_os") {
+        "~/Library/Application Support/felix/config.toml".to_owned()
+    } else if cfg!(target_os = "windows") {
+        "~\\AppData\\Roaming\\felix\\config.toml".to_owned()
+    } else {
+        "~/.config/felix/config.toml".to_owned()
+    }
 }

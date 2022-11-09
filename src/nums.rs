@@ -1,18 +1,20 @@
-pub struct ParentMemo {
-    pub to_sym_dir: Option<std::path::PathBuf>,
+#[derive(Clone, Copy, Debug)]
+pub struct Num {
+    pub index: usize,
+    pub skip: u16,
+}
+
+#[derive(Debug)]
+pub struct StateMemo {
+    pub path: std::path::PathBuf,
     pub num: Num,
     pub cursor_pos: u16,
 }
 
-pub struct ChildMemo {
-    pub dir_path: std::path::PathBuf,
-    pub num: Num,
-    pub cursor_pos: u16,
-}
-#[derive(Clone, Copy)]
-pub struct Num {
-    pub index: usize,
-    pub skip: u16,
+pub enum Move {
+    Up,
+    Down,
+    Jump,
 }
 
 impl Num {
