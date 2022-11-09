@@ -2,24 +2,29 @@
 
 ## Notes
 
-- Text preview color needs to be readable enough, so it's worth rethinking (Now LightBlack).
-
 ## Unreleased
 
 ### Added
 
 - Horizontal split, in addtion to the vertical split. To toggle, press `s`.
 - Syntax highlighting (if possible) in previewed texts. To turn on, state `syntax_hightlight = true` in `config.toml`. you can also choose your theme, either from the default theme set or your favorite .tmtheme.
-- Enable scrolling in the preview space. `Alt + j / Up` goes down, `Alt + k` goes up. Experimental and may have some bugs.
+- Enable scrolling in the preview space. `Alt + j / Up` goes down, `Alt + k` goes up. Experimental and may have some bugs, and with a big text file the perf issue may arise.
+- Search by keyword. Similar to the filter mode, but this feature do not manipulate the item list, just let users jump to the item that matches the keyword, just like Vim's `/`. `n` and `N` after `/` also works.
+- Show permissions on the footer (in unix only).
 
 ### Fixed
 
 - Use `exists()` instead of `File::open()` to check whether the item path is valid when moving between direcotries. This allows Windows users to use this app at least with the basic commands.
+- Avoid `unwrap()` / `panic!` as possible and return the proper error.
 
 ### Removed
 
 - Removed debug print in `make_config_if_not_exists`
 - Removed `use_full_width` and `item_name_length` in `config.toml`. Will always use full width of the terminal.
+
+### Changed
+
+- HUGE refactoring overall.
 
 ## v1.3.2 (2022-10-23)
 
