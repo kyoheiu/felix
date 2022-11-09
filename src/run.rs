@@ -956,7 +956,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         print!("/");
                         screen.flush()?;
 
-                        state.keyword = None;
+                        let original_nums = state.layout.nums;
+                        let original_y = state.layout.y;
                         let mut keyword: Vec<char> = Vec::new();
                         let initial_pos = 3;
                         let mut current_pos = initial_pos;
@@ -1002,32 +1003,30 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             keyword.remove(current_pos - initial_pos - 1);
                                             current_pos -= 1;
 
-                                            let result = &keyword.iter().collect::<String>();
+                                            let key = &keyword.iter().collect::<String>();
 
                                             let target = state
                                                 .list
                                                 .iter()
-                                                .position(|x| x.file_name.contains(result));
+                                                .position(|x| x.file_name.contains(key));
 
                                             match target {
                                                 Some(i) => {
-                                                    if i >= state.layout.nums.index {
-                                                        state.layout.nums.skip = i as u16;
-                                                        state.layout.nums.index = i;
-                                                        state.highlight_matches(result);
-                                                        state.redraw(BEGINNING_ROW);
-                                                    } else {
-                                                        state.redraw(state.layout.y);
-                                                    }
+                                                    state.layout.nums.skip = i as u16;
+                                                    state.layout.nums.index = i;
+                                                    state.highlight_matches(key);
+                                                    state.redraw(BEGINNING_ROW);
                                                 }
                                                 None => {
+                                                    state.highlight_matches(key);
+                                                    state.layout.nums = original_nums;
+                                                    state.layout.y = original_y;
                                                     state.redraw(state.layout.y);
                                                 }
                                             }
-
                                             to_info_bar();
                                             clear_current_line();
-                                            print!("/{}", result.clone());
+                                            print!("/{}", key.clone());
                                             move_to(current_pos as u16, 2);
                                         }
                                     }
@@ -1036,28 +1035,31 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         keyword.insert(current_pos - initial_pos, c);
                                         current_pos += 1;
 
-                                        let result = &keyword.iter().collect::<String>();
+                                        let key = &keyword.iter().collect::<String>();
 
                                         let target = state
                                             .list
                                             .iter()
-                                            .position(|x| x.file_name.contains(result));
+                                            .position(|x| x.file_name.contains(key));
 
                                         match target {
                                             Some(i) => {
                                                 state.layout.nums.skip = i as u16;
                                                 state.layout.nums.index = i;
-                                                state.highlight_matches(result);
+                                                state.highlight_matches(key);
                                                 state.redraw(BEGINNING_ROW);
                                             }
                                             None => {
+                                                state.highlight_matches(key);
+                                                state.layout.nums = original_nums;
+                                                state.layout.y = original_y;
                                                 state.redraw(state.layout.y);
                                             }
                                         }
 
                                         to_info_bar();
                                         clear_current_line();
-                                        print!("/{}", result.clone());
+                                        print!("/{}", key.clone());
                                         move_to(current_pos as u16, 2);
                                     }
 
