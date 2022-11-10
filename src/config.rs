@@ -121,12 +121,29 @@ pub enum DefaultTheme {
     SolarizedLight,
 }
 
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            default: Default::default(),
+            exec: Default::default(),
+            color: ConfigColor {
+                dir_fg: Colorname::LightCyan,
+                file_fg: Colorname::LightWhite,
+                symlink_fg: Colorname::LightYellow,
+            },
+            syntax_highlight: Default::default(),
+            default_theme: Default::default(),
+            theme_path: Default::default(),
+        }
+    }
+}
+
 pub fn read_config() -> Result<Config, FxError> {
     let mut config = dirs::config_dir().unwrap_or_else(|| panic!("Cannot read config dir."));
     config.push(FX_CONFIG_DIR);
     config.push(CONFIG_FILE);
     let config = read_to_string(config.as_path())?;
-    let deserialized: Config = toml::from_str(&config)?;
+    let deserialized: Config = serde_yaml::from_str(&config)?;
     Ok(deserialized)
 }
 
