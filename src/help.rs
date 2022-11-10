@@ -1,5 +1,5 @@
 /// Help text.
-pub const HELP: &str = "# felix v1.3.2
+pub const HELP: &str = "# felix v2.0.0
 A simple TUI file manager with vim-like keymapping.
 
 ## Usage
@@ -13,15 +13,15 @@ Both relative and absolute path available.
 `-l [path]` | `--log [path]` => Launch the app and create a log file.
 
 ## Manual
-j / Up            :Go up.
-k / Down          :Go down.
+j / Down          :Go down.
+k / Up            :Go up.
 h / Left          :Go to the parent directory if exists.
 l / Right / Enter :Open a file or change directory.
-o                 :Open a file in a new window. 
+o                 :Open a file in a new window.
 gg                :Go to the top.
 G                 :Go to the bottom.
 z + Enter         :Go to the home directory.
-z <keyword>       :*zoxide required* Jump to a directory that matches the keyword.
+z <keyword>       :Jump to a directory that matches the keyword. (zoxide required)
 dd                :Delete and yank one item.
 yy                :Yank one item.
 p                 :Put yanked item(s) in the current directory.
@@ -31,11 +31,16 @@ V                 :Switch to the select mode.
 u                 :Undo put/delete/rename.
 Ctrl + r          :Redo put/delete/rename.
 v                 :Toggle whether to show the preview.
+s                 :Toggle vertical or horizontal split in the preview mode.
+Alt + j / Up      :Scroll down the preview text.
+Alt + k / Down    :Scroll up the preview text.
 backspace         :Toggle whether to show hidden items.
 t                 :Toggle the sort order (name <-> modified time).
 :                 :Switch to the shell mode.
 c                 :Switch to the rename mode.
-/                 :Switch to the filter mode.
+/                 :Search items by the keyword.
+n                 :Going forward to the item that matches the keyword.
+N                 :Going backward to the item that matches the keyword.
 Esc               :Return to the normal mode.
 :cd / :z          :Go to the home directory.
 :z <keyword>      :Same as `z <keyword>`.
@@ -51,17 +56,17 @@ Please see https://hpjansson.org/chafa/
 
 ## Configuration
 ### Linux
-config file    : $XDG_CONFIG_HOME/felix/config.toml
+config file    : $XDG_CONFIG_HOME/felix/config.yaml
 trash directory: $XDG_CONFIG_HOME/felix/trash
 log files      : $XDG_CONFIG_HOME/felix/log
 
 ### macOS
-config file    : $HOME/Library/Application Support/felix/config.toml
+config file    : $HOME/Library/Application Support/felix/config.yaml
 trash directory: $HOME/Library/Application Support/felix/trash
 log files      : $HOME/Library/Application Support/felix/log
 
 ### Windows
-config file     : $PROFILE\\AppData\\Roaming\\felix\\config.toml
+config file     : $PROFILE\\AppData\\Roaming\\felix\\config.yaml
 trash directory : $PROFILE\\AppData\\Roaming\\felix\\trash
 log files       : $PROFILE\\AppData\\Roaming\\felix\\log
 
