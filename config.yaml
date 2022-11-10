@@ -1,20 +1,23 @@
-# (Optional) Default exec command when open files.
+# (Optional)
+# Default exec command when open files.
 # If not set, will default to $EDITOR.
 # default: nvim
 
 # (Optional)
 # key (the command you want to use): [values] (extensions)
-exec:
-  feh:
-    [jpg, jpeg, png, gif, svg]
-  zathura:
-    [pdf]
+# exec:
+#   feh:
+#     [jpg, jpeg, png, gif, svg]
+#   zathura:
+#     [pdf]
 
-# (Optional) Whether to use syntax highlighting in the preview mode.
+# (Optional)
+# Whether to use syntax highlighting in the preview mode.
 # If not set, will default to false.
-syntax_highlight: true
+# syntax_highlight: true
 
-# (Optional) Default theme for syntax highlighting.
+# (Optional)
+# Default theme for syntax highlighting.
 # Pick one from the following:
 #    Base16OceanDark
 #    Base16EightiesDark
@@ -24,15 +27,16 @@ syntax_highlight: true
 #    SolarizedDark
 #    SolarizedLight
 # If not set, will default to "Base16OceanDark".
-default_theme: Base16EightiesDark
+# default_theme: Base16EightiesDark
 
-# (Optional) Path to .tmtheme file for the syntax highlighting.
+# (Optional)
+# Path to .tmtheme file for the syntax highlighting.
 # If not set, default_theme will be used.
 # theme_path: "/home/kyohei/.config/felix/monokai.tmtheme"
 
 # The foreground color of directory, file and symlink.
 # Pick one of the following:
-#     Black            // 0 
+#     Black            // 0
 #     Red              // 1
 #     Green            // 2
 #     Yellow           // 3

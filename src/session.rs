@@ -32,7 +32,7 @@ pub fn read_session() -> Result<Session, FxError> {
     session.push(FX_CONFIG_DIR);
     session.push(SESSION_FILE);
     let session = read_to_string(session.as_path())?;
-    match toml::from_str(&session) {
+    match serde_yaml::from_str(&session) {
         Ok(de) => Ok(de),
         Err(_) => Ok(Session {
             sort_by: SortKey::Name,
