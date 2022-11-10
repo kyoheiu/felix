@@ -11,15 +11,21 @@ For the detailed document, please see https://kyoheiu.dev/felix.
 
 ## New Release
 
-## v1.3.2 (2022-10-23)
+## v2.0.0 (2022-11-11)
+
+### Changed
+
+- Migrated to yaml from toml: New config file will be created at the first launch (In this process you should enter the default command name or choose to use \$EDITOR). No more need to keep `config.toml`.
+- Add the fallback when config file cannot be read: In such a case, you can use the default Config.
+- HUGE refactoring overall.
 
 ### Added
 
-- Add `std::panic::catch_unwind` to manually restore after a panic rewind. This allows the cursor to be restored and the screen cleared when this app panics.
-
-### Fixed
-
-- Fixed: Similar to v1.3.1, attempting to preview a symbolic link to a nonexistent file caused a panic. Now the preview shows `(file not readable)` for such a link.
+- Horizontal split, in addtion to the vertical split. To toggle, press `s`.
+- Syntax highlighting (if possible) in previewed texts. To turn on, state `syntax_hightlight = true` in `config.toml`. you can also choose your theme, either from the default theme set or your favorite .tmtheme.
+- Enable scrolling in the preview space. `Alt + j / Up` goes down, `Alt + k` goes up. Experimental and may have some bugs, and with a big text file the perf issue may arise.
+- Search by keyword. Similar to the filter mode, but this feature do not manipulate the item list, just let users jump to the item that matches the keyword, just like Vim's `/`. `n` and `N` after `/` also works.
+- Show permissions on the footer (in unix only).
 
 For more details, see `CHANGELOG.md`.
 
@@ -34,7 +40,7 @@ For more details, see `CHANGELOG.md`.
 
 _For Windows users: From v1.3.0, it can be at least compiled on Windows (see `.github/workflows/install_test.yml`.) If you're interested, Please try the native build and report any problems._
 
-MSRV(Minimum Supported rustc Version): **1.59.0**
+MSRV(Minimum Supported rustc Version): **1.60.0**
 
 ## Installation
 
@@ -94,8 +100,8 @@ Both relative and absolute path available.
 ## Key Manual
 
 ```
-j / Up            :Go up.
-k / Down          :Go down.
+j / Down          :Go down.
+k / Up            :Go up.
 h / Left          :Go to the parent directory if exists.
 l / Right / Enter :Open a file or change directory.
 o                 :Open a file in a new window.
@@ -112,11 +118,16 @@ V                 :Switch to the select mode.
 u                 :Undo put/delete/rename.
 Ctrl + r          :Redo put/delete/rename.
 v                 :Toggle whether to show the preview.
+s                 :Toggle vertical or horizontal split in the preview mode.
+Alt + j / Up      :Scroll down the preview text.
+Alt + k / Down    :Scroll up the preview text.
 backspace         :Toggle whether to show hidden items.
 t                 :Toggle the sort order (name <-> modified time).
 :                 :Switch to the shell mode.
 c                 :Switch to the rename mode.
-/                 :Switch to the filter mode.
+/                 :Search items by the keyword.
+n                 :Going forward to the item that matches the keyword.
+N                 :Going backward to the item that matches the keyword.
 Esc               :Return to the normal mode.
 :cd / :z          :Go to the home directory.
 :z <keyword>      :Same as `z <keyword>`.
@@ -136,7 +147,7 @@ Install `chafa` and you can preview images without any configuration.
 ### Linux
 
 ```
-config file     : $XDG_CONFIG_HOME/felix/config.toml
+config file     : $XDG_CONFIG_HOME/felix/config.yaml
 trash directory : $XDG_CONFIG_HOME/felix/trash
 log files       : \$XDG_CONFIG_HOME/felix/log
 ```
@@ -144,7 +155,7 @@ log files       : \$XDG_CONFIG_HOME/felix/log
 ### macOS
 
 ```
-config file     : $HOME/Library/Application Support/felix/config.toml
+config file     : $HOME/Library/Application Support/felix/config.yaml
 trash directory : $HOME/Library/Application Support/felix/trash
 log files       : \$HOME/Library/Application Support/felix/log
 ```
@@ -152,7 +163,7 @@ log files       : \$HOME/Library/Application Support/felix/log
 ### Windows
 
 ```
-config file     : $PROFILE\AppData\Roaming\felix\config.toml
+config file     : $PROFILE\AppData\Roaming\felix\config.yaml
 trash directory : $PROFILE\AppData\Roaming\felix\trash
 log files       : $PROFILE\AppData\Roaming\felix\log
 ```

@@ -4,6 +4,14 @@
 
 ## Unreleased
 
+## v2.0.0 (2022-11-11)
+
+### Changed
+
+- Migrated to yaml from toml: New config file will be created at the first launch (In this process you should enter the default command name or choose to use \$EDITOR). No more need to keep `config.toml`.
+- Add the fallback when config file cannot be read: In such a case, you can use the default Config.
+- HUGE refactoring overall.
+
 ### Added
 
 - Horizontal split, in addtion to the vertical split. To toggle, press `s`.
@@ -19,12 +27,9 @@
 
 ### Removed
 
+- Removed the filter mode, which is replaced by the keyword search.
 - Removed debug print in `make_config_if_not_exists`
 - Removed `use_full_width` and `item_name_length` in `config.toml`. Will always use full width of the terminal.
-
-### Changed
-
-- HUGE refactoring overall.
 
 ## v1.3.2 (2022-10-23)
 
