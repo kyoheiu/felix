@@ -8,6 +8,8 @@ use super::session::*;
 use super::term::*;
 
 use chrono::prelude::*;
+use crossterm::event;
+use crossterm::event::{KeyCode, KeyEvent};
 use crossterm::style::Stylize;
 use log::{error, info};
 use std::collections::HashMap;
@@ -72,7 +74,29 @@ pub enum FileType {
 impl State {
     /// Initialize the state of the app.
     pub fn new() -> Result<Self, FxError> {
-        let config = read_config()?;
+        let config = match read_config() {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("Cannot read the config file properly.\nError: {}\nDo you want to use the default config? [press Enter to continue]", e);
+                enter_raw_mode();
+                loop {
+                    match event::read()? {
+                        event::Event::Key(KeyEvent { code, .. }) => match code {
+                            KeyCode::Enter => break,
+                            _ => {
+                                leave_raw_mode();
+                                return Err(FxError::Yaml("Exit the app.".to_owned()));
+                            }
+                        },
+                        _ => {
+                            continue;
+                        }
+                    }
+                }
+                leave_raw_mode();
+                Config::default()
+            }
+        };
         let session = read_session()?;
         let (original_column, original_row) =
             crossterm::terminal::size().unwrap_or_else(|_| panic!("Cannot detect terminal size."));
