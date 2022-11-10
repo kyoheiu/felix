@@ -1161,7 +1161,7 @@ impl State {
             preview: Some(self.layout.preview),
             split: Some(self.layout.split),
         };
-        let serialized = toml::to_string(&session)?;
+        let serialized = serde_yaml::to_string(&session)?;
         fs::write(&session_path, serialized)?;
         Ok(())
     }
