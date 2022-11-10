@@ -154,7 +154,7 @@ pub fn make_config_if_not_exists(config_file: &Path, trash_dir: &Path) -> Result
 
     if !config_file.exists() {
         println!(
-            "Config file not found: To set up, Please enter the default command to open a file. (e.g. nvim)"
+            "Config file not found: To set up, please enter the default command name to open a file. (e.g. nvim)\nIf you want to use the default $EDITOR, just press Enter."
         );
 
         let mut buffer = String::new();
@@ -177,7 +177,7 @@ pub fn make_config_if_not_exists(config_file: &Path, trash_dir: &Path) -> Result
                         std::io::stdin().read_line(&mut buffer)?;
                         trimmed = buffer.trim();
                     }
-                    let config = CONFIG_EXAMPLE.replace("nvim", trimmed);
+                    let config = CONFIG_EXAMPLE.replace("# default: nvim", trimmed);
                     std::fs::write(&config_file, config)
                         .unwrap_or_else(|_| panic!("cannot write new config file."));
                     println!(
@@ -188,7 +188,8 @@ pub fn make_config_if_not_exists(config_file: &Path, trash_dir: &Path) -> Result
                 }
             }
         } else {
-            let config = CONFIG_EXAMPLE.replace("nvim", trimmed);
+            let config =
+                CONFIG_EXAMPLE.replace("# default: nvim", &format!("default: {}", trimmed));
             std::fs::write(&config_file, config)
                 .unwrap_or_else(|_| panic!("cannot write new config file."));
             println!(
