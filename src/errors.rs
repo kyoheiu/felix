@@ -7,8 +7,7 @@ pub enum FxError {
     GetItem,
     OpenItem,
     OpenNewWindow,
-    TomlDe(String),
-    TomlSer(String),
+    Yaml(String),
     WalkDir(String),
     Encode,
     Syntect(String),
@@ -31,8 +30,7 @@ impl std::fmt::Display for FxError {
             FxError::OpenNewWindow => {
                 "Error: Cannot open this type of item in new window".to_owned()
             }
-            FxError::TomlDe(s) => s.to_owned(),
-            FxError::TomlSer(s) => s.to_owned(),
+            FxError::Yaml(s) => s.to_owned(),
             FxError::WalkDir(s) => s.to_owned(),
             FxError::Encode => "Error: Incorrect encoding".to_owned(),
             FxError::Syntect(s) => s.to_owned(),
@@ -51,16 +49,9 @@ impl From<std::io::Error> for FxError {
         FxError::Io(err.to_string())
     }
 }
-
-impl From<toml::de::Error> for FxError {
-    fn from(err: toml::de::Error) -> Self {
-        FxError::TomlDe(err.to_string())
-    }
-}
-
-impl From<toml::ser::Error> for FxError {
-    fn from(err: toml::ser::Error) -> Self {
-        FxError::TomlSer(err.to_string())
+impl From<serde_yaml::Error> for FxError {
+    fn from(err: serde_yaml::Error) -> Self {
+        FxError::Yaml(err.to_string())
     }
 }
 
