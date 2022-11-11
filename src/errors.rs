@@ -6,7 +6,7 @@ pub enum FxError {
     Dirs(String),
     GetItem,
     OpenItem,
-    OpenNewWindow,
+    OpenNewWindow(String),
     Yaml(String),
     WalkDir(String),
     Encode,
@@ -27,9 +27,7 @@ impl std::fmt::Display for FxError {
             FxError::Dirs(s) => s.to_owned(),
             FxError::GetItem => "Error: Cannot get item info".to_owned(),
             FxError::OpenItem => "Error: Cannot open item".to_owned(),
-            FxError::OpenNewWindow => {
-                "Error: Cannot open this type of item in new window".to_owned()
-            }
+            FxError::OpenNewWindow(s) => s.to_owned(),
             FxError::Yaml(s) => s.to_owned(),
             FxError::WalkDir(s) => s.to_owned(),
             FxError::Encode => "Error: Incorrect encoding".to_owned(),

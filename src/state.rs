@@ -218,7 +218,7 @@ impl State {
         info!("OPEN(new window): {:?}", path);
 
         match map {
-            None => Err(FxError::OpenNewWindow),
+            None => Err(FxError::OpenNewWindow("No exec configuration".to_owned())),
             Some(map) => match extension {
                 Some(extension) => match map.get(extension) {
                     Some(command) => {
@@ -229,10 +229,14 @@ impl State {
                             .spawn()
                             .or(Err(FxError::OpenItem))
                     }
-                    None => Err(FxError::OpenNewWindow),
+                    None => Err(FxError::OpenNewWindow(
+                        "Cannot open this type of item in new window".to_owned(),
+                    )),
                 },
 
-                None => Err(FxError::OpenNewWindow),
+                None => Err(FxError::OpenNewWindow(
+                    "Cannot open this type of item in new window".to_owned(),
+                )),
             },
         }
     }
