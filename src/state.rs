@@ -8,35 +8,41 @@ use super::session::*;
 use super::term::*;
 
 use chrono::prelude::*;
+use crossterm::event;
+use crossterm::event::{KeyCode, KeyEvent};
 use crossterm::style::Stylize;
 use log::{error, info};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::env;
+use std::ffi::OsStr;
 use std::fmt::Write as _;
 use std::fs;
+#[cfg(target_family = "unix")]
+use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use std::process::{Child, Command, ExitStatus, Stdio};
+use std::time::UNIX_EPOCH;
+use syntect::highlighting::{Theme, ThemeSet};
 
 pub const BEGINNING_ROW: u16 = 3;
 pub const FX_CONFIG_DIR: &str = "felix";
-pub const CONFIG_FILE: &str = "config.toml";
 pub const TRASH: &str = "trash";
-pub const WHEN_EMPTY: &str = "Are you sure to empty the trash directory? (if yes: y)";
+pub const EMPTY_WARNING: &str = "Are you sure to empty the trash directory? (if yes: y)";
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct State {
     pub list: Vec<ItemInfo>,
-    pub registered: Vec<ItemInfo>,
-    pub operations: Operation,
     pub current_dir: PathBuf,
     pub trash_dir: PathBuf,
     pub default: String,
     pub commands: Option<HashMap<String, String>>,
-    pub sort_by: SortKey,
+    pub registered: Vec<ItemInfo>,
+    pub operations: Operation,
+    pub c_memo: Vec<StateMemo>,
+    pub p_memo: Vec<StateMemo>,
+    pub keyword: Option<String>,
     pub layout: Layout,
-    pub show_hidden: bool,
-    pub filtered: bool,
     pub rust_log: Option<String>,
 }
 
@@ -51,6 +57,11 @@ pub struct ItemInfo {
     pub modified: Option<String>,
     pub is_hidden: bool,
     pub selected: bool,
+    pub matches: bool,
+    pub preview_type: Option<PreviewType>,
+    pub preview_scroll: usize,
+    pub content: Option<String>,
+    pub permissions: Option<u32>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -61,26 +72,49 @@ pub enum FileType {
 }
 
 impl State {
-    /// Initialize state app.
+    /// Initialize the state of the app.
     pub fn new() -> Result<Self, FxError> {
-        let config = read_config().unwrap_or_else(|_| panic!("Something wrong with config file."));
-        let session =
-            read_session().unwrap_or_else(|_| panic!("Something wrong with session file."));
-        let (column, row) =
+        let config = match read_config() {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("Cannot read the config file properly.\nError: {}\nDo you want to use the default config? [press Enter to continue]", e);
+                enter_raw_mode();
+                loop {
+                    match event::read()? {
+                        event::Event::Key(KeyEvent { code, .. }) => match code {
+                            KeyCode::Enter => break,
+                            _ => {
+                                leave_raw_mode();
+                                return Err(FxError::Yaml("Exit the app.".to_owned()));
+                            }
+                        },
+                        _ => {
+                            continue;
+                        }
+                    }
+                }
+                leave_raw_mode();
+                Config::default()
+            }
+        };
+        let session = read_session()?;
+        let (original_column, original_row) =
             crossterm::terminal::size().unwrap_or_else(|_| panic!("Cannot detect terminal size."));
 
         // Return error if terminal size may cause panic
-        if column < 4 {
+        if original_column < 4 {
             error!("Too small terminal size (less than 4 columns).");
             return Err(FxError::TooSmallWindowSize);
         };
-        if row < 4 {
+        if original_row < 4 {
             error!("Too small terminal size. (less than 4 rows)");
             return Err(FxError::TooSmallWindowSize);
         };
 
-        let (time_start, name_max) =
-            make_layout(column, config.use_full_width, config.item_name_length);
+        let (time_start, name_max) = make_layout(original_column);
+
+        let ts = set_theme(&config);
+        let split = session.split.unwrap_or(Split::Vertical);
 
         let has_chafa = check_chafa();
         let is_kitty = check_kitty_support();
@@ -98,55 +132,55 @@ impl State {
                 .default
                 .unwrap_or_else(|| env::var("EDITOR").expect("Falling back to env var")),
             commands: to_extension_map(&config.exec),
-            sort_by: session.sort_by,
             layout: Layout {
+                nums: Num::new(),
                 y: BEGINNING_ROW,
-                terminal_row: row,
-                terminal_column: column,
+                terminal_row: original_row,
+                terminal_column: original_column,
                 name_max_len: name_max,
                 time_start_pos: time_start,
-                use_full: config.use_full_width,
-                option_name_len: config.item_name_length,
                 colors: ConfigColor {
                     dir_fg: config.color.dir_fg,
                     file_fg: config.color.file_fg,
                     symlink_fg: config.color.symlink_fg,
                 },
-                preview: false,
-                preview_start_column: column + 2,
-                preview_width: column - 1,
+                sort_by: session.sort_by,
+                show_hidden: session.show_hidden,
+                preview: session.preview.unwrap_or(false),
+                split,
+                preview_start: match split {
+                    Split::Vertical => (0, 0),
+                    Split::Horizontal => (0, 0),
+                },
+                preview_space: match split {
+                    Split::Vertical => (0, 0),
+                    Split::Horizontal => (0, 0),
+                },
+                syntax_highlight: config.syntax_highlight.unwrap_or(false),
+                syntax_set: syntect::parsing::SyntaxSet::load_defaults_newlines(),
+                theme: ts,
                 has_chafa,
                 is_kitty,
             },
-            show_hidden: session.show_hidden,
-            filtered: false,
+            c_memo: Vec::new(),
+            p_memo: Vec::new(),
+            keyword: None,
             rust_log: std::env::var("RUST_LOG").ok(),
         })
     }
 
-    /// Reload the app layout when terminal size changes.
-    pub fn refresh(&mut self, column: u16, row: u16, nums: &Num, cursor_pos: u16) {
-        let (time_start, name_max) =
-            make_layout(column, self.layout.use_full, self.layout.option_name_len);
-
-        self.layout.terminal_row = row;
-        self.layout.terminal_column = column;
-        self.layout.preview_start_column = column + 2;
-        self.layout.preview_width = column - 1;
-        self.layout.name_max_len = name_max;
-        self.layout.time_start_pos = time_start;
-
-        self.redraw(nums, cursor_pos);
-    }
-
     /// Select an item that the cursor points to.
-    pub fn get_item(&self, index: usize) -> Result<&ItemInfo, FxError> {
-        self.list.get(index).ok_or(FxError::GetItem)
+    pub fn get_item(&self) -> Result<&ItemInfo, FxError> {
+        self.list
+            .get(self.layout.nums.index)
+            .ok_or(FxError::GetItem)
     }
 
     /// Select an item that the cursor points to, as mut.
-    pub fn get_item_mut(&mut self, index: usize) -> Result<&mut ItemInfo, FxError> {
-        self.list.get_mut(index).ok_or(FxError::GetItem)
+    pub fn get_item_mut(&mut self) -> Result<&mut ItemInfo, FxError> {
+        self.list
+            .get_mut(self.layout.nums.index)
+            .ok_or(FxError::GetItem)
     }
 
     /// Open the selected file according to the config.
@@ -175,8 +209,8 @@ impl State {
     }
 
     /// Open the selected file in a new window, according to the config.
-    pub fn open_file_in_new_window(&self, index: usize) -> Result<Child, FxError> {
-        let item = self.get_item(index)?;
+    pub fn open_file_in_new_window(&self) -> Result<Child, FxError> {
+        let item = self.get_item()?;
         let path = &item.file_path;
         let map = &self.commands;
         let extension = &item.file_ext;
@@ -184,7 +218,7 @@ impl State {
         info!("OPEN(new window): {:?}", path);
 
         match map {
-            None => Err(FxError::OpenNewWindow),
+            None => Err(FxError::OpenNewWindow("No exec configuration".to_owned())),
             Some(map) => match extension {
                 Some(extension) => match map.get(extension) {
                     Some(command) => {
@@ -195,10 +229,14 @@ impl State {
                             .spawn()
                             .or(Err(FxError::OpenItem))
                     }
-                    None => Err(FxError::OpenNewWindow),
+                    None => Err(FxError::OpenNewWindow(
+                        "Cannot open this type of item in new window".to_owned(),
+                    )),
                 },
 
-                None => Err(FxError::OpenNewWindow),
+                None => Err(FxError::OpenNewWindow(
+                    "Cannot open this type of item in new window".to_owned(),
+                )),
             },
         }
     }
@@ -367,14 +405,14 @@ impl State {
     }
 
     /// Register selected items to the registry.
-    pub fn yank_item(&mut self, index: usize, selected: bool) {
+    pub fn yank_item(&mut self, selected: bool) {
         self.registered.clear();
         if selected {
             for item in self.list.iter_mut().filter(|item| item.selected) {
                 self.registered.push(item.clone());
             }
         } else {
-            let item = self.get_item(index).unwrap().clone();
+            let item = self.get_item().unwrap().clone();
             self.registered.push(item);
         }
     }
@@ -527,7 +565,9 @@ impl State {
             if i == 0 {
                 base = entry_path.iter().count();
 
-                let parent = &original_path.parent().unwrap();
+                let parent = &original_path
+                    .parent()
+                    .ok_or_else(|| FxError::Io("Cannot read parent dir.".to_string()))?;
                 if parent == &self.trash_dir {
                     let rename: String = buf.file_name.chars().skip(11).collect();
                     target = match &target_dir {
@@ -568,14 +608,14 @@ impl State {
     }
 
     /// Undo operations (put/delete/rename).
-    pub fn undo(&mut self, nums: &Num, op: &OpKind) -> Result<(), FxError> {
+    pub fn undo(&mut self, op: &OpKind) -> Result<(), FxError> {
         match op {
             OpKind::Rename(op) => {
                 std::fs::rename(&op.new_name, &op.original_name)?;
                 self.operations.pos += 1;
                 self.update_list()?;
                 self.clear_and_show_headline();
-                self.list_up(nums.skip);
+                self.list_up();
                 print_info("UNDONE: RENAME", BEGINNING_ROW);
             }
             OpKind::Put(op) => {
@@ -589,7 +629,7 @@ impl State {
                 self.operations.pos += 1;
                 self.update_list()?;
                 self.clear_and_show_headline();
-                self.list_up(nums.skip);
+                self.list_up();
                 print_info("UNDONE: PUT", BEGINNING_ROW);
             }
             OpKind::Delete(op) => {
@@ -598,7 +638,7 @@ impl State {
                 self.operations.pos += 1;
                 self.update_list()?;
                 self.clear_and_show_headline();
-                self.list_up(nums.skip);
+                self.list_up();
                 print_info("UNDONE: DELETE", BEGINNING_ROW);
             }
         }
@@ -607,14 +647,14 @@ impl State {
     }
 
     /// Redo operations (put/delete/rename)
-    pub fn redo(&mut self, nums: &Num, op: &OpKind) -> Result<(), FxError> {
+    pub fn redo(&mut self, op: &OpKind) -> Result<(), FxError> {
         match op {
             OpKind::Rename(op) => {
                 std::fs::rename(&op.original_name, &op.new_name)?;
                 self.operations.pos -= 1;
                 self.update_list()?;
                 self.clear_and_show_headline();
-                self.list_up(nums.skip);
+                self.list_up();
                 print_info("REDONE: RENAME", BEGINNING_ROW);
             }
             OpKind::Put(op) => {
@@ -622,7 +662,7 @@ impl State {
                 self.operations.pos -= 1;
                 self.update_list()?;
                 self.clear_and_show_headline();
-                self.list_up(nums.skip);
+                self.list_up();
                 print_info("REDONE: PUT", BEGINNING_ROW);
             }
             OpKind::Delete(op) => {
@@ -630,7 +670,7 @@ impl State {
                 self.operations.pos -= 1;
                 self.update_list()?;
                 self.clear_and_show_headline();
-                self.list_up(nums.skip);
+                self.list_up();
                 print_info("REDONE DELETE", BEGINNING_ROW);
             }
         }
@@ -639,19 +679,50 @@ impl State {
     }
 
     /// Redraw the contents.
-    pub fn redraw(&mut self, nums: &Num, y: u16) {
+    pub fn redraw(&mut self, y: u16) {
         self.clear_and_show_headline();
-        self.list_up(nums.skip);
-        self.move_cursor(nums, y);
+        self.list_up();
+        self.move_cursor(y);
     }
 
     /// Reload the item list and redraw it.
-    pub fn reload(&mut self, nums: &Num, y: u16) -> Result<(), FxError> {
+    pub fn reload(&mut self, y: u16) -> Result<(), FxError> {
         self.update_list()?;
         self.clear_and_show_headline();
-        self.list_up(nums.skip);
-        self.move_cursor(nums, y);
+        self.list_up();
+        self.move_cursor(y);
         Ok(())
+    }
+
+    /// Reload the app layout when terminal size changes.
+    pub fn refresh(&mut self, column: u16, row: u16, mut cursor_pos: u16) {
+        let (time_start, name_max) = make_layout(column);
+
+        let (original_column, original_row) =
+            crossterm::terminal::size().unwrap_or_else(|_| panic!("Cannot detect terminal size."));
+
+        self.layout.terminal_row = row;
+        self.layout.terminal_column = column;
+        self.layout.preview_start = match self.layout.split {
+            Split::Vertical => (column + 2, BEGINNING_ROW),
+            Split::Horizontal => (1, row + 2),
+        };
+        self.layout.preview_space = match self.layout.preview {
+            true => match self.layout.split {
+                Split::Vertical => (original_column - column - 1, row - BEGINNING_ROW),
+                Split::Horizontal => (column, original_row - row - 1),
+            },
+            false => (0, 0),
+        };
+        self.layout.name_max_len = name_max;
+        self.layout.time_start_pos = time_start;
+
+        if cursor_pos > row - 1 {
+            self.layout.nums.index -= (cursor_pos - row + 1) as usize;
+            cursor_pos = row - 1;
+        }
+
+        self.redraw(cursor_pos);
     }
 
     /// Clear all and show the current directory information.
@@ -680,15 +751,10 @@ impl State {
                 }
             }
         }
-
-        if self.filtered {
-            print!(" (filtered)");
-        }
     }
 
     /// Print an item in the directory.
-    fn print(&self, index: usize) {
-        let item = &self.get_item(index).unwrap();
+    fn print_item(&self, item: &ItemInfo) {
         let chars: Vec<char> = item.file_name.chars().collect();
         let name = if chars.len() > self.layout.name_max_len {
             let mut result = chars
@@ -701,16 +767,20 @@ impl State {
             item.file_name.clone()
         };
         let time = format_time(&item.modified);
-        let selected = &item.selected;
         let color = match item.file_type {
             FileType::Directory => &self.layout.colors.dir_fg,
             FileType::File => &self.layout.colors.file_fg,
             FileType::Symlink => &self.layout.colors.symlink_fg,
         };
         if self.layout.terminal_column < PROPER_WIDTH {
-            if *selected {
+            if item.selected {
                 set_color(&TermColor::ForeGround(color));
                 print!("{}", name.negative(),);
+                reset_color();
+            } else if item.matches {
+                set_color(&TermColor::ForeGround(color));
+                print!("{}", name.bold(),);
+                reset_color();
             } else {
                 set_color(&TermColor::ForeGround(color));
                 print!("{}", name);
@@ -719,44 +789,43 @@ impl State {
             if self.layout.terminal_column > self.layout.time_start_pos + TIME_WIDTH {
                 clear_until_newline();
             }
+        } else if item.selected {
+            set_color(&TermColor::ForeGround(color));
+            print!("{}", name.negative(),);
+            move_left(1000);
+            move_right(self.layout.time_start_pos - 1);
+            print!(" {}", time.negative());
+            reset_color();
+        } else if item.matches {
+            set_color(&TermColor::ForeGround(color));
+            print!("{}", name.bold(),);
+            move_left(1000);
+            move_right(self.layout.time_start_pos - 1);
+            set_color(&TermColor::ForeGround(color));
+            print!(" {}", time);
+            reset_color();
         } else {
-            if *selected {
-                set_color(&TermColor::ForeGround(color));
-                print!("{}", name.negative(),);
-                move_left(100);
-                move_right(self.layout.time_start_pos - 1);
-                print!(" {}", time.negative());
-            } else {
-                set_color(&TermColor::ForeGround(color));
-                print!("{}", name);
-                move_left(100);
-                move_right(self.layout.time_start_pos - 1);
-                print!(" {}", time);
-                reset_color();
-            }
-            if self.layout.terminal_column > self.layout.time_start_pos + TIME_WIDTH {
-                clear_until_newline();
-            }
+            set_color(&TermColor::ForeGround(color));
+            print!("{}", name);
+            move_left(1000);
+            move_right(self.layout.time_start_pos - 1);
+            print!(" {}", time);
+            reset_color();
         }
     }
 
     /// Print items in the directory.
-    pub fn list_up(&self, skip_number: u16) {
-        let row = self.layout.terminal_row;
+    pub fn list_up(&self) {
+        let visible = &self.list[..];
 
-        let mut row_count = 0;
-        for (i, _) in self.list.iter().enumerate() {
-            if i < skip_number as usize {
-                continue;
+        visible.iter().enumerate().for_each(|(index, item)| {
+            if index >= self.layout.nums.skip.into()
+                && index < (self.layout.terminal_row + self.layout.nums.skip - BEGINNING_ROW).into()
+            {
+                move_to(3, (index as u16 + BEGINNING_ROW) - self.layout.nums.skip);
+                self.print_item(item);
             }
-            move_to(3, i as u16 + BEGINNING_ROW - skip_number);
-            if row_count == row - BEGINNING_ROW {
-                break;
-            } else {
-                self.print(i);
-                row_count += 1;
-            }
-        }
+        });
     }
 
     /// Update state's list of items.
@@ -767,14 +836,14 @@ impl State {
 
         for entry in fs::read_dir(&self.current_dir)? {
             let e = entry?;
-            let entry = make_item(e);
+            let entry = read_item(e);
             match entry.file_type {
                 FileType::Directory => dir_v.push(entry),
                 FileType::File | FileType::Symlink => file_v.push(entry),
             }
         }
 
-        match self.sort_by {
+        match self.layout.sort_by {
             SortKey::Name => {
                 dir_v.sort_by(|a, b| natord::compare(&a.file_name, &b.file_name));
                 file_v.sort_by(|a, b| natord::compare(&a.file_name, &b.file_name));
@@ -788,7 +857,7 @@ impl State {
         result.append(&mut dir_v);
         result.append(&mut file_v);
 
-        if !self.show_hidden {
+        if !self.layout.show_hidden {
             result.retain(|x| !x.is_hidden);
         }
 
@@ -800,6 +869,16 @@ impl State {
     pub fn reset_selection(&mut self) {
         for mut item in self.list.iter_mut() {
             item.selected = false;
+        }
+    }
+
+    pub fn highlight_matches(&mut self, keyword: &str) {
+        for item in self.list.iter_mut() {
+            if item.file_name.contains(keyword) {
+                item.matches = true;
+            } else {
+                item.matches = false;
+            }
         }
     }
 
@@ -825,15 +904,122 @@ impl State {
         }
     }
 
+    pub fn chdir(&mut self, p: &std::path::Path, mv: Move) -> Result<(), FxError> {
+        std::env::set_current_dir(p)?;
+        match mv {
+            Move::Up => {
+                // Push current state to c_memo
+                let cursor_memo = StateMemo {
+                    path: self.current_dir.clone(),
+                    num: self.layout.nums,
+                    cursor_pos: self.layout.y,
+                };
+                self.c_memo.push(cursor_memo);
+
+                //Pop p_memo if exists; identify the dir from which we come
+                match self.p_memo.pop() {
+                    Some(memo) => {
+                        self.current_dir = memo.path;
+                        self.keyword = None;
+                        self.layout.nums.index = memo.num.index;
+                        self.layout.nums.skip = memo.num.skip;
+                        self.reload(memo.cursor_pos)?;
+                    }
+                    None => {
+                        let pre = self.current_dir.clone();
+                        self.current_dir = p.to_owned();
+                        self.update_list()?;
+                        match pre.file_name() {
+                            Some(name) => {
+                                let new_pos = self
+                                    .list
+                                    .iter()
+                                    .position(|x| {
+                                        let file_name = x.file_name.as_ref() as &OsStr;
+                                        file_name == name
+                                    })
+                                    .unwrap_or(0);
+                                self.keyword = None;
+                                if new_pos < 3 {
+                                    self.layout.nums.skip = 0;
+                                    self.layout.nums.index = new_pos;
+                                    self.redraw((new_pos as u16) + BEGINNING_ROW);
+                                } else {
+                                    self.layout.nums.skip = (new_pos - 3) as u16;
+                                    self.layout.nums.index = new_pos;
+                                    self.redraw(BEGINNING_ROW + 3);
+                                }
+                            }
+                            None => {
+                                self.current_dir = p.to_owned();
+                                self.keyword = None;
+                                self.layout.nums.reset();
+                                self.redraw(BEGINNING_ROW);
+                            }
+                        }
+                    }
+                }
+            }
+            Move::Down => {
+                // Push current state to p_memo
+                let cursor_memo = StateMemo {
+                    path: self.current_dir.clone(),
+                    num: self.layout.nums,
+                    cursor_pos: self.layout.y,
+                };
+                self.p_memo.push(cursor_memo);
+                self.current_dir = p.to_owned();
+                self.keyword = None;
+
+                // Pop c_memo
+                match self.c_memo.pop() {
+                    Some(memo) => {
+                        if p == memo.path {
+                            self.layout.nums.index = memo.num.index;
+                            self.layout.nums.skip = memo.num.skip;
+                            self.reload(memo.cursor_pos)?;
+                        } else {
+                            self.layout.nums.reset();
+                            self.reload(BEGINNING_ROW)?;
+                        }
+                    }
+                    None => {
+                        self.layout.nums.reset();
+                        self.reload(BEGINNING_ROW)?;
+                    }
+                }
+            }
+            Move::Jump => {
+                self.current_dir = p.to_owned();
+                self.p_memo = Vec::new();
+                self.c_memo = Vec::new();
+                self.keyword = None;
+                self.layout.nums.reset();
+                self.reload(BEGINNING_ROW)?;
+            }
+        }
+        Ok(())
+    }
+
     /// Change the cursor position, and print item information at the bottom.
     /// If preview is enabled, print text preview, contents of the directory or image preview on the right half of the terminal
     /// (To preview image, you must install chafa. See help).
-    pub fn move_cursor(&mut self, nums: &Num, y: u16) {
-        if let Ok(item) = self.get_item(nums.index) {
+    pub fn move_cursor(&mut self, y: u16) {
+        // If preview is enabled, set the preview type, read the content (if text type) and reset the scroll.
+        if self.layout.preview {
+            if let Ok(item) = self.get_item_mut() {
+                if item.preview_type.is_none() {
+                    set_preview_type(item);
+                }
+                item.preview_scroll = 0;
+            }
+        }
+
+        if let Ok(item) = self.get_item() {
             delete_cursor();
 
             //Print item information at the bottom
-            self.print_footer(nums, item);
+            self.print_footer(item);
 
             //Print preview if preview is on
             if self.layout.preview {
@@ -848,86 +1034,169 @@ impl State {
         self.layout.y = y;
     }
 
-    /// Print item information at the bottom of the terminal.
-    fn print_footer(&self, nums: &Num, item: &ItemInfo) {
+    pub fn to_status_bar(&self) {
         move_to(1, self.layout.terminal_row);
-        clear_current_line();
+    }
 
+    pub fn clear_status_line(&self) {
+        self.to_status_bar();
+        clear_current_line();
+        reset_color();
+        print!(
+            "{}",
+            " ".repeat(self.layout.terminal_column as usize).negative(),
+        );
+        move_to(1, self.layout.terminal_row);
+    }
+
+    /// Print item information at the bottom of the terminal.
+    fn print_footer(&self, item: &ItemInfo) {
+        self.clear_status_line();
+
+        if let Some(keyword) = &self.keyword {
+            let count = self
+                .list
+                .iter()
+                .filter(|x| x.file_name.contains(keyword))
+                .count();
+            let count = if count <= 1 {
+                format!("{} match", count)
+            } else {
+                format!("{} matches", count)
+            };
+            print!(
+                "{}",
+                " ".repeat(self.layout.terminal_column as usize).negative(),
+            );
+            move_to(1, self.layout.terminal_row);
+            print!(
+                "{}{}{}{}",
+                " /".negative(),
+                keyword.clone().negative(),
+                " - ".negative(),
+                count.negative()
+            );
+            return;
+        }
+
+        let footer = self.make_footer(item);
+        print!("{}", footer.negative());
+    }
+
+    fn make_footer(&self, item: &ItemInfo) -> String {
         match &item.file_ext {
             Some(ext) => {
-                print!(
-                    "{}",
-                    " ".repeat(self.layout.terminal_column as usize).negative(),
-                );
-                move_to(1, self.layout.terminal_row);
-                let mut footer = format!(
-                    "[{}/{}] {} {}",
-                    nums.index + 1,
-                    self.list.len(),
-                    ext.clone(),
-                    to_proper_size(item.file_size),
-                );
+                let mut footer = match item.permissions {
+                    Some(permissions) => {
+                        format!(
+                            " {}/{} {} {} {}",
+                            self.layout.nums.index + 1,
+                            self.list.len(),
+                            ext.clone(),
+                            to_proper_size(item.file_size),
+                            convert_to_permissions(permissions)
+                        )
+                    }
+                    None => format!(
+                        " {}/{} {} {}",
+                        self.layout.nums.index + 1,
+                        self.list.len(),
+                        ext.clone(),
+                        to_proper_size(item.file_size),
+                    ),
+                };
                 if self.rust_log.is_some() {
                     let _ = write!(
                         footer,
-                        " index:{} skip:{} column:{} row:{}",
-                        nums.index,
-                        nums.skip,
+                        " i:{} s:{} c:{} r:{}",
+                        self.layout.nums.index,
+                        self.layout.nums.skip,
                         self.layout.terminal_column,
                         self.layout.terminal_row
                     );
                 }
-                let footer: String = footer
+                footer
                     .chars()
                     .take(self.layout.terminal_column.into())
-                    .collect();
-                print!("{}", footer.negative());
+                    .collect()
             }
             None => {
-                print!(
-                    "{}",
-                    " ".repeat(self.layout.terminal_column as usize).negative(),
-                );
-                move_to(1, self.layout.terminal_row);
-                let mut footer = format!(
-                    "[{}/{}] {}",
-                    nums.index + 1,
-                    self.list.len(),
-                    to_proper_size(item.file_size),
-                );
+                let mut footer = match item.permissions {
+                    Some(permissions) => {
+                        format!(
+                            " {}/{} {} {}",
+                            self.layout.nums.index + 1,
+                            self.list.len(),
+                            to_proper_size(item.file_size),
+                            convert_to_permissions(permissions)
+                        )
+                    }
+                    None => format!(
+                        " {}/{} {}",
+                        self.layout.nums.index + 1,
+                        self.list.len(),
+                        to_proper_size(item.file_size),
+                    ),
+                };
                 if self.rust_log.is_some() {
                     let _ = write!(
                         footer,
-                        " index:{} skip:{} column:{} row:{}",
-                        nums.index,
-                        nums.skip,
+                        " i:{} s:{} c:{} r:{}",
+                        self.layout.nums.index,
+                        self.layout.nums.skip,
                         self.layout.terminal_column,
                         self.layout.terminal_row
                     );
                 }
-                let footer: String = footer
+                footer
                     .chars()
                     .take(self.layout.terminal_column.into())
-                    .collect();
-                print!("{}", footer.negative());
+                    .collect()
             }
+        }
+    }
+
+    pub fn scroll_down_preview(&mut self, y: u16) {
+        if let Ok(item) = self.get_item_mut() {
+            item.preview_scroll += 1;
+            self.scroll_preview(y)
+        }
+    }
+
+    pub fn scroll_up_preview(&mut self, y: u16) {
+        if let Ok(item) = self.get_item_mut() {
+            if item.preview_scroll != 0 {
+                item.preview_scroll -= 1;
+                self.scroll_preview(y)
+            }
+        }
+    }
+
+    fn scroll_preview(&self, y: u16) {
+        if let Ok(item) = self.get_item() {
+            self.layout.print_preview(item, y);
+            move_to(1, y);
+            print_pointer();
+            move_left(1);
         }
     }
 
     /// Store the sort key and whether to show hidden items to session file.
     pub fn write_session(&self, session_path: PathBuf) -> Result<(), FxError> {
         let session = Session {
-            sort_by: self.sort_by.clone(),
-            show_hidden: self.show_hidden,
+            sort_by: self.layout.sort_by.clone(),
+            show_hidden: self.layout.show_hidden,
+            preview: Some(self.layout.preview),
+            split: Some(self.layout.split),
         };
-        let serialized = toml::to_string(&session)?;
+        let serialized = serde_yaml::to_string(&session)?;
         fs::write(&session_path, serialized)?;
         Ok(())
     }
 }
 
-/// Create item information from `std::fs::DirEntry`.
-fn make_item(entry: fs::DirEntry) -> ItemInfo {
+/// Read item information from `std::fs::DirEntry`.
+fn read_item(entry: fs::DirEntry) -> ItemInfo {
     let path = entry.path();
     let metadata = fs::symlink_metadata(&path);
 
@@ -948,7 +1217,7 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
     match metadata {
         Ok(metadata) => {
             let time = {
-                let sometime = metadata.modified().unwrap();
+                let sometime = metadata.modified().unwrap_or(UNIX_EPOCH);
                 let chrono_time: DateTime<Local> = DateTime::from(sometime);
                 Some(chrono_time.to_rfc3339_opts(SecondsFormat::Secs, false))
             };
@@ -982,6 +1251,11 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
                 }
             };
 
+            #[cfg(target_family = "unix")]
+            let permissions = Some(metadata.permissions().mode());
+            #[cfg(not(target_family = "unix"))]
+            let permissions = None;
+
             let size = metadata.len();
             ItemInfo {
                 file_type: filetype,
@@ -995,7 +1269,12 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
                 },
                 modified: time,
                 selected: false,
+                matches: false,
                 is_hidden: hidden,
+                preview_type: None,
+                preview_scroll: 0,
+                content: None,
+                permissions,
             }
         }
         Err(_) => ItemInfo {
@@ -1007,7 +1286,12 @@ fn make_item(entry: fs::DirEntry) -> ItemInfo {
             file_ext: ext,
             modified: None,
             selected: false,
+            matches: false,
             is_hidden: false,
+            preview_type: None,
+            preview_scroll: 0,
+            content: None,
+            permissions: None,
         },
     }
 }
@@ -1020,7 +1304,7 @@ pub fn trash_to_info(trash_dir: &PathBuf, vec: &[PathBuf]) -> Result<Vec<ItemInf
     for entry in fs::read_dir(trash_dir)? {
         let entry = entry?;
         if vec.contains(&entry.path()) {
-            result.push(make_item(entry));
+            result.push(read_item(entry));
             count += 1;
             if count == total {
                 break;
@@ -1043,6 +1327,76 @@ fn check_kitty_support() -> bool {
         term.contains("kitty")
     } else {
         false
+    }
+}
+
+fn set_preview_content_type(item: &mut ItemInfo) {
+    if item.file_size > MAX_SIZE_TO_PREVIEW {
+        item.preview_type = Some(PreviewType::TooBigSize);
+    } else if is_supported_ext(item) {
+        item.preview_type = Some(PreviewType::Image);
+    } else if let Ok(content) = &std::fs::read(&item.file_path) {
+        if content_inspector::inspect(content).is_text() {
+            if let Ok(content) = String::from_utf8(content.to_vec()) {
+                let content = content.replace('\t', "    ");
+                item.content = Some(content);
+            }
+            item.preview_type = Some(PreviewType::Text);
+        } else {
+            item.preview_type = Some(PreviewType::Binary);
+        }
+    } else {
+        // failed to resolve item to any form of supported preview
+        // it is probably not accessible due to permissions, broken symlink etc.
+        item.preview_type = Some(PreviewType::NotReadable);
+    }
+}
+
+/// Check preview type.
+fn set_preview_type(item: &mut ItemInfo) {
+    if item.file_type == FileType::Directory
+        || (item.file_type == FileType::Symlink && item.symlink_dir_path.is_some())
+    {
+        // symlink was resolved to directory already in the ItemInfo
+        item.preview_type = Some(PreviewType::Directory);
+    } else {
+        set_preview_content_type(item);
+    }
+}
+
+fn is_supported_ext(item: &ItemInfo) -> bool {
+    match &item.file_ext {
+        None => false,
+        Some(ext) => IMAGE_EXTENSION.contains(&ext.as_str()),
+    }
+}
+
+fn set_theme(config: &Config) -> Theme {
+    match &config.theme_path {
+        Some(p) => match ThemeSet::get_theme(p) {
+            Ok(theme) => theme,
+            Err(_) => match &config.default_theme {
+                Some(dt) => choose_theme(dt),
+                None => ThemeSet::load_defaults().themes["base16-ocean.dark"].clone(),
+            },
+        },
+        None => match &config.default_theme {
+            Some(dt) => choose_theme(dt),
+            None => ThemeSet::load_defaults().themes["base16-ocean.dark"].clone(),
+        },
+    }
+}
+
+fn choose_theme(dt: &DefaultTheme) -> Theme {
+    let defaults = ThemeSet::load_defaults();
+    match dt {
+        DefaultTheme::Base16OceanDark => defaults.themes["base16-ocean.dark"].clone(),
+        DefaultTheme::Base16EightiesDark => defaults.themes["base16-eighties.dark"].clone(),
+        DefaultTheme::Base16MochaDark => defaults.themes["base16-mocha.dark"].clone(),
+        DefaultTheme::Base16OceanLight => defaults.themes["base16-ocean.light"].clone(),
+        DefaultTheme::InspiredGitHub => defaults.themes["InspiredGitHub"].clone(),
+        DefaultTheme::SolarizedDark => defaults.themes["Solarized (dark)"].clone(),
+        DefaultTheme::SolarizedLight => defaults.themes["Solarized (light)"].clone(),
     }
 }
 

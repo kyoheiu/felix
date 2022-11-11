@@ -300,6 +300,12 @@ pub fn check_version() -> Result<(), FxError> {
     Ok(())
 }
 
+pub fn convert_to_permissions(permissions: u32) -> String {
+    let permissions = format!("{permissions:o}");
+    let permissions: String = permissions.chars().rev().take(3).collect();
+    permissions.chars().rev().collect()
+}
+
 //cargo test -- --nocapture
 #[cfg(test)]
 mod tests {
@@ -362,5 +368,13 @@ mod tests {
         assert!(is_editable(s2));
         assert!(!is_editable(s3));
         assert!(!is_editable(s4));
+    }
+
+    #[test]
+    fn test_convert_to_permissions() {
+        let file = 33188;
+        let dir = 16877;
+        assert_eq!(&convert_to_permissions(file), "644");
+        assert_eq!(&convert_to_permissions(dir), "755");
     }
 }

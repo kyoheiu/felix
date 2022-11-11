@@ -3,8 +3,8 @@ use super::config::Colorname;
 use crossterm::{
     cursor::{Hide, MoveLeft, MoveRight, MoveTo, Show},
     style::{Color, ResetColor, SetBackgroundColor, SetForegroundColor},
-    terminal::Clear,
     terminal,
+    terminal::Clear,
 };
 
 pub enum TermColor<'a> {

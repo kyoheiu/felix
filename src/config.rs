@@ -1,58 +1,74 @@
 use super::errors::FxError;
+use super::state::FX_CONFIG_DIR;
+
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::read_to_string;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-use crate::state::FX_CONFIG_DIR;
+pub const CONFIG_FILE: &str = "config.yaml";
 
-const CONFIG_FILE: &str = "config.toml";
-
-pub const CONFIG_EXAMPLE: &str = "# (Optional) Default exec command when open files.
-# If not set, will default to $EDITOR
-default = \"nvim\"
-
-# (Optional) Whether to use the full width of terminal.
-# If not set, this will be true.
-# use_full_width = true
-
-# (Optional) Set the max length of item name to be displayed.
-# This works only when use_full_width is set to false.
-# If the terminal size is not enough, the length will be changed to fit it.
-# If not set, this will be 30.
-# item_name_length = 30
+pub const CONFIG_EXAMPLE: &str = "# (Optional)
+# Default exec command when open files.
+# If not set, will default to $EDITOR.
+# default: nvim
 
 # (Optional)
-# key (the command you want to use) = [values] (extensions)
-# [exec]
-# feh = [\"jpg\", \"jpeg\", \"png\", \"gif\", \"svg\"]
-# zathura = [\"pdf\"]
+# key (the command you want to use): [values] (extensions)
+# exec:
+#   feh:
+#     [jpg, jpeg, png, gif, svg]
+#   zathura:
+#     [pdf]
+
+# (Optional)
+# Whether to use syntax highlighting in the preview mode.
+# If not set, will default to false.
+syntax_highlight: true
+
+# (Optional)
+# Default theme for syntax highlighting.
+# Pick one from the following:
+#    Base16OceanDark
+#    Base16EightiesDark
+#    Base16MochaDark
+#    Base16OceanLight
+#    InspiredGitHub
+#    SolarizedDark
+#    SolarizedLight
+# If not set, will default to \"Base16OceanDark\".
+# default_theme: Base16OceanDark
+
+# (Optional)
+# Path to .tmtheme file for the syntax highlighting.
+# If not set, default_theme will be used.
+# theme_path: \"/home/kyohei/.config/felix/monokai.tmtheme\"
 
 # The foreground color of directory, file and symlink.
 # Pick one of the following:
-#     Black
-#     Red
-#     Green
-#     Yellow
-#     Blue
-#     Magenta
-#     Cyan
-#     White
-#     LightBlack
-#     LightRed
-#     LightGreen
-#     LightYellow
-#     LightBlue
-#     LightMagenta
-#     LightCyan
-#     LightWhite
+#     Black           // 0 
+#     Red             // 1
+#     Green           // 2
+#     Yellow          // 3
+#     Blue            // 4
+#     Magenta         // 5
+#     Cyan            // 6
+#     White           // 7
+#     LightBlack      // 8
+#     LightRed        // 9
+#     LightGreen      // 10
+#     LightYellow     // 11
+#     LightBlue       // 12
+#     LightMagenta    // 13
+#     LightCyan       // 14
+#     LightWhite      // 15
 #     Rgb(u8, u8, u8)
 #     AnsiValue(u8)
 # For more details, see https://docs.rs/termion/1.5.6/termion/color/index.html
-[color]
-dir_fg = \"LightCyan\"
-file_fg = \"LightWhite\"
-symlink_fg = \"LightYellow\"
+color:
+  dir_fg: LightCyan
+  file_fg: LightWhite
+  symlink_fg: LightYellow
 ";
 
 #[derive(Deserialize, Debug, Clone)]
@@ -60,8 +76,9 @@ pub struct Config {
     pub default: Option<String>,
     pub exec: Option<HashMap<String, Vec<String>>>,
     pub color: ConfigColor,
-    pub use_full_width: Option<bool>,
-    pub item_name_length: Option<usize>,
+    pub syntax_highlight: Option<bool>,
+    pub default_theme: Option<DefaultTheme>,
+    pub theme_path: Option<PathBuf>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -93,17 +110,41 @@ pub enum Colorname {
     AnsiValue(u8),
 }
 
+#[derive(Deserialize, Debug, Clone)]
+pub enum DefaultTheme {
+    Base16OceanDark,
+    Base16EightiesDark,
+    Base16MochaDark,
+    Base16OceanLight,
+    InspiredGitHub,
+    SolarizedDark,
+    SolarizedLight,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            default: Default::default(),
+            exec: Default::default(),
+            color: ConfigColor {
+                dir_fg: Colorname::LightCyan,
+                file_fg: Colorname::LightWhite,
+                symlink_fg: Colorname::LightYellow,
+            },
+            syntax_highlight: Default::default(),
+            default_theme: Default::default(),
+            theme_path: Default::default(),
+        }
+    }
+}
+
 pub fn read_config() -> Result<Config, FxError> {
     let mut config = dirs::config_dir().unwrap_or_else(|| panic!("Cannot read config dir."));
     config.push(FX_CONFIG_DIR);
     config.push(CONFIG_FILE);
-    let config = read_to_string(config.as_path());
-    if let Ok(config) = config {
-        let deserialized: Config = toml::from_str(&config)?;
-        Ok(deserialized)
-    } else {
-        panic!("Cannot deserialize config file.");
-    }
+    let config = read_to_string(config.as_path())?;
+    let deserialized: Config = serde_yaml::from_str(&config)?;
+    Ok(deserialized)
 }
 
 pub fn make_config_if_not_exists(config_file: &Path, trash_dir: &Path) -> Result<(), FxError> {
@@ -113,13 +154,12 @@ pub fn make_config_if_not_exists(config_file: &Path, trash_dir: &Path) -> Result
 
     if !config_file.exists() {
         println!(
-            "Config file not found: To set up, Please enter the default command to open a file. (e.g. nvim)"
+            "Config file not found: To set up, please enter the default command name to open a file. (e.g. nvim)\nIf you want to use the default $EDITOR, just press Enter."
         );
 
         let mut buffer = String::new();
         let stdin = std::io::stdin();
         stdin.read_line(&mut buffer)?;
-        println!("{}", buffer);
 
         let mut trimmed = buffer.trim();
         if trimmed.is_empty() {
@@ -128,16 +168,7 @@ pub fn make_config_if_not_exists(config_file: &Path, trash_dir: &Path) -> Result
                     let config = CONFIG_EXAMPLE.replace("default = \"nvim\"", "# default = \"\"");
                     std::fs::write(&config_file, config)
                         .unwrap_or_else(|_| panic!("Cannot write new config file."));
-                    if cfg!(target_os = "mac_os") {
-                        println!(
-                "Config file created.\nSee ~/Library/Application Support/felix/config.toml");
-                    } else if cfg!(target_os = "windows") {
-                        println!(
-                            "Config file created.\nSee ~\\AppData\\Roaming\\felix\\config.toml"
-                        );
-                    } else {
-                        println!("Config file created.\nSee ~/.config/felix/config.toml");
-                    }
+                    println!("Config file created. See {}", config_file_path());
                 }
                 Err(_) => {
                     while trimmed.is_empty() {
@@ -146,48 +177,37 @@ pub fn make_config_if_not_exists(config_file: &Path, trash_dir: &Path) -> Result
                         std::io::stdin().read_line(&mut buffer)?;
                         trimmed = buffer.trim();
                     }
-                    let config = CONFIG_EXAMPLE.replace("nvim", trimmed);
+                    let config = CONFIG_EXAMPLE.replace("# default: nvim", trimmed);
                     std::fs::write(&config_file, config)
                         .unwrap_or_else(|_| panic!("cannot write new config file."));
-                    if cfg!(target_os = "mac_os") {
-                        println!(
-                "Default command set as [{}].\nSee ~/Library/Application Support/felix/config.toml",
-                trimmed
-            );
-                    } else if cfg!(target_os = "windows") {
-                        println!(
-                "Default command set as [{}].\nSee ~\\AppData\\Roaming\\felix\\config.toml",
-                trimmed
-            );
-                    } else {
-                        println!(
-                            "Default command set as [{}].\nSee ~/.config/felix/config.toml",
-                            trimmed
-                        );
-                    }
+                    println!(
+                        "Default command set as [{}]. See {}",
+                        trimmed,
+                        config_file_path()
+                    );
                 }
             }
         } else {
-            let config = CONFIG_EXAMPLE.replace("nvim", trimmed);
+            let config =
+                CONFIG_EXAMPLE.replace("# default: nvim", &format!("default: {}", trimmed));
             std::fs::write(&config_file, config)
                 .unwrap_or_else(|_| panic!("cannot write new config file."));
-            if cfg!(target_os = "mac_os") {
-                println!(
-                "Default command set as [{}].\nSee ~/Library/Application Support/felix/config.toml",
-                trimmed
+            println!(
+                "Default command set as [{}]. See {}",
+                trimmed,
+                config_file_path()
             );
-            } else if cfg!(target_os = "windows") {
-                println!(
-                    "Default command set as [{}].\nSee ~\\AppData\\Roaming\\felix\\config.toml",
-                    trimmed
-                );
-            } else {
-                println!(
-                    "Default command set as [{}].\nSee ~/.config/felix/config.toml",
-                    trimmed
-                );
-            }
         }
     }
     Ok(())
+}
+
+fn config_file_path() -> String {
+    if cfg!(target_os = "mac_os") {
+        "~/Library/Application Support/felix/config.yaml".to_owned()
+    } else if cfg!(target_os = "windows") {
+        "~\\AppData\\Roaming\\felix\\config.yaml".to_owned()
+    } else {
+        "~/.config/felix/config.yaml".to_owned()
+    }
 }

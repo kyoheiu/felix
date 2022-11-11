@@ -2,9 +2,34 @@
 
 ## Notes
 
-- Text preview color needs to be readable enough, so it's worth rethinking (Now LightBlack).
-
 ## Unreleased
+
+## v2.0.0 (2022-11-11)
+
+### Changed
+
+- Migrated to yaml from toml: New config file will be created at the first launch (In this process you should enter the default command name or choose to use \$EDITOR). No more need to keep `config.toml`.
+- Add the fallback when config file cannot be read: In such a case, you can use the default Config.
+- HUGE refactoring overall.
+
+### Added
+
+- Horizontal split, in addtion to the vertical split. To toggle, press `s`.
+- Syntax highlighting (if possible) in previewed texts. To turn on, state `syntax_hightlight = true` in `config.toml`. you can also choose your theme, either from the default theme set or your favorite .tmtheme.
+- Enable scrolling in the preview space. `Alt + j / Up` goes down, `Alt + k` goes up. Experimental and may have some bugs, and with a big text file the perf issue may arise.
+- Search by keyword. Similar to the filter mode, but this feature do not manipulate the item list, just let users jump to the item that matches the keyword, just like Vim's `/`. `n` and `N` after `/` also works.
+- Show permissions on the footer (in unix only).
+
+### Fixed
+
+- Use `exists()` instead of `File::open()` to check whether the item path is valid when moving between direcotries. This allows Windows users to use this app at least with the basic commands.
+- Avoid `unwrap()` / `panic!` as possible and return the proper error.
+
+### Removed
+
+- Removed the filter mode, which is replaced by the keyword search.
+- Removed debug print in `make_config_if_not_exists`
+- Removed `use_full_width` and `item_name_length` in `config.toml`. Will always use full width of the terminal.
 
 ## v1.3.2 (2022-10-23)
 
