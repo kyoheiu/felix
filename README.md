@@ -16,14 +16,14 @@ For the detailed document, please see https://kyoheiu.dev/felix.
 ### Changed
 
 - Migrated to yaml from toml: New config file will be created at the first launch (In this process you should enter the default command name or choose to use \$EDITOR). No need to keep `config.toml`.
-- Add the fallback when config file cannot be read: In such a case, you can use the default Config.
+- Add the fallback when config file cannot be read: In such a case, you can use the default config.
 - HUGE refactoring overall.
 
 ### Added
 
 - Horizontal split, in addtion to the vertical split. To swtch between them, press `s`.
-- Syntax highlighting (if possible) in previewed texts. To turn on, state `syntax_hightlight = true` in `config.toml`. you can also choose your theme, either from the default theme set or your favorite .tmtheme.
-- Enable scrolling in the preview space. `Alt + j / Down` goes down, `Alt + Up` goes up. Experimental and may have some bugs, and with a big text file the perf issue may arise.
+- Syntax highlighting (if possible) in previewed texts. To turn on, state `syntax_hightlight: true` in `config.yaml`. you can also choose your theme, either from the default theme set or your favorite .tmtheme.
+- Enable scrolling in the preview space. `Alt + j / Down` goes down, `Alt + Up` goes up. Experimental and may have some bugs. Also, big text files can cause the performance issue.
 - Search by keyword. Similar to the filter mode, but this feature does not manipulate the item list: Just let users jump to the item that matches the keyword, like Vim's `/`. `n` and `N` after `/` also works.
 - Show permissions on the footer (in unix only).
 
@@ -38,7 +38,7 @@ For more details, see `CHANGELOG.md`.
 | MacOS   | works                |
 | Windows | not fully tested yet |
 
-_For Windows users: From v1.3.0, it can be at least compiled on Windows (see `.github/workflows/install_test.yml`.) If you're interested, Please try the native build and report any problems._
+_For Windows users: From v1.3.0, it can be at least compiled on Windows (see `.github/workflows/install_test.yml`.) If you're interested, please try and report any problems._
 
 MSRV(Minimum Supported rustc Version): **1.60.0**
 
