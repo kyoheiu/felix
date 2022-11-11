@@ -31,16 +31,16 @@ V                 :Switch to the select mode.
 u                 :Undo put/delete/rename.
 Ctrl + r          :Redo put/delete/rename.
 v                 :Toggle whether to show the preview.
-s                 :Toggle vertical or horizontal split in the preview mode.
-Alt + j / Up      :Scroll down the preview text.
-Alt + k / Down    :Scroll up the preview text.
+s                 :Toggle between vertical / horizontal split in the preview mode.
+Alt + j / Down    :Scroll down the preview text.
+Alt + k / Up      :Scroll up the preview text.
 backspace         :Toggle whether to show hidden items.
 t                 :Toggle the sort order (name <-> modified time).
 :                 :Switch to the shell mode.
 c                 :Switch to the rename mode.
 /                 :Search items by the keyword.
-n                 :Going forward to the item that matches the keyword.
-N                 :Going backward to the item that matches the keyword.
+n                 :Go forward to the item that matches the keyword.
+N                 :Go backward to the item that matches the keyword.
 Esc               :Return to the normal mode.
 :cd / :z          :Go to the home directory.
 :z <keyword>      :Same as `z <keyword>`.

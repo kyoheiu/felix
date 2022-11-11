@@ -1,4 +1,4 @@
-[![crates.io](https://img.shields.io/crates/v/felix)](https://crates.io/crates/felix) ![aur:felix-rs](https://img.shields.io/aur/version/felix-rs) ![MSRV](https://img.shields.io/badge/MSRV-1.59.0-orange)
+[![crates.io](https://img.shields.io/crates/v/felix)](https://crates.io/crates/felix) ![aur:felix-rs](https://img.shields.io/aur/version/felix-rs) ![MSRV](https://img.shields.io/badge/MSRV-1.60.0-orange)
 
 # _felix_
 
@@ -15,16 +15,16 @@ For the detailed document, please see https://kyoheiu.dev/felix.
 
 ### Changed
 
-- Migrated to yaml from toml: New config file will be created at the first launch (In this process you should enter the default command name or choose to use \$EDITOR). No more need to keep `config.toml`.
+- Migrated to yaml from toml: New config file will be created at the first launch (In this process you should enter the default command name or choose to use \$EDITOR). No need to keep `config.toml`.
 - Add the fallback when config file cannot be read: In such a case, you can use the default Config.
 - HUGE refactoring overall.
 
 ### Added
 
-- Horizontal split, in addtion to the vertical split. To toggle, press `s`.
+- Horizontal split, in addtion to the vertical split. To swtch between them, press `s`.
 - Syntax highlighting (if possible) in previewed texts. To turn on, state `syntax_hightlight = true` in `config.toml`. you can also choose your theme, either from the default theme set or your favorite .tmtheme.
-- Enable scrolling in the preview space. `Alt + j / Up` goes down, `Alt + k` goes up. Experimental and may have some bugs, and with a big text file the perf issue may arise.
-- Search by keyword. Similar to the filter mode, but this feature do not manipulate the item list, just let users jump to the item that matches the keyword, just like Vim's `/`. `n` and `N` after `/` also works.
+- Enable scrolling in the preview space. `Alt + j / Down` goes down, `Alt + Up` goes up. Experimental and may have some bugs, and with a big text file the perf issue may arise.
+- Search by keyword. Similar to the filter mode, but this feature does not manipulate the item list: Just let users jump to the item that matches the keyword, like Vim's `/`. `n` and `N` after `/` also works.
 - Show permissions on the footer (in unix only).
 
 For more details, see `CHANGELOG.md`.
@@ -118,16 +118,16 @@ V                 :Switch to the select mode.
 u                 :Undo put/delete/rename.
 Ctrl + r          :Redo put/delete/rename.
 v                 :Toggle whether to show the preview.
-s                 :Toggle vertical or horizontal split in the preview mode.
-Alt + j / Up      :Scroll down the preview text.
-Alt + k / Down    :Scroll up the preview text.
+s                 :Toggle between vertical / horizontal split in the preview mode.
+Alt + j / Down    :Scroll down the preview text.
+Alt + k / Up      :Scroll up the preview text.
 backspace         :Toggle whether to show hidden items.
 t                 :Toggle the sort order (name <-> modified time).
 :                 :Switch to the shell mode.
 c                 :Switch to the rename mode.
 /                 :Search items by the keyword.
-n                 :Going forward to the item that matches the keyword.
-N                 :Going backward to the item that matches the keyword.
+n                 :Go forward to the item that matches the keyword.
+N                 :Go backward to the item that matches the keyword.
 Esc               :Return to the normal mode.
 :cd / :z          :Go to the home directory.
 :z <keyword>      :Same as `z <keyword>`.
