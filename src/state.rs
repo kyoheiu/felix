@@ -1089,7 +1089,7 @@ impl State {
                 let mut footer = match item.permissions {
                     Some(permissions) => {
                         format!(
-                            " {}/{} │ {} │ {} │ {}",
+                            " {}/{} {} {} {}",
                             self.layout.nums.index + 1,
                             self.list.len(),
                             ext.clone(),
@@ -1098,7 +1098,7 @@ impl State {
                         )
                     }
                     None => format!(
-                        " {}/{} │ {} │ {}",
+                        " {}/{} {} {}",
                         self.layout.nums.index + 1,
                         self.list.len(),
                         ext.clone(),
@@ -1124,7 +1124,7 @@ impl State {
                 let mut footer = match item.permissions {
                     Some(permissions) => {
                         format!(
-                            " {}/{} │ {} │ {}",
+                            " {}/{} {} {}",
                             self.layout.nums.index + 1,
                             self.list.len(),
                             to_proper_size(item.file_size),
@@ -1132,7 +1132,7 @@ impl State {
                         )
                     }
                     None => format!(
-                        " {}/{} │ {}",
+                        " {}/{} {}",
                         self.layout.nums.index + 1,
                         self.list.len(),
                         to_proper_size(item.file_size),
