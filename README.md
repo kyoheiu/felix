@@ -11,7 +11,7 @@ For the detailed document, please see https://kyoheiu.dev/felix.
 
 ## New Release
 
-## v2.0.1 (2022-11-12)
+## v2.0.1 (2022-11-12) bugfix
 
 ### Fixed
 
