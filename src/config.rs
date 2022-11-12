@@ -138,11 +138,8 @@ impl Default for Config {
     }
 }
 
-pub fn read_config() -> Result<Config, FxError> {
-    let mut config = dirs::config_dir().unwrap_or_else(|| panic!("Cannot read config dir."));
-    config.push(FX_CONFIG_DIR);
-    config.push(CONFIG_FILE);
-    let config = read_to_string(config.as_path())?;
+pub fn read_config(p: &Path) -> Result<Config, FxError> {
+    let config = read_to_string(p)?;
     let deserialized: Config = serde_yaml::from_str(&config)?;
     Ok(deserialized)
 }

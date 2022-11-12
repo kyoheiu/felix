@@ -58,7 +58,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     }
 
     //Initialize app state
-    let mut state = State::new()?;
+    let mut state = State::new(&config_file_path)?;
     state.trash_dir = trash_dir_path;
     state.current_dir = if cfg!(not(windows)) {
         // If executed this on windows, "//?" will be inserted at the beginning of the path.

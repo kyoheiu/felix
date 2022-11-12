@@ -73,8 +73,8 @@ pub enum FileType {
 
 impl State {
     /// Initialize the state of the app.
-    pub fn new() -> Result<Self, FxError> {
-        let config = match read_config() {
+    pub fn new(p: &std::path::Path) -> Result<Self, FxError> {
+        let config = match read_config(p) {
             Ok(c) => c,
             Err(e) => {
                 eprintln!("Cannot read the config file properly.\nError: {}\nDo you want to use the default config? [press Enter to continue]", e);
