@@ -306,6 +306,22 @@ pub fn convert_to_permissions(permissions: u32) -> String {
     permissions.chars().rev().collect()
 }
 
+pub fn extract_tar(p: PathBuf, dest: PathBuf) -> Result<(), FxError> {
+    let tar_gz = std::fs::File::open(p)?;
+    let tar = flate2::read::GzDecoder::new(tar_gz);
+    let mut archive = tar::Archive::new(tar);
+    archive.unpack(dest)?;
+
+    Ok(())
+}
+
+pub fn extract_zip(p: PathBuf, dest: PathBuf) -> Result<(), FxError> {
+    let file = std::fs::File::open(p)?;
+    let mut archive = zip::ZipArchive::new(file)?;
+    archive.extract(dest).unwrap();
+    Ok(())
+}
+
 //cargo test -- --nocapture
 #[cfg(test)]
 mod tests {
@@ -376,5 +392,31 @@ mod tests {
         let dir = 16877;
         assert_eq!(&convert_to_permissions(file), "644");
         assert_eq!(&convert_to_permissions(dir), "755");
+    }
+
+    #[test]
+    fn test_extract_tar() {
+        let p = PathBuf::from("/home/kyohei/Downloads/felix-1.3.2.tar.gz");
+        let dest = PathBuf::from("/home/kyohei/test/");
+        assert!(extract_tar(p, dest).is_ok());
+
+        let p = PathBuf::from("/home/kyohei/Downloads/berkeley-mono-typeface.zip");
+        let dest = PathBuf::from("/home/kyohei/test/");
+        if let Err(e) = extract_tar(p, dest) {
+            eprintln!("{}", e);
+        }
+    }
+
+    #[test]
+    fn test_extract_zip() {
+        let p = PathBuf::from("/home/kyohei/Downloads/berkeley-mono-typeface.zip");
+        let dest = PathBuf::from("/home/kyohei/test/");
+        assert!(extract_zip(p, dest).is_ok());
+
+        let p = PathBuf::from("/home/kyohei/Downloads/felix-1.3.2.tar.gz");
+        let dest = PathBuf::from("/home/kyohei/test/");
+        if let Err(e) = extract_zip(p, dest) {
+            eprintln!("{}", e);
+        }
     }
 }
