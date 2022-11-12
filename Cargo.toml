@@ -1,6 +1,6 @@
 [package]
 name = "felix"
-version = "2.0.0"
+version = "2.0.1"
 authors = ["Kyohei Uto <im@kyoheiu.dev>"]
 edition = "2021"
 description = "tui file manager with vim-like key mapping"
@@ -24,7 +24,7 @@ log = "0.4.16"
 simplelog = "0.12.0"
 content_inspector = "0.2.4"
 crossterm = "0.25.0"
-syntect = {git = "https://github.com/kyoheiu/syntect"}
+syntect = {version = "5.0.0", git = "https://github.com/kyoheiu/syntect"}
 serde_yaml = "0.9.14"
 
 [dependencies.serde]

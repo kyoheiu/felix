@@ -130,7 +130,7 @@ impl State {
             trash_dir: PathBuf::new(),
             default: config
                 .default
-                .unwrap_or_else(|| env::var("EDITOR").expect("Falling back to env var")),
+                .unwrap_or_else(|| env::var("EDITOR").unwrap_or_default()),
             commands: to_extension_map(&config.exec),
             layout: Layout {
                 nums: Num::new(),

@@ -11,6 +11,13 @@ For the detailed document, please see https://kyoheiu.dev/felix.
 
 ## New Release
 
+## v2.0.1 (2022-11-12) bugfix
+
+### Fixed
+
+- Fixed the bug in making config at the launch.
+- Fixed the config file path on macOS.
+
 ## v2.0.0 (2022-11-11)
 
 ### Changed
