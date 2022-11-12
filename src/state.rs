@@ -356,7 +356,7 @@ impl State {
                     trash_name = chrono::Local::now().timestamp().to_string();
                     trash_name.push('_');
                     let file_name = entry.file_name().to_str();
-                    if file_name == None {
+                    if file_name.is_none() {
                         return Err(FxError::Encode);
                     }
                     trash_name.push_str(file_name.unwrap());
@@ -543,12 +543,9 @@ impl State {
         let mut target: PathBuf = PathBuf::new();
         let original_path = &buf.file_path;
 
-        let len = walkdir::WalkDir::new(&original_path).into_iter().count();
+        let len = walkdir::WalkDir::new(original_path).into_iter().count();
         let unit = len / 5;
-        for (i, entry) in walkdir::WalkDir::new(&original_path)
-            .into_iter()
-            .enumerate()
-        {
+        for (i, entry) in walkdir::WalkDir::new(original_path).into_iter().enumerate() {
             if i > unit * 4 {
                 print_process("[»»»»-]");
             } else if i > unit * 3 {
@@ -621,9 +618,9 @@ impl State {
             OpKind::Put(op) => {
                 for x in &op.put {
                     if x.is_dir() {
-                        std::fs::remove_dir_all(&x)?;
+                        std::fs::remove_dir_all(x)?;
                     } else {
-                        std::fs::remove_file(&x)?;
+                        std::fs::remove_file(x)?;
                     }
                 }
                 self.operations.pos += 1;

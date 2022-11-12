@@ -57,7 +57,7 @@ pub enum PreviewType {
     Binary,
 }
 
-#[derive(Debug, PartialEq, Deserialize, Serialize, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Clone, Copy)]
 pub enum Split {
     Vertical,
     Horizontal,

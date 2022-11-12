@@ -44,6 +44,6 @@ pub fn read_session() -> Result<Session, FxError> {
 }
 
 pub fn make_session(session_file: &Path) -> Result<(), FxError> {
-    std::fs::write(&session_file, SESSION_EXAMPLE)?;
+    std::fs::write(session_file, SESSION_EXAMPLE)?;
     Ok(())
 }

@@ -163,7 +163,7 @@ pub fn make_config_if_not_exists(config_file: &Path, trash_dir: &Path) -> Result
             match std::env::var("EDITOR") {
                 Ok(_) => {
                     let config = CONFIG_EXAMPLE.replace("default = \"nvim\"", "# default = \"\"");
-                    std::fs::write(&config_file, config)?;
+                    std::fs::write(config_file, config)?;
                     println!("Config file created. See {}", config_file_path_output()?);
                 }
                 Err(_) => {
@@ -175,7 +175,7 @@ pub fn make_config_if_not_exists(config_file: &Path, trash_dir: &Path) -> Result
                     }
                     let config =
                         CONFIG_EXAMPLE.replace("# default: nvim", &format!("default: {}", trimmed));
-                    std::fs::write(&config_file, config)?;
+                    std::fs::write(config_file, config)?;
                     println!(
                         "Default command set as [{}]. See {}",
                         trimmed,
@@ -186,7 +186,7 @@ pub fn make_config_if_not_exists(config_file: &Path, trash_dir: &Path) -> Result
         } else {
             let config =
                 CONFIG_EXAMPLE.replace("# default: nvim", &format!("default: {}", trimmed));
-            std::fs::write(&config_file, config)?;
+            std::fs::write(config_file, config)?;
             println!(
                 "Default command set as [{}]. See {}",
                 trimmed,
