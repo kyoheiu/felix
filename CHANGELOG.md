@@ -4,6 +4,13 @@
 
 ## Unreleased
 
+## v2.0.1 (2022-11-12)
+
+### Fixed
+
+- Fixed the bug in making config at the launch.
+- Fixed the config file path on macOS.
+
 ## v2.0.0 (2022-11-11)
 
 ### Changed
