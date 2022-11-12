@@ -203,11 +203,12 @@ pub fn make_config_if_not_exists(config_file: &Path, trash_dir: &Path) -> Result
 }
 
 fn config_file_path() -> String {
-    if cfg!(target_os = "mac_os") {
-        "~/Library/Application Support/felix/config.yaml".to_owned()
-    } else if cfg!(target_os = "windows") {
+    if cfg!(target_os = "windows") {
         "~\\AppData\\Roaming\\felix\\config.yaml".to_owned()
     } else {
-        "~/.config/felix/config.yaml".to_owned()
+        let mut config = dirs::config_dir().unwrap_or_else(|| panic!("Cannot read config dir."));
+        config.push(FX_CONFIG_DIR);
+        config.push(CONFIG_FILE);
+        config.to_str().unwrap().to_string()
     }
 }
