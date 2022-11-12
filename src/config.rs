@@ -177,7 +177,8 @@ pub fn make_config_if_not_exists(config_file: &Path, trash_dir: &Path) -> Result
                         std::io::stdin().read_line(&mut buffer)?;
                         trimmed = buffer.trim();
                     }
-                    let config = CONFIG_EXAMPLE.replace("# default: nvim", trimmed);
+                    let config =
+                        CONFIG_EXAMPLE.replace("# default: nvim", &format!("default: {}", trimmed));
                     std::fs::write(&config_file, config)
                         .unwrap_or_else(|_| panic!("cannot write new config file."));
                     println!(
