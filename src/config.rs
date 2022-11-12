@@ -163,9 +163,8 @@ pub fn make_config_if_not_exists(config_file: &Path, trash_dir: &Path) -> Result
             match std::env::var("EDITOR") {
                 Ok(_) => {
                     let config = CONFIG_EXAMPLE.replace("default = \"nvim\"", "# default = \"\"");
-                    std::fs::write(&config_file, config)
-                        .unwrap_or_else(|_| panic!("Cannot write new config file."));
-                    println!("Config file created. See {}", config_file_path());
+                    std::fs::write(&config_file, config)?;
+                    println!("Config file created. See {}", config_file_path_output()?);
                 }
                 Err(_) => {
                     while trimmed.is_empty() {
@@ -176,37 +175,40 @@ pub fn make_config_if_not_exists(config_file: &Path, trash_dir: &Path) -> Result
                     }
                     let config =
                         CONFIG_EXAMPLE.replace("# default: nvim", &format!("default: {}", trimmed));
-                    std::fs::write(&config_file, config)
-                        .unwrap_or_else(|_| panic!("cannot write new config file."));
+                    std::fs::write(&config_file, config)?;
                     println!(
                         "Default command set as [{}]. See {}",
                         trimmed,
-                        config_file_path()
+                        config_file_path_output()?
                     );
                 }
             }
         } else {
             let config =
                 CONFIG_EXAMPLE.replace("# default: nvim", &format!("default: {}", trimmed));
-            std::fs::write(&config_file, config)
-                .unwrap_or_else(|_| panic!("cannot write new config file."));
+            std::fs::write(&config_file, config)?;
             println!(
                 "Default command set as [{}]. See {}",
                 trimmed,
-                config_file_path()
+                config_file_path_output()?
             );
         }
     }
     Ok(())
 }
 
-fn config_file_path() -> String {
+fn config_file_path() -> Result<PathBuf, FxError> {
+    let mut config =
+        dirs::config_dir().ok_or_else(|| FxError::Dirs("Cannot read config dir.".to_string()))?;
+    config.push(FX_CONFIG_DIR);
+    config.push(CONFIG_FILE);
+    Ok(config)
+}
+
+fn config_file_path_output() -> Result<String, FxError> {
     if cfg!(target_os = "windows") {
-        "~\\AppData\\Roaming\\felix\\config.yaml".to_owned()
+        Ok("~\\AppData\\Roaming\\felix\\config.yaml".to_owned())
     } else {
-        let mut config = dirs::config_dir().unwrap_or_else(|| panic!("Cannot read config dir."));
-        config.push(FX_CONFIG_DIR);
-        config.push(CONFIG_FILE);
-        config.to_str().unwrap().to_string()
+        Ok(config_file_path()?.to_str().unwrap().to_owned())
     }
 }
