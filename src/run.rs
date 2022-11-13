@@ -325,10 +325,11 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                             print_info("Extracting...", state.layout.y);
                             screen.flush()?;
-                            if let (Err(_e), Err(f)) =
-                                (extract_tar(p.clone(), dest.clone()), extract_zip(p, dest))
+                            if extract_zip(p.clone(), dest.clone()).is_err()
+                                && extract_tar(p, dest).is_err()
                             {
-                                print_warning(f, state.layout.y);
+                                state.redraw(state.layout.y);
+                                print_warning("Cannot extract archive file.", state.layout.y);
                                 continue;
                             }
                             state.reload(state.layout.y)?;

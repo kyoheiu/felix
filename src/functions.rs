@@ -307,9 +307,9 @@ pub fn convert_to_permissions(permissions: u32) -> String {
 }
 
 pub fn extract_tar(p: PathBuf, dest: PathBuf) -> Result<(), FxError> {
-    let tar_gz = std::fs::File::open(p)?;
-    let tar = flate2::read::GzDecoder::new(tar_gz);
-    let mut archive = tar::Archive::new(tar);
+    let file = std::fs::File::open(p)?;
+    let file = flate2::read::GzDecoder::new(file);
+    let mut archive = tar::Archive::new(file);
     archive.unpack(dest)?;
 
     Ok(())
