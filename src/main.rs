@@ -3,6 +3,7 @@ mod errors;
 mod functions;
 mod help;
 mod layout;
+mod magicbytes;
 mod nums;
 mod op;
 mod run;
