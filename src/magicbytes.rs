@@ -1,5 +1,11 @@
-use std::{io::Read, path::PathBuf};
+use std::{
+    io::Read,
+    path::{Path, PathBuf},
+};
 
+const HEADER_PKZIP: [u8; 4] = [0x50, 0x4b, 0x03, 0x04];
+const HEADER_TAR1: [u8; 8] = [0x75, 0x73, 0x74, 0x61, 0x72, 0x00, 0x30, 0x30];
+const HEADER_TAR2: [u8; 8] = [0x75, 0x73, 0x74, 0x61, 0x72, 0x20, 0x20, 0x00];
 const HEADER_TARZ_LZW: [u8; 2] = [0x1F, 0x9D];
 const HEADER_TARZ_LZH: [u8; 2] = [0x1F, 0xA0];
 const HEADER_GZIP: [u8; 2] = [0x1F, 0x8B];
@@ -36,12 +42,14 @@ const HEADER_ZSTD: [u8; 4] = [0x28, 0xB5, 0x2F, 0xFD];
 use crate::errors::FxError;
 
 #[derive(PartialEq, Debug)]
-enum Signature {
+pub enum Signature {
+    Pkzip,
+    Tar,
     TarzLZW,
     TarzLZH,
     Lzh0,
     Lzh5,
-    Bz2,
+    Bzip2,
     Rnc1,
     Rnc2,
     Lzip,
@@ -66,7 +74,7 @@ enum Signature {
 }
 
 #[derive(PartialEq, Debug)]
-enum ZlibCompression {
+pub enum ZlibCompression {
     NoCompressionWithoutPreset,
     BestSpeedWithoutPreset,
     DefaultCompressionWithoutPreset,
@@ -77,154 +85,88 @@ enum ZlibCompression {
     BestCompressionWithPreset,
 }
 
-fn inspect_signatures(p: PathBuf) -> Result<Signature, FxError> {
+pub fn inspect_signatures(p: &Path) -> Result<Signature, FxError> {
     let mut file = std::fs::File::open(p)?;
-    let mut buffer = [0; 8];
+    let mut buffer = [0; 265];
     file.read_exact(&mut buffer)?;
 
-    let sign = match buffer[0] {
-        0x1f => {
-            if buffer[..2] == HEADER_TARZ_LZW {
-                Signature::TarzLZW
-            } else if buffer[..2] == HEADER_TARZ_LZH {
-                Signature::TarzLZH
-            } else if buffer[..2] == HEADER_GZIP {
-                Signature::Gzip
-            } else {
-                Signature::Others
-            }
+    for (i, b) in buffer.iter().enumerate() {
+        print!("{:0x} ", b);
+        if i == 7 {
+            break;
         }
-        0x2d => {
-            if buffer[..6] == HEADER_LZH0 {
-                Signature::Lzh0
-            } else if buffer[..6] == HEADER_LZH5 {
-                Signature::Lzh5
-            } else {
-                Signature::Others
-            }
-        }
-        0x42 => {
-            if buffer[..2] == HEADER_BZ2 {
-                Signature::Bz2
-            } else {
-                Signature::Others
-            }
-        }
-        // 0x52 => todo!("rnc, rar, rsvkdata"),
-        0x52 => {
-            if buffer[..4] == HEADER_RNC1 {
-                Signature::Rnc1
-            } else if buffer[..4] == HEADER_RNC2 {
-                Signature::Rnc2
-            } else if buffer[..7] == HEADER_RAR1 {
-                Signature::Rar1
-            } else if buffer == HEADER_RAR5 {
-                Signature::Rar5
-            } else if buffer == HEADER_RSVKDATA {
-                Signature::Rsvkdata
-            } else {
-                Signature::Others
-            }
-        }
-        0x4c => {
-            if buffer[..4] == HEADER_LZIP {
-                Signature::Lzip
-            } else {
-                Signature::Others
-            }
-        }
-        // 0x53 => todo!("szddquantum, szdd9x"),
-        0x53 => {
-            if buffer[..4] == HEADER_SZDD9X {
-                Signature::Szdd9x
-            } else if buffer == HEADER_SZDDQUANTUM {
-                Signature::SzddQuantum
-            } else {
-                Signature::Others
-            }
-        }
-        0x2a => {
-            if buffer[..7] == HEADER_ACE {
-                Signature::Ace
-            } else {
-                Signature::Others
-            }
-        }
-        0x4b => {
-            if buffer[..4] == HEADER_KWAJ {
-                Signature::Kwaj
-            } else {
-                Signature::Others
-            }
-        }
-        0x49 => {
-            if buffer[..4] == HEADER_ISZ {
-                Signature::Isz
-            } else {
-                Signature::Others
-            }
-        }
-        0x44 => {
-            if buffer[..5] == HEADER_DRACO {
-                Signature::Draco
-            } else if buffer == HEADER_DCMPA30 {
-                Signature::DCMPa30
-            } else {
-                Signature::Others
-            }
-        }
-        0x21 => {
-            if buffer == HEADER_SLOB {
-                Signature::Slob
-            } else {
-                Signature::Others
-            }
-        }
-        0xfd => {
-            if buffer[..6] == HEADER_XZ {
-                Signature::Xz
-            } else {
-                Signature::Others
-            }
-        }
-        0x78 => {
-            if buffer[..2] == HEADER_ZLIB_NO_COMPRESSION_WITHOUT_PRESET {
-                Signature::Zlib(ZlibCompression::NoCompressionWithoutPreset)
-            } else if buffer[..2] == HEADER_ZLIB_DEFAULT_COMPRESSION_WITHOUT_PRESET {
-                Signature::Zlib(ZlibCompression::DefaultCompressionWithoutPreset)
-            } else if buffer[..2] == HEADER_ZLIB_BEST_SPEED_WITHOUT_PRESET {
-                Signature::Zlib(ZlibCompression::BestSpeedWithoutPreset)
-            } else if buffer[..2] == HEADER_ZLIB_BEST_COMPRESSION_WITHOUT_PRESET {
-                Signature::Zlib(ZlibCompression::BestCompressionWithoutPreset)
-            } else if buffer[..2] == HEADER_ZLIB_NO_COMPRESSION_WITH_PRESET {
-                Signature::Zlib(ZlibCompression::NoCompressionWithPreset)
-            } else if buffer[..2] == HEADER_ZLIB_DEFAULT_COMPRESSION_WITH_PRESET {
-                Signature::Zlib(ZlibCompression::DefaultCompressionWithPreset)
-            } else if buffer[..2] == HEADER_ZLIB_BEST_SPEED_WITH_PRESET {
-                Signature::Zlib(ZlibCompression::BestSpeedWithPreset)
-            } else if buffer[..2] == HEADER_ZLIB_BEST_COMPRESSION_WITH_PRESET {
-                Signature::Zlib(ZlibCompression::BestCompressionWithPreset)
-            } else {
-                Signature::Others
-            }
-        }
-        0x62 => {
-            if buffer[..4] == HEADER_LZFSE {
-                Signature::Lzfse
-            } else {
-                Signature::Others
-            }
-        }
-        0x28 => {
-            if buffer[..4] == HEADER_ZSTD {
-                Signature::Zstd
-            } else {
-                Signature::Others
-            }
-        }
-        _ => Signature::Others,
-    };
+    }
+    println!();
 
+    let sign = if buffer[..4] == HEADER_PKZIP {
+        Signature::Pkzip
+    } else if buffer[..2] == HEADER_TARZ_LZW {
+        Signature::TarzLZW
+    } else if buffer[..2] == HEADER_TARZ_LZH {
+        Signature::TarzLZH
+    } else if buffer[..2] == HEADER_GZIP {
+        Signature::Gzip
+    } else if buffer[..6] == HEADER_LZH0 {
+        Signature::Lzh0
+    } else if buffer[..6] == HEADER_LZH5 {
+        Signature::Lzh5
+    } else if buffer[..3] == HEADER_BZ2 {
+        Signature::Bzip2
+    } else if buffer[..4] == HEADER_RNC1 {
+        Signature::Rnc1
+    } else if buffer[..4] == HEADER_RNC2 {
+        Signature::Rnc2
+    } else if buffer[..7] == HEADER_RAR1 {
+        Signature::Rar1
+    } else if buffer[..8] == HEADER_RAR5 {
+        Signature::Rar5
+    } else if buffer[..8] == HEADER_RSVKDATA {
+        Signature::Rsvkdata
+    } else if buffer[..4] == HEADER_LZIP {
+        Signature::Lzip
+    } else if buffer[..4] == HEADER_SZDD9X {
+        Signature::Szdd9x
+    } else if buffer[..8] == HEADER_SZDDQUANTUM {
+        Signature::SzddQuantum
+    } else if buffer[..7] == HEADER_ACE {
+        Signature::Ace
+    } else if buffer[..4] == HEADER_KWAJ {
+        Signature::Kwaj
+    } else if buffer[..4] == HEADER_ISZ {
+        Signature::Isz
+    } else if buffer[..5] == HEADER_DRACO {
+        Signature::Draco
+    } else if buffer[..8] == HEADER_DCMPA30 {
+        Signature::DCMPa30
+    } else if buffer[..8] == HEADER_SLOB {
+        Signature::Slob
+    } else if buffer[..6] == HEADER_XZ {
+        Signature::Xz
+    } else if buffer[..2] == HEADER_ZLIB_NO_COMPRESSION_WITHOUT_PRESET {
+        Signature::Zlib(ZlibCompression::NoCompressionWithoutPreset)
+    } else if buffer[..2] == HEADER_ZLIB_DEFAULT_COMPRESSION_WITHOUT_PRESET {
+        Signature::Zlib(ZlibCompression::DefaultCompressionWithoutPreset)
+    } else if buffer[..2] == HEADER_ZLIB_BEST_SPEED_WITHOUT_PRESET {
+        Signature::Zlib(ZlibCompression::BestSpeedWithoutPreset)
+    } else if buffer[..2] == HEADER_ZLIB_BEST_COMPRESSION_WITHOUT_PRESET {
+        Signature::Zlib(ZlibCompression::BestCompressionWithoutPreset)
+    } else if buffer[..2] == HEADER_ZLIB_NO_COMPRESSION_WITH_PRESET {
+        Signature::Zlib(ZlibCompression::NoCompressionWithPreset)
+    } else if buffer[..2] == HEADER_ZLIB_DEFAULT_COMPRESSION_WITH_PRESET {
+        Signature::Zlib(ZlibCompression::DefaultCompressionWithPreset)
+    } else if buffer[..2] == HEADER_ZLIB_BEST_SPEED_WITH_PRESET {
+        Signature::Zlib(ZlibCompression::BestSpeedWithPreset)
+    } else if buffer[..2] == HEADER_ZLIB_BEST_COMPRESSION_WITH_PRESET {
+        Signature::Zlib(ZlibCompression::BestCompressionWithPreset)
+    } else if buffer[..4] == HEADER_LZFSE {
+        Signature::Lzfse
+    } else if buffer[..4] == HEADER_ZSTD {
+        Signature::Zstd
+    } else if buffer[257..] == HEADER_TAR1 || buffer[257..] == HEADER_TAR2 {
+        Signature::Tar
+    } else {
+        Signature::Others
+    };
     Ok(sign)
 }
 
@@ -234,10 +176,28 @@ mod tests {
 
     #[test]
     fn test_inspect_signatures() {
-        let p = PathBuf::from("/home/kyohei/test/archive.tar.gz");
-        assert_eq!(Signature::Gzip, inspect_signatures(p).unwrap());
+        let p = PathBuf::from("test/archive.tar.gz");
+        assert_eq!(Signature::Gzip, inspect_signatures(&p).unwrap());
 
-        let p = PathBuf::from("/home/kyohei/test/archive.tar.xz");
-        assert_eq!(Signature::Xz, inspect_signatures(p).unwrap());
+        let p = PathBuf::from("test/archive.tar.xz");
+        assert_eq!(Signature::Xz, inspect_signatures(&p).unwrap());
+
+        let p = PathBuf::from("test/archive.tar.zst");
+        assert_eq!(Signature::Zstd, inspect_signatures(&p).unwrap());
+
+        let p = PathBuf::from("test/archive.tar.bz2");
+        assert_eq!(Signature::Bzip2, inspect_signatures(&p).unwrap());
+
+        let p = PathBuf::from("test/archive.tar");
+        assert_eq!(Signature::Tar, inspect_signatures(&p).unwrap());
+
+        let p = PathBuf::from("test/archive_bzip2.zip");
+        assert_eq!(Signature::Pkzip, inspect_signatures(&p).unwrap());
+
+        let p = PathBuf::from("test/archive_store.zip");
+        assert_eq!(Signature::Pkzip, inspect_signatures(&p).unwrap());
+
+        let p = PathBuf::from("test/archive_deflate.zip");
+        assert_eq!(Signature::Pkzip, inspect_signatures(&p).unwrap());
     }
 }

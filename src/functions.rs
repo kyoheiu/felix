@@ -1,3 +1,5 @@
+use crate::magicbytes::{inspect_signatures, Signature};
+
 use super::config::Colorname;
 use super::errors::FxError;
 use super::term::*;
@@ -7,6 +9,8 @@ use log::{info, warn};
 use simplelog::{ConfigBuilder, LevelFilter, WriteLogger};
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -306,7 +310,40 @@ pub fn convert_to_permissions(permissions: u32) -> String {
     permissions.chars().rev().collect()
 }
 
-pub fn extract_tar(p: PathBuf, dest: PathBuf) -> Result<(), FxError> {
+pub fn extract_archive(p: &Path, dest: &Path) -> Result<(), FxError> {
+    let sign = inspect_signatures(p)?;
+
+    match sign {
+        Signature::Pkzip => {
+            let file = std::fs::File::open(p)?;
+            let mut archive = zip::ZipArchive::new(file)?;
+            archive.extract(dest).unwrap();
+        }
+        Signature::Tar => {
+            let file = std::fs::File::open(p)?;
+            let mut archive = tar::Archive::new(file);
+            archive.unpack(dest)?;
+        }
+        Signature::Gzip => {
+            let file = std::fs::File::open(p)?;
+            let file = flate2::read::GzDecoder::new(file);
+            let mut archive = tar::Archive::new(file);
+            archive.unpack(dest)?;
+        }
+        Signature::Xz => {
+            let file = std::fs::File::open(p)?;
+            let mut file = std::io::BufReader::new(file);
+            let mut decomp: Vec<u8> = Vec::new();
+            lzma_rs::xz_decompress(&mut file, &mut decomp).unwrap();
+            std::fs::write(dest, decomp)?;
+        }
+        _ => return Err(FxError::Extract("Cannot extract.".to_owned())),
+    }
+
+    Ok(())
+}
+
+fn extract_tar(p: PathBuf, dest: PathBuf) -> Result<(), FxError> {
     let file = std::fs::File::open(p)?;
     let file = flate2::read::GzDecoder::new(file);
     let mut archive = tar::Archive::new(file);
@@ -315,7 +352,7 @@ pub fn extract_tar(p: PathBuf, dest: PathBuf) -> Result<(), FxError> {
     Ok(())
 }
 
-pub fn extract_zip(p: PathBuf, dest: PathBuf) -> Result<(), FxError> {
+fn extract_zip(p: PathBuf, dest: PathBuf) -> Result<(), FxError> {
     let file = std::fs::File::open(p)?;
     let mut archive = zip::ZipArchive::new(file)?;
     archive.extract(dest).unwrap();
