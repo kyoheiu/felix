@@ -1,3 +1,5 @@
+use crate::errors::FxError;
+
 use std::{
     io::Read,
     path::{Path, PathBuf},
@@ -38,8 +40,7 @@ const HEADER_ZLIB_DEFAULT_COMPRESSION_WITH_PRESET: [u8; 2] = [0x78, 0xBB];
 const HEADER_ZLIB_BEST_COMPRESSION_WITH_PRESET: [u8; 2] = [0x78, 0xF9];
 const HEADER_LZFSE: [u8; 4] = [0x62, 0x76, 0x78, 0x32];
 const HEADER_ZSTD: [u8; 4] = [0x28, 0xB5, 0x2F, 0xFD];
-
-use crate::errors::FxError;
+const HEADER_SEVENZ: [u8; 6] = [0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C];
 
 #[derive(PartialEq, Debug)]
 pub enum Signature {
@@ -47,6 +48,10 @@ pub enum Signature {
     Tar,
     TarzLZW,
     TarzLZH,
+    Gzip,
+    Xz,
+    Zstd,
+    SevenZ,
     Lzh0,
     Lzh5,
     Bzip2,
@@ -55,7 +60,6 @@ pub enum Signature {
     Lzip,
     Rar1,
     Rar5,
-    Gzip,
     SzddQuantum,
     Rsvkdata,
     Ace,
@@ -64,12 +68,10 @@ pub enum Signature {
     Isz,
     Draco,
     Slob,
-    Xz,
     DCMPa30,
     Pa30,
     Zlib(ZlibCompression),
     Lzfse,
-    Zstd,
     NonArchived,
 }
 
@@ -89,14 +91,6 @@ pub fn inspect_signatures(p: &Path) -> Result<Signature, FxError> {
     let mut file = std::fs::File::open(p)?;
     let mut buffer = [0; 265];
     file.read_exact(&mut buffer)?;
-
-    for (i, b) in buffer.iter().enumerate() {
-        print!("{:0x} ", b);
-        if i == 7 {
-            break;
-        }
-    }
-    println!();
 
     let sign = if buffer[..4] == HEADER_PKZIP {
         Signature::Pkzip
@@ -164,6 +158,8 @@ pub fn inspect_signatures(p: &Path) -> Result<Signature, FxError> {
         Signature::Lzfse
     } else if buffer[..4] == HEADER_ZSTD {
         Signature::Zstd
+    } else if buffer[..6] == HEADER_SEVENZ {
+        Signature::SevenZ
     } else if buffer[257..] == HEADER_TAR1 || buffer[257..] == HEADER_TAR2 {
         Signature::Tar
     } else {
@@ -175,31 +171,55 @@ pub fn inspect_signatures(p: &Path) -> Result<Signature, FxError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::functions::unpack;
 
     #[test]
+    /// Available: tar.gz, tar.xz, tar.zst, zst, tar, zip(bzip2, store, deflate)
     fn test_inspect_signatures() {
         let p = PathBuf::from("test/archive.tar.gz");
         assert_eq!(Signature::Gzip, inspect_signatures(&p).unwrap());
+        let dest = PathBuf::from("test/gz");
+        assert!(unpack(&p, &dest).is_ok());
 
         let p = PathBuf::from("test/archive.tar.xz");
         assert_eq!(Signature::Xz, inspect_signatures(&p).unwrap());
+        let dest = PathBuf::from("test/xz");
+        assert!(unpack(&p, &dest).is_ok());
 
         let p = PathBuf::from("test/archive.tar.zst");
         assert_eq!(Signature::Zstd, inspect_signatures(&p).unwrap());
-
-        let p = PathBuf::from("test/archive.tar.bz2");
-        assert_eq!(Signature::Bzip2, inspect_signatures(&p).unwrap());
+        let dest = PathBuf::from("test/zst");
+        assert!(unpack(&p, &dest).is_ok());
 
         let p = PathBuf::from("test/archive.tar");
         assert_eq!(Signature::Tar, inspect_signatures(&p).unwrap());
+        let dest = PathBuf::from("test/tar");
+        assert!(unpack(&p, &dest).is_ok());
 
         let p = PathBuf::from("test/archive_bzip2.zip");
         assert_eq!(Signature::Pkzip, inspect_signatures(&p).unwrap());
+        let dest = PathBuf::from("test/bzip2");
+        assert!(unpack(&p, &dest).is_ok());
 
         let p = PathBuf::from("test/archive_store.zip");
         assert_eq!(Signature::Pkzip, inspect_signatures(&p).unwrap());
+        let dest = PathBuf::from("test/store");
+        assert!(unpack(&p, &dest).is_ok());
 
         let p = PathBuf::from("test/archive_deflate.zip");
         assert_eq!(Signature::Pkzip, inspect_signatures(&p).unwrap());
+        let dest = PathBuf::from("test/deflate");
+        assert!(unpack(&p, &dest).is_ok());
+
+        let p = PathBuf::from("test/archive.text.zst");
+        assert_eq!(Signature::Zstd, inspect_signatures(&p).unwrap());
+        let dest = PathBuf::from("test/zst_no_tar");
+        assert!(unpack(&p, &dest).is_ok());
+
+        //bz2 not available now
+        let p = PathBuf::from("test/archive.tar.bz2");
+        assert_eq!(Signature::Bzip2, inspect_signatures(&p).unwrap());
+        let dest = PathBuf::from("test/bz2");
+        assert!(unpack(&p, &dest).is_err());
     }
 }

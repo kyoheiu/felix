@@ -328,12 +328,33 @@ pub fn unpack(p: &Path, dest: &Path) -> Result<(), FxError> {
             let mut archive = tar::Archive::new(file);
             archive.unpack(dest)?;
         }
-        Signature::Zlib(_) => {
+        Signature::Xz => {
             let file = std::fs::File::open(p)?;
-            let file = flate2::read::ZlibDecoder::new(file);
-            let mut archive = tar::Archive::new(file);
+            let mut file = std::io::BufReader::new(file);
+            let mut decomp: Vec<u8> = Vec::new();
+            lzma_rs::xz_decompress(&mut file, &mut decomp).unwrap();
+            let mut archive = tar::Archive::new(decomp.as_slice());
             archive.unpack(dest)?;
         }
+        Signature::Zstd => {
+            let file = std::fs::File::open(p)?;
+            let file = std::io::BufReader::new(file);
+            let decoder = zstd::stream::decode_all(file).unwrap();
+            if tar::Archive::new(decoder.as_slice()).unpack(dest).is_err() {
+                if dest.exists() {
+                    std::fs::remove_dir(dest)?;
+                }
+                //Create a new file from the zst file, stripping the extension
+                let new_name = p.with_extension("");
+                std::fs::write(new_name, decoder)?;
+            }
+        }
+        // Signature::Zlib(_) => {
+        //     let file = std::fs::File::open(p)?;
+        //     let file = flate2::read::ZlibDecoder::new(file);
+        //     let mut archive = tar::Archive::new(file);
+        //     archive.unpack(dest)?;
+        // }
         Signature::NonArchived => {
             return Err(FxError::Extract("Seems not archive file.".to_owned()))
         }
@@ -344,22 +365,6 @@ pub fn unpack(p: &Path, dest: &Path) -> Result<(), FxError> {
         }
     }
 
-    Ok(())
-}
-
-fn extract_tar(p: PathBuf, dest: PathBuf) -> Result<(), FxError> {
-    let file = std::fs::File::open(p)?;
-    let file = flate2::read::GzDecoder::new(file);
-    let mut archive = tar::Archive::new(file);
-    archive.unpack(dest)?;
-
-    Ok(())
-}
-
-fn extract_zip(p: PathBuf, dest: PathBuf) -> Result<(), FxError> {
-    let file = std::fs::File::open(p)?;
-    let mut archive = zip::ZipArchive::new(file)?;
-    archive.extract(dest).unwrap();
     Ok(())
 }
 
@@ -433,31 +438,5 @@ mod tests {
         let dir = 16877;
         assert_eq!(&convert_to_permissions(file), "644");
         assert_eq!(&convert_to_permissions(dir), "755");
-    }
-
-    #[test]
-    fn test_extract_tar() {
-        let p = PathBuf::from("/home/kyohei/Downloads/felix-1.3.2.tar.gz");
-        let dest = PathBuf::from("/home/kyohei/test/");
-        assert!(extract_tar(p, dest).is_ok());
-
-        let p = PathBuf::from("/home/kyohei/Downloads/berkeley-mono-typeface.zip");
-        let dest = PathBuf::from("/home/kyohei/test/");
-        if let Err(e) = extract_tar(p, dest) {
-            eprintln!("{}", e);
-        }
-    }
-
-    #[test]
-    fn test_extract_zip() {
-        let p = PathBuf::from("/home/kyohei/Downloads/berkeley-mono-typeface.zip");
-        let dest = PathBuf::from("/home/kyohei/test/");
-        assert!(extract_zip(p, dest).is_ok());
-
-        let p = PathBuf::from("/home/kyohei/Downloads/felix-1.3.2.tar.gz");
-        let dest = PathBuf::from("/home/kyohei/test/");
-        if let Err(e) = extract_zip(p, dest) {
-            eprintln!("{}", e);
-        }
     }
 }
