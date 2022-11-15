@@ -70,7 +70,7 @@ pub enum Signature {
     Zlib(ZlibCompression),
     Lzfse,
     Zstd,
-    Others,
+    NonArchived,
 }
 
 #[derive(PartialEq, Debug)]
@@ -138,6 +138,8 @@ pub fn inspect_signatures(p: &Path) -> Result<Signature, FxError> {
         Signature::Draco
     } else if buffer[..8] == HEADER_DCMPA30 {
         Signature::DCMPa30
+    } else if buffer[..4] == HEADER_PA30 {
+        Signature::Pa30
     } else if buffer[..8] == HEADER_SLOB {
         Signature::Slob
     } else if buffer[..6] == HEADER_XZ {
@@ -165,7 +167,7 @@ pub fn inspect_signatures(p: &Path) -> Result<Signature, FxError> {
     } else if buffer[257..] == HEADER_TAR1 || buffer[257..] == HEADER_TAR2 {
         Signature::Tar
     } else {
-        Signature::Others
+        Signature::NonArchived
     };
     Ok(sign)
 }

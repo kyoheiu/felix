@@ -9,8 +9,6 @@ use log::{info, warn};
 use simplelog::{ConfigBuilder, LevelFilter, WriteLogger};
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
-use std::fs::OpenOptions;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -310,7 +308,7 @@ pub fn convert_to_permissions(permissions: u32) -> String {
     permissions.chars().rev().collect()
 }
 
-pub fn extract_archive(p: &Path, dest: &Path) -> Result<(), FxError> {
+pub fn unpack(p: &Path, dest: &Path) -> Result<(), FxError> {
     let sign = inspect_signatures(p)?;
 
     match sign {
@@ -330,14 +328,20 @@ pub fn extract_archive(p: &Path, dest: &Path) -> Result<(), FxError> {
             let mut archive = tar::Archive::new(file);
             archive.unpack(dest)?;
         }
-        Signature::Xz => {
+        Signature::Zlib(_) => {
             let file = std::fs::File::open(p)?;
-            let mut file = std::io::BufReader::new(file);
-            let mut decomp: Vec<u8> = Vec::new();
-            lzma_rs::xz_decompress(&mut file, &mut decomp).unwrap();
-            std::fs::write(dest, decomp)?;
+            let file = flate2::read::ZlibDecoder::new(file);
+            let mut archive = tar::Archive::new(file);
+            archive.unpack(dest)?;
         }
-        _ => return Err(FxError::Extract("Cannot extract.".to_owned())),
+        Signature::NonArchived => {
+            return Err(FxError::Extract("Seems not archive file.".to_owned()))
+        }
+        _ => {
+            return Err(FxError::Extract(
+                "Cannot unpack this type of file.".to_owned(),
+            ))
+        }
     }
 
     Ok(())
