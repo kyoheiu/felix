@@ -16,6 +16,7 @@ pub enum FxError {
     TooSmallWindowSize,
     Log(String),
     Panic,
+    Unpack(String),
 }
 
 impl std::error::Error for FxError {}
@@ -37,6 +38,7 @@ impl std::fmt::Display for FxError {
             FxError::TooSmallWindowSize => "Error: Too small window size".to_owned(),
             FxError::Log(s) => s.to_owned(),
             FxError::Panic => "Error: felix panicked".to_owned(),
+            FxError::Unpack(s) => s.to_owned(),
         };
         write!(f, "{}", printable)
     }
@@ -74,5 +76,11 @@ impl From<log::SetLoggerError> for FxError {
 impl From<std::string::FromUtf8Error> for FxError {
     fn from(_err: std::string::FromUtf8Error) -> Self {
         FxError::Encode
+    }
+}
+
+impl From<zip::result::ZipError> for FxError {
+    fn from(err: zip::result::ZipError) -> Self {
+        FxError::Unpack(err.to_string())
     }
 }

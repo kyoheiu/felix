@@ -14,6 +14,7 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::execute;
 use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
 use log::{error, info};
+use std::collections::HashSet;
 use std::env::set_current_dir;
 use std::fmt::Write as _;
 use std::io::{stdout, Write};
@@ -304,6 +305,33 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                             None => {
                                 continue;
                             }
+                        }
+                    }
+
+                    //Unpack archive file. Fails if it is not packed or supported type.
+                    KeyCode::Char('e') => {
+                        if let Ok(item) = state.get_item() {
+                            let p = item.file_path.clone();
+
+                            let mut name_set: HashSet<String> = HashSet::new();
+
+                            for item in state.list.iter() {
+                                name_set.insert(item.file_name.clone());
+                            }
+
+                            let dest_name = rename_dir(&item.file_name, &name_set);
+                            let mut dest = state.current_dir.clone();
+                            dest.push(dest_name);
+
+                            print_info("Extracting...", state.layout.y);
+                            screen.flush()?;
+                            if let Err(e) = unpack(&p, &dest) {
+                                state.reload(state.layout.y)?;
+                                print_warning(e, state.layout.y);
+                                continue;
+                            }
+                            state.reload(state.layout.y)?;
+                            print_info("Extracted archive file.", state.layout.y);
                         }
                     }
 
