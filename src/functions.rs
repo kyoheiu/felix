@@ -1,4 +1,4 @@
-use crate::magicbytes::{inspect_signatures, Signature};
+use crate::magicbytes::{inspect_signature, Signature};
 
 use super::config::Colorname;
 use super::errors::FxError;
@@ -309,19 +309,7 @@ pub fn convert_to_permissions(permissions: u32) -> String {
 }
 
 pub fn unpack(p: &Path, dest: &Path) -> Result<(), FxError> {
-    let sign = inspect_signatures(p)?;
-
-    match sign {
-        Signature::Pkzip => {
-            let file = std::fs::File::open(p)?;
-            let mut archive = zip::ZipArchive::new(file)?;
-            archive.extract(dest).unwrap();
-        }
-        Signature::Tar => {
-            let file = std::fs::File::open(p)?;
-            let mut archive = tar::Archive::new(file);
-            archive.unpack(dest)?;
-        }
+    match inspect_signature(p)? {
         Signature::Gzip => {
             let file = std::fs::File::open(p)?;
             let file = flate2::read::GzDecoder::new(file);
@@ -346,8 +334,24 @@ pub fn unpack(p: &Path, dest: &Path) -> Result<(), FxError> {
                 }
                 //Create a new file from the zst file, stripping the extension
                 let new_name = p.with_extension("");
-                std::fs::write(new_name, decoder)?;
+                if new_name.exists() {
+                    return Err(FxError::Unpack(
+                        "Item with the same name exists.".to_owned(),
+                    ));
+                } else {
+                    std::fs::write(new_name, decoder)?;
+                }
             }
+        }
+        Signature::Tar => {
+            let file = std::fs::File::open(p)?;
+            let mut archive = tar::Archive::new(file);
+            archive.unpack(dest)?;
+        }
+        Signature::Pkzip => {
+            let file = std::fs::File::open(p)?;
+            let mut archive = zip::ZipArchive::new(file)?;
+            archive.extract(dest)?;
         }
         // Signature::Zlib(_) => {
         //     let file = std::fs::File::open(p)?;
@@ -356,12 +360,14 @@ pub fn unpack(p: &Path, dest: &Path) -> Result<(), FxError> {
         //     archive.unpack(dest)?;
         // }
         Signature::NonArchived => {
-            return Err(FxError::Extract("Seems not archive file.".to_owned()))
+            return Err(FxError::Unpack("Seems not an archive file.".to_owned()))
         }
         _ => {
-            return Err(FxError::Extract(
-                "Cannot unpack this type of file.".to_owned(),
-            ))
+            let sign = inspect_signature(p)?;
+            return Err(FxError::Unpack(format!(
+                "Cannot unpack this type: {}",
+                sign
+            )));
         }
     }
 
