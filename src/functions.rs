@@ -309,7 +309,8 @@ pub fn convert_to_permissions(permissions: u32) -> String {
 }
 
 pub fn unpack(p: &Path, dest: &Path) -> Result<(), FxError> {
-    match inspect_signature(p)? {
+    let sign = inspect_signature(p)?;
+    match sign {
         Signature::Gzip => {
             let file = std::fs::File::open(p)?;
             let file = flate2::read::GzDecoder::new(file);
@@ -363,7 +364,6 @@ pub fn unpack(p: &Path, dest: &Path) -> Result<(), FxError> {
             return Err(FxError::Unpack("Seems not an archive file.".to_owned()))
         }
         _ => {
-            let sign = inspect_signature(p)?;
             return Err(FxError::Unpack(format!(
                 "Cannot unpack this type: {}",
                 sign
