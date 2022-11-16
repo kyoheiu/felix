@@ -4,6 +4,11 @@
 
 ## Unreleased
 
+### Added
+
+- Feature to unpack archive/compressed file to the current directory. Supported types: `tar.gz`(Gzip), `tar.xz`(lzma), `tar.zst`(Zstandard & tar), `zst`(Zstandard), `tar`, zip file format and formats based on it(`zip`, `docx`, ...). To unpack, press `e` on the item.
+  - The number of dependencies bumps up to around 150 due to this.
+
 ## v2.0.1 (2022-11-12)
 
 ### Fixed
