@@ -308,7 +308,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         }
                     }
 
-                    //Unpack archive file. Fails if it is not packed or supported type.
+                    //Unpack archive file. Fails if it is not an archive file or any of supported types.
                     KeyCode::Char('e') => {
                         if let Ok(item) = state.get_item() {
                             let p = item.file_path.clone();
@@ -323,15 +323,17 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                             let mut dest = state.current_dir.clone();
                             dest.push(dest_name);
 
-                            print_info("Extracting...", state.layout.y);
+                            print_info("Unpacking...", state.layout.y);
                             screen.flush()?;
+                            let start = Instant::now();
                             if let Err(e) = unpack(&p, &dest) {
                                 state.reload(state.layout.y)?;
                                 print_warning(e, state.layout.y);
                                 continue;
                             }
                             state.reload(state.layout.y)?;
-                            print_info("Extracted archive file.", state.layout.y);
+                            let duration = duration_to_string(start.elapsed());
+                            print_info(format!("Unpacked. [{}]", duration), state.layout.y);
                         }
                     }
 
