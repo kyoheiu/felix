@@ -1,3 +1,5 @@
+use crate::magic_image::is_supported_image_type;
+
 use super::config::*;
 use super::errors::FxError;
 use super::functions::*;
@@ -1330,7 +1332,7 @@ fn check_kitty_support() -> bool {
 fn set_preview_content_type(item: &mut ItemInfo) {
     if item.file_size > MAX_SIZE_TO_PREVIEW {
         item.preview_type = Some(PreviewType::TooBigSize);
-    } else if is_supported_ext(item) {
+    } else if is_supported_image(item) {
         item.preview_type = Some(PreviewType::Image);
     } else if let Ok(content) = &std::fs::read(&item.file_path) {
         if content_inspector::inspect(content).is_text() {
@@ -1361,11 +1363,8 @@ fn set_preview_type(item: &mut ItemInfo) {
     }
 }
 
-fn is_supported_ext(item: &ItemInfo) -> bool {
-    match &item.file_ext {
-        None => false,
-        Some(ext) => IMAGE_EXTENSION.contains(&ext.as_str()),
-    }
+fn is_supported_image(item: &ItemInfo) -> bool {
+    is_supported_image_type(&item.file_path)
 }
 
 fn set_theme(config: &Config) -> Theme {
@@ -1394,22 +1393,5 @@ fn choose_theme(dt: &DefaultTheme) -> Theme {
         DefaultTheme::InspiredGitHub => defaults.themes["InspiredGitHub"].clone(),
         DefaultTheme::SolarizedDark => defaults.themes["Solarized (dark)"].clone(),
         DefaultTheme::SolarizedLight => defaults.themes["Solarized (light)"].clone(),
-    }
-}
-
-#[allow(dead_code)]
-fn is_supported_image(item: &ItemInfo) -> bool {
-    if let Ok(output) = std::process::Command::new("file")
-        .args(["--mime", item.file_path.to_str().unwrap()])
-        .output()
-    {
-        if let Ok(result) = String::from_utf8(output.stdout) {
-            let v: Vec<&str> = result.split([':', ';']).collect();
-            v[1].contains("image")
-        } else {
-            false
-        }
-    } else {
-        false
     }
 }
