@@ -3,6 +3,7 @@ use super::errors::FxError;
 use super::functions::*;
 use super::help::HELP;
 use super::layout::Split;
+use super::magic_packed::unpack;
 use super::nums::*;
 use super::op::*;
 use super::session::*;
