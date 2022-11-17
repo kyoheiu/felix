@@ -1,5 +1,3 @@
-use crate::magicbytes::{inspect_signature, Signature};
-
 use super::config::Colorname;
 use super::errors::FxError;
 use super::term::*;
@@ -306,72 +304,6 @@ pub fn convert_to_permissions(permissions: u32) -> String {
     let permissions = format!("{permissions:o}");
     let permissions: String = permissions.chars().rev().take(3).collect();
     permissions.chars().rev().collect()
-}
-
-pub fn unpack(p: &Path, dest: &Path) -> Result<(), FxError> {
-    let sign = inspect_signature(p)?;
-    match sign {
-        Signature::Gzip => {
-            let file = std::fs::File::open(p)?;
-            let file = flate2::read::GzDecoder::new(file);
-            let mut archive = tar::Archive::new(file);
-            archive.unpack(dest)?;
-        }
-        Signature::Xz => {
-            let file = std::fs::File::open(p)?;
-            let mut file = std::io::BufReader::new(file);
-            let mut decomp: Vec<u8> = Vec::new();
-            lzma_rs::xz_decompress(&mut file, &mut decomp).unwrap();
-            let mut archive = tar::Archive::new(decomp.as_slice());
-            archive.unpack(dest)?;
-        }
-        Signature::Zstd => {
-            let file = std::fs::File::open(p)?;
-            let file = std::io::BufReader::new(file);
-            let decoder = zstd::stream::decode_all(file).unwrap();
-            if tar::Archive::new(decoder.as_slice()).unpack(dest).is_err() {
-                if dest.exists() {
-                    std::fs::remove_dir(dest)?;
-                }
-                //Create a new file from the zst file, stripping the extension
-                let new_name = p.with_extension("");
-                if new_name.exists() {
-                    return Err(FxError::Unpack(
-                        "Item with the same name exists.".to_owned(),
-                    ));
-                } else {
-                    std::fs::write(new_name, decoder)?;
-                }
-            }
-        }
-        Signature::Tar => {
-            let file = std::fs::File::open(p)?;
-            let mut archive = tar::Archive::new(file);
-            archive.unpack(dest)?;
-        }
-        Signature::Pkzip => {
-            let file = std::fs::File::open(p)?;
-            let mut archive = zip::ZipArchive::new(file)?;
-            archive.extract(dest)?;
-        }
-        // Signature::Zlib(_) => {
-        //     let file = std::fs::File::open(p)?;
-        //     let file = flate2::read::ZlibDecoder::new(file);
-        //     let mut archive = tar::Archive::new(file);
-        //     archive.unpack(dest)?;
-        // }
-        Signature::NonArchived => {
-            return Err(FxError::Unpack("Seems not an archive file.".to_owned()))
-        }
-        _ => {
-            return Err(FxError::Unpack(format!(
-                "Cannot unpack this type: {}",
-                sign
-            )));
-        }
-    }
-
-    Ok(())
 }
 
 //cargo test -- --nocapture
