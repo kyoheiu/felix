@@ -1,6 +1,9 @@
 /// Based on the page of Wikipedia ([List of file signatures - Wikipedia](https://en.wikipedia.org/wiki/List_of_file_signatures))
 use super::errors::FxError;
-use std::{io::Read, path::Path};
+use std::{
+    io::Read,
+    path::{Path, PathBuf},
+};
 
 const HEADER_GZIP: [u8; 2] = [0x1F, 0x8B];
 const HEADER_XZ: [u8; 6] = [0xFD, 0x37, 0x7A, 0x58, 0x5A, 0x00];
@@ -226,17 +229,32 @@ pub fn unpack(p: &Path, dest: &Path) -> Result<(), FxError> {
             let decoder = zstd::stream::decode_all(file).unwrap();
             if tar::Archive::new(decoder.as_slice()).unpack(dest).is_err() {
                 if dest.exists() {
-                    std::fs::remove_dir(dest)?;
+                    std::fs::remove_dir_all(dest)?;
                 }
                 //Create a new file from the zst file, stripping the extension
-                let new_name = p.with_extension("");
-                if new_name.exists() {
-                    return Err(FxError::Unpack(
-                        "Item with the same name exists.".to_owned(),
-                    ));
-                } else {
-                    std::fs::write(new_name, decoder)?;
+                let mut new_name = p.with_extension("");
+                while new_name.exists() {
+                    let (parent, mut stem, extension) = {
+                        (
+                            new_name.parent(),
+                            new_name.file_stem().unwrap().to_owned(),
+                            new_name.extension(),
+                        )
+                    };
+                    stem.push("+");
+                    if let Some(ext) = extension {
+                        stem.push(".");
+                        stem.push(ext);
+                    }
+                    if let Some(parent) = parent {
+                        let mut with_p = parent.to_path_buf();
+                        with_p.push(stem);
+                        new_name = with_p;
+                    } else {
+                        new_name = PathBuf::from(stem);
+                    }
                 }
+                std::fs::write(new_name, decoder)?;
             }
         }
         PackedSignature::Tar => {
