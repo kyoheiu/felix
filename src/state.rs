@@ -1,9 +1,8 @@
-use crate::magic_image::is_supported_image_type;
-
 use super::config::*;
 use super::errors::FxError;
 use super::functions::*;
 use super::layout::*;
+use super::magic_image::is_supported_image_type;
 use super::nums::*;
 use super::op::*;
 use super::session::*;

@@ -282,51 +282,51 @@ mod tests {
     /// zst(Zstandard),
     /// tar,
     /// zip file format and formats based on it(zip, docx, ...)
-    fn test_inspect_signatures() {
-        let p = PathBuf::from("test/archive.tar.gz");
+    fn test_inspect_signature() {
+        let p = PathBuf::from("testfiles/archives/archive.tar.gz");
         assert_eq!(PackedSignature::Gzip, inspect_packed(&p).unwrap());
-        let dest = PathBuf::from("test/gz");
+        let dest = PathBuf::from("testfiles/archives/gz");
         assert!(unpack(&p, &dest).is_ok());
 
-        let p = PathBuf::from("test/archive.tar.xz");
+        let p = PathBuf::from("testfiles/archives/archive.tar.xz");
         assert_eq!(PackedSignature::Xz, inspect_packed(&p).unwrap());
-        let dest = PathBuf::from("test/xz");
+        let dest = PathBuf::from("testfiles/archives/xz");
         assert!(unpack(&p, &dest).is_ok());
 
-        let p = PathBuf::from("test/archive.tar.zst");
+        let p = PathBuf::from("testfiles/archives/archive.tar.zst");
         assert_eq!(PackedSignature::Zstd, inspect_packed(&p).unwrap());
-        let dest = PathBuf::from("test/zst");
+        let dest = PathBuf::from("testfiles/archives/zst");
         assert!(unpack(&p, &dest).is_ok());
 
-        let p = PathBuf::from("test/archive.txt.zst");
+        let p = PathBuf::from("testfiles/archives/archive.txt.zst");
         assert_eq!(PackedSignature::Zstd, inspect_packed(&p).unwrap());
-        let dest = PathBuf::from("test/zst_no_tar");
+        let dest = PathBuf::from("testfiles/archives/zst_no_tar");
         assert!(unpack(&p, &dest).is_ok());
 
-        let p = PathBuf::from("test/archive.tar");
+        let p = PathBuf::from("testfiles/archives/archive.tar");
         assert_eq!(PackedSignature::Tar, inspect_packed(&p).unwrap());
-        let dest = PathBuf::from("test/tar");
+        let dest = PathBuf::from("testfiles/archives/tar");
         assert!(unpack(&p, &dest).is_ok());
 
-        let p = PathBuf::from("test/archive_bzip2.zip");
+        let p = PathBuf::from("testfiles/archives/archive_bzip2.zip");
         assert_eq!(PackedSignature::Pkzip, inspect_packed(&p).unwrap());
-        let dest = PathBuf::from("test/bzip2");
+        let dest = PathBuf::from("testfiles/archives/bzip2");
         assert!(unpack(&p, &dest).is_ok());
 
-        let p = PathBuf::from("test/archive_store.zip");
+        let p = PathBuf::from("testfiles/archives/archive_store.zip");
         assert_eq!(PackedSignature::Pkzip, inspect_packed(&p).unwrap());
-        let dest = PathBuf::from("test/store");
+        let dest = PathBuf::from("testfiles/archives/store");
         assert!(unpack(&p, &dest).is_ok());
 
-        let p = PathBuf::from("test/archive_deflate.zip");
+        let p = PathBuf::from("testfiles/archives/archive_deflate.zip");
         assert_eq!(PackedSignature::Pkzip, inspect_packed(&p).unwrap());
-        let dest = PathBuf::from("test/deflate");
+        let dest = PathBuf::from("testfiles/archives/deflate");
         assert!(unpack(&p, &dest).is_ok());
 
         //bz2 not available now
-        let p = PathBuf::from("test/archive.tar.bz2");
+        let p = PathBuf::from("testfiles/archives/archive.tar.bz2");
         assert_eq!(PackedSignature::Bzip2, inspect_packed(&p).unwrap());
-        let dest = PathBuf::from("test/bz2");
+        let dest = PathBuf::from("testfiles/archives/bz2");
         assert!(unpack(&p, &dest).is_err());
     }
 }
