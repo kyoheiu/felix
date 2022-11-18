@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+## v2.1.0 (2022-11-19)
+
 ### Added
 
 - Feature to unpack archive/compressed file to the current directory. Supported types: `tar.gz`(Gzip), `tar.xz`(lzma), `tar.zst`(Zstandard & tar), `zst`(Zstandard), `tar`, zip file format and formats based on it(`zip`, `docx`, ...). To unpack, press `e` on the item.
@@ -11,7 +13,9 @@
 
 ### Fixed
 
-- In the select mode, the selected item was unintentionally canceled when going up/down.
+- Bug: In the select mode, the selected item was unintentionally canceled when going up/down.
+- Delete pointer properly when removing items.
+- Instead of panic, return error when `config_dir()` fails.
 
 ### Changed
 
