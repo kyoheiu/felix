@@ -4,6 +4,23 @@
 
 ## Unreleased
 
+## v2.1.0 (2022-11-19)
+
+### Added
+
+- Feature to unpack archive/compressed file to the current directory. Supported types: `tar.gz`(Gzip), `tar.xz`(lzma), `tar.zst`(Zstandard & tar), `zst`(Zstandard), `tar`, zip file format and formats based on it(`zip`, `docx`, ...). To unpack, press `e` on the item.
+  - The number of dependencies bumps up to around 150 due to this.
+
+### Fixed
+
+- Bug: In the select mode, the selected item was unintentionally canceled when going up/down.
+- Delete pointer properly when removing items.
+- Instead of panic, return error when `config_dir()` fails.
+
+### Changed
+
+- Image file detection: Use magic bytes instead of checking the extension. This will enable to detect image more precisely.
+
 ## v2.0.1 (2022-11-12)
 
 ### Fixed

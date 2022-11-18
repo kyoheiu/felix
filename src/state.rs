@@ -2,6 +2,7 @@ use super::config::*;
 use super::errors::FxError;
 use super::functions::*;
 use super::layout::*;
+use super::magic_image::is_supported_image_type;
 use super::nums::*;
 use super::op::*;
 use super::session::*;
@@ -73,8 +74,8 @@ pub enum FileType {
 
 impl State {
     /// Initialize the state of the app.
-    pub fn new() -> Result<Self, FxError> {
-        let config = match read_config() {
+    pub fn new(p: &std::path::Path) -> Result<Self, FxError> {
+        let config = match read_config(p) {
             Ok(c) => c,
             Err(e) => {
                 eprintln!("Cannot read the config file properly.\nError: {}\nDo you want to use the default config? [press Enter to continue]", e);
@@ -356,7 +357,7 @@ impl State {
                     trash_name = chrono::Local::now().timestamp().to_string();
                     trash_name.push('_');
                     let file_name = entry.file_name().to_str();
-                    if file_name == None {
+                    if file_name.is_none() {
                         return Err(FxError::Encode);
                     }
                     trash_name.push_str(file_name.unwrap());
@@ -543,12 +544,9 @@ impl State {
         let mut target: PathBuf = PathBuf::new();
         let original_path = &buf.file_path;
 
-        let len = walkdir::WalkDir::new(&original_path).into_iter().count();
+        let len = walkdir::WalkDir::new(original_path).into_iter().count();
         let unit = len / 5;
-        for (i, entry) in walkdir::WalkDir::new(&original_path)
-            .into_iter()
-            .enumerate()
-        {
+        for (i, entry) in walkdir::WalkDir::new(original_path).into_iter().enumerate() {
             if i > unit * 4 {
                 print_process("[»»»»-]");
             } else if i > unit * 3 {
@@ -621,9 +619,9 @@ impl State {
             OpKind::Put(op) => {
                 for x in &op.put {
                     if x.is_dir() {
-                        std::fs::remove_dir_all(&x)?;
+                        std::fs::remove_dir_all(x)?;
                     } else {
-                        std::fs::remove_file(&x)?;
+                        std::fs::remove_file(x)?;
                     }
                 }
                 self.operations.pos += 1;
@@ -1333,7 +1331,7 @@ fn check_kitty_support() -> bool {
 fn set_preview_content_type(item: &mut ItemInfo) {
     if item.file_size > MAX_SIZE_TO_PREVIEW {
         item.preview_type = Some(PreviewType::TooBigSize);
-    } else if is_supported_ext(item) {
+    } else if is_supported_image(item) {
         item.preview_type = Some(PreviewType::Image);
     } else if let Ok(content) = &std::fs::read(&item.file_path) {
         if content_inspector::inspect(content).is_text() {
@@ -1364,11 +1362,8 @@ fn set_preview_type(item: &mut ItemInfo) {
     }
 }
 
-fn is_supported_ext(item: &ItemInfo) -> bool {
-    match &item.file_ext {
-        None => false,
-        Some(ext) => IMAGE_EXTENSION.contains(&ext.as_str()),
-    }
+fn is_supported_image(item: &ItemInfo) -> bool {
+    is_supported_image_type(&item.file_path)
 }
 
 fn set_theme(config: &Config) -> Theme {
@@ -1397,22 +1392,5 @@ fn choose_theme(dt: &DefaultTheme) -> Theme {
         DefaultTheme::InspiredGitHub => defaults.themes["InspiredGitHub"].clone(),
         DefaultTheme::SolarizedDark => defaults.themes["Solarized (dark)"].clone(),
         DefaultTheme::SolarizedLight => defaults.themes["Solarized (light)"].clone(),
-    }
-}
-
-#[allow(dead_code)]
-fn is_supported_image(item: &ItemInfo) -> bool {
-    if let Ok(output) = std::process::Command::new("file")
-        .args(["--mime", item.file_path.to_str().unwrap()])
-        .output()
-    {
-        if let Ok(result) = String::from_utf8(output.stdout) {
-            let v: Vec<&str> = result.split([':', ';']).collect();
-            v[1].contains("image")
-        } else {
-            false
-        }
-    } else {
-        false
     }
 }

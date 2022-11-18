@@ -3,6 +3,8 @@ mod errors;
 mod functions;
 mod help;
 mod layout;
+mod magic_image;
+mod magic_packed;
 mod nums;
 mod op;
 mod run;

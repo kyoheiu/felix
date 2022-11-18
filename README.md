@@ -11,28 +11,24 @@ For the detailed document, please see https://kyoheiu.dev/felix.
 
 ## New Release
 
-## v2.0.1 (2022-11-12) bugfix
-
-### Fixed
-
-- Fixed the bug in making config at the launch.
-- Fixed the config file path on macOS.
-
-## v2.0.0 (2022-11-11)
-
-### Changed
-
-- Migrated to yaml from toml: New config file will be created at the first launch (In this process you should enter the default command name or choose to use \$EDITOR). No need to keep `config.toml`.
-- Add the fallback when config file cannot be read: In such a case, you can use the default config.
-- HUGE refactoring overall.
+## v2.1.0 (2022-11-19)
 
 ### Added
 
-- Horizontal split, in addtion to the vertical split. To swtch between them, press `s`.
-- Syntax highlighting (if possible) in previewed texts. To turn on, state `syntax_hightlight: true` in `config.yaml`. you can also choose your theme, either from the default theme set or your favorite .tmtheme.
-- Enable scrolling in the preview space. `Alt + j / Down` goes down, `Alt + Up` goes up. Experimental and may have some bugs. Also, big text files can cause the performance issue.
-- Search by keyword. Similar to the filter mode, but this feature does not manipulate the item list: Just let users jump to the item that matches the keyword, like Vim's `/`. `n` and `N` after `/` also works.
-- Show permissions on the footer (in unix only).
+![sample_extraction](screenshots/sample_extraction.gif)
+
+- Feature to unpack archive/compressed file to the current directory. Supported types: `tar.gz`(Gzip), `tar.xz`(lzma), `tar.zst`(Zstandard & tar), `zst`(Zstandard), `tar`, zip file format and formats based on it(`zip`, `docx`, ...). To unpack, press `e` on the item.
+  - The number of dependencies bumps up to around 150 due to this.
+
+### Fixed
+
+- Bug: In the select mode, the selected item was unintentionally canceled when going up/down.
+- Delete pointer properly when removing items.
+- Instead of panic, return error when `config_dir()` fails.
+
+### Changed
+
+- Image file detection: Use magic bytes instead of checking the extension. This will enable to detect image more precisely.
 
 For more details, see `CHANGELOG.md`.
 
@@ -112,6 +108,7 @@ k / Up            :Go up.
 h / Left          :Go to the parent directory if exists.
 l / Right / Enter :Open a file or change directory.
 o                 :Open a file in a new window.
+e                 :Unpack archive/compressed file.
 gg                :Go to the top.
 G                 :Go to the bottom.
 z + Enter         :Go to the home directory.

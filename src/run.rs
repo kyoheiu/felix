@@ -3,6 +3,7 @@ use super::errors::FxError;
 use super::functions::*;
 use super::help::HELP;
 use super::layout::Split;
+use super::magic_packed::unpack;
 use super::nums::*;
 use super::op::*;
 use super::session::*;
@@ -14,6 +15,7 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::execute;
 use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
 use log::{error, info};
+use std::collections::HashSet;
 use std::env::set_current_dir;
 use std::fmt::Write as _;
 use std::io::{stdout, Write};
@@ -58,7 +60,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     }
 
     //Initialize app state
-    let mut state = State::new()?;
+    let mut state = State::new(&config_file_path)?;
     state.trash_dir = trash_dir_path;
     state.current_dir = if cfg!(not(windows)) {
         // If executed this on windows, "//?" will be inserted at the beginning of the path.
@@ -276,6 +278,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                             match item.file_type {
                                 FileType::File => {
                                     if let Err(e) = state.open_file_in_new_window() {
+                                        hide_cursor();
+                                        state.redraw(state.layout.y);
                                         print_warning(e, state.layout.y);
                                         continue;
                                     }
@@ -304,6 +308,35 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                             None => {
                                 continue;
                             }
+                        }
+                    }
+
+                    //Unpack archive file. Fails if it is not an archive file or any of supported types.
+                    KeyCode::Char('e') => {
+                        if let Ok(item) = state.get_item() {
+                            let p = item.file_path.clone();
+
+                            let mut name_set: HashSet<String> = HashSet::new();
+
+                            for item in state.list.iter() {
+                                name_set.insert(item.file_name.clone());
+                            }
+
+                            let dest_name = rename_dir(&item.file_name, &name_set);
+                            let mut dest = state.current_dir.clone();
+                            dest.push(dest_name);
+
+                            print_info("Unpacking...", state.layout.y);
+                            screen.flush()?;
+                            let start = Instant::now();
+                            if let Err(e) = unpack(&p, &dest) {
+                                state.reload(state.layout.y)?;
+                                print_warning(e, state.layout.y);
+                                continue;
+                            }
+                            state.reload(state.layout.y)?;
+                            let duration = duration_to_string(start.elapsed());
+                            print_info(format!("Unpacked. [{}]", duration), state.layout.y);
                         }
                     }
 
@@ -464,7 +497,6 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         screen.flush()?;
 
                         let start_pos = state.layout.nums.index;
-                        let mut current_pos = state.layout.y;
 
                         loop {
                             if let Event::Key(KeyEvent { code, .. }) = event::read()? {
@@ -472,70 +504,67 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     KeyCode::Char('j') | KeyCode::Down => {
                                         if len == 0 || state.layout.nums.index == len - 1 {
                                             continue;
-                                        } else if current_pos >= state.layout.terminal_row - 4
+                                        } else if state.layout.y >= state.layout.terminal_row - 4
                                             && len
                                                 > (state.layout.terminal_row - BEGINNING_ROW)
                                                     as usize
                                                     - 1
                                         {
-                                            state.layout.nums.go_down();
-                                            state.layout.nums.inc_skip();
-
-                                            if state.layout.nums.index > start_pos {
+                                            if state.layout.nums.index >= start_pos {
+                                                state.layout.nums.go_down();
+                                                state.layout.nums.inc_skip();
                                                 let mut item = state.get_item_mut()?;
                                                 item.selected = true;
+                                                state.redraw(state.layout.y);
                                             } else {
                                                 let mut item = state.get_item_mut()?;
                                                 item.selected = false;
+                                                state.layout.nums.go_down();
+                                                state.layout.nums.inc_skip();
+                                                state.redraw(state.layout.y);
                                             }
-
-                                            state.redraw(current_pos);
-                                            screen.flush()?;
-                                        } else {
+                                        } else if state.layout.nums.index >= start_pos {
                                             state.layout.nums.go_down();
-                                            current_pos += 1;
-
-                                            if state.layout.nums.index > start_pos {
-                                                let mut item = state.get_item_mut()?;
-                                                item.selected = true;
-                                            } else if state.layout.nums.index <= start_pos {
-                                                let mut item = state.get_item_mut()?;
-                                                item.selected = false;
-                                            }
-
-                                            state.redraw(current_pos);
+                                            let mut item = state.get_item_mut()?;
+                                            item.selected = true;
+                                            state.redraw(state.layout.y + 1);
+                                        } else {
+                                            let mut item = state.get_item_mut()?;
+                                            item.selected = false;
+                                            state.layout.nums.go_down();
+                                            state.redraw(state.layout.y + 1);
                                         }
                                     }
 
                                     KeyCode::Char('k') | KeyCode::Up => {
                                         if state.layout.nums.index == 0 {
                                             continue;
-                                        } else if current_pos <= BEGINNING_ROW + 3
+                                        } else if state.layout.y <= BEGINNING_ROW + 3
                                             && state.layout.nums.skip != 0
                                         {
-                                            state.layout.nums.go_up();
-                                            state.layout.nums.dec_skip();
-
-                                            if state.layout.nums.index >= start_pos {
+                                            if state.layout.nums.index > start_pos {
                                                 let mut item = state.get_item_mut()?;
                                                 item.selected = false;
+                                                state.layout.nums.go_up();
+                                                state.layout.nums.dec_skip();
+                                                state.redraw(state.layout.y);
                                             } else {
+                                                state.layout.nums.go_up();
+                                                state.layout.nums.dec_skip();
                                                 let mut item = state.get_item_mut()?;
                                                 item.selected = true;
+                                                state.redraw(state.layout.y);
                                             }
-                                            state.redraw(current_pos);
+                                        } else if state.layout.nums.index > start_pos {
+                                            let mut item = state.get_item_mut()?;
+                                            item.selected = false;
+                                            state.layout.nums.go_up();
+                                            state.redraw(state.layout.y - 1);
                                         } else {
                                             state.layout.nums.go_up();
-                                            current_pos -= 1;
-
-                                            if state.layout.nums.index >= start_pos {
-                                                let mut item = state.get_item_mut()?;
-                                                item.selected = false;
-                                            } else if state.layout.nums.index < start_pos {
-                                                let mut item = state.get_item_mut()?;
-                                                item.selected = true;
-                                            }
-                                            state.redraw(current_pos);
+                                            let mut item = state.get_item_mut()?;
+                                            item.selected = true;
+                                            state.redraw(state.layout.y - 1);
                                         }
                                     }
 
@@ -555,16 +584,15 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 match code {
                                                     KeyCode::Char('g') => {
                                                         hide_cursor();
-                                                        state.layout.nums.reset();
                                                         state.select_from_top(start_pos);
-                                                        current_pos = BEGINNING_ROW;
-                                                        state.redraw(current_pos);
+                                                        state.layout.nums.reset();
+                                                        state.redraw(BEGINNING_ROW);
                                                     }
 
                                                     _ => {
                                                         reset_info_line();
                                                         hide_cursor();
-                                                        state.move_cursor(current_pos);
+                                                        state.move_cursor(state.layout.y);
                                                     }
                                                 }
                                             }
@@ -575,22 +603,20 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         if len
                                             > (state.layout.terminal_row - BEGINNING_ROW) as usize
                                         {
+                                            state.select_to_bottom(start_pos);
                                             state.layout.nums.skip = (len as u16) + BEGINNING_ROW
                                                 - state.layout.terminal_row;
                                             state.layout.nums.go_bottom(len - 1);
-                                            state.select_to_bottom(start_pos);
-                                            current_pos = state.layout.terminal_row - 1;
-                                            state.redraw(current_pos);
+                                            state.redraw(state.layout.terminal_row - 1);
                                         } else {
-                                            state.layout.nums.go_bottom(len - 1);
                                             state.select_to_bottom(start_pos);
-                                            current_pos = len as u16 + BEGINNING_ROW - 1;
-                                            state.redraw(current_pos);
+                                            state.layout.nums.go_bottom(len - 1);
+                                            state.redraw(len as u16 + BEGINNING_ROW - 1);
                                         }
                                     }
 
                                     KeyCode::Char('d') => {
-                                        print_info("DELETE: Processing...", current_pos);
+                                        print_info("DELETE: Processing...", state.layout.y);
                                         let start = Instant::now();
                                         screen.flush()?;
 
@@ -603,7 +629,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         let total = selected.len();
 
                                         if let Err(e) = state.remove_and_yank(&selected, true) {
-                                            print_warning(e, current_pos);
+                                            print_warning(e, state.layout.y);
                                             break;
                                         }
 
@@ -627,12 +653,13 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
                                         };
                                         print_info(delete_message, state.layout.y);
+                                        delete_cursor();
 
                                         if new_len == 0 {
                                             state.layout.nums.reset();
                                             state.move_cursor(BEGINNING_ROW);
                                         } else if state.layout.nums.index > new_len - 1 {
-                                            let mut new_y = current_pos
+                                            let mut new_y = state.layout.y
                                                 - (state.layout.nums.index - (new_len - 1)) as u16;
                                             if new_y < BEGINNING_ROW {
                                                 new_y = BEGINNING_ROW;
@@ -641,7 +668,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             state.move_cursor(new_y);
                                             screen.flush()?;
                                         } else {
-                                            state.move_cursor(current_pos);
+                                            state.move_cursor(state.layout.y);
                                             screen.flush()?;
                                         }
                                         break;
@@ -654,13 +681,13 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         let mut yank_message: String =
                                             state.registered.len().to_string();
                                         yank_message.push_str(" items yanked");
-                                        print_info(yank_message, current_pos);
+                                        print_info(yank_message, state.layout.y);
                                         break;
                                     }
 
                                     KeyCode::Esc => {
                                         state.reset_selection();
-                                        state.redraw(current_pos);
+                                        state.redraw(state.layout.y);
                                         break;
                                     }
 
