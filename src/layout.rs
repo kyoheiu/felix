@@ -15,10 +15,6 @@ use syntect::util::{as_24_bit_terminal_escaped, split_at, LinesWithEndings};
 
 /// cf: https://docs.rs/image/latest/src/image/image.rs.html#84-112
 pub const MAX_SIZE_TO_PREVIEW: u64 = 1_000_000_000;
-pub const IMAGE_EXTENSION: [&str; 20] = [
-    "avif", "jpg", "jpeg", "png", "gif", "webp", "tif", "tiff", "tga", "dds", "bmp", "ico", "hdr",
-    "exr", "pbm", "pam", "ppm", "pgm", "ff", "farbfeld",
-];
 pub const CHAFA_WARNING: &str =
     "From v1.1.0, the image preview needs chafa. For more details, please see help by `:h` ";
 
