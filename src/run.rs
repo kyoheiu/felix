@@ -278,6 +278,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                             match item.file_type {
                                 FileType::File => {
                                     if let Err(e) = state.open_file_in_new_window() {
+                                        hide_cursor();
+                                        state.redraw(state.layout.y);
                                         print_warning(e, state.layout.y);
                                         continue;
                                     }
@@ -658,6 +660,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
                                         };
                                         print_info(delete_message, state.layout.y);
+                                        delete_cursor();
 
                                         if new_len == 0 {
                                             state.layout.nums.reset();
