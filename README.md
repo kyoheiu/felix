@@ -15,6 +15,8 @@ For the detailed document, please see https://kyoheiu.dev/felix.
 
 ### Added
 
+![sample_extraction](screenshots/sample_extraction.gif)
+
 - Feature to unpack archive/compressed file to the current directory. Supported types: `tar.gz`(Gzip), `tar.xz`(lzma), `tar.zst`(Zstandard & tar), `zst`(Zstandard), `tar`, zip file format and formats based on it(`zip`, `docx`, ...). To unpack, press `e` on the item.
   - The number of dependencies bumps up to around 150 due to this.
 
