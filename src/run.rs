@@ -497,7 +497,6 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         screen.flush()?;
 
                         let start_pos = state.layout.nums.index;
-                        let mut current_pos = state.layout.y;
 
                         loop {
                             if let Event::Key(KeyEvent { code, .. }) = event::read()? {
@@ -505,70 +504,67 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     KeyCode::Char('j') | KeyCode::Down => {
                                         if len == 0 || state.layout.nums.index == len - 1 {
                                             continue;
-                                        } else if current_pos >= state.layout.terminal_row - 4
+                                        } else if state.layout.y >= state.layout.terminal_row - 4
                                             && len
                                                 > (state.layout.terminal_row - BEGINNING_ROW)
                                                     as usize
                                                     - 1
                                         {
-                                            state.layout.nums.go_down();
-                                            state.layout.nums.inc_skip();
-
-                                            if state.layout.nums.index > start_pos {
+                                            if state.layout.nums.index >= start_pos {
+                                                state.layout.nums.go_down();
+                                                state.layout.nums.inc_skip();
                                                 let mut item = state.get_item_mut()?;
                                                 item.selected = true;
+                                                state.redraw(state.layout.y);
                                             } else {
                                                 let mut item = state.get_item_mut()?;
                                                 item.selected = false;
+                                                state.layout.nums.go_down();
+                                                state.layout.nums.inc_skip();
+                                                state.redraw(state.layout.y);
                                             }
-
-                                            state.redraw(current_pos);
-                                            screen.flush()?;
-                                        } else {
+                                        } else if state.layout.nums.index >= start_pos {
                                             state.layout.nums.go_down();
-                                            current_pos += 1;
-
-                                            if state.layout.nums.index > start_pos {
-                                                let mut item = state.get_item_mut()?;
-                                                item.selected = true;
-                                            } else if state.layout.nums.index <= start_pos {
-                                                let mut item = state.get_item_mut()?;
-                                                item.selected = false;
-                                            }
-
-                                            state.redraw(current_pos);
+                                            let mut item = state.get_item_mut()?;
+                                            item.selected = true;
+                                            state.redraw(state.layout.y + 1);
+                                        } else {
+                                            let mut item = state.get_item_mut()?;
+                                            item.selected = false;
+                                            state.layout.nums.go_down();
+                                            state.redraw(state.layout.y + 1);
                                         }
                                     }
 
                                     KeyCode::Char('k') | KeyCode::Up => {
                                         if state.layout.nums.index == 0 {
                                             continue;
-                                        } else if current_pos <= BEGINNING_ROW + 3
+                                        } else if state.layout.y <= BEGINNING_ROW + 3
                                             && state.layout.nums.skip != 0
                                         {
-                                            state.layout.nums.go_up();
-                                            state.layout.nums.dec_skip();
-
-                                            if state.layout.nums.index >= start_pos {
+                                            if state.layout.nums.index > start_pos {
                                                 let mut item = state.get_item_mut()?;
                                                 item.selected = false;
+                                                state.layout.nums.go_up();
+                                                state.layout.nums.dec_skip();
+                                                state.redraw(state.layout.y);
                                             } else {
+                                                state.layout.nums.go_up();
+                                                state.layout.nums.dec_skip();
                                                 let mut item = state.get_item_mut()?;
                                                 item.selected = true;
+                                                state.redraw(state.layout.y);
                                             }
-                                            state.redraw(current_pos);
+                                        } else if state.layout.nums.index > start_pos {
+                                            let mut item = state.get_item_mut()?;
+                                            item.selected = false;
+                                            state.layout.nums.go_up();
+                                            state.redraw(state.layout.y - 1);
                                         } else {
                                             state.layout.nums.go_up();
-                                            current_pos -= 1;
-
-                                            if state.layout.nums.index >= start_pos {
-                                                let mut item = state.get_item_mut()?;
-                                                item.selected = false;
-                                            } else if state.layout.nums.index < start_pos {
-                                                let mut item = state.get_item_mut()?;
-                                                item.selected = true;
-                                            }
-                                            state.redraw(current_pos);
+                                            let mut item = state.get_item_mut()?;
+                                            item.selected = true;
+                                            state.redraw(state.layout.y - 1);
                                         }
                                     }
 
@@ -588,16 +584,15 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 match code {
                                                     KeyCode::Char('g') => {
                                                         hide_cursor();
-                                                        state.layout.nums.reset();
                                                         state.select_from_top(start_pos);
-                                                        current_pos = BEGINNING_ROW;
-                                                        state.redraw(current_pos);
+                                                        state.layout.nums.reset();
+                                                        state.redraw(BEGINNING_ROW);
                                                     }
 
                                                     _ => {
                                                         reset_info_line();
                                                         hide_cursor();
-                                                        state.move_cursor(current_pos);
+                                                        state.move_cursor(state.layout.y);
                                                     }
                                                 }
                                             }
@@ -608,22 +603,20 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         if len
                                             > (state.layout.terminal_row - BEGINNING_ROW) as usize
                                         {
+                                            state.select_to_bottom(start_pos);
                                             state.layout.nums.skip = (len as u16) + BEGINNING_ROW
                                                 - state.layout.terminal_row;
                                             state.layout.nums.go_bottom(len - 1);
-                                            state.select_to_bottom(start_pos);
-                                            current_pos = state.layout.terminal_row - 1;
-                                            state.redraw(current_pos);
+                                            state.redraw(state.layout.terminal_row - 1);
                                         } else {
-                                            state.layout.nums.go_bottom(len - 1);
                                             state.select_to_bottom(start_pos);
-                                            current_pos = len as u16 + BEGINNING_ROW - 1;
-                                            state.redraw(current_pos);
+                                            state.layout.nums.go_bottom(len - 1);
+                                            state.redraw(len as u16 + BEGINNING_ROW - 1);
                                         }
                                     }
 
                                     KeyCode::Char('d') => {
-                                        print_info("DELETE: Processing...", current_pos);
+                                        print_info("DELETE: Processing...", state.layout.y);
                                         let start = Instant::now();
                                         screen.flush()?;
 
@@ -636,7 +629,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         let total = selected.len();
 
                                         if let Err(e) = state.remove_and_yank(&selected, true) {
-                                            print_warning(e, current_pos);
+                                            print_warning(e, state.layout.y);
                                             break;
                                         }
 
@@ -666,7 +659,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             state.layout.nums.reset();
                                             state.move_cursor(BEGINNING_ROW);
                                         } else if state.layout.nums.index > new_len - 1 {
-                                            let mut new_y = current_pos
+                                            let mut new_y = state.layout.y
                                                 - (state.layout.nums.index - (new_len - 1)) as u16;
                                             if new_y < BEGINNING_ROW {
                                                 new_y = BEGINNING_ROW;
@@ -675,7 +668,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             state.move_cursor(new_y);
                                             screen.flush()?;
                                         } else {
-                                            state.move_cursor(current_pos);
+                                            state.move_cursor(state.layout.y);
                                             screen.flush()?;
                                         }
                                         break;
@@ -688,13 +681,13 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         let mut yank_message: String =
                                             state.registered.len().to_string();
                                         yank_message.push_str(" items yanked");
-                                        print_info(yank_message, current_pos);
+                                        print_info(yank_message, state.layout.y);
                                         break;
                                     }
 
                                     KeyCode::Esc => {
                                         state.reset_selection();
-                                        state.redraw(current_pos);
+                                        state.redraw(state.layout.y);
                                         break;
                                     }
 
