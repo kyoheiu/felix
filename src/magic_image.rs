@@ -27,6 +27,7 @@ const HEADER_PGM2: [u8; 3] = [0x50, 0x35, 0x0A];
 const HEADER_PPM1: [u8; 3] = [0x50, 0x33, 0x0A];
 const HEADER_PPM2: [u8; 3] = [0x50, 0x36, 0x0A];
 
+#[derive(Debug, PartialEq, Eq)]
 enum ImageSignature {
     Jpg,
     Png,
@@ -98,11 +99,42 @@ mod tests {
 
     #[test]
     /// Supported:
-    /// tar.gz(Gzip),
-    /// tar.xz(lzma),
-    /// tar.zst(Zstandard & tar),
-    /// zst(Zstandard),
-    /// tar,
-    /// zip file format and formats based on it(zip, docx, ...)
-    fn test_inspect_image() {}
+    /// jpg, png, gif, webp, tif, bmp, ico, hdr, exr, pbm, pgm, ppm
+    fn test_inspect_image() {
+        let p = PathBuf::from("testfiles/images/sample.jpg");
+        assert_eq!(ImageSignature::Jpg, inspect_image(&p).unwrap());
+
+        let p = PathBuf::from("testfiles/images/sample.png");
+        assert_eq!(ImageSignature::Png, inspect_image(&p).unwrap());
+
+        let p = PathBuf::from("testfiles/images/sample.gif");
+        assert_eq!(ImageSignature::Gif, inspect_image(&p).unwrap());
+
+        let p = PathBuf::from("testfiles/images/sample.webp");
+        assert_eq!(ImageSignature::Webp, inspect_image(&p).unwrap());
+
+        let p = PathBuf::from("testfiles/images/sample.tiff");
+        assert_eq!(ImageSignature::Tif, inspect_image(&p).unwrap());
+
+        let p = PathBuf::from("testfiles/images/sample.bmp");
+        assert_eq!(ImageSignature::Bmp, inspect_image(&p).unwrap());
+
+        let p = PathBuf::from("testfiles/images/sample.ico");
+        assert_eq!(ImageSignature::Ico, inspect_image(&p).unwrap());
+
+        let p = PathBuf::from("testfiles/images/sample.hdr");
+        assert_eq!(ImageSignature::Hdr, inspect_image(&p).unwrap());
+
+        let p = PathBuf::from("testfiles/images/sample.exr");
+        assert_eq!(ImageSignature::Exr, inspect_image(&p).unwrap());
+
+        let p = PathBuf::from("testfiles/images/sample.pbm");
+        assert_eq!(ImageSignature::Pbm, inspect_image(&p).unwrap());
+
+        let p = PathBuf::from("testfiles/images/sample.pgm");
+        assert_eq!(ImageSignature::Pgm, inspect_image(&p).unwrap());
+
+        let p = PathBuf::from("testfiles/images/sample.ppm");
+        assert_eq!(ImageSignature::Ppm, inspect_image(&p).unwrap());
+    }
 }
