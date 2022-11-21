@@ -80,9 +80,16 @@ pub fn delete_cursor() {
 /// Print the result of operation, such as put/delete/redo/undo.
 pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
     delete_cursor();
-    reset_info_line();
+    go_to_and_rest_info();
     info!("{}", message);
-    print!("{}", message);
+
+    let (width, _) = terminal_size().unwrap();
+    let trimmed: String = message
+        .to_string()
+        .chars()
+        .take((width - 1).into())
+        .collect();
+    print!("{}", trimmed);
 
     hide_cursor();
     move_to(1, then);
@@ -93,13 +100,18 @@ pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
 /// When something goes wrong or does not work, print information about it.
 pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
     delete_cursor();
+    go_to_and_rest_info();
     warn!("{}", message);
-    to_info_bar();
-    clear_current_line();
 
+    let (width, _) = terminal_size().unwrap();
+    let trimmed: String = message
+        .to_string()
+        .chars()
+        .take((width - 1).into())
+        .collect();
     set_color(&TermColor::ForeGround(&Colorname::White));
     set_color(&TermColor::BackGround(&Colorname::LightRed));
-    print!("{}", message,);
+    print!("{}", trimmed);
     reset_color();
 
     hide_cursor();
