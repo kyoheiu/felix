@@ -726,12 +726,24 @@ impl State {
         clear_all();
         move_to(1, 1);
 
+        let mut header_space = (self.layout.terminal_column - 1) as usize;
+
         //Show current directory path.
         //crossterm's Stylize cannot be applied to PathBuf,
         //current directory does not have any text attribute for now.
-        set_color(&TermColor::ForeGround(&Colorname::Cyan));
-        print!(" {}", self.current_dir.display(),);
-        reset_color();
+        let current_dir = self.current_dir.display().to_string();
+        if current_dir.len() >= header_space {
+            let current_dir: String = current_dir.chars().take(header_space).collect();
+            set_color(&TermColor::ForeGround(&Colorname::Cyan));
+            print!(" {}", current_dir);
+            reset_color();
+            return;
+        } else {
+            set_color(&TermColor::ForeGround(&Colorname::Cyan));
+            print!(" {}", current_dir);
+            reset_color();
+            header_space -= current_dir.len();
+        }
 
         //If .git directory exists, get the branch information and print it.
         let git = self.current_dir.join(".git");
@@ -740,10 +752,13 @@ impl State {
             if let Ok(head) = std::fs::read(head) {
                 let branch: Vec<u8> = head.into_iter().skip(16).collect();
                 if let Ok(branch) = std::str::from_utf8(&branch) {
-                    print!(" on ",);
-                    set_color(&TermColor::ForeGround(&Colorname::LightMagenta));
-                    print!("{}", branch.trim().bold());
-                    reset_color();
+                    if branch.len() + 4 <= header_space {
+                        print!(" on ",);
+                        set_color(&TermColor::ForeGround(&Colorname::LightMagenta));
+                        print!("{}", branch.trim().bold());
+                        reset_color();
+                    } else {
+                    }
                 }
             }
         }
