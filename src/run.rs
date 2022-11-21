@@ -802,7 +802,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         state.clear_and_show_headline();
                                         state.update_list()?;
                                         state.list_up();
-                                        let cursor_pos = if state.list.is_empty() {
+                                        state.layout.y = if state.list.is_empty() {
                                             BEGINNING_ROW
                                         } else if state.layout.nums.index == len - 1 {
                                             state.layout.nums.go_up();
@@ -813,9 +813,9 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         let duration = duration_to_string(start.elapsed());
                                         print_info(
                                             format!("1 item deleted [{}]", duration),
-                                            cursor_pos,
+                                            state.layout.y,
                                         );
-                                        state.move_cursor(cursor_pos);
+                                        state.move_cursor(state.layout.y);
                                     }
                                     _ => {
                                         reset_info_line();
