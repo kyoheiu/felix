@@ -67,7 +67,7 @@ pub fn rename_dir(dir_name: &str, name_set: &HashSet<String>) -> String {
     new_name
 }
 
-pub fn reset_info_line() {
+pub fn go_to_and_rest_info() {
     to_info_bar();
     clear_current_line();
 }
