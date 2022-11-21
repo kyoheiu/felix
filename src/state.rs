@@ -99,8 +99,7 @@ impl State {
             }
         };
         let session = read_session()?;
-        let (original_column, original_row) =
-            crossterm::terminal::size().unwrap_or_else(|_| panic!("Cannot detect terminal size."));
+        let (original_column, original_row) = terminal_size()?;
 
         // Return error if terminal size may cause panic
         if original_column < 4 {
@@ -696,8 +695,7 @@ impl State {
     pub fn refresh(&mut self, column: u16, row: u16, mut cursor_pos: u16) {
         let (time_start, name_max) = make_layout(column);
 
-        let (original_column, original_row) =
-            crossterm::terminal::size().unwrap_or_else(|_| panic!("Cannot detect terminal size."));
+        let (original_column, original_row) = terminal_size().unwrap();
 
         self.layout.terminal_row = row;
         self.layout.terminal_column = column;

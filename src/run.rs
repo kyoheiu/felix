@@ -747,7 +747,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                             }
                         } else {
-                            let (new_column, new_row) = crossterm::terminal::size()?;
+                            let (new_column, new_row) = terminal_size()?;
                             state.refresh(new_column, new_row, state.layout.y);
                         }
                     }
@@ -757,7 +757,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         Split::Vertical => {
                             state.layout.split = Split::Horizontal;
                             if state.layout.preview {
-                                let (new_column, mut new_row) = crossterm::terminal::size()?;
+                                let (new_column, mut new_row) = terminal_size()?;
                                 new_row /= 2;
                                 state.refresh(new_column, new_row, state.layout.y);
                             }
@@ -765,7 +765,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         Split::Horizontal => {
                             state.layout.split = Split::Vertical;
                             if state.layout.preview {
-                                let (mut new_column, new_row) = crossterm::terminal::size()?;
+                                let (mut new_column, new_row) = terminal_size()?;
                                 new_column /= 2;
                                 state.refresh(new_column, new_row, state.layout.y);
                             }

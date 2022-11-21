@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 #[derive(Debug)]
 pub enum FxError {
+    TerminalSizeDetection,
     Io(String),
     Dirs(String),
     GetItem,
@@ -15,8 +16,8 @@ pub enum FxError {
     RemoveItem(PathBuf),
     TooSmallWindowSize,
     Log(String),
-    Panic,
     Unpack(String),
+    Panic,
 }
 
 impl std::error::Error for FxError {}
@@ -24,6 +25,7 @@ impl std::error::Error for FxError {}
 impl std::fmt::Display for FxError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let printable = match self {
+            FxError::TerminalSizeDetection => "Error: Cannot detect terminal size.".to_owned(),
             FxError::Io(s) => s.to_owned(),
             FxError::Dirs(s) => s.to_owned(),
             FxError::GetItem => "Error: Cannot get item info".to_owned(),

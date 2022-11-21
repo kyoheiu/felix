@@ -1,3 +1,5 @@
+use crate::errors::FxError;
+
 use super::config::Colorname;
 
 use crossterm::{
@@ -28,6 +30,10 @@ pub fn enter_raw_mode() {
 pub fn leave_raw_mode() {
     show_cursor();
     terminal::disable_raw_mode().ok();
+}
+
+pub fn terminal_size() -> Result<(u16, u16), FxError> {
+    terminal::size().map_err(|_| FxError::TerminalSizeDetection)
 }
 
 pub fn move_to(x: u16, y: u16) {
