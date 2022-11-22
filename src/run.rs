@@ -107,7 +107,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
             Split::Vertical => state.layout.terminal_row,
             Split::Horizontal => state.layout.terminal_row / 2,
         };
-        state.refresh(new_column, new_row, BEGINNING_ROW);
+        state.refresh(new_column, new_row, BEGINNING_ROW)?;
     } else {
         state.reload(BEGINNING_ROW)?;
     }
@@ -738,17 +738,17 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 Split::Vertical => {
                                     let new_column = state.layout.terminal_column / 2;
                                     let new_row = state.layout.terminal_row;
-                                    state.refresh(new_column, new_row, state.layout.y);
+                                    state.refresh(new_column, new_row, state.layout.y)?;
                                 }
                                 Split::Horizontal => {
                                     let new_row = state.layout.terminal_row / 2;
                                     let new_column = state.layout.terminal_column;
-                                    state.refresh(new_column, new_row, state.layout.y);
+                                    state.refresh(new_column, new_row, state.layout.y)?;
                                 }
                             }
                         } else {
                             let (new_column, new_row) = terminal_size()?;
-                            state.refresh(new_column, new_row, state.layout.y);
+                            state.refresh(new_column, new_row, state.layout.y)?;
                         }
                     }
 
@@ -759,7 +759,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                             if state.layout.preview {
                                 let (new_column, mut new_row) = terminal_size()?;
                                 new_row /= 2;
-                                state.refresh(new_column, new_row, state.layout.y);
+                                state.refresh(new_column, new_row, state.layout.y)?;
                             }
                         }
                         Split::Horizontal => {
@@ -767,7 +767,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                             if state.layout.preview {
                                 let (mut new_column, new_row) = terminal_size()?;
                                 new_column /= 2;
-                                state.refresh(new_column, new_row, state.layout.y);
+                                state.refresh(new_column, new_row, state.layout.y)?;
                             }
                         }
                     },
@@ -1612,7 +1612,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         new_row - 1
                     };
 
-                    state.refresh(new_column, new_row, cursor_pos);
+                    state.refresh(new_column, new_row, cursor_pos)?;
                 } else {
                     let cursor_pos = if state.layout.y < row {
                         state.layout.y
@@ -1621,7 +1621,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         state.layout.nums.index -= diff as usize;
                         row - 1
                     };
-                    state.refresh(column, row, cursor_pos);
+                    state.refresh(column, row, cursor_pos)?;
                 }
             }
             _ => {}

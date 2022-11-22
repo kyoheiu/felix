@@ -411,8 +411,8 @@ impl State {
             for item in self.list.iter_mut().filter(|item| item.selected) {
                 self.registered.push(item.clone());
             }
-        } else {
-            let item = self.get_item().unwrap().clone();
+        } else if let Ok(item) = self.get_item() {
+            let item = item.clone();
             self.registered.push(item);
         }
     }
@@ -692,10 +692,10 @@ impl State {
     }
 
     /// Reload the app layout when terminal size changes.
-    pub fn refresh(&mut self, column: u16, row: u16, mut cursor_pos: u16) {
+    pub fn refresh(&mut self, column: u16, row: u16, mut cursor_pos: u16) -> Result<(), FxError> {
         let (time_start, name_max) = make_layout(column);
 
-        let (original_column, original_row) = terminal_size().unwrap();
+        let (original_column, original_row) = terminal_size()?;
 
         self.layout.terminal_row = row;
         self.layout.terminal_column = column;
@@ -719,6 +719,7 @@ impl State {
         }
 
         self.redraw(cursor_pos);
+        Ok(())
     }
 
     /// Clear all and show the current directory information.
