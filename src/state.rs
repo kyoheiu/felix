@@ -13,8 +13,8 @@ use crossterm::event;
 use crossterm::event::{KeyCode, KeyEvent};
 use crossterm::style::Stylize;
 use log::{error, info};
-use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use std::env;
 use std::ffi::OsStr;
 use std::fmt::Write as _;
@@ -37,7 +37,7 @@ pub struct State {
     pub current_dir: PathBuf,
     pub trash_dir: PathBuf,
     pub default: String,
-    pub commands: Option<HashMap<String, String>>,
+    pub commands: Option<BTreeMap<String, String>>,
     pub registered: Vec<ItemInfo>,
     pub operations: Operation,
     pub c_memo: Vec<StateMemo>,
@@ -425,7 +425,7 @@ impl State {
         target_dir: Option<PathBuf>,
     ) -> Result<(), FxError> {
         //make HashSet<String> of file_name
-        let mut name_set = HashSet::new();
+        let mut name_set = BTreeSet::new();
         match &target_dir {
             None => {
                 for item in self.list.iter() {
@@ -486,7 +486,7 @@ impl State {
         &mut self,
         item: &ItemInfo,
         target_dir: &Option<PathBuf>,
-        name_set: &mut HashSet<String>,
+        name_set: &mut BTreeSet<String>,
     ) -> Result<PathBuf, FxError> {
         match target_dir {
             None => {
@@ -537,7 +537,7 @@ impl State {
         &mut self,
         buf: &ItemInfo,
         target_dir: &Option<PathBuf>,
-        name_set: &mut HashSet<String>,
+        name_set: &mut BTreeSet<String>,
     ) -> Result<PathBuf, FxError> {
         let mut base: usize = 0;
         let mut target: PathBuf = PathBuf::new();

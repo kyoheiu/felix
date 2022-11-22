@@ -5,7 +5,7 @@ use super::term::*;
 use crossterm::style::Stylize;
 use log::{info, warn};
 use simplelog::{ConfigBuilder, LevelFilter, WriteLogger};
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -21,7 +21,7 @@ pub fn format_time(time: &Option<String>) -> String {
 }
 
 /// Rename the put file, in order to avoid the name conflict.
-pub fn rename_file(file_name: &str, name_set: &HashSet<String>) -> String {
+pub fn rename_file(file_name: &str, name_set: &BTreeSet<String>) -> String {
     let mut count: usize = 1;
     let (stem, extension) = {
         let file_name = PathBuf::from(file_name);
@@ -53,7 +53,7 @@ pub fn rename_file(file_name: &str, name_set: &HashSet<String>) -> String {
 }
 
 /// Rename the put directory, in order to avoid the name conflict.
-pub fn rename_dir(dir_name: &str, name_set: &HashSet<String>) -> String {
+pub fn rename_dir(dir_name: &str, name_set: &BTreeSet<String>) -> String {
     let mut count: usize = 1;
     let mut new_name = dir_name.to_owned();
     while name_set.contains(&new_name) {
@@ -137,9 +137,9 @@ pub fn display_count(i: usize, all: usize) -> String {
 
 /// Convert extension setting in the config to HashMap.
 pub fn to_extension_map(
-    config: &Option<HashMap<String, Vec<String>>>,
-) -> Option<HashMap<String, String>> {
-    let mut new_map = HashMap::new();
+    config: &Option<BTreeMap<String, Vec<String>>>,
+) -> Option<BTreeMap<String, String>> {
+    let mut new_map = BTreeMap::new();
     match config {
         Some(config) => {
             for (command, extensions) in config.iter() {

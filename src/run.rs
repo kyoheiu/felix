@@ -15,7 +15,7 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::execute;
 use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
 use log::{error, info};
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 use std::env::set_current_dir;
 use std::fmt::Write as _;
 use std::io::{stdout, Write};
@@ -316,7 +316,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         if let Ok(item) = state.get_item() {
                             let p = item.file_path.clone();
 
-                            let mut name_set: HashSet<String> = HashSet::new();
+                            let mut name_set: BTreeSet<String> = BTreeSet::new();
 
                             for item in state.list.iter() {
                                 name_set.insert(item.file_name.clone());
