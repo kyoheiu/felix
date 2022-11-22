@@ -857,8 +857,8 @@ impl State {
 
         match self.layout.sort_by {
             SortKey::Name => {
-                dir_v.sort_by(|a, b| natord::compare(&a.file_name, &b.file_name));
-                file_v.sort_by(|a, b| natord::compare(&a.file_name, &b.file_name));
+                dir_v.sort_by(|a, b| natord::compare_ignore_case(&a.file_name, &b.file_name));
+                file_v.sort_by(|a, b| natord::compare_ignore_case(&a.file_name, &b.file_name));
             }
             SortKey::Time => {
                 dir_v.sort_by(|a, b| b.modified.partial_cmp(&a.modified).unwrap());
