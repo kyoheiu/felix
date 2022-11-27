@@ -24,12 +24,6 @@ use std::process::{Command, ExitStatus, Stdio};
 use std::time::UNIX_EPOCH;
 use syntect::highlighting::{Theme, ThemeSet};
 
-#[cfg(target_os = "linux")]
-use nix::sys::wait::waitpid;
-use nix::unistd::fork;
-use nix::unistd::setsid;
-use nix::unistd::ForkResult;
-
 #[cfg(target_family = "unix")]
 use std::os::unix::fs::PermissionsExt;
 
@@ -229,14 +223,14 @@ impl State {
             None => Err(FxError::OpenNewWindow("No exec configuration".to_owned())),
             Some(map) => match extension {
                 Some(extension) => match map.get(extension) {
-                    Some(command) => match unsafe { fork() } {
+                    Some(command) => match unsafe { nix::unistd::fork() } {
                         Ok(result) => match result {
-                            ForkResult::Parent { child } => {
-                                waitpid(Some(child), None)?;
+                            nix::unistd::ForkResult::Parent { child } => {
+                                nix::sys::wait::waitpid(Some(child), None)?;
                                 Ok(())
                             }
-                            ForkResult::Child => {
-                                setsid()?;
+                            nix::unistd::ForkResult::Child => {
+                                nix::unistd::setsid()?;
                                 let mut ex = Command::new(command);
                                 ex.arg(path)
                                     .stdout(Stdio::null())

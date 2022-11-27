@@ -42,8 +42,9 @@ impl std::fmt::Display for FxError {
             FxError::TooSmallWindowSize => "Error: Too small window size".to_owned(),
             FxError::Log(s) => s.to_owned(),
             FxError::Unpack(s) => s.to_owned(),
-            FxError::Nix(s) => s.to_owned(),
             FxError::Panic => "Error: felix panicked".to_owned(),
+            #[cfg(target_os = "linux")]
+            FxError::Nix(s) => s.to_owned(),
         };
         write!(f, "{}", printable)
     }
