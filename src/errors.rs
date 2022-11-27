@@ -18,6 +18,8 @@ pub enum FxError {
     Log(String),
     Unpack(String),
     Panic,
+    #[cfg(target_os = "linux")]
+    Nix(String),
 }
 
 impl std::error::Error for FxError {}
@@ -39,8 +41,10 @@ impl std::fmt::Display for FxError {
             FxError::RemoveItem(s) => format!("Error: Cannot remove -> {:?}", s),
             FxError::TooSmallWindowSize => "Error: Too small window size".to_owned(),
             FxError::Log(s) => s.to_owned(),
-            FxError::Panic => "Error: felix panicked".to_owned(),
             FxError::Unpack(s) => s.to_owned(),
+            FxError::Panic => "Error: felix panicked".to_owned(),
+            #[cfg(target_os = "linux")]
+            FxError::Nix(s) => s.to_owned(),
         };
         write!(f, "{}", printable)
     }
@@ -84,5 +88,12 @@ impl From<std::string::FromUtf8Error> for FxError {
 impl From<zip::result::ZipError> for FxError {
     fn from(err: zip::result::ZipError) -> Self {
         FxError::Unpack(err.to_string())
+    }
+}
+
+#[cfg(target_os = "linux")]
+impl From<nix::errno::Errno> for FxError {
+    fn from(err: nix::errno::Errno) -> Self {
+        FxError::Nix(err.to_string())
     }
 }

@@ -32,6 +32,9 @@ flate2 = "1.0.24"
 lzma-rs = "0.2.0"
 zstd = "0.11.2"
 
+[target.'cfg(unix)'.dependencies]
+nix = {version = "0.25.0", features = ["process"]}
+
 [dependencies.serde]
 version = "1.0.136"
 features = ["derive"]
