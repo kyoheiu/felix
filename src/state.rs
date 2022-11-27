@@ -238,7 +238,8 @@ impl State {
                                     .spawn()
                                     .and(Ok(()))
                                     .map_err(|_| FxError::OpenItem)?;
-                                unsafe { libc::_exit(0) };
+                                drop(ex);
+                                std::process::exit(0);
                             }
                         },
                         Err(e) => Err(FxError::Nix(e.to_string())),
