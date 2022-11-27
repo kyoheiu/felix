@@ -17,8 +17,9 @@ pub enum FxError {
     TooSmallWindowSize,
     Log(String),
     Unpack(String),
-    Nix(String),
     Panic,
+    #[cfg(target_os = "linux")]
+    Nix(String),
 }
 
 impl std::error::Error for FxError {}
@@ -89,6 +90,7 @@ impl From<zip::result::ZipError> for FxError {
     }
 }
 
+#[cfg(target_os = "linux")]
 impl From<nix::errno::Errno> for FxError {
     fn from(err: nix::errno::Errno) -> Self {
         FxError::Nix(err.to_string())

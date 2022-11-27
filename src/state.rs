@@ -13,22 +13,25 @@ use crossterm::event;
 use crossterm::event::{KeyCode, KeyEvent};
 use crossterm::style::Stylize;
 use log::{error, info};
-use nix::sys::wait::waitpid;
-use nix::unistd::fork;
-use nix::unistd::setsid;
-use nix::unistd::ForkResult;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::env;
 use std::ffi::OsStr;
 use std::fmt::Write as _;
 use std::fs;
-#[cfg(target_family = "unix")]
-use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use std::process::{Command, ExitStatus, Stdio};
 use std::time::UNIX_EPOCH;
 use syntect::highlighting::{Theme, ThemeSet};
+
+#[cfg(target_os = "linux")]
+use nix::sys::wait::waitpid;
+use nix::unistd::fork;
+use nix::unistd::setsid;
+use nix::unistd::ForkResult;
+
+#[cfg(target_family = "unix")]
+use std::os::unix::fs::PermissionsExt;
 
 pub const BEGINNING_ROW: u16 = 3;
 pub const FX_CONFIG_DIR: &str = "felix";
@@ -212,6 +215,53 @@ impl State {
         }
     }
 
+    #[cfg(target_os = "linux")]
+    /// Open the selected file in a new window, according to the config.
+    pub fn open_file_in_new_window(&self) -> Result<(), FxError> {
+        let item = self.get_item()?;
+        let path = &item.file_path;
+        let map = &self.commands;
+        let extension = &item.file_ext;
+
+        info!("OPEN(new window): {:?}", path);
+
+        match map {
+            None => Err(FxError::OpenNewWindow("No exec configuration".to_owned())),
+            Some(map) => match extension {
+                Some(extension) => match map.get(extension) {
+                    Some(command) => match unsafe { fork() } {
+                        Ok(result) => match result {
+                            ForkResult::Parent { child } => {
+                                waitpid(Some(child), None)?;
+                                Ok(())
+                            }
+                            ForkResult::Child => {
+                                setsid()?;
+                                let mut ex = Command::new(command);
+                                ex.arg(path)
+                                    .stdout(Stdio::null())
+                                    .stdin(Stdio::null())
+                                    .spawn()
+                                    .and(Ok(()))
+                                    .map_err(|_| FxError::OpenItem)?;
+                                unsafe { libc::_exit(0) };
+                            }
+                        },
+                        Err(e) => Err(FxError::Nix(e.to_string())),
+                    },
+                    None => Err(FxError::OpenNewWindow(
+                        "Cannot open this type of item in new window".to_owned(),
+                    )),
+                },
+
+                None => Err(FxError::OpenNewWindow(
+                    "Cannot open this type of item in new window".to_owned(),
+                )),
+            },
+        }
+    }
+
+    #[cfg(not(target_os = "linux"))]
     /// Open the selected file in a new window, according to the config.
     pub fn open_file_in_new_window(&self) -> Result<(), FxError> {
         let item = self.get_item()?;
@@ -226,36 +276,13 @@ impl State {
             Some(map) => match extension {
                 Some(extension) => match map.get(extension) {
                     Some(command) => {
-                        if cfg!(target_os = "linux") {
-                            match unsafe { fork() } {
-                                Ok(result) => match result {
-                                    ForkResult::Parent { child } => {
-                                        waitpid(Some(child), None)?;
-                                        Ok(())
-                                    }
-                                    ForkResult::Child => {
-                                        setsid()?;
-                                        let mut ex = Command::new(command);
-                                        ex.arg(path)
-                                            .stdout(Stdio::null())
-                                            .stdin(Stdio::null())
-                                            .spawn()
-                                            .and(Ok(()))
-                                            .map_err(|_| FxError::OpenItem)?;
-                                        unsafe { libc::_exit(0) };
-                                    }
-                                },
-                                Err(e) => Err(FxError::Nix(e.to_string())),
-                            }
-                        } else {
-                            let mut ex = Command::new(command);
-                            ex.arg(path)
-                                .stdout(Stdio::null())
-                                .stdin(Stdio::null())
-                                .spawn()
-                                .and(Ok(()))
-                                .or(Err(FxError::OpenItem))
-                        }
+                        let mut ex = Command::new(command);
+                        ex.arg(path)
+                            .stdout(Stdio::null())
+                            .stdin(Stdio::null())
+                            .spawn()
+                            .and(Ok(()))
+                            .or(Err(FxError::OpenItem))
                     }
                     None => Err(FxError::OpenNewWindow(
                         "Cannot open this type of item in new window".to_owned(),
