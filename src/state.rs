@@ -821,16 +821,16 @@ impl State {
 
     /// Print an item in the directory.
     fn print_item(&self, item: &ItemInfo) {
-        let chars: Vec<char> = item.file_name.chars().collect();
-        let name = if chars.len() > self.layout.name_max_len {
-            let mut result = chars
-                .iter()
-                .take(self.layout.name_max_len - 2)
-                .collect::<String>();
-            result.push_str("..");
-            result
-        } else {
+        let name = if item.file_name.bytes().len() <= self.layout.name_max_len {
             item.file_name.clone()
+        } else {
+            let mut i = (self.layout.name_max_len - 2) as usize;
+            while !item.file_name.is_char_boundary(i) {
+                i -= 1;
+            }
+            let mut file_name = item.file_name.split_at(i).0.to_owned();
+            file_name.push_str("..");
+            file_name
         };
         let time = format_time(&item.modified);
         let color = match item.file_type {
