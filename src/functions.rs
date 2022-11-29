@@ -201,13 +201,14 @@ pub fn list_up_contents(path: &Path) -> Result<Vec<String>, FxError> {
 }
 
 /// Generate the contents tree.
-pub fn make_tree(v: Vec<String>) -> Result<String, FxError> {
+pub fn make_tree(v: Vec<String>, width: usize) -> Result<String, FxError> {
     let len = v.len();
     let mut result = String::new();
     for (i, path) in v.iter().enumerate() {
         if i == len - 1 {
             let mut line = "└ ".to_string();
             line.push_str(path);
+            line = split_str(&line, width);
             result.push_str(&line);
         } else {
             let mut line = "├ ".to_string();
