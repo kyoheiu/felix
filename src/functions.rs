@@ -221,31 +221,23 @@ pub fn make_tree(v: Vec<String>, width: usize) -> Result<String, FxError> {
 }
 
 /// Format texts to print. Used when printing help or text preview.
-pub fn format_txt(txt: &str, column: u16, is_help: bool) -> Vec<String> {
+pub fn format_txt(txt: &str, width: u16, is_help: bool) -> Vec<String> {
     let mut v = Vec::new();
-    let mut column_count = 0;
-    let mut line = String::new();
-    for c in txt.chars() {
-        if c == '\n' {
-            v.push(line);
-            line = String::new();
-            column_count = 0;
-            continue;
+    for line in txt.lines() {
+        let mut line = line;
+        while line.bytes().len() > width as usize {
+            let mut i = width as usize;
+            while !line.is_char_boundary(i) {
+                i -= 1;
+            }
+            let (first, second) = line.split_at(i);
+            v.push(first.to_owned());
+            line = second;
         }
-        line.push(c);
-        column_count += 1;
-        if column_count == column {
-            v.push(line);
-            line = String::new();
-            column_count = 0;
-            continue;
-        }
-    }
-    if !line.is_empty() {
-        v.push(line);
+        v.push(line.to_owned());
     }
     if is_help {
-        v.push("Press Enter to go back.".to_string());
+        v.push("Press Enter to go back.".to_owned());
     }
     v
 }
