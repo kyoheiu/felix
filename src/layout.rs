@@ -141,7 +141,7 @@ impl Layout {
                 vec![]
             }
         };
-        self.print_txt_in_preview_area(item, content, false);
+        self.print_txt_in_preview_area(item, &content, false);
     }
 
     /// Preview text with syntax highlighting.
@@ -169,7 +169,7 @@ impl Layout {
                     .iter()
                     .map(|x| as_24_bit_terminal_escaped(x, false))
                     .collect();
-                self.print_txt_in_preview_area(item, result, true);
+                self.print_txt_in_preview_area(item, &result, true);
             } else {
                 print!("");
             }
@@ -186,7 +186,7 @@ impl Layout {
                 Some(p) => list_up_contents(p),
             };
             if let Ok(contents) = contents {
-                if let Ok(contents) = make_tree(contents) {
+                if let Ok(contents) = make_tree(contents, self.preview_space.0 as usize) {
                     format_txt(&contents, self.preview_space.0, false)
                 } else {
                     vec![]
@@ -196,13 +196,13 @@ impl Layout {
             }
         };
 
-        self.print_txt_in_preview_area(item, content, false);
+        self.print_txt_in_preview_area(item, &content, false);
     }
 
     fn print_txt_in_preview_area(
         &self,
         item: &ItemInfo,
-        content: Vec<String>,
+        content: &[String],
         syntex_highlight: bool,
     ) {
         match self.split {

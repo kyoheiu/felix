@@ -1258,7 +1258,6 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 state.layout.terminal_column,
                                                 true,
                                             );
-                                            let help_len = help.clone().len();
                                             print_help(&help, 0, state.layout.terminal_row);
                                             screen.flush()?;
 
@@ -1269,25 +1268,15 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 {
                                                     match code {
                                                         KeyCode::Char('j') | KeyCode::Down => {
-                                                            if help_len
-                                                                < state.layout.terminal_row.into()
-                                                                || skip
-                                                                    == help_len + 1
-                                                                        - state.layout.terminal_row
-                                                                            as usize
-                                                            {
-                                                                continue;
-                                                            } else {
-                                                                clear_all();
-                                                                skip += 1;
-                                                                print_help(
-                                                                    &help,
-                                                                    skip,
-                                                                    state.layout.terminal_row,
-                                                                );
-                                                                screen.flush()?;
-                                                                continue;
-                                                            }
+                                                            clear_all();
+                                                            skip += 1;
+                                                            print_help(
+                                                                &help,
+                                                                skip,
+                                                                state.layout.terminal_row,
+                                                            );
+                                                            screen.flush()?;
+                                                            continue;
                                                         }
                                                         KeyCode::Char('k') | KeyCode::Up => {
                                                             if skip == 0 {

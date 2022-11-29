@@ -362,14 +362,8 @@ mod tests {
 
     #[test]
     fn test_make_tree() {
-        let v = vec![
-            "data".to_string(),
-            "01.txt".to_string(),
-            "2.txt".to_string(),
-            "a.txt".to_string(),
-            "b.txt".to_string(),
-        ];
-        let tree = make_tree(v).unwrap();
+        let v = ["data", "01.txt", "2.txt", "a.txt", "b.txt"];
+        let tree = make_tree(v.iter().copied().map(|x| x.to_owned()).collect(), 50).unwrap();
         let formatted = format_txt(&tree, 50, false);
         assert_eq!(
             tree,
