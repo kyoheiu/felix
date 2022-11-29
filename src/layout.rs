@@ -127,12 +127,8 @@ impl Layout {
         clear_until_newline();
         move_right(1);
         let mut file_name = format!("[{}]", item.file_name);
-        let mut i = self.preview_space.0 as usize;
-        if file_name.bytes().len() > i {
-            while !file_name.is_char_boundary(i) {
-                i -= 1;
-            }
-            file_name = file_name.split_at(i).0.to_owned();
+        if file_name.bytes().len() > self.preview_space.0 as usize {
+            file_name = split_str(&file_name, self.preview_space.0 as usize);
         }
         print!("{}", file_name);
     }

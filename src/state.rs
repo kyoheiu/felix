@@ -782,13 +782,9 @@ impl State {
         //Show current directory path.
         //crossterm's Stylize cannot be applied to PathBuf,
         //current directory does not have any text attribute for now.
-        let mut i = header_space;
         let current_dir = self.current_dir.display().to_string();
         if current_dir.bytes().len() >= header_space {
-            while !current_dir.is_char_boundary(i) {
-                i -= 1;
-            }
-            let current_dir = current_dir.split_at(i).0.to_owned();
+            let current_dir = split_str(&current_dir, header_space);
             set_color(&TermColor::ForeGround(&Colorname::Cyan));
             print!(" {}", current_dir);
             reset_color();
@@ -824,11 +820,8 @@ impl State {
         let name = if item.file_name.bytes().len() <= self.layout.name_max_len {
             item.file_name.clone()
         } else {
-            let mut i = (self.layout.name_max_len - 2) as usize;
-            while !item.file_name.is_char_boundary(i) {
-                i -= 1;
-            }
-            let mut file_name = item.file_name.split_at(i).0.to_owned();
+            let i = (self.layout.name_max_len - 2) as usize;
+            let mut file_name = split_str(&item.file_name, i);
             file_name.push_str("..");
             file_name
         };

@@ -318,6 +318,21 @@ pub fn convert_to_permissions(permissions: u32) -> String {
     permissions.chars().rev().collect()
 }
 
+///The length of the file name is counted by bytes(), not chars(),
+/// because it is possible that if the name contains multibyte characters
+/// (sometimes they are wide chars such as CJK),
+/// it may exceed the file-name space i.e. header, item list space or preview header.
+/// To avoid this, the file name is split by the nearest character boundary (round-off),
+/// even if extra space between the name and the modified time may appear.
+pub fn split_str(s: &str, i: usize) -> String {
+    let mut i = i;
+    while !s.is_char_boundary(i) {
+        i -= 1;
+    }
+    let (result, _) = s.split_at(i);
+    result.to_owned()
+}
+
 //cargo test -- --nocapture
 #[cfg(test)]
 mod tests {
