@@ -49,6 +49,12 @@ MSRV(Minimum Supported rustc Version): **1.60.0**
 
 _Make sure that `gcc` is installed._
 
+Update Rust:
+
+```
+rustup update
+```
+
 From crates.io:
 
 ```
