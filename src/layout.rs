@@ -19,6 +19,7 @@ pub const CHAFA_WARNING: &str =
 
 pub const PROPER_WIDTH: u16 = 28;
 pub const TIME_WIDTH: u16 = 16;
+const EXTRA_SPACES: u16 = 3;
 
 #[derive(Debug)]
 pub struct Layout {
@@ -178,11 +179,10 @@ impl Layout {
 
     fn preview_directory(&self, item: &ItemInfo) {
         let contents = match &item.symlink_dir_path {
-            None => list_up_contents(&item.file_path),
-            Some(p) => list_up_contents(p),
+            None => list_up_contents(&item.file_path, self.preview_space.0),
+            Some(p) => list_up_contents(p, self.preview_space.0),
         };
         if let Ok(contents) = contents {
-            let contents = make_tree(contents, self.preview_space.0 as usize);
             self.print_txt_in_preview_area(
                 item,
                 &format_txt(&contents, self.preview_space.0, false),
@@ -317,7 +317,7 @@ pub fn make_layout(column: u16) -> (u16, usize) {
         (time_start, name_max)
     } else {
         time_start = column - TIME_WIDTH;
-        name_max = (time_start - SPACES).into();
+        name_max = (time_start - EXTRA_SPACES).into();
         let required = time_start + TIME_WIDTH - 1;
         if required > column {
             let diff = required - column;

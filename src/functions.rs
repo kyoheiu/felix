@@ -10,7 +10,7 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-pub const SPACES: u16 = 3;
+pub const PROCESS_INDICATOR_LENGTH: u16 = 7;
 
 /// Generate modified time as `String`.
 pub fn format_time(time: &Option<String>) -> String {
@@ -67,11 +67,13 @@ pub fn rename_dir(dir_name: &str, name_set: &BTreeSet<String>) -> String {
     new_name
 }
 
+/// Move to information bar.
 pub fn go_to_and_rest_info() {
     to_info_bar();
     clear_current_line();
 }
 
+/// Delele cursor.
 pub fn delete_cursor() {
     print!(" ");
     move_left(1);
@@ -84,11 +86,7 @@ pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
     info!("{}", message);
 
     let (width, _) = terminal_size().unwrap();
-    let trimmed: String = message
-        .to_string()
-        .chars()
-        .take((width - 1).into())
-        .collect();
+    let trimmed = split_str(&message.to_string(), (width - 1).into());
     print!("{}", trimmed);
 
     hide_cursor();
@@ -104,11 +102,7 @@ pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
     warn!("{}", message);
 
     let (width, _) = terminal_size().unwrap();
-    let trimmed: String = message
-        .to_string()
-        .chars()
-        .take((width - 1).into())
-        .collect();
+    let trimmed = split_str(&message.to_string(), (width - 1).into());
     set_color(&TermColor::ForeGround(&Colorname::White));
     set_color(&TermColor::BackGround(&Colorname::LightRed));
     print!("{}", trimmed);
@@ -123,7 +117,7 @@ pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
 /// Print process of put/delete.
 pub fn print_process<T: std::fmt::Display>(message: T) {
     print!("{}", message);
-    move_left(7);
+    move_left(PROCESS_INDICATOR_LENGTH);
 }
 
 /// Print the number of process (put/delete).
@@ -135,7 +129,7 @@ pub fn display_count(i: usize, all: usize) -> String {
     result
 }
 
-/// Convert extension setting in the config to HashMap.
+/// Convert extension setting in the config to BTreeMap.
 pub fn to_extension_map(
     config: &Option<BTreeMap<String, Vec<String>>>,
 ) -> Option<BTreeMap<String, String>> {
@@ -180,11 +174,11 @@ pub fn to_proper_size(byte: u64) -> String {
     result
 }
 
-/// Generate the contents of item to show as a preview.
-pub fn list_up_contents(path: &Path) -> Result<Vec<String>, FxError> {
+/// Generate the contents of the directory to preview.
+pub fn list_up_contents(path: &Path, width: u16) -> Result<String, FxError> {
     let mut file_v = Vec::new();
     let mut dir_v = Vec::new();
-    let mut result = Vec::new();
+    let mut v = Vec::new();
     for item in std::fs::read_dir(path)? {
         let item = item?;
         if item.file_type()?.is_dir() {
@@ -195,20 +189,16 @@ pub fn list_up_contents(path: &Path) -> Result<Vec<String>, FxError> {
     }
     dir_v.sort_by(|a, b| natord::compare(a, b));
     file_v.sort_by(|a, b| natord::compare(a, b));
-    result.append(&mut dir_v);
-    result.append(&mut file_v);
-    Ok(result)
-}
+    v.append(&mut dir_v);
+    v.append(&mut file_v);
 
-/// Generate the contents tree.
-pub fn make_tree(v: Vec<String>, width: usize) -> String {
     let mut result = String::new();
     let len = v.len();
     for (i, item) in v.iter().enumerate() {
         if i == len - 1 {
             let mut line = "└ ".to_string();
             line.push_str(item);
-            line = split_str(&line, width);
+            line = split_str(&line, width.into());
             result.push_str(&line);
         } else {
             let mut line = "├ ".to_string();
@@ -217,7 +207,7 @@ pub fn make_tree(v: Vec<String>, width: usize) -> String {
             result.push_str(&line);
         }
     }
-    result
+    Ok(result)
 }
 
 /// Format texts to print. Used when printing help or text preview.
@@ -260,10 +250,12 @@ pub fn print_help(v: &[String], skip_number: usize, row: u16) {
     }
 }
 
+/// Check if we can edit the file name safely.
 pub fn is_editable(s: &str) -> bool {
     s.is_ascii()
 }
 
+/// Initialize the log if `-l` option is added.
 pub fn init_log(config_dir_path: &Path) -> Result<(), FxError> {
     let mut log_name = chrono::Local::now().format("%F-%H-%M-%S").to_string();
     log_name.push_str(".log");
@@ -282,6 +274,7 @@ pub fn init_log(config_dir_path: &Path) -> Result<(), FxError> {
     Ok(())
 }
 
+/// Check the latest version of felix.
 pub fn check_version() -> Result<(), FxError> {
     let output = std::process::Command::new("cargo")
         .args(["search", "felix", "--limit", "1"])
@@ -305,6 +298,7 @@ pub fn check_version() -> Result<(), FxError> {
     Ok(())
 }
 
+/// linux-specific: Convert u32 to permission-ish string.
 pub fn convert_to_permissions(permissions: u32) -> String {
     let permissions = format!("{permissions:o}");
     let permissions: String = permissions.chars().rev().take(3).collect();
@@ -361,15 +355,10 @@ mod tests {
     }
 
     #[test]
-    fn test_make_tree() {
-        let v = ["data", "01.txt", "2.txt", "a.txt", "b.txt"];
-        let tree = make_tree(v.iter().copied().map(|x| x.to_owned()).collect(), 50);
-        let formatted = format_txt(&tree, 50, false);
-        assert_eq!(
-            tree,
-            ("├ data\n├ 01.txt\n├ 2.txt\n├ a.txt\n└ b.txt").to_string()
-        );
-        assert_eq!(tree.lines().count(), formatted.len());
+    fn test_list_up_contents() {
+        let p = PathBuf::from("./testfiles");
+        let tree = list_up_contents(&p, 20).unwrap();
+        assert_eq!(tree, "├ archives\n└ images".to_string());
     }
 
     #[test]
