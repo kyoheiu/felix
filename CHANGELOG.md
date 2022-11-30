@@ -4,6 +4,15 @@
 
 ## Unreleased
 
+### Fixed
+
+- By using `fork()` and creating a new process, now you can open a file in a new window on Wayland environment.
+- Proper handling of wide characters: Even if an item or a info message includes some wide charatcters such as CJK, the layout won't break anymore.
+
+### Changed
+
+- Some refactoring around text-printing in the preview space.
+
 ## v2.1.0 (2022-11-19)
 
 ### Added
