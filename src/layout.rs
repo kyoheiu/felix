@@ -13,7 +13,6 @@ use syntect::highlighting::Theme;
 use syntect::parsing::SyntaxSet;
 use syntect::util::{as_24_bit_terminal_escaped, split_at, LinesWithEndings};
 
-/// cf: https://docs.rs/image/latest/src/image/image.rs.html#84-112
 pub const MAX_SIZE_TO_PREVIEW: u64 = 1_000_000_000;
 pub const CHAFA_WARNING: &str =
     "From v1.1.0, the image preview needs chafa. For more details, please see help by `:h` ";
@@ -102,7 +101,7 @@ impl Layout {
             }
             Some(PreviewType::Text) => {
                 if self.syntax_highlight {
-                    match self.preview_text_with_sh(item) {
+                    match self.preview_text_with_highlight(item) {
                         Ok(_) => {}
                         Err(e) => {
                             print!("{}", e);
@@ -134,18 +133,17 @@ impl Layout {
     }
 
     fn preview_text(&self, item: &ItemInfo) {
-        let content = {
-            if let Some(content) = &item.content {
-                format_txt(content, self.preview_space.0, false)
-            } else {
-                vec![]
-            }
-        };
-        self.print_txt_in_preview_area(item, &content, false);
+        if let Some(content) = &item.content {
+            self.print_txt_in_preview_area(
+                item,
+                &format_txt(content, self.preview_space.0, false),
+                false,
+            );
+        }
     }
 
     /// Preview text with syntax highlighting.
-    fn preview_text_with_sh(&self, item: &ItemInfo) -> Result<(), FxError> {
+    fn preview_text_with_highlight(&self, item: &ItemInfo) -> Result<(), FxError> {
         if let Ok(Some(syntax)) = self.syntax_set.find_syntax_for_file(item.file_path.clone()) {
             let mut h = HighlightLines::new(syntax, &self.theme);
             if let Some(content) = &item.content {
@@ -171,7 +169,6 @@ impl Layout {
                     .collect();
                 self.print_txt_in_preview_area(item, &result, true);
             } else {
-                print!("");
             }
         } else {
             self.preview_text(item);
