@@ -180,23 +180,18 @@ impl Layout {
     }
 
     fn preview_directory(&self, item: &ItemInfo) {
-        let content = {
-            let contents = match &item.symlink_dir_path {
-                None => list_up_contents(&item.file_path),
-                Some(p) => list_up_contents(p),
-            };
-            if let Ok(contents) = contents {
-                if let Ok(contents) = make_tree(contents, self.preview_space.0 as usize) {
-                    format_txt(&contents, self.preview_space.0, false)
-                } else {
-                    vec![]
-                }
-            } else {
-                vec![]
-            }
+        let contents = match &item.symlink_dir_path {
+            None => list_up_contents(&item.file_path),
+            Some(p) => list_up_contents(p),
         };
-
-        self.print_txt_in_preview_area(item, &content, false);
+        if let Ok(contents) = contents {
+            let contents = make_tree(contents, self.preview_space.0 as usize);
+            self.print_txt_in_preview_area(
+                item,
+                &format_txt(&contents, self.preview_space.0, false),
+                false,
+            );
+        }
     }
 
     fn print_txt_in_preview_area(

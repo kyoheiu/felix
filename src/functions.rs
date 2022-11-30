@@ -201,23 +201,23 @@ pub fn list_up_contents(path: &Path) -> Result<Vec<String>, FxError> {
 }
 
 /// Generate the contents tree.
-pub fn make_tree(v: Vec<String>, width: usize) -> Result<String, FxError> {
-    let len = v.len();
+pub fn make_tree(v: Vec<String>, width: usize) -> String {
     let mut result = String::new();
-    for (i, path) in v.iter().enumerate() {
+    let len = v.len();
+    for (i, item) in v.iter().enumerate() {
         if i == len - 1 {
             let mut line = "└ ".to_string();
-            line.push_str(path);
+            line.push_str(item);
             line = split_str(&line, width);
             result.push_str(&line);
         } else {
             let mut line = "├ ".to_string();
-            line.push_str(path);
+            line.push_str(item);
             line.push('\n');
             result.push_str(&line);
         }
     }
-    Ok(result)
+    result
 }
 
 /// Format texts to print. Used when printing help or text preview.
@@ -363,7 +363,7 @@ mod tests {
     #[test]
     fn test_make_tree() {
         let v = ["data", "01.txt", "2.txt", "a.txt", "b.txt"];
-        let tree = make_tree(v.iter().copied().map(|x| x.to_owned()).collect(), 50).unwrap();
+        let tree = make_tree(v.iter().copied().map(|x| x.to_owned()).collect(), 50);
         let formatted = format_txt(&tree, 50, false);
         assert_eq!(
             tree,
