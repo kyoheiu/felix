@@ -31,6 +31,7 @@ pub const BEGINNING_ROW: u16 = 3;
 pub const FX_CONFIG_DIR: &str = "felix";
 pub const TRASH: &str = "trash";
 pub const EMPTY_WARNING: &str = "Are you sure to empty the trash directory? (if yes: y)";
+const TIME_PREFIX: usize = 11;
 
 #[derive(Debug)]
 pub struct State {
@@ -541,7 +542,7 @@ impl State {
         match target_dir {
             None => {
                 if item.file_path.parent() == Some(&self.trash_dir) {
-                    let rename: String = item.file_name.chars().skip(11).collect();
+                    let rename: String = item.file_name.chars().skip(TIME_PREFIX).collect();
                     let rename = rename_file(&rename, name_set);
                     let to = &self.current_dir.join(&rename);
                     if std::fs::copy(&item.file_path, to).is_err() {
@@ -561,7 +562,7 @@ impl State {
             }
             Some(path) => {
                 if item.file_path.parent() == Some(&self.trash_dir) {
-                    let rename: String = item.file_name.chars().skip(11).collect();
+                    let rename: String = item.file_name.chars().skip(TIME_PREFIX).collect();
                     let rename = rename_file(&rename, name_set);
                     let to = path.join(&rename);
                     if std::fs::copy(&item.file_path, to.clone()).is_err() {
@@ -616,7 +617,7 @@ impl State {
                     .parent()
                     .ok_or_else(|| FxError::Io("Cannot read parent dir.".to_string()))?;
                 if parent == &self.trash_dir {
-                    let rename: String = buf.file_name.chars().skip(11).collect();
+                    let rename: String = buf.file_name.chars().skip(TIME_PREFIX).collect();
                     target = match &target_dir {
                         None => self.current_dir.join(&rename),
                         Some(path) => path.join(&rename),
