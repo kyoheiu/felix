@@ -4,14 +4,18 @@
 
 ## Unreleased
 
+## v2.1.1 (2022-12-02)
+
 ### Fixed
 
 - You can now open a file in a new window on Wayland environment too.
 - Proper handling of wide characters: Even if an item or a info message includes some wide charatcters such as CJK, the layout won't break anymore.
+- Fix cursor color after printing the text preview.
 
 ### Changed
 
 - Some refactoring around text-printing in the preview space.
+- When you change the sort key, felix refresh the list more efficiently than ever by avoiding to read all the items.
 
 ## v2.1.0 (2022-11-19)
 
