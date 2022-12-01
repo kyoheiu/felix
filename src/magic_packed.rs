@@ -43,7 +43,7 @@ const HEADER_ZLIB_DEFAULT_COMPRESSION_WITH_PRESET: [u8; 2] = [0x78, 0xBB];
 const HEADER_ZLIB_BEST_COMPRESSION_WITH_PRESET: [u8; 2] = [0x78, 0xF9];
 
 #[derive(PartialEq, Eq, Debug)]
-enum PackedSignature {
+enum CompressionSignature {
     Gzip,
     Xz,
     Zstd,
@@ -88,134 +88,134 @@ enum ZlibCompression {
     BestCompressionWithPreset,
 }
 
-impl std::fmt::Display for PackedSignature {
+impl std::fmt::Display for CompressionSignature {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let printable = match self {
-            PackedSignature::Gzip => "Gzip",
-            PackedSignature::Xz => "xz",
-            PackedSignature::Zstd => "zstd",
-            PackedSignature::Tar => "tar",
-            PackedSignature::Pkzip => "zip",
-            PackedSignature::TarzLZW => "tar(LZW)",
-            PackedSignature::TarzLZH => "tar(LZH)",
-            PackedSignature::SevenZ => "7z",
-            PackedSignature::Lzh0 => "lzh method 0",
-            PackedSignature::Lzh5 => "lzh method 5",
-            PackedSignature::Bzip2 => "Bzip2",
-            PackedSignature::Rnc1 => "rnc ver.1",
-            PackedSignature::Rnc2 => "rnc ver.2",
-            PackedSignature::Lzip => "lzip",
-            PackedSignature::Rar1 => "rar v1.50",
-            PackedSignature::Rar5 => "rar v5.00",
-            PackedSignature::SzddQuantum => "Quantum",
-            PackedSignature::Rsvkdata => "QuickZip rs",
-            PackedSignature::Ace => "ACE",
-            PackedSignature::Kwaj => "KWAJ",
-            PackedSignature::Szdd9x => "SZDD",
-            PackedSignature::Isz => "ISO",
-            PackedSignature::Draco => "Google Draco",
-            PackedSignature::Slob => "Slob",
-            PackedSignature::DCMPa30 => "Binary Delta",
-            PackedSignature::Pa30 => "Binary Delta",
-            PackedSignature::Lzfse => "LZFSE",
-            PackedSignature::Zlib(_) => "zlib",
-            PackedSignature::NonArchived => "Non archived",
+            CompressionSignature::Gzip => "Gzip",
+            CompressionSignature::Xz => "xz",
+            CompressionSignature::Zstd => "zstd",
+            CompressionSignature::Tar => "tar",
+            CompressionSignature::Pkzip => "zip",
+            CompressionSignature::TarzLZW => "tar(LZW)",
+            CompressionSignature::TarzLZH => "tar(LZH)",
+            CompressionSignature::SevenZ => "7z",
+            CompressionSignature::Lzh0 => "lzh method 0",
+            CompressionSignature::Lzh5 => "lzh method 5",
+            CompressionSignature::Bzip2 => "Bzip2",
+            CompressionSignature::Rnc1 => "rnc ver.1",
+            CompressionSignature::Rnc2 => "rnc ver.2",
+            CompressionSignature::Lzip => "lzip",
+            CompressionSignature::Rar1 => "rar v1.50",
+            CompressionSignature::Rar5 => "rar v5.00",
+            CompressionSignature::SzddQuantum => "Quantum",
+            CompressionSignature::Rsvkdata => "QuickZip rs",
+            CompressionSignature::Ace => "ACE",
+            CompressionSignature::Kwaj => "KWAJ",
+            CompressionSignature::Szdd9x => "SZDD",
+            CompressionSignature::Isz => "ISO",
+            CompressionSignature::Draco => "Google Draco",
+            CompressionSignature::Slob => "Slob",
+            CompressionSignature::DCMPa30 => "Binary Delta",
+            CompressionSignature::Pa30 => "Binary Delta",
+            CompressionSignature::Lzfse => "LZFSE",
+            CompressionSignature::Zlib(_) => "zlib",
+            CompressionSignature::NonArchived => "Non archived",
         };
         write!(f, "{}", printable)
     }
 }
 
-fn inspect_packed(p: &Path) -> Result<PackedSignature, FxError> {
+fn inspect_compression(p: &Path) -> Result<CompressionSignature, FxError> {
     let mut file = std::fs::File::open(p)?;
     let mut buffer = [0; 265];
     file.read_exact(&mut buffer)?;
 
     let sign = if buffer[..2] == HEADER_GZIP {
-        PackedSignature::Gzip
+        CompressionSignature::Gzip
     } else if buffer[..6] == HEADER_XZ {
-        PackedSignature::Xz
+        CompressionSignature::Xz
     } else if buffer[..4] == HEADER_ZSTD {
-        PackedSignature::Zstd
+        CompressionSignature::Zstd
     } else if buffer[257..] == HEADER_TAR1 || buffer[257..] == HEADER_TAR2 {
-        PackedSignature::Tar
+        CompressionSignature::Tar
     } else if buffer[..4] == HEADER_PKZIP {
-        PackedSignature::Pkzip
+        CompressionSignature::Pkzip
     } else if buffer[..2] == HEADER_TARZ_LZW {
-        PackedSignature::TarzLZW
+        CompressionSignature::TarzLZW
     } else if buffer[..2] == HEADER_TARZ_LZH {
-        PackedSignature::TarzLZH
+        CompressionSignature::TarzLZH
     } else if buffer[..6] == HEADER_SEVENZ {
-        PackedSignature::SevenZ
+        CompressionSignature::SevenZ
     } else if buffer[..6] == HEADER_LZH0 {
-        PackedSignature::Lzh0
+        CompressionSignature::Lzh0
     } else if buffer[..6] == HEADER_LZH5 {
-        PackedSignature::Lzh5
+        CompressionSignature::Lzh5
     } else if buffer[..3] == HEADER_BZ2 {
-        PackedSignature::Bzip2
+        CompressionSignature::Bzip2
     } else if buffer[..4] == HEADER_RNC1 {
-        PackedSignature::Rnc1
+        CompressionSignature::Rnc1
     } else if buffer[..4] == HEADER_RNC2 {
-        PackedSignature::Rnc2
+        CompressionSignature::Rnc2
     } else if buffer[..7] == HEADER_RAR1 {
-        PackedSignature::Rar1
+        CompressionSignature::Rar1
     } else if buffer[..4] == HEADER_LZIP {
-        PackedSignature::Lzip
+        CompressionSignature::Lzip
     } else if buffer[..8] == HEADER_RAR5 {
-        PackedSignature::Rar5
+        CompressionSignature::Rar5
     } else if buffer[..8] == HEADER_SZDDQUANTUM {
-        PackedSignature::SzddQuantum
+        CompressionSignature::SzddQuantum
     } else if buffer[..8] == HEADER_RSVKDATA {
-        PackedSignature::Rsvkdata
+        CompressionSignature::Rsvkdata
     } else if buffer[..7] == HEADER_ACE {
-        PackedSignature::Ace
+        CompressionSignature::Ace
     } else if buffer[..4] == HEADER_KWAJ {
-        PackedSignature::Kwaj
+        CompressionSignature::Kwaj
     } else if buffer[..4] == HEADER_SZDD9X {
-        PackedSignature::Szdd9x
+        CompressionSignature::Szdd9x
     } else if buffer[..4] == HEADER_ISZ {
-        PackedSignature::Isz
+        CompressionSignature::Isz
     } else if buffer[..5] == HEADER_DRACO {
-        PackedSignature::Draco
+        CompressionSignature::Draco
     } else if buffer[..8] == HEADER_SLOB {
-        PackedSignature::Slob
+        CompressionSignature::Slob
     } else if buffer[..8] == HEADER_DCMPA30 {
-        PackedSignature::DCMPa30
+        CompressionSignature::DCMPa30
     } else if buffer[..4] == HEADER_PA30 {
-        PackedSignature::Pa30
+        CompressionSignature::Pa30
     } else if buffer[..4] == HEADER_LZFSE {
-        PackedSignature::Lzfse
+        CompressionSignature::Lzfse
     } else if buffer[..2] == HEADER_ZLIB_NO_COMPRESSION_WITHOUT_PRESET {
-        PackedSignature::Zlib(ZlibCompression::NoCompressionWithoutPreset)
+        CompressionSignature::Zlib(ZlibCompression::NoCompressionWithoutPreset)
     } else if buffer[..2] == HEADER_ZLIB_DEFAULT_COMPRESSION_WITHOUT_PRESET {
-        PackedSignature::Zlib(ZlibCompression::DefaultCompressionWithoutPreset)
+        CompressionSignature::Zlib(ZlibCompression::DefaultCompressionWithoutPreset)
     } else if buffer[..2] == HEADER_ZLIB_BEST_SPEED_WITHOUT_PRESET {
-        PackedSignature::Zlib(ZlibCompression::BestSpeedWithoutPreset)
+        CompressionSignature::Zlib(ZlibCompression::BestSpeedWithoutPreset)
     } else if buffer[..2] == HEADER_ZLIB_BEST_COMPRESSION_WITHOUT_PRESET {
-        PackedSignature::Zlib(ZlibCompression::BestCompressionWithoutPreset)
+        CompressionSignature::Zlib(ZlibCompression::BestCompressionWithoutPreset)
     } else if buffer[..2] == HEADER_ZLIB_NO_COMPRESSION_WITH_PRESET {
-        PackedSignature::Zlib(ZlibCompression::NoCompressionWithPreset)
+        CompressionSignature::Zlib(ZlibCompression::NoCompressionWithPreset)
     } else if buffer[..2] == HEADER_ZLIB_DEFAULT_COMPRESSION_WITH_PRESET {
-        PackedSignature::Zlib(ZlibCompression::DefaultCompressionWithPreset)
+        CompressionSignature::Zlib(ZlibCompression::DefaultCompressionWithPreset)
     } else if buffer[..2] == HEADER_ZLIB_BEST_SPEED_WITH_PRESET {
-        PackedSignature::Zlib(ZlibCompression::BestSpeedWithPreset)
+        CompressionSignature::Zlib(ZlibCompression::BestSpeedWithPreset)
     } else if buffer[..2] == HEADER_ZLIB_BEST_COMPRESSION_WITH_PRESET {
-        PackedSignature::Zlib(ZlibCompression::BestCompressionWithPreset)
+        CompressionSignature::Zlib(ZlibCompression::BestCompressionWithPreset)
     } else {
-        PackedSignature::NonArchived
+        CompressionSignature::NonArchived
     };
     Ok(sign)
 }
 
 pub fn unpack(p: &Path, dest: &Path) -> Result<(), FxError> {
-    let sign = inspect_packed(p)?;
+    let sign = inspect_compression(p)?;
     match sign {
-        PackedSignature::Gzip => {
+        CompressionSignature::Gzip => {
             let file = std::fs::File::open(p)?;
             let file = flate2::read::GzDecoder::new(file);
             let mut archive = tar::Archive::new(file);
             archive.unpack(dest)?;
         }
-        PackedSignature::Xz => {
+        CompressionSignature::Xz => {
             let file = std::fs::File::open(p)?;
             let mut file = std::io::BufReader::new(file);
             let mut decomp: Vec<u8> = Vec::new();
@@ -223,7 +223,7 @@ pub fn unpack(p: &Path, dest: &Path) -> Result<(), FxError> {
             let mut archive = tar::Archive::new(decomp.as_slice());
             archive.unpack(dest)?;
         }
-        PackedSignature::Zstd => {
+        CompressionSignature::Zstd => {
             let file = std::fs::File::open(p)?;
             let file = std::io::BufReader::new(file);
             let decoder = zstd::stream::decode_all(file).unwrap();
@@ -231,38 +231,16 @@ pub fn unpack(p: &Path, dest: &Path) -> Result<(), FxError> {
                 if dest.exists() {
                     std::fs::remove_dir_all(dest)?;
                 }
-                //Create a new file from the zst file, stripping the extension
-                let mut new_name = p.with_extension("");
-                while new_name.exists() {
-                    let (parent, mut stem, extension) = {
-                        (
-                            new_name.parent(),
-                            new_name.file_stem().unwrap().to_owned(),
-                            new_name.extension(),
-                        )
-                    };
-                    stem.push("+");
-                    if let Some(ext) = extension {
-                        stem.push(".");
-                        stem.push(ext);
-                    }
-                    if let Some(parent) = parent {
-                        let mut with_p = parent.to_path_buf();
-                        with_p.push(stem);
-                        new_name = with_p;
-                    } else {
-                        new_name = PathBuf::from(stem);
-                    }
-                }
-                std::fs::write(new_name, decoder)?;
+                let new_path = add_suffix_to_zstd_path(p);
+                std::fs::write(new_path, decoder)?;
             }
         }
-        PackedSignature::Tar => {
+        CompressionSignature::Tar => {
             let file = std::fs::File::open(p)?;
             let mut archive = tar::Archive::new(file);
             archive.unpack(dest)?;
         }
-        PackedSignature::Pkzip => {
+        CompressionSignature::Pkzip => {
             let file = std::fs::File::open(p)?;
             let mut archive = zip::ZipArchive::new(file)?;
             archive.extract(dest)?;
@@ -273,7 +251,7 @@ pub fn unpack(p: &Path, dest: &Path) -> Result<(), FxError> {
         //     let mut archive = tar::Archive::new(file);
         //     archive.unpack(dest)?;
         // }
-        PackedSignature::NonArchived => {
+        CompressionSignature::NonArchived => {
             return Err(FxError::Unpack("Seems not an archive file.".to_owned()))
         }
         _ => {
@@ -285,6 +263,36 @@ pub fn unpack(p: &Path, dest: &Path) -> Result<(), FxError> {
     }
 
     Ok(())
+}
+
+/// Create a new path from the zst file, stripping the extension
+fn add_suffix_to_zstd_path(p: &Path) -> PathBuf {
+    let mut new_path = p.with_extension("");
+    let original_name = new_path.clone();
+    let mut count: usize = 1;
+    while new_path.exists() {
+        let (parent, mut stem, extension) = {
+            (
+                original_name.parent(),
+                original_name.file_stem().unwrap_or_default().to_owned(),
+                original_name.extension(),
+            )
+        };
+
+        stem.push("_");
+        stem.push(count.to_string());
+        if let Some(ext) = extension {
+            stem.push(".");
+            stem.push(ext);
+        }
+        if let Some(parent) = parent {
+            let mut with_p = parent.to_path_buf();
+            with_p.push(stem);
+            new_path = with_p;
+        }
+        count += 1;
+    }
+    new_path
 }
 
 #[cfg(test)]
@@ -302,48 +310,60 @@ mod tests {
     /// zip file format and formats based on it(zip, docx, ...)
     fn test_inspect_signature() {
         let p = PathBuf::from("testfiles/archives/archive.tar.gz");
-        assert_eq!(PackedSignature::Gzip, inspect_packed(&p).unwrap());
+        assert_eq!(CompressionSignature::Gzip, inspect_compression(&p).unwrap());
         let dest = PathBuf::from("testfiles/archives/gz");
         assert!(unpack(&p, &dest).is_ok());
 
         let p = PathBuf::from("testfiles/archives/archive.tar.xz");
-        assert_eq!(PackedSignature::Xz, inspect_packed(&p).unwrap());
+        assert_eq!(CompressionSignature::Xz, inspect_compression(&p).unwrap());
         let dest = PathBuf::from("testfiles/archives/xz");
         assert!(unpack(&p, &dest).is_ok());
 
         let p = PathBuf::from("testfiles/archives/archive.tar.zst");
-        assert_eq!(PackedSignature::Zstd, inspect_packed(&p).unwrap());
+        assert_eq!(CompressionSignature::Zstd, inspect_compression(&p).unwrap());
         let dest = PathBuf::from("testfiles/archives/zst");
         assert!(unpack(&p, &dest).is_ok());
 
         let p = PathBuf::from("testfiles/archives/archive.txt.zst");
-        assert_eq!(PackedSignature::Zstd, inspect_packed(&p).unwrap());
+        assert_eq!(CompressionSignature::Zstd, inspect_compression(&p).unwrap());
         let dest = PathBuf::from("testfiles/archives/zst_no_tar");
         assert!(unpack(&p, &dest).is_ok());
 
         let p = PathBuf::from("testfiles/archives/archive.tar");
-        assert_eq!(PackedSignature::Tar, inspect_packed(&p).unwrap());
+        assert_eq!(CompressionSignature::Tar, inspect_compression(&p).unwrap());
         let dest = PathBuf::from("testfiles/archives/tar");
         assert!(unpack(&p, &dest).is_ok());
 
         let p = PathBuf::from("testfiles/archives/archive_bzip2.zip");
-        assert_eq!(PackedSignature::Pkzip, inspect_packed(&p).unwrap());
+        assert_eq!(
+            CompressionSignature::Pkzip,
+            inspect_compression(&p).unwrap()
+        );
         let dest = PathBuf::from("testfiles/archives/bzip2");
         assert!(unpack(&p, &dest).is_ok());
 
         let p = PathBuf::from("testfiles/archives/archive_store.zip");
-        assert_eq!(PackedSignature::Pkzip, inspect_packed(&p).unwrap());
+        assert_eq!(
+            CompressionSignature::Pkzip,
+            inspect_compression(&p).unwrap()
+        );
         let dest = PathBuf::from("testfiles/archives/store");
         assert!(unpack(&p, &dest).is_ok());
 
         let p = PathBuf::from("testfiles/archives/archive_deflate.zip");
-        assert_eq!(PackedSignature::Pkzip, inspect_packed(&p).unwrap());
+        assert_eq!(
+            CompressionSignature::Pkzip,
+            inspect_compression(&p).unwrap()
+        );
         let dest = PathBuf::from("testfiles/archives/deflate");
         assert!(unpack(&p, &dest).is_ok());
 
         //bz2 not available now
         let p = PathBuf::from("testfiles/archives/archive.tar.bz2");
-        assert_eq!(PackedSignature::Bzip2, inspect_packed(&p).unwrap());
+        assert_eq!(
+            CompressionSignature::Bzip2,
+            inspect_compression(&p).unwrap()
+        );
         let dest = PathBuf::from("testfiles/archives/bz2");
         assert!(unpack(&p, &dest).is_err());
     }

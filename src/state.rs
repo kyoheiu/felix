@@ -3,6 +3,7 @@ use super::errors::FxError;
 use super::functions::*;
 use super::layout::*;
 use super::magic_image::is_supported_image_type;
+use super::magic_packed;
 use super::nums::*;
 use super::op::*;
 use super::session::*;
@@ -1251,6 +1252,24 @@ impl State {
         };
         let serialized = serde_yaml::to_string(&session)?;
         fs::write(&session_path, serialized)?;
+        Ok(())
+    }
+
+    /// Unpack/unarchive a file.
+    pub fn unpack(&self) -> Result<(), FxError> {
+        let item = self.get_item()?;
+        let p = item.file_path.clone();
+
+        let mut name_set: BTreeSet<String> = BTreeSet::new();
+        for item in self.list.iter() {
+            name_set.insert(item.file_name.clone());
+        }
+
+        let dest_name = rename_dir(&item.file_name, &name_set);
+        let mut dest = self.current_dir.clone();
+        dest.push(dest_name);
+
+        magic_packed::unpack(&p, &dest)?;
         Ok(())
     }
 }

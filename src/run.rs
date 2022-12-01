@@ -3,7 +3,6 @@ use super::errors::FxError;
 use super::functions::*;
 use super::help::HELP;
 use super::layout::Split;
-use super::magic_packed::unpack;
 use super::nums::*;
 use super::op::*;
 use super::session::*;
@@ -15,7 +14,6 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::execute;
 use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
 use log::{error, info};
-use std::collections::BTreeSet;
 use std::env::set_current_dir;
 use std::fmt::Write as _;
 use std::io::{stdout, Write};
@@ -313,31 +311,17 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                     //Unpack archive file. Fails if it is not an archive file or any of supported types.
                     KeyCode::Char('e') => {
-                        if let Ok(item) = state.get_item() {
-                            let p = item.file_path.clone();
-
-                            let mut name_set: BTreeSet<String> = BTreeSet::new();
-
-                            for item in state.list.iter() {
-                                name_set.insert(item.file_name.clone());
-                            }
-
-                            let dest_name = rename_dir(&item.file_name, &name_set);
-                            let mut dest = state.current_dir.clone();
-                            dest.push(dest_name);
-
-                            print_info("Unpacking...", state.layout.y);
-                            screen.flush()?;
-                            let start = Instant::now();
-                            if let Err(e) = unpack(&p, &dest) {
-                                state.reload(state.layout.y)?;
-                                print_warning(e, state.layout.y);
-                                continue;
-                            }
+                        print_info("Unpacking...", state.layout.y);
+                        screen.flush()?;
+                        let start = Instant::now();
+                        if let Err(e) = state.unpack() {
                             state.reload(state.layout.y)?;
-                            let duration = duration_to_string(start.elapsed());
-                            print_info(format!("Unpacked. [{}]", duration), state.layout.y);
+                            print_warning(e, state.layout.y);
+                            continue;
                         }
+                        let duration = duration_to_string(start.elapsed());
+                        state.reload(state.layout.y)?;
+                        print_info(format!("Unpacked. [{}]", duration), state.layout.y);
                     }
 
                     //Jumps to the directory that matches the keyword (zoxide required).
