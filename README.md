@@ -11,24 +11,13 @@ For the detailed document, please see https://kyoheiu.dev/felix.
 
 ## New Release
 
-## v2.1.0 (2022-11-19)
-
-### Added
-
-![sample_extraction](screenshots/sample_extraction.gif)
-
-- Feature to unpack archive/compressed file to the current directory. Supported types: `tar.gz`(Gzip), `tar.xz`(lzma), `tar.zst`(Zstandard & tar), `zst`(Zstandard), `tar`, zip file format and formats based on it(`zip`, `docx`, ...). To unpack, press `e` on the item.
-  - The number of dependencies bumps up to around 150 due to this.
+## v2.1.1 (2022-12-02)
 
 ### Fixed
 
-- Bug: In the select mode, the selected item was unintentionally canceled when going up/down.
-- Delete pointer properly when removing items.
-- Instead of panic, return error when `config_dir()` fails.
-
-### Changed
-
-- Image file detection: Use magic bytes instead of checking the extension. This will enable to detect image more precisely.
+- You can now open a file in a new window on Wayland environment too.
+- Proper handling of wide characters: Even if e.g. file name includes some wide charatcters such as CJK, the layout won't break anymore.
+- Fix cursor color after printing the text preview.
 
 For more details, see `CHANGELOG.md`.
 
@@ -43,13 +32,13 @@ For more details, see `CHANGELOG.md`.
 
 _For Windows users: From v1.3.0, it can be at least compiled on Windows (see `.github/workflows/install_test.yml`.) If you're interested, please try and report any problems._
 
-MSRV(Minimum Supported rustc Version): **1.60.0**
-
 ## Installation
 
 _Make sure that `gcc` is installed._
 
-Update Rust:
+MSRV(Minimum Supported rustc Version): **1.60.0**
+
+Update Rust if rustc < 1.60:
 
 ```
 rustup update
