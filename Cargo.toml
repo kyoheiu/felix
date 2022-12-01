@@ -1,6 +1,6 @@
 [package]
 name = "felix"
-version = "2.1.0"
+version = "2.1.1"
 authors = ["Kyohei Uto <im@kyoheiu.dev>"]
 edition = "2021"
 description = "tui file manager with vim-like key mapping"
@@ -31,6 +31,9 @@ tar = "0.4.38"
 flate2 = "1.0.24"
 lzma-rs = "0.2.0"
 zstd = "0.11.2"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+nix = {version = "0.25.0", features = ["process"]}
 
 [dependencies.serde]
 version = "1.0.136"

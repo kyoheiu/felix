@@ -3,7 +3,6 @@ use super::errors::FxError;
 use super::functions::*;
 use super::help::HELP;
 use super::layout::Split;
-use super::magic_packed::unpack;
 use super::nums::*;
 use super::op::*;
 use super::session::*;
@@ -15,7 +14,6 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::execute;
 use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
 use log::{error, info};
-use std::collections::HashSet;
 use std::env::set_current_dir;
 use std::fmt::Write as _;
 use std::io::{stdout, Write};
@@ -42,7 +40,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         init_log(&config_dir_path)?;
     }
 
-    //Make config file and trash directory if not exist.
+    //Make config file and trash directory if not exists.
     make_config_if_not_exists(&config_file_path, &trash_dir_path)?;
 
     //If session file, which stores sortkey and whether to show hidden items, does not exist (i.e. first launch), make it.
@@ -107,7 +105,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
             Split::Vertical => state.layout.terminal_row,
             Split::Horizontal => state.layout.terminal_row / 2,
         };
-        state.refresh(new_column, new_row, BEGINNING_ROW);
+        state.refresh(new_column, new_row, BEGINNING_ROW)?;
     } else {
         state.reload(BEGINNING_ROW)?;
     }
@@ -313,31 +311,17 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                     //Unpack archive file. Fails if it is not an archive file or any of supported types.
                     KeyCode::Char('e') => {
-                        if let Ok(item) = state.get_item() {
-                            let p = item.file_path.clone();
-
-                            let mut name_set: HashSet<String> = HashSet::new();
-
-                            for item in state.list.iter() {
-                                name_set.insert(item.file_name.clone());
-                            }
-
-                            let dest_name = rename_dir(&item.file_name, &name_set);
-                            let mut dest = state.current_dir.clone();
-                            dest.push(dest_name);
-
-                            print_info("Unpacking...", state.layout.y);
-                            screen.flush()?;
-                            let start = Instant::now();
-                            if let Err(e) = unpack(&p, &dest) {
-                                state.reload(state.layout.y)?;
-                                print_warning(e, state.layout.y);
-                                continue;
-                            }
+                        print_info("Unpacking...", state.layout.y);
+                        screen.flush()?;
+                        let start = Instant::now();
+                        if let Err(e) = state.unpack() {
                             state.reload(state.layout.y)?;
-                            let duration = duration_to_string(start.elapsed());
-                            print_info(format!("Unpacked. [{}]", duration), state.layout.y);
+                            print_warning(e, state.layout.y);
+                            continue;
                         }
+                        let duration = duration_to_string(start.elapsed());
+                        state.reload(state.layout.y)?;
+                        print_info(format!("Unpacked. [{}]", duration), state.layout.y);
                     }
 
                     //Jumps to the directory that matches the keyword (zoxide required).
@@ -357,7 +341,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                             if let Event::Key(KeyEvent { code, .. }) = event::read()? {
                                 match code {
                                     KeyCode::Esc => {
-                                        reset_info_line();
+                                        go_to_and_rest_info();
                                         hide_cursor();
                                         state.move_cursor(state.layout.y);
                                         break 'zoxide;
@@ -383,7 +367,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                     KeyCode::Backspace => {
                                         if current_pos == initial_pos + 1 {
-                                            reset_info_line();
+                                            go_to_and_rest_info();
                                             hide_cursor();
                                             state.move_cursor(state.layout.y);
                                             break 'zoxide;
@@ -462,7 +446,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                             }
                                         } else {
-                                            reset_info_line();
+                                            go_to_and_rest_info();
                                             hide_cursor();
                                             state.move_cursor(state.layout.y);
                                             break 'zoxide;
@@ -590,7 +574,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     }
 
                                                     _ => {
-                                                        reset_info_line();
+                                                        go_to_and_rest_info();
                                                         hide_cursor();
                                                         state.move_cursor(state.layout.y);
                                                     }
@@ -711,7 +695,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                             }
                         }
                         state.layout.nums.reset();
-                        state.reload(BEGINNING_ROW)?;
+                        state.reorder(BEGINNING_ROW);
                     }
 
                     // Show/hide hidden files or directories
@@ -738,17 +722,17 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 Split::Vertical => {
                                     let new_column = state.layout.terminal_column / 2;
                                     let new_row = state.layout.terminal_row;
-                                    state.refresh(new_column, new_row, state.layout.y);
+                                    state.refresh(new_column, new_row, state.layout.y)?;
                                 }
                                 Split::Horizontal => {
                                     let new_row = state.layout.terminal_row / 2;
                                     let new_column = state.layout.terminal_column;
-                                    state.refresh(new_column, new_row, state.layout.y);
+                                    state.refresh(new_column, new_row, state.layout.y)?;
                                 }
                             }
                         } else {
-                            let (new_column, new_row) = crossterm::terminal::size()?;
-                            state.refresh(new_column, new_row, state.layout.y);
+                            let (new_column, new_row) = terminal_size()?;
+                            state.refresh(new_column, new_row, state.layout.y)?;
                         }
                     }
 
@@ -757,17 +741,17 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         Split::Vertical => {
                             state.layout.split = Split::Horizontal;
                             if state.layout.preview {
-                                let (new_column, mut new_row) = crossterm::terminal::size()?;
+                                let (new_column, mut new_row) = terminal_size()?;
                                 new_row /= 2;
-                                state.refresh(new_column, new_row, state.layout.y);
+                                state.refresh(new_column, new_row, state.layout.y)?;
                             }
                         }
                         Split::Horizontal => {
                             state.layout.split = Split::Vertical;
                             if state.layout.preview {
-                                let (mut new_column, new_row) = crossterm::terminal::size()?;
+                                let (mut new_column, new_row) = terminal_size()?;
                                 new_column /= 2;
-                                state.refresh(new_column, new_row, state.layout.y);
+                                state.refresh(new_column, new_row, state.layout.y)?;
                             }
                         }
                     },
@@ -802,7 +786,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         state.clear_and_show_headline();
                                         state.update_list()?;
                                         state.list_up();
-                                        let cursor_pos = if state.list.is_empty() {
+                                        state.layout.y = if state.list.is_empty() {
                                             BEGINNING_ROW
                                         } else if state.layout.nums.index == len - 1 {
                                             state.layout.nums.go_up();
@@ -813,12 +797,12 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         let duration = duration_to_string(start.elapsed());
                                         print_info(
                                             format!("1 item deleted [{}]", duration),
-                                            cursor_pos,
+                                            state.layout.y,
                                         );
-                                        state.move_cursor(cursor_pos);
+                                        state.move_cursor(state.layout.y);
                                     }
                                     _ => {
-                                        reset_info_line();
+                                        go_to_and_rest_info();
                                         hide_cursor();
                                         state.move_cursor(state.layout.y);
                                     }
@@ -842,13 +826,13 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                             match code {
                                 KeyCode::Char('y') => {
                                     state.yank_item(false);
-                                    reset_info_line();
+                                    go_to_and_rest_info();
                                     hide_cursor();
                                     print_info("1 item yanked", state.layout.y);
                                 }
 
                                 _ => {
-                                    reset_info_line();
+                                    go_to_and_rest_info();
                                     hide_cursor();
                                     state.move_cursor(state.layout.y);
                                 }
@@ -934,7 +918,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     }
 
                                     KeyCode::Esc => {
-                                        reset_info_line();
+                                        go_to_and_rest_info();
                                         hide_cursor();
                                         state.move_cursor(state.layout.y);
                                         break;
@@ -1011,7 +995,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                             if let Event::Key(KeyEvent { code, .. }) = event::read()? {
                                 match code {
                                     KeyCode::Enter => {
-                                        reset_info_line();
+                                        go_to_and_rest_info();
                                         state.keyword = Some(keyword.iter().collect());
                                         state.move_cursor(state.layout.y);
                                         break;
@@ -1180,7 +1164,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                             if let Event::Key(KeyEvent { code, .. }) = event::read()? {
                                 match code {
                                     KeyCode::Esc => {
-                                        reset_info_line();
+                                        go_to_and_rest_info();
                                         hide_cursor();
                                         state.move_cursor(state.layout.y);
                                         break 'command;
@@ -1206,7 +1190,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                     KeyCode::Backspace => {
                                         if current_pos == initial_pos {
-                                            reset_info_line();
+                                            go_to_and_rest_info();
                                             hide_cursor();
                                             state.move_cursor(state.layout.y);
                                             break 'command;
@@ -1224,7 +1208,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     KeyCode::Enter => {
                                         hide_cursor();
                                         if command.is_empty() {
-                                            reset_info_line();
+                                            go_to_and_rest_info();
                                             state.move_cursor(state.layout.y);
                                             break;
                                         }
@@ -1258,7 +1242,6 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 state.layout.terminal_column,
                                                 true,
                                             );
-                                            let help_len = help.clone().len();
                                             print_help(&help, 0, state.layout.terminal_row);
                                             screen.flush()?;
 
@@ -1269,25 +1252,15 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 {
                                                     match code {
                                                         KeyCode::Char('j') | KeyCode::Down => {
-                                                            if help_len
-                                                                < state.layout.terminal_row.into()
-                                                                || skip
-                                                                    == help_len + 1
-                                                                        - state.layout.terminal_row
-                                                                            as usize
-                                                            {
-                                                                continue;
-                                                            } else {
-                                                                clear_all();
-                                                                skip += 1;
-                                                                print_help(
-                                                                    &help,
-                                                                    skip,
-                                                                    state.layout.terminal_row,
-                                                                );
-                                                                screen.flush()?;
-                                                                continue;
-                                                            }
+                                                            clear_all();
+                                                            skip += 1;
+                                                            print_help(
+                                                                &help,
+                                                                skip,
+                                                                state.layout.terminal_row,
+                                                            );
+                                                            screen.flush()?;
+                                                            continue;
                                                         }
                                                         KeyCode::Char('k') | KeyCode::Up => {
                                                             if skip == 0 {
@@ -1416,7 +1389,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                             print_warning(e, state.layout.y);
                                                             continue 'main;
                                                         }
-                                                        reset_info_line();
+                                                        go_to_and_rest_info();
                                                         if state.current_dir == state.trash_dir {
                                                             state.reload(BEGINNING_ROW)?;
                                                             print_info(
@@ -1434,7 +1407,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                         break 'command;
                                                     }
                                                     _ => {
-                                                        reset_info_line();
+                                                        go_to_and_rest_info();
                                                         state.move_cursor(state.layout.y);
                                                         break 'command;
                                                     }
@@ -1570,7 +1543,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
 
                                 _ => {
-                                    reset_info_line();
+                                    go_to_and_rest_info();
                                     hide_cursor();
                                     state.move_cursor(state.layout.y);
                                 }
@@ -1612,7 +1585,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         new_row - 1
                     };
 
-                    state.refresh(new_column, new_row, cursor_pos);
+                    state.refresh(new_column, new_row, cursor_pos)?;
                 } else {
                     let cursor_pos = if state.layout.y < row {
                         state.layout.y
@@ -1621,7 +1594,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         state.layout.nums.index -= diff as usize;
                         row - 1
                     };
-                    state.refresh(column, row, cursor_pos);
+                    state.refresh(column, row, cursor_pos)?;
                 }
             }
             _ => {}

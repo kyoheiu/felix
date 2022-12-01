@@ -2,7 +2,7 @@ use super::errors::FxError;
 use super::state::FX_CONFIG_DIR;
 
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
 
@@ -74,7 +74,7 @@ color:
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config {
     pub default: Option<String>,
-    pub exec: Option<HashMap<String, Vec<String>>>,
+    pub exec: Option<BTreeMap<String, Vec<String>>>,
     pub color: ConfigColor,
     pub syntax_highlight: Option<bool>,
     pub default_theme: Option<DefaultTheme>,

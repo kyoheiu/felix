@@ -5,12 +5,12 @@ use super::term::*;
 use crossterm::style::Stylize;
 use log::{info, warn};
 use simplelog::{ConfigBuilder, LevelFilter, WriteLogger};
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-pub const SPACES: u16 = 3;
+pub const PROCESS_INDICATOR_LENGTH: u16 = 7;
 
 /// Generate modified time as `String`.
 pub fn format_time(time: &Option<String>) -> String {
@@ -21,7 +21,7 @@ pub fn format_time(time: &Option<String>) -> String {
 }
 
 /// Rename the put file, in order to avoid the name conflict.
-pub fn rename_file(file_name: &str, name_set: &HashSet<String>) -> String {
+pub fn rename_file(file_name: &str, name_set: &BTreeSet<String>) -> String {
     let mut count: usize = 1;
     let (stem, extension) = {
         let file_name = PathBuf::from(file_name);
@@ -53,7 +53,7 @@ pub fn rename_file(file_name: &str, name_set: &HashSet<String>) -> String {
 }
 
 /// Rename the put directory, in order to avoid the name conflict.
-pub fn rename_dir(dir_name: &str, name_set: &HashSet<String>) -> String {
+pub fn rename_dir(dir_name: &str, name_set: &BTreeSet<String>) -> String {
     let mut count: usize = 1;
     let mut new_name = dir_name.to_owned();
     while name_set.contains(&new_name) {
@@ -67,11 +67,13 @@ pub fn rename_dir(dir_name: &str, name_set: &HashSet<String>) -> String {
     new_name
 }
 
-pub fn reset_info_line() {
+/// Move to information bar.
+pub fn go_to_and_rest_info() {
     to_info_bar();
     clear_current_line();
 }
 
+/// Delele cursor.
 pub fn delete_cursor() {
     print!(" ");
     move_left(1);
@@ -80,9 +82,12 @@ pub fn delete_cursor() {
 /// Print the result of operation, such as put/delete/redo/undo.
 pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
     delete_cursor();
-    reset_info_line();
+    go_to_and_rest_info();
     info!("{}", message);
-    print!("{}", message);
+
+    let (width, _) = terminal_size().unwrap();
+    let trimmed = split_str(&message.to_string(), (width - 1).into());
+    print!("{}", trimmed);
 
     hide_cursor();
     move_to(1, then);
@@ -93,13 +98,14 @@ pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
 /// When something goes wrong or does not work, print information about it.
 pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
     delete_cursor();
+    go_to_and_rest_info();
     warn!("{}", message);
-    to_info_bar();
-    clear_current_line();
 
+    let (width, _) = terminal_size().unwrap();
+    let trimmed = split_str(&message.to_string(), (width - 1).into());
     set_color(&TermColor::ForeGround(&Colorname::White));
     set_color(&TermColor::BackGround(&Colorname::LightRed));
-    print!("{}", message,);
+    print!("{}", trimmed);
     reset_color();
 
     hide_cursor();
@@ -111,7 +117,7 @@ pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
 /// Print process of put/delete.
 pub fn print_process<T: std::fmt::Display>(message: T) {
     print!("{}", message);
-    move_left(7);
+    move_left(PROCESS_INDICATOR_LENGTH);
 }
 
 /// Print the number of process (put/delete).
@@ -123,11 +129,11 @@ pub fn display_count(i: usize, all: usize) -> String {
     result
 }
 
-/// Convert extension setting in the config to HashMap.
+/// Convert extension setting in the config to BTreeMap.
 pub fn to_extension_map(
-    config: &Option<HashMap<String, Vec<String>>>,
-) -> Option<HashMap<String, String>> {
-    let mut new_map = HashMap::new();
+    config: &Option<BTreeMap<String, Vec<String>>>,
+) -> Option<BTreeMap<String, String>> {
+    let mut new_map = BTreeMap::new();
     match config {
         Some(config) => {
             for (command, extensions) in config.iter() {
@@ -168,11 +174,11 @@ pub fn to_proper_size(byte: u64) -> String {
     result
 }
 
-/// Generate the contents of item to show as a preview.
-pub fn list_up_contents(path: &Path) -> Result<Vec<String>, FxError> {
+/// Generate the contents of the directory to preview.
+pub fn list_up_contents(path: &Path, width: u16) -> Result<String, FxError> {
     let mut file_v = Vec::new();
     let mut dir_v = Vec::new();
-    let mut result = Vec::new();
+    let mut v = Vec::new();
     for item in std::fs::read_dir(path)? {
         let item = item?;
         if item.file_type()?.is_dir() {
@@ -183,23 +189,20 @@ pub fn list_up_contents(path: &Path) -> Result<Vec<String>, FxError> {
     }
     dir_v.sort_by(|a, b| natord::compare(a, b));
     file_v.sort_by(|a, b| natord::compare(a, b));
-    result.append(&mut dir_v);
-    result.append(&mut file_v);
-    Ok(result)
-}
+    v.append(&mut dir_v);
+    v.append(&mut file_v);
 
-/// Generate the contents tree.
-pub fn make_tree(v: Vec<String>) -> Result<String, FxError> {
-    let len = v.len();
     let mut result = String::new();
-    for (i, path) in v.iter().enumerate() {
+    let len = v.len();
+    for (i, item) in v.iter().enumerate() {
         if i == len - 1 {
             let mut line = "└ ".to_string();
-            line.push_str(path);
+            line.push_str(item);
+            line = split_str(&line, width.into());
             result.push_str(&line);
         } else {
             let mut line = "├ ".to_string();
-            line.push_str(path);
+            line.push_str(item);
             line.push('\n');
             result.push_str(&line);
         }
@@ -208,31 +211,23 @@ pub fn make_tree(v: Vec<String>) -> Result<String, FxError> {
 }
 
 /// Format texts to print. Used when printing help or text preview.
-pub fn format_txt(txt: &str, column: u16, is_help: bool) -> Vec<String> {
+pub fn format_txt(txt: &str, width: u16, is_help: bool) -> Vec<String> {
     let mut v = Vec::new();
-    let mut column_count = 0;
-    let mut line = String::new();
-    for c in txt.chars() {
-        if c == '\n' {
-            v.push(line);
-            line = String::new();
-            column_count = 0;
-            continue;
+    for line in txt.lines() {
+        let mut line = line;
+        while line.bytes().len() > width as usize {
+            let mut i = width as usize;
+            while !line.is_char_boundary(i) {
+                i -= 1;
+            }
+            let (first, second) = line.split_at(i);
+            v.push(first.to_owned());
+            line = second;
         }
-        line.push(c);
-        column_count += 1;
-        if column_count == column {
-            v.push(line);
-            line = String::new();
-            column_count = 0;
-            continue;
-        }
-    }
-    if !line.is_empty() {
-        v.push(line);
+        v.push(line.to_owned());
     }
     if is_help {
-        v.push("Press Enter to go back.".to_string());
+        v.push("Press Enter to go back.".to_owned());
     }
     v
 }
@@ -255,10 +250,12 @@ pub fn print_help(v: &[String], skip_number: usize, row: u16) {
     }
 }
 
+/// Check if we can edit the file name safely.
 pub fn is_editable(s: &str) -> bool {
     s.is_ascii()
 }
 
+/// Initialize the log if `-l` option is added.
 pub fn init_log(config_dir_path: &Path) -> Result<(), FxError> {
     let mut log_name = chrono::Local::now().format("%F-%H-%M-%S").to_string();
     log_name.push_str(".log");
@@ -277,6 +274,7 @@ pub fn init_log(config_dir_path: &Path) -> Result<(), FxError> {
     Ok(())
 }
 
+/// Check the latest version of felix.
 pub fn check_version() -> Result<(), FxError> {
     let output = std::process::Command::new("cargo")
         .args(["search", "felix", "--limit", "1"])
@@ -300,10 +298,26 @@ pub fn check_version() -> Result<(), FxError> {
     Ok(())
 }
 
+/// linux-specific: Convert u32 to permission-ish string.
 pub fn convert_to_permissions(permissions: u32) -> String {
     let permissions = format!("{permissions:o}");
     let permissions: String = permissions.chars().rev().take(3).collect();
     permissions.chars().rev().collect()
+}
+
+///The length of the file name is counted by bytes(), not chars(),
+/// because it is possible that if the name contains multibyte characters
+/// (sometimes they are wide chars such as CJK),
+/// it may exceed the file-name space i.e. header, item list space or preview header.
+/// To avoid this, the file name is split by the nearest character boundary (round-off),
+/// even if extra space between the name and the modified time may appear.
+pub fn split_str(s: &str, i: usize) -> String {
+    let mut i = i;
+    while !s.is_char_boundary(i) {
+        i -= 1;
+    }
+    let (result, _) = s.split_at(i);
+    result.to_owned()
 }
 
 //cargo test -- --nocapture
@@ -341,21 +355,10 @@ mod tests {
     }
 
     #[test]
-    fn test_make_tree() {
-        let v = vec![
-            "data".to_string(),
-            "01.txt".to_string(),
-            "2.txt".to_string(),
-            "a.txt".to_string(),
-            "b.txt".to_string(),
-        ];
-        let tree = make_tree(v).unwrap();
-        let formatted = format_txt(&tree, 50, false);
-        assert_eq!(
-            tree,
-            ("├ data\n├ 01.txt\n├ 2.txt\n├ a.txt\n└ b.txt").to_string()
-        );
-        assert_eq!(tree.lines().count(), formatted.len());
+    fn test_list_up_contents() {
+        let p = PathBuf::from("./testfiles");
+        let tree = list_up_contents(&p, 20).unwrap();
+        assert_eq!(tree, "├ archives\n└ images".to_string());
     }
 
     #[test]

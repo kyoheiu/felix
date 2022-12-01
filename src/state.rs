@@ -3,33 +3,34 @@ use super::errors::FxError;
 use super::functions::*;
 use super::layout::*;
 use super::magic_image::is_supported_image_type;
+use super::magic_packed;
 use super::nums::*;
 use super::op::*;
 use super::session::*;
 use super::term::*;
 
 use chrono::prelude::*;
-use crossterm::event;
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::{Event, KeyCode, KeyEvent};
 use crossterm::style::Stylize;
 use log::{error, info};
-use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::ffi::OsStr;
 use std::fmt::Write as _;
 use std::fs;
-#[cfg(target_family = "unix")]
-use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
-use std::process::{Child, Command, ExitStatus, Stdio};
+use std::process::{Command, ExitStatus, Stdio};
 use std::time::UNIX_EPOCH;
 use syntect::highlighting::{Theme, ThemeSet};
+
+#[cfg(target_family = "unix")]
+use std::os::unix::fs::PermissionsExt;
 
 pub const BEGINNING_ROW: u16 = 3;
 pub const FX_CONFIG_DIR: &str = "felix";
 pub const TRASH: &str = "trash";
 pub const EMPTY_WARNING: &str = "Are you sure to empty the trash directory? (if yes: y)";
+const TIME_PREFIX: usize = 11;
 
 #[derive(Debug)]
 pub struct State {
@@ -37,7 +38,7 @@ pub struct State {
     pub current_dir: PathBuf,
     pub trash_dir: PathBuf,
     pub default: String,
-    pub commands: Option<HashMap<String, String>>,
+    pub commands: Option<BTreeMap<String, String>>,
     pub registered: Vec<ItemInfo>,
     pub operations: Operation,
     pub c_memo: Vec<StateMemo>,
@@ -47,7 +48,7 @@ pub struct State {
     pub rust_log: Option<String>,
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct ItemInfo {
     pub file_type: FileType,
     pub file_name: String,
@@ -72,6 +73,12 @@ pub enum FileType {
     Symlink,
 }
 
+impl Default for FileType {
+    fn default() -> Self {
+        FileType::File
+    }
+}
+
 impl State {
     /// Initialize the state of the app.
     pub fn new(p: &std::path::Path) -> Result<Self, FxError> {
@@ -81,8 +88,8 @@ impl State {
                 eprintln!("Cannot read the config file properly.\nError: {}\nDo you want to use the default config? [press Enter to continue]", e);
                 enter_raw_mode();
                 loop {
-                    match event::read()? {
-                        event::Event::Key(KeyEvent { code, .. }) => match code {
+                    match crossterm::event::read()? {
+                        Event::Key(KeyEvent { code, .. }) => match code {
                             KeyCode::Enter => break,
                             _ => {
                                 leave_raw_mode();
@@ -99,8 +106,7 @@ impl State {
             }
         };
         let session = read_session()?;
-        let (original_column, original_row) =
-            crossterm::terminal::size().unwrap_or_else(|_| panic!("Cannot detect terminal size."));
+        let (original_column, original_row) = terminal_size()?;
 
         // Return error if terminal size may cause panic
         if original_column < 4 {
@@ -209,8 +215,56 @@ impl State {
         }
     }
 
+    #[cfg(target_os = "linux")]
     /// Open the selected file in a new window, according to the config.
-    pub fn open_file_in_new_window(&self) -> Result<Child, FxError> {
+    pub fn open_file_in_new_window(&self) -> Result<(), FxError> {
+        let item = self.get_item()?;
+        let path = &item.file_path;
+        let map = &self.commands;
+        let extension = &item.file_ext;
+
+        info!("OPEN(new window): {:?}", path);
+
+        match map {
+            None => Err(FxError::OpenNewWindow("No exec configuration".to_owned())),
+            Some(map) => match extension {
+                Some(extension) => match map.get(extension) {
+                    Some(command) => match unsafe { nix::unistd::fork() } {
+                        Ok(result) => match result {
+                            nix::unistd::ForkResult::Parent { child } => {
+                                nix::sys::wait::waitpid(Some(child), None)?;
+                                Ok(())
+                            }
+                            nix::unistd::ForkResult::Child => {
+                                nix::unistd::setsid()?;
+                                let mut ex = Command::new(command);
+                                ex.arg(path)
+                                    .stdout(Stdio::null())
+                                    .stdin(Stdio::null())
+                                    .spawn()
+                                    .and(Ok(()))
+                                    .map_err(|_| FxError::OpenItem)?;
+                                drop(ex);
+                                std::process::exit(0);
+                            }
+                        },
+                        Err(e) => Err(FxError::Nix(e.to_string())),
+                    },
+                    None => Err(FxError::OpenNewWindow(
+                        "Cannot open this type of item in new window".to_owned(),
+                    )),
+                },
+
+                None => Err(FxError::OpenNewWindow(
+                    "Cannot open this type of item in new window".to_owned(),
+                )),
+            },
+        }
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    /// Open the selected file in a new window, according to the config.
+    pub fn open_file_in_new_window(&self) -> Result<(), FxError> {
         let item = self.get_item()?;
         let path = &item.file_path;
         let map = &self.commands;
@@ -228,6 +282,7 @@ impl State {
                             .stdout(Stdio::null())
                             .stdin(Stdio::null())
                             .spawn()
+                            .and(Ok(()))
                             .or(Err(FxError::OpenItem))
                     }
                     None => Err(FxError::OpenNewWindow(
@@ -412,8 +467,8 @@ impl State {
             for item in self.list.iter_mut().filter(|item| item.selected) {
                 self.registered.push(item.clone());
             }
-        } else {
-            let item = self.get_item().unwrap().clone();
+        } else if let Ok(item) = self.get_item() {
+            let item = item.clone();
             self.registered.push(item);
         }
     }
@@ -426,7 +481,7 @@ impl State {
         target_dir: Option<PathBuf>,
     ) -> Result<(), FxError> {
         //make HashSet<String> of file_name
-        let mut name_set = HashSet::new();
+        let mut name_set = BTreeSet::new();
         match &target_dir {
             None => {
                 for item in self.list.iter() {
@@ -487,12 +542,12 @@ impl State {
         &mut self,
         item: &ItemInfo,
         target_dir: &Option<PathBuf>,
-        name_set: &mut HashSet<String>,
+        name_set: &mut BTreeSet<String>,
     ) -> Result<PathBuf, FxError> {
         match target_dir {
             None => {
                 if item.file_path.parent() == Some(&self.trash_dir) {
-                    let rename: String = item.file_name.chars().skip(11).collect();
+                    let rename: String = item.file_name.chars().skip(TIME_PREFIX).collect();
                     let rename = rename_file(&rename, name_set);
                     let to = &self.current_dir.join(&rename);
                     if std::fs::copy(&item.file_path, to).is_err() {
@@ -512,7 +567,7 @@ impl State {
             }
             Some(path) => {
                 if item.file_path.parent() == Some(&self.trash_dir) {
-                    let rename: String = item.file_name.chars().skip(11).collect();
+                    let rename: String = item.file_name.chars().skip(TIME_PREFIX).collect();
                     let rename = rename_file(&rename, name_set);
                     let to = path.join(&rename);
                     if std::fs::copy(&item.file_path, to.clone()).is_err() {
@@ -538,7 +593,7 @@ impl State {
         &mut self,
         buf: &ItemInfo,
         target_dir: &Option<PathBuf>,
-        name_set: &mut HashSet<String>,
+        name_set: &mut BTreeSet<String>,
     ) -> Result<PathBuf, FxError> {
         let mut base: usize = 0;
         let mut target: PathBuf = PathBuf::new();
@@ -567,7 +622,7 @@ impl State {
                     .parent()
                     .ok_or_else(|| FxError::Io("Cannot read parent dir.".to_string()))?;
                 if parent == &self.trash_dir {
-                    let rename: String = buf.file_name.chars().skip(11).collect();
+                    let rename: String = buf.file_name.chars().skip(TIME_PREFIX).collect();
                     target = match &target_dir {
                         None => self.current_dir.join(&rename),
                         Some(path) => path.join(&rename),
@@ -693,11 +748,10 @@ impl State {
     }
 
     /// Reload the app layout when terminal size changes.
-    pub fn refresh(&mut self, column: u16, row: u16, mut cursor_pos: u16) {
+    pub fn refresh(&mut self, column: u16, row: u16, mut cursor_pos: u16) -> Result<(), FxError> {
         let (time_start, name_max) = make_layout(column);
 
-        let (original_column, original_row) =
-            crossterm::terminal::size().unwrap_or_else(|_| panic!("Cannot detect terminal size."));
+        let (original_column, original_row) = terminal_size()?;
 
         self.layout.terminal_row = row;
         self.layout.terminal_column = column;
@@ -721,6 +775,7 @@ impl State {
         }
 
         self.redraw(cursor_pos);
+        Ok(())
     }
 
     /// Clear all and show the current directory information.
@@ -728,12 +783,24 @@ impl State {
         clear_all();
         move_to(1, 1);
 
+        let mut header_space = (self.layout.terminal_column - 1) as usize;
+
         //Show current directory path.
         //crossterm's Stylize cannot be applied to PathBuf,
         //current directory does not have any text attribute for now.
-        set_color(&TermColor::ForeGround(&Colorname::Cyan));
-        print!(" {}", self.current_dir.display(),);
-        reset_color();
+        let current_dir = self.current_dir.display().to_string();
+        if current_dir.bytes().len() >= header_space {
+            let current_dir = split_str(&current_dir, header_space);
+            set_color(&TermColor::ForeGround(&Colorname::Cyan));
+            print!(" {}", current_dir);
+            reset_color();
+            return;
+        } else {
+            set_color(&TermColor::ForeGround(&Colorname::Cyan));
+            print!(" {}", current_dir);
+            reset_color();
+            header_space -= current_dir.len();
+        }
 
         //If .git directory exists, get the branch information and print it.
         let git = self.current_dir.join(".git");
@@ -742,10 +809,13 @@ impl State {
             if let Ok(head) = std::fs::read(head) {
                 let branch: Vec<u8> = head.into_iter().skip(16).collect();
                 if let Ok(branch) = std::str::from_utf8(&branch) {
-                    print!(" on ",);
-                    set_color(&TermColor::ForeGround(&Colorname::LightMagenta));
-                    print!("{}", branch.trim().bold());
-                    reset_color();
+                    if branch.len() + 4 <= header_space {
+                        print!(" on ",);
+                        set_color(&TermColor::ForeGround(&Colorname::LightMagenta));
+                        print!("{}", branch.trim().bold());
+                        reset_color();
+                    } else {
+                    }
                 }
             }
         }
@@ -753,16 +823,13 @@ impl State {
 
     /// Print an item in the directory.
     fn print_item(&self, item: &ItemInfo) {
-        let chars: Vec<char> = item.file_name.chars().collect();
-        let name = if chars.len() > self.layout.name_max_len {
-            let mut result = chars
-                .iter()
-                .take(self.layout.name_max_len - 2)
-                .collect::<String>();
-            result.push_str("..");
-            result
-        } else {
+        let name = if item.file_name.bytes().len() <= self.layout.name_max_len {
             item.file_name.clone()
+        } else {
+            let i = (self.layout.name_max_len - 2) as usize;
+            let mut file_name = split_str(&item.file_name, i);
+            file_name.push_str("..");
+            file_name
         };
         let time = format_time(&item.modified);
         let color = match item.file_type {
@@ -843,8 +910,8 @@ impl State {
 
         match self.layout.sort_by {
             SortKey::Name => {
-                dir_v.sort_by(|a, b| natord::compare(&a.file_name, &b.file_name));
-                file_v.sort_by(|a, b| natord::compare(&a.file_name, &b.file_name));
+                dir_v.sort_by(|a, b| natord::compare_ignore_case(&a.file_name, &b.file_name));
+                file_v.sort_by(|a, b| natord::compare_ignore_case(&a.file_name, &b.file_name));
             }
             SortKey::Time => {
                 dir_v.sort_by(|a, b| b.modified.partial_cmp(&a.modified).unwrap());
@@ -861,6 +928,49 @@ impl State {
 
         self.list = result;
         Ok(())
+    }
+
+    /// Change (only) the order of the list and print it.
+    pub fn reorder(&mut self, y: u16) {
+        self.change_order();
+        self.clear_and_show_headline();
+        self.list_up();
+        self.move_cursor(y);
+    }
+
+    /// Change the order of the list not reading all the items.
+    pub fn change_order(&mut self) {
+        let mut dir_v = Vec::new();
+        let mut file_v = Vec::new();
+        let mut result = Vec::with_capacity(self.list.len());
+
+        for item in self.list.iter_mut() {
+            if item.file_type == FileType::Directory {
+                dir_v.push(std::mem::take(item));
+            } else {
+                file_v.push(std::mem::take(item));
+            }
+        }
+
+        match self.layout.sort_by {
+            SortKey::Name => {
+                dir_v.sort_by(|a, b| natord::compare_ignore_case(&a.file_name, &b.file_name));
+                file_v.sort_by(|a, b| natord::compare_ignore_case(&a.file_name, &b.file_name));
+            }
+            SortKey::Time => {
+                dir_v.sort_by(|a, b| b.modified.partial_cmp(&a.modified).unwrap());
+                file_v.sort_by(|a, b| b.modified.partial_cmp(&a.modified).unwrap());
+            }
+        }
+
+        result.append(&mut dir_v);
+        result.append(&mut file_v);
+
+        if !self.layout.show_hidden {
+            result.retain(|x| !x.is_hidden);
+        }
+
+        self.list = result;
     }
 
     /// Reset all item's selected state and exit the select mode.
@@ -1189,6 +1299,24 @@ impl State {
         };
         let serialized = serde_yaml::to_string(&session)?;
         fs::write(&session_path, serialized)?;
+        Ok(())
+    }
+
+    /// Unpack/unarchive a file.
+    pub fn unpack(&self) -> Result<(), FxError> {
+        let item = self.get_item()?;
+        let p = item.file_path.clone();
+
+        let mut name_set: BTreeSet<String> = BTreeSet::new();
+        for item in self.list.iter() {
+            name_set.insert(item.file_name.clone());
+        }
+
+        let dest_name = rename_dir(&item.file_name, &name_set);
+        let mut dest = self.current_dir.clone();
+        dest.push(dest_name);
+
+        magic_packed::unpack(&p, &dest)?;
         Ok(())
     }
 }

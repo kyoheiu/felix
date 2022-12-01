@@ -13,13 +13,13 @@ use syntect::highlighting::Theme;
 use syntect::parsing::SyntaxSet;
 use syntect::util::{as_24_bit_terminal_escaped, split_at, LinesWithEndings};
 
-/// cf: https://docs.rs/image/latest/src/image/image.rs.html#84-112
 pub const MAX_SIZE_TO_PREVIEW: u64 = 1_000_000_000;
 pub const CHAFA_WARNING: &str =
     "From v1.1.0, the image preview needs chafa. For more details, please see help by `:h` ";
 
 pub const PROPER_WIDTH: u16 = 28;
 pub const TIME_WIDTH: u16 = 16;
+const EXTRA_SPACES: u16 = 3;
 
 #[derive(Debug)]
 pub struct Layout {
@@ -102,7 +102,7 @@ impl Layout {
             }
             Some(PreviewType::Text) => {
                 if self.syntax_highlight {
-                    match self.preview_text_with_sh(item) {
+                    match self.preview_text_with_highlight(item) {
                         Ok(_) => {}
                         Err(e) => {
                             print!("{}", e);
@@ -127,28 +127,24 @@ impl Layout {
         clear_until_newline();
         move_right(1);
         let mut file_name = format!("[{}]", item.file_name);
-        if file_name.len() > self.preview_space.0.into() {
-            file_name = file_name
-                .chars()
-                .take(self.preview_space.0.into())
-                .collect();
+        if file_name.bytes().len() > self.preview_space.0 as usize {
+            file_name = split_str(&file_name, self.preview_space.0 as usize);
         }
         print!("{}", file_name);
     }
 
     fn preview_text(&self, item: &ItemInfo) {
-        let content = {
-            if let Some(content) = &item.content {
-                format_txt(content, self.preview_space.0, false)
-            } else {
-                vec![]
-            }
-        };
-        self.print_txt_in_preview_area(item, content, false);
+        if let Some(content) = &item.content {
+            self.print_txt_in_preview_area(
+                item,
+                &format_txt(content, self.preview_space.0, false),
+                false,
+            );
+        }
     }
 
     /// Preview text with syntax highlighting.
-    fn preview_text_with_sh(&self, item: &ItemInfo) -> Result<(), FxError> {
+    fn preview_text_with_highlight(&self, item: &ItemInfo) -> Result<(), FxError> {
         if let Ok(Some(syntax)) = self.syntax_set.find_syntax_for_file(item.file_path.clone()) {
             let mut h = HighlightLines::new(syntax, &self.theme);
             if let Some(content) = &item.content {
@@ -172,9 +168,8 @@ impl Layout {
                     .iter()
                     .map(|x| as_24_bit_terminal_escaped(x, false))
                     .collect();
-                self.print_txt_in_preview_area(item, result, true);
+                self.print_txt_in_preview_area(item, &result, true);
             } else {
-                print!("");
             }
         } else {
             self.preview_text(item);
@@ -183,29 +178,23 @@ impl Layout {
     }
 
     fn preview_directory(&self, item: &ItemInfo) {
-        let content = {
-            let contents = match &item.symlink_dir_path {
-                None => list_up_contents(&item.file_path),
-                Some(p) => list_up_contents(p),
-            };
-            if let Ok(contents) = contents {
-                if let Ok(contents) = make_tree(contents) {
-                    format_txt(&contents, self.preview_space.0, false)
-                } else {
-                    vec![]
-                }
-            } else {
-                vec![]
-            }
+        let contents = match &item.symlink_dir_path {
+            None => list_up_contents(&item.file_path, self.preview_space.0),
+            Some(p) => list_up_contents(p, self.preview_space.0),
         };
-
-        self.print_txt_in_preview_area(item, content, false);
+        if let Ok(contents) = contents {
+            self.print_txt_in_preview_area(
+                item,
+                &format_txt(&contents, self.preview_space.0, false),
+                false,
+            );
+        }
     }
 
     fn print_txt_in_preview_area(
         &self,
         item: &ItemInfo,
-        content: Vec<String>,
+        content: &[String],
         syntex_highlight: bool,
     ) {
         match self.split {
@@ -222,10 +211,8 @@ impl Layout {
                     } else {
                         set_color(&TermColor::ForeGround(&Colorname::LightBlack));
                         print!("{}", line);
-                        reset_color();
                     }
                     if sum == self.preview_space.1 - 1 {
-                        reset_color();
                         break;
                     }
                 }
@@ -243,15 +230,14 @@ impl Layout {
                     } else {
                         set_color(&TermColor::ForeGround(&Colorname::LightBlack));
                         print!("{}", line);
-                        reset_color();
                     }
                     if row == self.terminal_row + self.preview_space.1 {
-                        reset_color();
                         break;
                     }
                 }
             }
         }
+        reset_color();
     }
 
     /// Print text preview on the right half of the terminal (Experimental).
@@ -328,7 +314,7 @@ pub fn make_layout(column: u16) -> (u16, usize) {
         (time_start, name_max)
     } else {
         time_start = column - TIME_WIDTH;
-        name_max = (time_start - SPACES).into();
+        name_max = (time_start - EXTRA_SPACES).into();
         let required = time_start + TIME_WIDTH - 1;
         if required > column {
             let diff = required - column;
