@@ -34,9 +34,10 @@ _For Windows users: From v1.3.0, it can be at least compiled on Windows (see `.g
 
 ## Installation
 
-_Make sure that `gcc` is installed._
+### Prerequisites
 
-MSRV(Minimum Supported rustc Version): **1.60.0**
+- Make sure that `gcc` is installed.
+- MSRV(Minimum Supported rustc Version): **1.60.0**
 
 Update Rust if rustc < 1.60:
 
@@ -44,25 +45,27 @@ Update Rust if rustc < 1.60:
 rustup update
 ```
 
-From crates.io:
+### From crates.io
 
 ```
 cargo install felix
 ```
 
-From AUR:
+### From AUR
 
 ```
 yay -S felix-rs
 ```
 
-On NetBSD, package is available from the official repositories:
+### NetBSD
+
+available from the official repositories:
 
 ```
 pkgin install felix
 ```
 
-From this repository:
+### From this repository
 
 ```
 git clone https://github.com/kyoheiu/felix.git
