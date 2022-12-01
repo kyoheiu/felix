@@ -211,10 +211,8 @@ impl Layout {
                     } else {
                         set_color(&TermColor::ForeGround(&Colorname::LightBlack));
                         print!("{}", line);
-                        reset_color();
                     }
                     if sum == self.preview_space.1 - 1 {
-                        reset_color();
                         break;
                     }
                 }
@@ -232,15 +230,14 @@ impl Layout {
                     } else {
                         set_color(&TermColor::ForeGround(&Colorname::LightBlack));
                         print!("{}", line);
-                        reset_color();
                     }
                     if row == self.terminal_row + self.preview_space.1 {
-                        reset_color();
                         break;
                     }
                 }
             }
         }
+        reset_color();
     }
 
     /// Print text preview on the right half of the terminal (Experimental).
