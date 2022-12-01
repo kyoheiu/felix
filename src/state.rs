@@ -48,7 +48,7 @@ pub struct State {
     pub rust_log: Option<String>,
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct ItemInfo {
     pub file_type: FileType,
     pub file_name: String,
@@ -71,6 +71,12 @@ pub enum FileType {
     Directory,
     File,
     Symlink,
+}
+
+impl Default for FileType {
+    fn default() -> Self {
+        FileType::File
+    }
 }
 
 impl State {
@@ -922,6 +928,47 @@ impl State {
 
         self.list = result;
         Ok(())
+    }
+
+    pub fn reorder(&mut self, y: u16) {
+        self.change_order();
+        self.clear_and_show_headline();
+        self.list_up();
+        self.move_cursor(y);
+    }
+
+    pub fn change_order(&mut self) {
+        let mut dir_v = Vec::new();
+        let mut file_v = Vec::new();
+        let mut result = Vec::with_capacity(self.list.len());
+
+        for item in self.list.iter_mut() {
+            if item.file_type == FileType::Directory {
+                dir_v.push(std::mem::take(item));
+            } else {
+                file_v.push(std::mem::take(item));
+            }
+        }
+
+        match self.layout.sort_by {
+            SortKey::Name => {
+                dir_v.sort_by(|a, b| natord::compare_ignore_case(&a.file_name, &b.file_name));
+                file_v.sort_by(|a, b| natord::compare_ignore_case(&a.file_name, &b.file_name));
+            }
+            SortKey::Time => {
+                dir_v.sort_by(|a, b| b.modified.partial_cmp(&a.modified).unwrap());
+                file_v.sort_by(|a, b| b.modified.partial_cmp(&a.modified).unwrap());
+            }
+        }
+
+        result.append(&mut dir_v);
+        result.append(&mut file_v);
+
+        if !self.layout.show_hidden {
+            result.retain(|x| !x.is_hidden);
+        }
+
+        self.list = result;
     }
 
     /// Reset all item's selected state and exit the select mode.

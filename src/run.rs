@@ -40,7 +40,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         init_log(&config_dir_path)?;
     }
 
-    //Make config file and trash directory if not exist.
+    //Make config file and trash directory if not exists.
     make_config_if_not_exists(&config_file_path, &trash_dir_path)?;
 
     //If session file, which stores sortkey and whether to show hidden items, does not exist (i.e. first launch), make it.
@@ -695,7 +695,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                             }
                         }
                         state.layout.nums.reset();
-                        state.reload(BEGINNING_ROW)?;
+                        state.reorder(BEGINNING_ROW);
                     }
 
                     // Show/hide hidden files or directories
