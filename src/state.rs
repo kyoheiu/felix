@@ -10,12 +10,10 @@ use super::session::*;
 use super::term::*;
 
 use chrono::prelude::*;
-use crossterm::event;
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::{Event, KeyCode, KeyEvent};
 use crossterm::style::Stylize;
 use log::{error, info};
-use std::collections::BTreeMap;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::ffi::OsStr;
 use std::fmt::Write as _;
@@ -84,8 +82,8 @@ impl State {
                 eprintln!("Cannot read the config file properly.\nError: {}\nDo you want to use the default config? [press Enter to continue]", e);
                 enter_raw_mode();
                 loop {
-                    match event::read()? {
-                        event::Event::Key(KeyEvent { code, .. }) => match code {
+                    match crossterm::event::read()? {
+                        Event::Key(KeyEvent { code, .. }) => match code {
                             KeyCode::Enter => break,
                             _ => {
                                 leave_raw_mode();

@@ -1,13 +1,9 @@
-use crate::errors::FxError;
-
 use super::config::Colorname;
+use super::errors::FxError;
 
-use crossterm::{
-    cursor::{Hide, MoveLeft, MoveRight, MoveTo, Show},
-    style::{Color, ResetColor, SetBackgroundColor, SetForegroundColor},
-    terminal,
-    terminal::Clear,
-};
+use crossterm::cursor::{Hide, MoveLeft, MoveRight, MoveTo, Show};
+use crossterm::style::{Color, ResetColor, SetBackgroundColor, SetForegroundColor};
+use crossterm::terminal::Clear;
 
 pub enum TermColor<'a> {
     ForeGround(&'a Colorname),
@@ -23,17 +19,17 @@ pub enum TermColor<'a> {
 /// leaving the user with a broken terminal.
 ///
 pub fn enter_raw_mode() {
-    terminal::enable_raw_mode().ok();
+    crossterm::terminal::enable_raw_mode().ok();
     hide_cursor();
 }
 
 pub fn leave_raw_mode() {
     show_cursor();
-    terminal::disable_raw_mode().ok();
+    crossterm::terminal::disable_raw_mode().ok();
 }
 
 pub fn terminal_size() -> Result<(u16, u16), FxError> {
-    terminal::size().map_err(|_| FxError::TerminalSizeDetection)
+    crossterm::terminal::size().map_err(|_| FxError::TerminalSizeDetection)
 }
 
 pub fn move_to(x: u16, y: u16) {
