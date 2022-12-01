@@ -930,6 +930,7 @@ impl State {
         Ok(())
     }
 
+    /// Change (only) the order of the list and print it.
     pub fn reorder(&mut self, y: u16) {
         self.change_order();
         self.clear_and_show_headline();
@@ -937,6 +938,7 @@ impl State {
         self.move_cursor(y);
     }
 
+    /// Change the order of the list not reading all the items.
     pub fn change_order(&mut self) {
         let mut dir_v = Vec::new();
         let mut file_v = Vec::new();
