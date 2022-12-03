@@ -16,6 +16,7 @@
 
 - Some refactoring around text-printing in the preview space.
 - When you change the sort key, felix refresh the list more efficiently than ever by avoiding to read all the items.
+- Item order(Name): Case-insensitive instead of sensitive.
 
 ## v2.1.0 (2022-11-19)
 
