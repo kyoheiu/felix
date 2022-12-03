@@ -215,7 +215,7 @@ impl State {
         }
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "netbsd"))]
     /// Open the selected file in a new window, according to the config.
     pub fn open_file_in_new_window(&self) -> Result<(), FxError> {
         let item = self.get_item()?;
