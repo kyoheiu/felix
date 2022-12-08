@@ -1,3 +1,5 @@
+use crate::state::FELIX;
+
 use super::config::Colorname;
 use super::errors::FxError;
 use super::term::*;
@@ -256,14 +258,19 @@ pub fn is_editable(s: &str) -> bool {
 }
 
 /// Initialize the log if `-l` option is added.
-pub fn init_log(config_dir_path: &Path) -> Result<(), FxError> {
+pub fn init_log(data_local_path: &Path) -> Result<(), FxError> {
     let mut log_name = chrono::Local::now().format("%F-%H-%M-%S").to_string();
     log_name.push_str(".log");
     let config = ConfigBuilder::new()
         .set_time_offset_to_local()
         .unwrap()
         .build();
-    let log_path = config_dir_path.join("log");
+    let log_path = {
+        let mut path = data_local_path.to_path_buf();
+        path.push(FELIX);
+        path.push("log");
+        path
+    };
     if !log_path.exists() {
         std::fs::create_dir(&log_path)?;
     }

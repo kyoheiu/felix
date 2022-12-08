@@ -34,26 +34,27 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         path.push(FELIX);
         path
     };
+    let data_local_path = dirs::data_local_dir()
+        .ok_or_else(|| FxError::Dirs("Cannot read data local directory.".to_string()))?;
+
     let config_file_path = config_dir_path.join(PathBuf::from(CONFIG_FILE));
     let trash_dir_path = {
-        let mut path = dirs::data_local_dir()
-            .ok_or_else(|| FxError::Dirs("Cannot read data local directory.".to_string()))?;
+        let mut path = data_local_path.clone();
         path.push(FELIX);
         path.push(TRASH);
         path
     };
 
-    if log {
-        init_log(&config_dir_path)?;
-    }
-
     //Make config file and trash directory if not exists.
     make_config_if_not_exists(&config_file_path, &trash_dir_path)?;
 
+    if log {
+        init_log(&data_local_path)?;
+    }
+
     //If session file, which stores sortkey and whether to show hidden items, does not exist (i.e. first launch), make it.
     let session_file_path = {
-        let mut path = dirs::data_local_dir()
-            .ok_or_else(|| FxError::Dirs("Cannot read data local directory.".to_string()))?;
+        let mut path = data_local_path;
         path.push(FELIX);
         path.push(SESSION_FILE);
         path
