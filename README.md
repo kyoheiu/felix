@@ -150,8 +150,8 @@ Install `chafa` and you can preview images without any configuration.
 
 ```
 config file     : $XDG_CONFIG_HOME/felix/config.yaml
-trash directory : $XDG_CONFIG_HOME/felix/trash
-log files       : \$XDG_CONFIG_HOME/felix/log
+trash directory : $XDG_DATA_HOME/felix/trash
+log files       : $XDG_DATA_HOME/felix/log
 ```
 
 ### macOS
@@ -159,15 +159,15 @@ log files       : \$XDG_CONFIG_HOME/felix/log
 ```
 config file     : $HOME/Library/Application Support/felix/config.yaml
 trash directory : $HOME/Library/Application Support/felix/trash
-log files       : \$HOME/Library/Application Support/felix/log
+log files       : $HOME/Library/Application Support/felix/log
 ```
 
 ### Windows
 
 ```
 config file     : $PROFILE\AppData\Roaming\felix\config.yaml
-trash directory : $PROFILE\AppData\Roaming\felix\trash
-log files       : $PROFILE\AppData\Roaming\felix\log
+trash directory : $PROFILE\AppData\Local\felix\trash
+log files       : $PROFILE\AppData\Local\felix\log
 ```
 
 For more details, visit https://kyoheiu.dev/felix.
