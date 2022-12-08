@@ -1,5 +1,5 @@
 use super::errors::FxError;
-use super::state::FX_CONFIG_DIR;
+use super::state::FELIX;
 
 use serde::Deserialize;
 use std::collections::BTreeMap;
@@ -200,7 +200,7 @@ pub fn make_config_if_not_exists(config_file: &Path, trash_dir: &Path) -> Result
 fn config_file_path() -> Result<PathBuf, FxError> {
     let mut config =
         dirs::config_dir().ok_or_else(|| FxError::Dirs("Cannot read config dir.".to_string()))?;
-    config.push(FX_CONFIG_DIR);
+    config.push(FELIX);
     config.push(CONFIG_FILE);
     Ok(config)
 }

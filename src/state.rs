@@ -26,9 +26,8 @@ use syntect::highlighting::{Theme, ThemeSet};
 #[cfg(target_family = "unix")]
 use std::os::unix::fs::PermissionsExt;
 
+pub const FELIX: &str = "felix";
 pub const BEGINNING_ROW: u16 = 3;
-pub const FX_CONFIG_DIR: &str = "felix";
-pub const TRASH: &str = "trash";
 pub const EMPTY_WARNING: &str = "Are you sure to empty the trash directory? (if yes: y)";
 const TIME_PREFIX: usize = 11;
 
@@ -81,7 +80,7 @@ impl Default for FileType {
 
 impl State {
     /// Initialize the state of the app.
-    pub fn new(p: &std::path::Path) -> Result<Self, FxError> {
+    pub fn new(p: &std::path::Path, session_path: &std::path::Path) -> Result<Self, FxError> {
         let config = match read_config(p) {
             Ok(c) => c,
             Err(e) => {
@@ -105,7 +104,7 @@ impl State {
                 Config::default()
             }
         };
-        let session = read_session()?;
+        let session = read_session(session_path)?;
         let (original_column, original_row) = terminal_size()?;
 
         // Return error if terminal size may cause panic

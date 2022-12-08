@@ -21,6 +21,7 @@ use std::panic;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
+pub const TRASH: &str = "Trash";
 /// Where the item list starts to scroll.
 const SCROLL_POINT: u16 = 3;
 
@@ -29,12 +30,18 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     //Prepare config file and trash directory path.
     let config_dir_path = {
         let mut path = dirs::config_dir()
-            .ok_or_else(|| FxError::Dirs("Cannot read config dir.".to_string()))?;
-        path.push(FX_CONFIG_DIR);
+            .ok_or_else(|| FxError::Dirs("Cannot read config directory.".to_string()))?;
+        path.push(FELIX);
         path
     };
     let config_file_path = config_dir_path.join(PathBuf::from(CONFIG_FILE));
-    let trash_dir_path = config_dir_path.join(PathBuf::from(TRASH));
+    let trash_dir_path = {
+        let mut path = dirs::data_local_dir()
+            .ok_or_else(|| FxError::Dirs("Cannot read data local directory.".to_string()))?;
+        path.push(FELIX);
+        path.push(TRASH);
+        path
+    };
 
     if log {
         init_log(&config_dir_path)?;
@@ -44,7 +51,13 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     make_config_if_not_exists(&config_file_path, &trash_dir_path)?;
 
     //If session file, which stores sortkey and whether to show hidden items, does not exist (i.e. first launch), make it.
-    let session_file_path = config_dir_path.join(PathBuf::from(SESSION_FILE));
+    let session_file_path = {
+        let mut path = dirs::data_local_dir()
+            .ok_or_else(|| FxError::Dirs("Cannot read data local directory.".to_string()))?;
+        path.push(FELIX);
+        path.push(SESSION_FILE);
+        path
+    };
     if !session_file_path.exists() {
         make_session(&session_file_path)?;
     }
@@ -58,7 +71,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     }
 
     //Initialize app state
-    let mut state = State::new(&config_file_path)?;
+    let mut state = State::new(&config_file_path, &session_file_path)?;
     state.trash_dir = trash_dir_path;
     state.current_dir = if cfg!(not(windows)) {
         // If executed this on windows, "//?" will be inserted at the beginning of the path.
