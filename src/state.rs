@@ -348,8 +348,8 @@ impl State {
         let mut to = PathBuf::new();
 
         if item.file_type == FileType::Symlink && !from.exists() {
-            match Command::new("rm").arg(from).status() {
-                Ok(_) => Ok(PathBuf::new()),
+            match std::fs::remove_file(from) {
+                Ok(_) => Ok(None),
                 Err(_) => Err(FxError::RemoveItem(from.to_owned())),
             }
         } else {
