@@ -323,12 +323,16 @@ impl State {
                         Err(e) => {
                             return Err(e);
                         }
-                        Ok(path) => trash_vec.push(path),
+                        Ok(path) => {
+                            if let Some(p) = path {
+                                trash_vec.push(p);
+                            }
+                        }
                     }
                 }
             }
         }
-        if new_op {
+        if new_op && !trash_vec.is_empty() {
             self.operations.branch();
             //push deleted item information to operations
             self.operations.push(OpKind::Delete(DeletedFiles {
@@ -342,7 +346,11 @@ impl State {
     }
 
     /// Move single file to trash directory.
-    fn remove_and_yank_file(&mut self, item: ItemInfo, new_op: bool) -> Result<PathBuf, FxError> {
+    fn remove_and_yank_file(
+        &mut self,
+        item: ItemInfo,
+        new_op: bool,
+    ) -> Result<Option<PathBuf>, FxError> {
         //prepare from and to for copy
         let from = &item.file_path;
         let mut to = PathBuf::new();
@@ -374,7 +382,7 @@ impl State {
                 return Err(FxError::RemoveItem(from.to_owned()));
             }
 
-            Ok(to)
+            Ok(Some(to))
         }
     }
 
@@ -420,6 +428,12 @@ impl State {
 
                     continue;
                 } else {
+                    if entry.file_type().is_symlink() && !entry_path.exists() {
+                        if std::fs::remove_file(entry_path).is_err() {
+                            return Err(FxError::RemoveItem(entry_path.to_owned()));
+                        }
+                        continue;
+                    }
                     target = entry_path.iter().skip(base).collect();
                     target = trash_path.join(target);
                     if entry.file_type().is_dir() {
@@ -617,10 +631,7 @@ impl State {
             if i == 0 {
                 base = entry_path.iter().count();
 
-                let parent = &original_path
-                    .parent()
-                    .ok_or_else(|| FxError::Io("Cannot read parent dir.".to_string()))?;
-                if parent == &self.trash_dir {
+                if original_path.parent() == Some(&self.trash_dir) {
                     let rename: String = buf.file_name.chars().skip(TIME_PREFIX).collect();
                     target = match &target_dir {
                         None => self.current_dir.join(&rename),
