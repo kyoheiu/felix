@@ -1,5 +1,5 @@
 /// Help text.
-pub const HELP: &str = "# felix v2.1.1
+pub const HELP: &str = "# felix v2.2.0
 A simple TUI file manager with vim-like keymapping.
 
 ## Usage
@@ -46,6 +46,7 @@ Esc               :Return to the normal mode.
 :cd / :z          :Go to the home directory.
 :z <keyword>      :Same as `z <keyword>`.
 :e                :Reload the current directory.
+:trash            :Go to the trash directory.
 :empty            :Empty the trash directory.
 :h                :Show help.
 :q / ZZ           :Exit.

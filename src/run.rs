@@ -1429,6 +1429,16 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
                                         }
 
+                                        if c == "trash" && args.is_empty() {
+                                            //Move to trash dir
+                                            state.layout.nums.reset();
+                                            if let Err(e) =
+                                                state.chdir(&(state.trash_dir.clone()), Move::Jump)
+                                            {
+                                                print_warning(e, state.layout.y);
+                                            }
+                                            break 'command;
+                                        }
                                         //Execute the command as it is
                                         execute!(screen, EnterAlternateScreen)?;
                                         if std::env::set_current_dir(&state.current_dir).is_err() {
