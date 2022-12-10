@@ -236,10 +236,6 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     }
                                     execute!(screen, EnterAlternateScreen)?;
                                     hide_cursor();
-                                    //Add thread sleep time after state.open_file().
-                                    // This is necessary because, with tiling window managers, the window resizing is sometimes slow and felix reloads the layout so quickly that the display may become broken.
-                                    //By the sleep (50ms for now and I think it's not easy to recognize this sleep), this will be avoided.
-                                    std::thread::sleep(Duration::from_millis(50));
                                     state.reload(state.layout.y)?;
                                     continue;
                                 }
