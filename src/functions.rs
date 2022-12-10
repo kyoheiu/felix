@@ -71,7 +71,7 @@ pub fn rename_dir(dir_name: &str, name_set: &BTreeSet<String>) -> String {
 
 /// Move to information bar.
 pub fn go_to_and_rest_info() {
-    to_info_bar();
+    to_info_line();
     clear_current_line();
 }
 

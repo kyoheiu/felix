@@ -19,15 +19,28 @@ use std::fmt::Write as _;
 use std::io::{stdout, Write};
 use std::panic;
 use std::path::PathBuf;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 pub const TRASH: &str = "Trash";
 /// Where the item list starts to scroll.
 const SCROLL_POINT: u16 = 3;
+const CLRSCR: &str = "\x1B[2J";
+const INITIAL_POS_RENAME: u16 = 12;
+const INITIAL_POS_SEARCH: usize = 3;
+const INITIAL_POS_SHELL: u16 = 3;
 
 /// Launch the app. If initializing goes wrong, return error.
 pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
-    //Prepare config file and trash directory path.
+    //Check if argument path is valid.
+    if !&arg.exists() {
+        println!(
+            "Invalid path or argument: {}\n`fx -h` shows help.",
+            &arg.display()
+        );
+        return Ok(());
+    }
+
+    //Prepare config and data local path.
     let config_dir_path = {
         let mut path = dirs::config_dir()
             .ok_or_else(|| FxError::Dirs("Cannot read config directory.".to_string()))?;
@@ -37,6 +50,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     let data_local_path = dirs::data_local_dir()
         .ok_or_else(|| FxError::Dirs("Cannot read data local directory.".to_string()))?;
 
+    //Set config file and trash dir path.
     let config_file_path = config_dir_path.join(PathBuf::from(CONFIG_FILE));
     let trash_dir_path = {
         let mut path = data_local_path.clone();
@@ -48,11 +62,12 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     //Make config file and trash directory if not exists.
     make_config_if_not_exists(&config_file_path, &trash_dir_path)?;
 
+    //If `-l / --log` is set, initialize logger.
     if log {
         init_log(&data_local_path)?;
     }
 
-    //If session file, which stores sortkey and whether to show hidden items, does not exist (i.e. first launch), make it.
+    //If session file does not exist (i.e. first launch), make it.
     let session_file_path = {
         let mut path = data_local_path;
         path.push(FELIX);
@@ -63,15 +78,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         make_session(&session_file_path)?;
     }
 
-    if !&arg.exists() {
-        println!(
-            "Invalid path or argument: {}\n`fx -h` shows help.",
-            &arg.display()
-        );
-        return Ok(());
-    }
-
-    //Initialize app state
+    //Initialize app state.
     let mut state = State::new(&config_file_path, &session_file_path)?;
     state.trash_dir = trash_dir_path;
     state.current_dir = if cfg!(not(windows)) {
@@ -81,6 +88,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         arg
     };
 
+    //If the main function causes panic, catch it.
     let result = panic::catch_unwind(|| _run(state, session_file_path));
     leave_raw_mode();
 
@@ -133,9 +141,9 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
             Event::Key(KeyEvent {
                 code, modifiers, ..
             }) => {
-                //If you use kitty, you must clear the screen or the previewed image remains.
+                //If you use kitty, you must clear the screen by the escape sequence or the previewed image remains.
                 if state.layout.is_kitty && state.layout.preview {
-                    print!("\x1B[2J");
+                    print!("{}", CLRSCR);
                     state.clear_and_show_headline();
                     state.list_up();
                     screen.flush()?;
@@ -183,7 +191,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                     //Go to top
                     KeyCode::Char('g') => {
-                        to_info_bar();
+                        to_info_line();
                         clear_current_line();
                         print!("g");
                         show_cursor();
@@ -278,8 +286,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                     }
 
                     //Open a file in a new window
-                    //This works only if [exec] is set in config file
-                    //and the extension of the item matches the key.
+                    //This works only if i) [exec] is set in config file
+                    //and ii) the extension of the item matches the key.
                     //If not, warning message appears.
                     KeyCode::Char('o') => {
                         if let Ok(item) = state.get_item() {
@@ -302,8 +310,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         }
                     }
 
-                    //Go to parent directory if exists.
-                    //If the list is filtered, reload current directory.
+                    //Go to the parent directory if exists.
                     KeyCode::Char('h') | KeyCode::Left => {
                         let pre = state.current_dir.clone();
 
@@ -336,8 +343,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                     //Jumps to the directory that matches the keyword (zoxide required).
                     KeyCode::Char('z') => {
-                        print!(" ");
-                        to_info_bar();
+                        delete_cursor();
+                        to_info_line();
                         clear_current_line();
                         print!("z");
                         show_cursor();
@@ -386,7 +393,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         current_pos -= 1;
 
                                         clear_current_line();
-                                        to_info_bar();
+                                        to_info_line();
                                         print!("{}", &command.iter().collect::<String>(),);
                                         move_to(current_pos, 2);
                                     }
@@ -414,7 +421,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     let output = output.stdout;
                                                     if output.is_empty() {
                                                         print_warning(
-                                                            "Keyword cannot match the database.",
+                                                            "Keyword does not match the database.",
                                                             state.layout.y,
                                                         );
                                                         break 'zoxide;
@@ -467,7 +474,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         command.insert((current_pos - initial_pos).into(), c);
                                         current_pos += 1;
                                         clear_current_line();
-                                        to_info_bar();
+                                        to_info_line();
                                         print!("{}", &command.iter().collect::<String>(),);
                                         move_to(current_pos, 2);
                                     }
@@ -566,7 +573,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         if state.layout.nums.index == 0 {
                                             continue;
                                         } else {
-                                            to_info_bar();
+                                            to_info_line();
                                             clear_current_line();
                                             print!("g");
                                             show_cursor();
@@ -708,7 +715,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         state.reorder(BEGINNING_ROW);
                     }
 
-                    // Show/hide hidden files or directories
+                    //Show/hide hidden items.
                     KeyCode::Backspace => {
                         match state.layout.show_hidden {
                             true => {
@@ -724,7 +731,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         state.redraw(BEGINNING_ROW);
                     }
 
-                    //toggle whether to show preview of text file
+                    //Toggle whether to show preview.
                     KeyCode::Char('v') => {
                         state.layout.preview = !state.layout.preview;
                         if state.layout.preview {
@@ -746,7 +753,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         }
                     }
 
-                    //toggle vertical or horizontal split
+                    //Toggle vertical <-> horizontal split.
                     KeyCode::Char('s') => match state.layout.split {
                         Split::Vertical => {
                             state.layout.split = Split::Horizontal;
@@ -771,7 +778,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         if len == 0 {
                             continue;
                         } else {
-                            to_info_bar();
+                            to_info_line();
                             clear_current_line();
                             print!("d");
                             show_cursor();
@@ -826,7 +833,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         if len == 0 {
                             continue;
                         }
-                        to_info_bar();
+                        to_info_line();
                         clear_current_line();
                         print!("y");
                         show_cursor();
@@ -869,7 +876,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                         let duration = duration_to_string(start.elapsed());
                         let registered_len = state.registered.len();
-                        let mut put_message: String = registered_len.to_string();
+                        let mut put_message = registered_len.to_string();
                         if registered_len == 1 {
                             let _ = write!(put_message, " item inserted [{}]", duration);
                         } else {
@@ -894,13 +901,11 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                         show_cursor();
                         let mut rename = item.file_name.chars().collect::<Vec<char>>();
-                        to_info_bar();
+                        to_info_line();
                         clear_current_line();
                         print!("New name: {}", &rename.iter().collect::<String>(),);
                         screen.flush()?;
 
-                        // position after "New name: "
-                        let initial_pos = 12;
                         let mut current_pos: u16 = 12 + item.file_name.len() as u16;
                         loop {
                             if let Event::Key(KeyEvent { code, .. }) = event::read()? {
@@ -935,7 +940,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     }
 
                                     KeyCode::Left => {
-                                        if current_pos == initial_pos {
+                                        if current_pos == INITIAL_POS_RENAME {
                                             continue;
                                         };
                                         current_pos -= 1;
@@ -944,7 +949,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                     KeyCode::Right => {
                                         if current_pos as usize
-                                            == rename.len() + initial_pos as usize
+                                            == rename.len() + INITIAL_POS_RENAME as usize
                                         {
                                             continue;
                                         };
@@ -953,23 +958,24 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     }
 
                                     KeyCode::Char(c) => {
-                                        rename.insert((current_pos - initial_pos).into(), c);
+                                        rename.insert((current_pos - INITIAL_POS_RENAME).into(), c);
                                         current_pos += 1;
 
-                                        to_info_bar();
+                                        to_info_line();
                                         clear_current_line();
                                         print!("New name: {}", &rename.iter().collect::<String>(),);
                                         move_to(current_pos, 2);
                                     }
 
                                     KeyCode::Backspace => {
-                                        if current_pos == initial_pos {
+                                        if current_pos == INITIAL_POS_RENAME {
                                             continue;
                                         };
-                                        rename.remove((current_pos - initial_pos - 1).into());
+                                        rename
+                                            .remove((current_pos - INITIAL_POS_RENAME - 1).into());
                                         current_pos -= 1;
 
-                                        to_info_bar();
+                                        to_info_line();
                                         clear_current_line();
                                         print!("New name: {}", &rename.iter().collect::<String>(),);
                                         move_to(current_pos, 2);
@@ -987,9 +993,9 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         if len == 0 {
                             continue;
                         }
-                        print!(" ");
+                        delete_cursor();
                         show_cursor();
-                        to_info_bar();
+                        to_info_line();
                         clear_current_line();
                         print!("/");
                         screen.flush()?;
@@ -997,9 +1003,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         let original_nums = state.layout.nums;
                         let original_y = state.layout.y;
                         let mut keyword: Vec<char> = Vec::new();
-                        // position after " /"
-                        let initial_pos = 3;
-                        let mut current_pos = initial_pos;
+
+                        let mut current_pos = INITIAL_POS_SEARCH;
                         loop {
                             let keyword_len = keyword.len();
                             if let Event::Key(KeyEvent { code, .. }) = event::read()? {
@@ -1018,7 +1023,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     }
 
                                     KeyCode::Left => {
-                                        if current_pos == initial_pos {
+                                        if current_pos == INITIAL_POS_SEARCH {
                                             continue;
                                         }
                                         current_pos -= 1;
@@ -1026,7 +1031,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     }
 
                                     KeyCode::Right => {
-                                        if current_pos == keyword_len + initial_pos as usize {
+                                        if current_pos == keyword_len + INITIAL_POS_SEARCH {
                                             continue;
                                         }
                                         current_pos += 1;
@@ -1034,12 +1039,12 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     }
 
                                     KeyCode::Backspace => {
-                                        if current_pos == initial_pos {
+                                        if current_pos == INITIAL_POS_SEARCH {
                                             hide_cursor();
                                             state.redraw(state.layout.y);
                                             break;
                                         } else {
-                                            keyword.remove(current_pos - initial_pos - 1);
+                                            keyword.remove(current_pos - INITIAL_POS_SEARCH - 1);
                                             current_pos -= 1;
 
                                             let key = &keyword.iter().collect::<String>();
@@ -1063,7 +1068,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     state.redraw(state.layout.y);
                                                 }
                                             }
-                                            to_info_bar();
+                                            to_info_line();
                                             clear_current_line();
                                             print!("/{}", key.clone());
                                             move_to(current_pos as u16, 2);
@@ -1071,7 +1076,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     }
 
                                     KeyCode::Char(c) => {
-                                        keyword.insert(current_pos - initial_pos, c);
+                                        keyword.insert(current_pos - INITIAL_POS_SEARCH, c);
                                         current_pos += 1;
 
                                         let key = &keyword.iter().collect::<String>();
@@ -1096,7 +1101,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
                                         }
 
-                                        to_info_bar();
+                                        to_info_line();
                                         clear_current_line();
                                         print!("/{}", key.clone());
                                         move_to(current_pos as u16, 2);
@@ -1110,6 +1115,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         hide_cursor();
                     }
 
+                    //Search forward.
                     KeyCode::Char('n') => match &state.keyword {
                         None => {
                             continue;
@@ -1134,6 +1140,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         }
                     },
 
+                    //Search backward.
                     KeyCode::Char('N') => match &state.keyword {
                         None => {
                             continue;
@@ -1159,8 +1166,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                     //shell mode
                     KeyCode::Char(':') => {
-                        print!(" ");
-                        to_info_bar();
+                        delete_cursor();
+                        to_info_line();
                         clear_current_line();
                         print!(":");
                         show_cursor();
@@ -1168,8 +1175,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                         let mut command: Vec<char> = Vec::new();
 
-                        let initial_pos = 3;
-                        let mut current_pos = 3;
+                        let mut current_pos = INITIAL_POS_SHELL;
                         'command: loop {
                             if let Event::Key(KeyEvent { code, .. }) = event::read()? {
                                 match code {
@@ -1181,7 +1187,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     }
 
                                     KeyCode::Left => {
-                                        if current_pos == initial_pos {
+                                        if current_pos == INITIAL_POS_SHELL {
                                             continue;
                                         };
                                         current_pos -= 1;
@@ -1190,7 +1196,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                     KeyCode::Right => {
                                         if current_pos as usize
-                                            == command.len() + initial_pos as usize
+                                            == command.len() + INITIAL_POS_SHELL as usize
                                         {
                                             continue;
                                         };
@@ -1199,17 +1205,19 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     }
 
                                     KeyCode::Backspace => {
-                                        if current_pos == initial_pos {
+                                        if current_pos == INITIAL_POS_SHELL {
                                             go_to_and_rest_info();
                                             hide_cursor();
                                             state.move_cursor(state.layout.y);
                                             break 'command;
                                         } else {
-                                            command.remove((current_pos - initial_pos - 1).into());
+                                            command.remove(
+                                                (current_pos - INITIAL_POS_SHELL - 1).into(),
+                                            );
                                             current_pos -= 1;
 
                                             clear_current_line();
-                                            to_info_bar();
+                                            to_info_line();
                                             print!(":{}", &command.iter().collect::<String>());
                                             move_to(current_pos, 2);
                                         }
@@ -1332,7 +1340,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 let output = output.stdout;
                                                 if output.is_empty() {
                                                     print_warning(
-                                                        "Keyword cannot match the database.",
+                                                        "Keyword does not match the database.",
                                                         state.layout.y,
                                                     );
                                                     break 'command;
@@ -1460,10 +1468,10 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     }
 
                                     KeyCode::Char(c) => {
-                                        command.insert((current_pos - initial_pos).into(), c);
+                                        command.insert((current_pos - INITIAL_POS_SHELL).into(), c);
                                         current_pos += 1;
                                         clear_current_line();
-                                        to_info_bar();
+                                        to_info_line();
                                         print!(":{}", &command.iter().collect::<String>(),);
                                         move_to(current_pos, 2);
                                     }
@@ -1549,8 +1557,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                     //exit by ZZ
                     KeyCode::Char('Z') => {
-                        print!(" ");
-                        to_info_bar();
+                        delete_cursor();
+                        to_info_line();
                         clear_current_line();
                         print!("Z");
                         show_cursor();

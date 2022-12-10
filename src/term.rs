@@ -36,7 +36,7 @@ pub fn move_to(x: u16, y: u16) {
     print!("{}", MoveTo(x - 1, y - 1));
 }
 
-pub fn to_info_bar() {
+pub fn to_info_line() {
     move_to(2, 2);
 }
 

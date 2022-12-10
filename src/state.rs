@@ -306,8 +306,8 @@ impl State {
         for (i, item) in targets.iter().enumerate() {
             let item = item.clone();
 
-            print!(" ");
-            to_info_bar();
+            delete_cursor();
+            to_info_line();
             clear_current_line();
             print!("{}", display_count(i, total_selected));
 
@@ -519,8 +519,8 @@ impl State {
 
         let total_selected = targets.len();
         for (i, item) in targets.iter().enumerate() {
-            print!(" ");
-            to_info_bar();
+            delete_cursor();
+            to_info_line();
             clear_current_line();
             print!("{}", display_count(i, total_selected));
 
