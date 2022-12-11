@@ -8,9 +8,10 @@
 
 ### Changed
 
-- IMPORTANT: Trash and log directory path changed.
+- **IMPORTANT**: Trash and log directory path changed.
   - from v2.2.0, felix will use `dirs::data_local_dir()` to store the deleted items and log files, instead of `dirs::config_dir()`.
-  - Due to this change, the path for linux will be `$XDG_DATA_HOME/felix/{Trash, log}`, in most case `/home/user/.local/share/felix/{Trash, log}`. For Windows `{FOLDERID_LocalAppData}\felix\{Trash, log}`, in most case `C:\Users\user\AppData\Local\felix\{Trash, log}`. No change for macOS users. Note that config file path is not changed!
+  - Due to this change, the path for linux will be `$XDG_DATA_HOME/felix/{Trash, log}`, in most case `/home/user/.local/share/felix/{Trash, log}`. For Windows `{FOLDERID_LocalAppData}\felix\{Trash, log}`, typically `C:\Users\user\AppData\Local\felix\{Trash, log}`. No change for macOS users.
+  - Note that config file path is unchanged for any OS!
   - Please don't forget deleting old trash diretory and log files if you don't want them anymore.
 - Refactoring overall.
 

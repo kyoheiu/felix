@@ -2,10 +2,11 @@
 
 # _felix_
 
-A tui file manager with vim-like key mapping, written in Rust.  
+A tui file manager with Vim-like key mapping, written in Rust.  
 Fast, simple, and easy to configure & use.
 
-For the detailed document, please see https://kyoheiu.dev/felix.
+For an overview of this app, please see this README, especially [key manual](#key).  
+For more detailed document, visit https://kyoheiu.dev/felix.
 
 ![sample](screenshots/sample.gif)
 
@@ -17,7 +18,8 @@ For the detailed document, please see https://kyoheiu.dev/felix.
 
 - **IMPORTANT**: Trash and log directory path changed.
   - from v2.2.0, felix will use `dirs::data_local_dir()` to store the deleted items and log files, instead of `dirs::config_dir()`.
-  - Due to this change, the path for linux will be `$XDG_DATA_HOME/felix/{Trash, log}`, in most case `/home/user/.local/share/felix/{Trash, log}`. For Windows `{FOLDERID_LocalAppData}\felix\{Trash, log}`, in most case `C:\Users\user\AppData\Local\felix\{Trash, log}`. No change for macOS users. Note that config file path is not changed!
+  - Due to this change, the path for linux will be `$XDG_DATA_HOME/felix/{Trash, log}`, in most case `/home/user/.local/share/felix/{Trash, log}`. For Windows `{FOLDERID_LocalAppData}\felix\{Trash, log}`, typically `C:\Users\user\AppData\Local\felix\{Trash, log}`. No change for macOS users.
+  - Note that config file path is unchanged for any OS!
   - Please don't forget deleting old trash diretory and log files if you don't want them anymore.
 
 ### Added
@@ -69,7 +71,7 @@ yay -S felix-rs
 
 ### NetBSD
 
-available from the official repositories:
+Available from the official repositories.
 
 ```
 pkgin install felix
@@ -107,6 +109,8 @@ Both relative and absolute path available.
 `-v` | `--version` => Check update.
 `-l [path]` | `--log [path]` => Launch the app and create a log file.
 ```
+
+<a id="key"></a>
 
 ## Key Manual
 
