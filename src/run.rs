@@ -1223,118 +1223,74 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         }
                                     }
 
+                                    KeyCode::Char(c) => {
+                                        command.insert((current_pos - INITIAL_POS_SHELL).into(), c);
+                                        current_pos += 1;
+                                        clear_current_line();
+                                        to_info_line();
+                                        print!(":{}", &command.iter().collect::<String>(),);
+                                        move_to(current_pos, 2);
+                                    }
+
                                     KeyCode::Enter => {
                                         hide_cursor();
-                                        if command.is_empty() {
+                                        //Set the command and argument(s).
+                                        let commands: String = command.iter().collect();
+                                        let commands: Vec<&str> =
+                                            commands.split_whitespace().collect();
+                                        if commands.is_empty() {
                                             go_to_and_rest_info();
                                             state.move_cursor(state.layout.y);
                                             break;
                                         }
+                                        let command = commands[0];
 
-                                        if command == vec!['q'] {
-                                            //quit
-                                            break 'main;
-                                        } else if command == vec!['c', 'd'] || command == vec!['z']
-                                        {
-                                            //go to the home directory
-                                            let home_dir = dirs::home_dir().ok_or_else(|| {
-                                                FxError::Dirs("Cannot read home dir.".to_string())
-                                            })?;
-                                            if let Err(e) = state.chdir(&home_dir, Move::Jump) {
-                                                print_warning(e, state.layout.y);
-                                            }
-                                            break 'command;
-                                        } else if command == vec!['e'] {
-                                            //reload current dir
-                                            state.keyword = None;
-                                            state.layout.nums.reset();
-                                            state.reload(BEGINNING_ROW)?;
-                                            break 'command;
-                                        } else if command == vec!['h'] {
-                                            //Show help
-                                            clear_all();
-                                            move_to(1, 1);
-                                            screen.flush()?;
-                                            let help = format_txt(
-                                                HELP,
-                                                state.layout.terminal_column,
-                                                true,
-                                            );
-                                            print_help(&help, 0, state.layout.terminal_row);
-                                            screen.flush()?;
-
-                                            let mut skip = 0;
-                                            loop {
-                                                if let Event::Key(KeyEvent { code, .. }) =
-                                                    event::read()?
-                                                {
-                                                    match code {
-                                                        KeyCode::Char('j') | KeyCode::Down => {
-                                                            clear_all();
-                                                            skip += 1;
-                                                            print_help(
-                                                                &help,
-                                                                skip,
-                                                                state.layout.terminal_row,
-                                                            );
-                                                            screen.flush()?;
-                                                            continue;
-                                                        }
-                                                        KeyCode::Char('k') | KeyCode::Up => {
-                                                            if skip == 0 {
-                                                                continue;
-                                                            } else {
-                                                                clear_all();
-                                                                skip -= 1;
-                                                                print_help(
-                                                                    &help,
-                                                                    skip,
-                                                                    state.layout.terminal_row,
-                                                                );
-                                                                screen.flush()?;
-                                                                continue;
-                                                            }
-                                                        }
-                                                        _ => {
-                                                            break;
-                                                        }
-                                                    }
+                                        if commands.len() == 1 {
+                                            if command == "q" {
+                                                //quit
+                                                break 'main;
+                                            } else if command == "cd" || command == "z" {
+                                                //go to the home directory
+                                                let home_dir =
+                                                    dirs::home_dir().ok_or_else(|| {
+                                                        FxError::Dirs(
+                                                            "Cannot read home dir.".to_string(),
+                                                        )
+                                                    })?;
+                                                if let Err(e) = state.chdir(&home_dir, Move::Jump) {
+                                                    print_warning(e, state.layout.y);
                                                 }
+                                                break 'command;
+                                            } else if command == "e" {
+                                                //reload current dir
+                                                state.keyword = None;
+                                                state.layout.nums.reset();
+                                                state.reload(BEGINNING_ROW)?;
+                                                break 'command;
+                                            } else if command == "h" {
+                                                state.show_help(&screen)?;
+                                                state.redraw(state.layout.y);
+                                                break 'command;
+                                            } else if command == "trash" {
+                                                //Move to trash dir
+                                                state.layout.nums.reset();
+                                                if let Err(e) = state
+                                                    .chdir(&(state.trash_dir.clone()), Move::Jump)
+                                                {
+                                                    print_warning(e, state.layout.y);
+                                                }
+                                                break 'command;
+                                            } else if command == "empty" {
+                                                state.empty_trash(&screen)?;
+                                                break 'command;
                                             }
-                                            state.redraw(state.layout.y);
-                                            break 'command;
                                         }
 
-                                        let commands: String = command.iter().collect();
-                                        let commands = commands.split_ascii_whitespace();
-                                        let mut c = "";
-                                        let mut args = Vec::new();
-                                        let mut i = 0;
-                                        for s in commands {
-                                            if i == 0 {
-                                                c = s;
-                                                i += 1;
-                                            } else {
-                                                args.push(s);
-                                            }
-                                        }
-
-                                        if (c == "cd" || c == "z") && args.is_empty() {
-                                            //Change directory
-                                            state.layout.nums.reset();
-                                            let home_dir = dirs::home_dir().ok_or_else(|| {
-                                                FxError::Dirs("Cannot read home dir.".to_string())
-                                            })?;
-                                            if let Err(e) = state.chdir(&home_dir, Move::Jump) {
-                                                print_warning(e, state.layout.y);
-                                            }
-                                            break 'command;
-                                        }
-
-                                        if c == "z" && args.len() == 1 {
+                                        //zoxide jump
+                                        if command == "z" && commands.len() == 2 {
                                             //Change directory using zoxide
                                             if let Ok(output) = std::process::Command::new("zoxide")
-                                                .args(["query", args[0].trim()])
+                                                .args(["query", commands[1].trim()])
                                                 .output()
                                             {
                                                 let output = output.stdout;
@@ -1379,70 +1335,6 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
                                         }
 
-                                        if c == "empty" && args.is_empty() {
-                                            //Empty the trash dir
-                                            print_warning(EMPTY_WARNING, state.layout.y);
-                                            screen.flush()?;
-
-                                            if let Event::Key(KeyEvent { code, .. }) =
-                                                event::read()?
-                                            {
-                                                match code {
-                                                    KeyCode::Char('y') | KeyCode::Char('Y') => {
-                                                        print_info(
-                                                            "EMPTY: Processing...",
-                                                            state.layout.y,
-                                                        );
-                                                        screen.flush()?;
-
-                                                        if let Err(e) = std::fs::remove_dir_all(
-                                                            &state.trash_dir,
-                                                        ) {
-                                                            print_warning(e, state.layout.y);
-                                                            continue 'main;
-                                                        }
-                                                        if let Err(e) =
-                                                            std::fs::create_dir(&state.trash_dir)
-                                                        {
-                                                            print_warning(e, state.layout.y);
-                                                            continue 'main;
-                                                        }
-                                                        go_to_and_rest_info();
-                                                        if state.current_dir == state.trash_dir {
-                                                            state.reload(BEGINNING_ROW)?;
-                                                            print_info(
-                                                                "Trash dir emptied",
-                                                                state.layout.y,
-                                                            );
-                                                        } else {
-                                                            print_info(
-                                                                "Trash dir emptied",
-                                                                state.layout.y,
-                                                            );
-                                                            state.move_cursor(state.layout.y);
-                                                        }
-                                                        screen.flush()?;
-                                                        break 'command;
-                                                    }
-                                                    _ => {
-                                                        go_to_and_rest_info();
-                                                        state.move_cursor(state.layout.y);
-                                                        break 'command;
-                                                    }
-                                                }
-                                            }
-                                        }
-
-                                        if c == "trash" && args.is_empty() {
-                                            //Move to trash dir
-                                            state.layout.nums.reset();
-                                            if let Err(e) =
-                                                state.chdir(&(state.trash_dir.clone()), Move::Jump)
-                                            {
-                                                print_warning(e, state.layout.y);
-                                            }
-                                            break 'command;
-                                        }
                                         //Execute the command as it is
                                         execute!(screen, EnterAlternateScreen)?;
                                         if std::env::set_current_dir(&state.current_dir).is_err() {
@@ -1450,8 +1342,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             print_warning("Cannot execute command", state.layout.y);
                                             break 'command;
                                         }
-                                        if std::process::Command::new(c)
-                                            .args(args.clone())
+                                        if std::process::Command::new(command)
+                                            .args(&commands[1..])
                                             .status()
                                             .is_err()
                                         {
@@ -1462,18 +1354,9 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         }
                                         execute!(screen, EnterAlternateScreen)?;
                                         hide_cursor();
-                                        info!("SHELL: {} {:?}", c, args);
+                                        info!("SHELL: {:?}", commands);
                                         state.reload(state.layout.y)?;
                                         break 'command;
-                                    }
-
-                                    KeyCode::Char(c) => {
-                                        command.insert((current_pos - INITIAL_POS_SHELL).into(), c);
-                                        current_pos += 1;
-                                        clear_current_line();
-                                        to_info_line();
-                                        print!(":{}", &command.iter().collect::<String>(),);
-                                        move_to(current_pos, 2);
                                     }
 
                                     _ => continue,
