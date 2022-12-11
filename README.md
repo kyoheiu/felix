@@ -11,13 +11,23 @@ For the detailed document, please see https://kyoheiu.dev/felix.
 
 ## New Release
 
-## v2.1.1 (2022-12-02)
+## v2.2.0 (2022-12-12)
+
+### Changed
+
+- **IMPORTANT**: Trash and log directory path changed.
+  - from v2.2.0, felix will use `dirs::data_local_dir()` to store the deleted items and log files, instead of `dirs::config_dir()`.
+  - Due to this change, the path for linux will be `$XDG_DATA_HOME/felix/{Trash, log}`, in most case `/home/user/.local/share/felix/{Trash, log}`. For Windows `{FOLDERID_LocalAppData}\felix\{Trash, log}`, in most case `C:\Users\user\AppData\Local\felix\{Trash, log}`. No change for macOS users. Note that config file path is not changed!
+  - Please don't forget deleting old trash diretory and log files if you don't want them anymore.
+
+### Added
+
+- `:trash` to go to the trash directory.
 
 ### Fixed
 
-- You can now open a file in a new window on Wayland environment too.
-- Proper handling of wide characters: Even if e.g. file name includes some wide charatcters such as CJK, the layout won't break anymore.
-- Fix cursor color after printing the text preview.
+- Support NetBSD to open file in a new window.
+- Properly remove broken symlink in Windows as well. Also, when deleting/puttiing a directory, broken symlink(s) in it won't cause any error and will be removed from the file system after deleting/putting.
 
 For more details, see `CHANGELOG.md`.
 
