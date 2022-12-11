@@ -1266,11 +1266,12 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 state.reload(BEGINNING_ROW)?;
                                                 break 'command;
                                             } else if command == "h" {
+                                                //show help
                                                 state.show_help(&screen)?;
                                                 state.redraw(state.layout.y);
                                                 break 'command;
                                             } else if command == "trash" {
-                                                //Move to trash dir
+                                                //move to trash dir
                                                 state.layout.nums.reset();
                                                 if let Err(e) = state
                                                     .chdir(&(state.trash_dir.clone()), Move::Jump)
@@ -1279,6 +1280,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                                 break 'command;
                                             } else if command == "empty" {
+                                                //empty the trash dir
                                                 state.empty_trash(&screen)?;
                                                 break 'command;
                                             }
