@@ -72,18 +72,6 @@ pub fn rename_dir(dir_name: &str, name_set: &BTreeSet<String>) -> String {
     new_name
 }
 
-/// Move to information bar.
-pub fn go_to_and_rest_info() {
-    to_info_line();
-    clear_current_line();
-}
-
-/// Delele cursor.
-pub fn delete_cursor() {
-    print!(" ");
-    move_left(1);
-}
-
 /// Print the result of operation, such as put/delete/redo/undo.
 pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
     delete_cursor();

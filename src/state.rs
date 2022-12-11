@@ -1,6 +1,7 @@
 use super::config::*;
 use super::errors::FxError;
 use super::functions::*;
+use super::help::HELP;
 use super::layout::*;
 use super::magic_image::is_supported_image_type;
 use super::magic_packed;
@@ -16,8 +17,9 @@ use log::{error, info};
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::ffi::OsStr;
-use std::fmt::Write as _;
 use std::fs;
+use std::io::Stdout;
+use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, ExitStatus, Stdio};
 use std::time::UNIX_EPOCH;
@@ -44,7 +46,6 @@ pub struct State {
     pub p_memo: Vec<StateMemo>,
     pub keyword: Option<String>,
     pub layout: Layout,
-    pub rust_log: Option<String>,
 }
 
 #[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -171,7 +172,6 @@ impl State {
             c_memo: Vec::new(),
             p_memo: Vec::new(),
             keyword: None,
-            rust_log: std::env::var("RUST_LOG").ok(),
         })
     }
 
@@ -949,7 +949,7 @@ impl State {
     }
 
     /// Change the order of the list not reading all the items.
-    pub fn change_order(&mut self) {
+    fn change_order(&mut self) {
         let mut dir_v = Vec::new();
         let mut file_v = Vec::new();
         let mut result = Vec::with_capacity(self.list.len());
@@ -1020,6 +1020,83 @@ impl State {
                 item.selected = true;
             }
         }
+    }
+
+    //Show help
+    pub fn show_help(&self, mut screen: &Stdout) -> Result<(), FxError> {
+        clear_all();
+        move_to(1, 1);
+        screen.flush()?;
+        let (width, height) = terminal_size()?;
+        let help = format_txt(HELP, width, true);
+        print_help(&help, 0, height);
+        screen.flush()?;
+
+        let mut skip = 0;
+        loop {
+            if let Event::Key(KeyEvent { code, .. }) = crossterm::event::read()? {
+                match code {
+                    KeyCode::Char('j') | KeyCode::Down => {
+                        clear_all();
+                        skip += 1;
+                        print_help(&help, skip, height);
+                        screen.flush()?;
+                        continue;
+                    }
+                    KeyCode::Char('k') | KeyCode::Up => {
+                        if skip == 0 {
+                            continue;
+                        } else {
+                            clear_all();
+                            skip -= 1;
+                            print_help(&help, skip, height);
+                            screen.flush()?;
+                            continue;
+                        }
+                    }
+                    _ => {
+                        break;
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    //Empty the trash dir
+    pub fn empty_trash(&mut self, mut screen: &Stdout) -> Result<(), FxError> {
+        print_warning(EMPTY_WARNING, self.layout.y);
+        screen.flush()?;
+
+        if let Event::Key(KeyEvent { code, .. }) = crossterm::event::read()? {
+            match code {
+                KeyCode::Char('y') | KeyCode::Char('Y') => {
+                    print_info("EMPTY: Processing...", self.layout.y);
+                    screen.flush()?;
+
+                    //Delete trash dir.
+                    if let Err(e) = std::fs::remove_dir_all(&self.trash_dir) {
+                        print_warning(e, self.layout.y);
+                    }
+                    //Recreate the dir.
+                    if let Err(e) = std::fs::create_dir(&self.trash_dir) {
+                        print_warning(e, self.layout.y);
+                    }
+                    if self.current_dir == self.trash_dir {
+                        self.reload(BEGINNING_ROW)?;
+                    }
+                    go_to_and_rest_info();
+                    print_info("Trash dir emptied", self.layout.y);
+                    self.move_cursor(self.layout.y);
+                    screen.flush()?;
+                }
+                _ => {
+                    go_to_and_rest_info();
+                    self.move_cursor(self.layout.y);
+                }
+            }
+        }
+        Ok(())
     }
 
     pub fn chdir(&mut self, p: &std::path::Path, mv: Move) -> Result<(), FxError> {
@@ -1204,7 +1281,7 @@ impl State {
     fn make_footer(&self, item: &ItemInfo) -> String {
         match &item.file_ext {
             Some(ext) => {
-                let mut footer = match item.permissions {
+                let footer = match item.permissions {
                     Some(permissions) => {
                         format!(
                             " {}/{} {} {} {}",
@@ -1223,23 +1300,13 @@ impl State {
                         to_proper_size(item.file_size),
                     ),
                 };
-                if self.rust_log.is_some() {
-                    let _ = write!(
-                        footer,
-                        " i:{} s:{} c:{} r:{}",
-                        self.layout.nums.index,
-                        self.layout.nums.skip,
-                        self.layout.terminal_column,
-                        self.layout.terminal_row
-                    );
-                }
                 footer
                     .chars()
                     .take(self.layout.terminal_column.into())
                     .collect()
             }
             None => {
-                let mut footer = match item.permissions {
+                let footer = match item.permissions {
                     Some(permissions) => {
                         format!(
                             " {}/{} {} {}",
@@ -1256,16 +1323,6 @@ impl State {
                         to_proper_size(item.file_size),
                     ),
                 };
-                if self.rust_log.is_some() {
-                    let _ = write!(
-                        footer,
-                        " i:{} s:{} c:{} r:{}",
-                        self.layout.nums.index,
-                        self.layout.nums.skip,
-                        self.layout.terminal_column,
-                        self.layout.terminal_row
-                    );
-                }
                 footer
                     .chars()
                     .take(self.layout.terminal_column.into())

@@ -1,7 +1,6 @@
 use super::config::{make_config_if_not_exists, CONFIG_FILE};
 use super::errors::FxError;
 use super::functions::*;
-use super::help::HELP;
 use super::layout::Split;
 use super::nums::*;
 use super::op::*;
@@ -191,8 +190,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                     //Go to top
                     KeyCode::Char('g') => {
-                        to_info_line();
-                        clear_current_line();
+                        go_to_and_rest_info();
                         print!("g");
                         show_cursor();
                         screen.flush()?;
@@ -1369,7 +1367,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                     //undo
                     KeyCode::Char('u') => {
                         let op_len = state.operations.op_list.len();
-                        if op_len < state.operations.pos + 1 {
+                        if op_len <= state.operations.pos {
                             print_info("No operations left.", state.layout.y);
                             continue;
                         }
@@ -1431,18 +1429,10 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         }
                     }
 
-                    //Debug print for undo/redo
-                    KeyCode::Char('P') => {
-                        if state.rust_log.is_some() {
-                            print_info(format!("{:?}", state), state.layout.y);
-                        }
-                    }
-
                     //exit by ZZ
                     KeyCode::Char('Z') => {
                         delete_cursor();
-                        to_info_line();
-                        clear_current_line();
+                        go_to_and_rest_info();
                         print!("Z");
                         show_cursor();
                         screen.flush()?;
@@ -1462,7 +1452,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         }
                     }
 
-                    //If input does not match any of the keys up to this point, ignore it
+                    //If input does not match any of the defined keys, ignore it.
                     _ => {
                         continue;
                     }
@@ -1529,7 +1519,7 @@ mod tests {
     #[test]
     fn zoxide_test() {
         let output = std::process::Command::new("zoxide")
-            .args(["query", "dotfiles"])
+            .args(["query", "felix"])
             .output()
             .unwrap();
         let stdout = std::str::from_utf8(&output.stdout).unwrap().trim();
