@@ -13,6 +13,9 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 pub const PROCESS_INDICATOR_LENGTH: u16 = 7;
+const KB: u64 = 1000;
+const MB: u64 = 1_000_000;
+const GB: u64 = 1_000_000_000;
 
 /// Generate modified time as `String`.
 pub fn format_time(time: &Option<String>) -> String {
@@ -160,17 +163,17 @@ pub fn duration_to_string(duration: Duration) -> String {
 /// Get the size format of item.
 pub fn to_proper_size(byte: u64) -> String {
     let mut result: String;
-    if byte < 1000 {
+    if byte < KB {
         result = byte.to_string();
         result.push('B');
-    } else if byte < 1_000_000 {
-        result = (byte / 1_000).to_string();
+    } else if byte < MB {
+        result = (byte / KB).to_string();
         result.push_str("KB");
-    } else if byte < 1_000_000_000 {
-        result = (byte / 1_000_000).to_string();
+    } else if byte < GB {
+        result = (byte / MB).to_string();
         result.push_str("MB");
     } else {
-        result = (byte / 1_000_000_000).to_string();
+        result = (byte / GB).to_string();
         result.push_str("GB");
     }
     result
