@@ -5,12 +5,23 @@
 A tui file manager with Vim-like key mapping, written in Rust.  
 Fast, simple, and easy to configure & use.
 
-For an overview of this app, please see this README, especially [key manual](#key).  
+For an overview of this app, take a look at this README, especially [key manual](#key-manual).  
 For more detailed document, visit https://kyoheiu.dev/felix.
+
+- [New release](#new-release)
+- [Status](#status)
+- [Installation](#installation)
+- [Integrations](#integrations)
+- [Usage](#usage)
+  - [Key manual](#key-manual)
+- [Preview feature](#preview)
+- [Configuration](#configuration)
 
 ![sample](screenshots/sample.gif)
 
-## New Release
+<a id="new-release"></a>
+
+## New release
 
 ## v2.2.0 (2022-12-12)
 
@@ -33,6 +44,8 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 
 For more details, see `CHANGELOG.md`.
 
+<a id="status"></a>
+
 ## Status
 
 | OS      | Status               |
@@ -43,6 +56,8 @@ For more details, see `CHANGELOG.md`.
 | Windows | not fully tested yet |
 
 _For Windows users: From v1.3.0, it can be at least compiled on Windows (see `.github/workflows/install_test.yml`.) If you're interested, please try and report any problems._
+
+<a id="installation"></a>
 
 ## Installation
 
@@ -85,6 +100,8 @@ cd felix
 cargo install --path .
 ```
 
+<a id="integrations"></a>
+
 ## Integrations
 
 In addition, you can use felix more conveniently by installing these two apps:
@@ -94,6 +111,8 @@ In addition, you can use felix more conveniently by installing these two apps:
 
 These apps do not need any configuration to use with felix!
 
+<a id="usage"></a>
+
 ## Usage
 
 ```
@@ -102,7 +121,7 @@ These apps do not need any configuration to use with felix!
 Both relative and absolute path available.
 ```
 
-## Options
+### Options
 
 ```
 `-h` | `--help` => Print help.
@@ -110,9 +129,9 @@ Both relative and absolute path available.
 `-l [path]` | `--log [path]` => Launch the app and create a log file.
 ```
 
-<a id="key"></a>
+<a id="key-manual"></a>
 
-## Key Manual
+### Key manual
 
 ```
 j / Down          :Go down.
@@ -154,10 +173,14 @@ Esc               :Return to the normal mode.
 :q / ZZ           :Exit.
 ```
 
+<a id="preview"></a>
+
 ## Preview feature
 
 By default, text files and directories can be previewed.  
 Install `chafa` and you can preview images without any configuration.
+
+<a id="configuration"></a>
 
 ## Configuration
 
