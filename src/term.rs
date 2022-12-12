@@ -36,12 +36,17 @@ pub fn move_to(x: u16, y: u16) {
     print!("{}", MoveTo(x - 1, y - 1));
 }
 
-pub fn to_info_bar() {
+pub fn to_info_line() {
     move_to(2, 2);
 }
 
 pub fn clear_current_line() {
     print!("{}", Clear(crossterm::terminal::ClearType::CurrentLine));
+}
+
+pub fn go_to_and_rest_info() {
+    to_info_line();
+    clear_current_line();
 }
 
 pub fn clear_until_newline() {
@@ -70,6 +75,11 @@ pub fn show_cursor() {
 
 pub fn print_pointer() {
     print!(">");
+}
+
+pub fn delete_cursor() {
+    print!(" ");
+    move_left(1);
 }
 
 pub fn set_color(c: &TermColor) {

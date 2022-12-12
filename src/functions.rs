@@ -1,3 +1,5 @@
+use crate::state::FELIX;
+
 use super::config::Colorname;
 use super::errors::FxError;
 use super::term::*;
@@ -11,6 +13,9 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 pub const PROCESS_INDICATOR_LENGTH: u16 = 7;
+const KB: u64 = 1000;
+const MB: u64 = 1_000_000;
+const GB: u64 = 1_000_000_000;
 
 /// Generate modified time as `String`.
 pub fn format_time(time: &Option<String>) -> String {
@@ -65,18 +70,6 @@ pub fn rename_dir(dir_name: &str, name_set: &BTreeSet<String>) -> String {
         count += 1;
     }
     new_name
-}
-
-/// Move to information bar.
-pub fn go_to_and_rest_info() {
-    to_info_bar();
-    clear_current_line();
-}
-
-/// Delele cursor.
-pub fn delete_cursor() {
-    print!(" ");
-    move_left(1);
 }
 
 /// Print the result of operation, such as put/delete/redo/undo.
@@ -158,17 +151,17 @@ pub fn duration_to_string(duration: Duration) -> String {
 /// Get the size format of item.
 pub fn to_proper_size(byte: u64) -> String {
     let mut result: String;
-    if byte < 1000 {
+    if byte < KB {
         result = byte.to_string();
         result.push('B');
-    } else if byte < 1_000_000 {
-        result = (byte / 1_000).to_string();
+    } else if byte < MB {
+        result = (byte / KB).to_string();
         result.push_str("KB");
-    } else if byte < 1_000_000_000 {
-        result = (byte / 1_000_000).to_string();
+    } else if byte < GB {
+        result = (byte / MB).to_string();
         result.push_str("MB");
     } else {
-        result = (byte / 1_000_000_000).to_string();
+        result = (byte / GB).to_string();
         result.push_str("GB");
     }
     result
@@ -256,14 +249,19 @@ pub fn is_editable(s: &str) -> bool {
 }
 
 /// Initialize the log if `-l` option is added.
-pub fn init_log(config_dir_path: &Path) -> Result<(), FxError> {
+pub fn init_log(data_local_path: &Path) -> Result<(), FxError> {
     let mut log_name = chrono::Local::now().format("%F-%H-%M-%S").to_string();
     log_name.push_str(".log");
     let config = ConfigBuilder::new()
         .set_time_offset_to_local()
         .unwrap()
         .build();
-    let log_path = config_dir_path.join("log");
+    let log_path = {
+        let mut path = data_local_path.to_path_buf();
+        path.push(FELIX);
+        path.push("log");
+        path
+    };
     if !log_path.exists() {
         std::fs::create_dir(&log_path)?;
     }

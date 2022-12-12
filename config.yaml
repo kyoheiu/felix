@@ -1,12 +1,12 @@
 # v2.1.1
 
 # (Optional)
-# Default exec command when opening files.
+# Default exec command when opening file.
 # If not set, will default to $EDITOR.
 # default: nvim
 
 # (Optional)
-# key (the command you want to use when opening certain files): [values] (extensions)
+# key (the command you want to use when opening file): [values] (extensions)
 # exec:
 #   feh:
 #     [jpg, jpeg, png, gif, svg]

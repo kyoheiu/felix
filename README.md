@@ -2,24 +2,49 @@
 
 # _felix_
 
-A tui file manager with vim-like key mapping, written in Rust.  
+A tui file manager with Vim-like key mapping, written in Rust.  
 Fast, simple, and easy to configure & use.
 
-For the detailed document, please see https://kyoheiu.dev/felix.
+For an overview of this app, take a look at this README, especially [key manual](#key-manual).  
+For more detailed document, visit https://kyoheiu.dev/felix.
+
+- [New release](#new-release)
+- [Status](#status)
+- [Installation](#installation)
+- [Integrations](#integrations)
+- [Usage](#usage)
+  - [Key manual](#key-manual)
+- [Preview feature](#preview)
+- [Configuration](#configuration)
 
 ![sample](screenshots/sample.gif)
 
-## New Release
+<a id="new-release"></a>
 
-## v2.1.1 (2022-12-02)
+## New release
+
+## v2.2.0 (2022-12-12)
+
+### Changed
+
+- **IMPORTANT**: Trash and log directory path changed.
+  - from v2.2.0, felix will use `dirs::data_local_dir()` to store the deleted items and log files, instead of `dirs::config_dir()`.
+  - Due to this change, the path for linux will be `$XDG_DATA_HOME/felix/{Trash, log}`, in most case `/home/user/.local/share/felix/{Trash, log}`. For Windows `{FOLDERID_LocalAppData}\felix\{Trash, log}`, typically `C:\Users\user\AppData\Local\felix\{Trash, log}`. No change for macOS users.
+  - Note that config file path is unchanged for any OS!
+  - Please don't forget deleting old trash diretory and log files if you don't want them anymore.
+
+### Added
+
+- `:trash` to go to the trash directory.
 
 ### Fixed
 
-- You can now open a file in a new window on Wayland environment too.
-- Proper handling of wide characters: Even if e.g. file name includes some wide charatcters such as CJK, the layout won't break anymore.
-- Fix cursor color after printing the text preview.
+- Support NetBSD to open file in a new window.
+- Properly remove broken symlink in Windows as well. Also, when deleting/puttiing a directory, broken symlink(s) in it won't cause any error and will be removed from the file system after deleting/putting.
 
 For more details, see `CHANGELOG.md`.
+
+<a id="status"></a>
 
 ## Status
 
@@ -31,6 +56,8 @@ For more details, see `CHANGELOG.md`.
 | Windows | not fully tested yet |
 
 _For Windows users: From v1.3.0, it can be at least compiled on Windows (see `.github/workflows/install_test.yml`.) If you're interested, please try and report any problems._
+
+<a id="installation"></a>
 
 ## Installation
 
@@ -59,7 +86,7 @@ yay -S felix-rs
 
 ### NetBSD
 
-available from the official repositories:
+Available from the official repositories.
 
 ```
 pkgin install felix
@@ -73,6 +100,8 @@ cd felix
 cargo install --path .
 ```
 
+<a id="integrations"></a>
+
 ## Integrations
 
 In addition, you can use felix more conveniently by installing these two apps:
@@ -82,6 +111,8 @@ In addition, you can use felix more conveniently by installing these two apps:
 
 These apps do not need any configuration to use with felix!
 
+<a id="usage"></a>
+
 ## Usage
 
 ```
@@ -90,7 +121,7 @@ These apps do not need any configuration to use with felix!
 Both relative and absolute path available.
 ```
 
-## Options
+### Options
 
 ```
 `-h` | `--help` => Print help.
@@ -98,7 +129,9 @@ Both relative and absolute path available.
 `-l [path]` | `--log [path]` => Launch the app and create a log file.
 ```
 
-## Key Manual
+<a id="key-manual"></a>
+
+### Key manual
 
 ```
 j / Down          :Go down.
@@ -134,15 +167,20 @@ Esc               :Return to the normal mode.
 :cd / :z          :Go to the home directory.
 :z <keyword>      :Same as `z <keyword>`.
 :e                :Reload the current directory.
+:trash            :Go to the trash directory.
 :empty            :Empty the trash directory.
 :h                :Show help.
 :q / ZZ           :Exit.
 ```
 
+<a id="preview"></a>
+
 ## Preview feature
 
 By default, text files and directories can be previewed.  
 Install `chafa` and you can preview images without any configuration.
+
+<a id="configuration"></a>
 
 ## Configuration
 
@@ -150,24 +188,24 @@ Install `chafa` and you can preview images without any configuration.
 
 ```
 config file     : $XDG_CONFIG_HOME/felix/config.yaml
-trash directory : $XDG_CONFIG_HOME/felix/trash
-log files       : \$XDG_CONFIG_HOME/felix/log
+trash directory : $XDG_DATA_HOME/felix/Trash
+log files       : $XDG_DATA_HOME/felix/log
 ```
 
 ### macOS
 
 ```
 config file     : $HOME/Library/Application Support/felix/config.yaml
-trash directory : $HOME/Library/Application Support/felix/trash
-log files       : \$HOME/Library/Application Support/felix/log
+trash directory : $HOME/Library/Application Support/felix/Trash
+log files       : $HOME/Library/Application Support/felix/log
 ```
 
 ### Windows
 
 ```
 config file     : $PROFILE\AppData\Roaming\felix\config.yaml
-trash directory : $PROFILE\AppData\Roaming\felix\trash
-log files       : $PROFILE\AppData\Roaming\felix\log
+trash directory : $PROFILE\AppData\Local\felix\Trash
+log files       : $PROFILE\AppData\Local\felix\log
 ```
 
 For more details, visit https://kyoheiu.dev/felix.

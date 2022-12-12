@@ -4,6 +4,26 @@
 
 ## Unreleased
 
+## v2.2.0 (2022-12-12)
+
+### Changed
+
+- **IMPORTANT**: Trash and log directory path changed.
+  - from v2.2.0, felix will use `dirs::data_local_dir()` to store the deleted items and log files, instead of `dirs::config_dir()`.
+  - Due to this change, the path for linux will be `$XDG_DATA_HOME/felix/{Trash, log}`, in most case `/home/user/.local/share/felix/{Trash, log}`. For Windows `{FOLDERID_LocalAppData}\felix\{Trash, log}`, typically `C:\Users\user\AppData\Local\felix\{Trash, log}`. No change for macOS users.
+  - Note that config file path is unchanged for any OS!
+  - Please don't forget deleting old trash diretory and log files if you don't want them anymore.
+- Refactoring overall.
+
+### Added
+
+- `:trash` to go to the trash directory.
+
+### Fixed
+
+- Support NetBSD to open file in a new window.
+- Properly remove broken symlink in Windows as well. Also, when deleting/puttiing a directory, broken symlink(s) in it won't cause any error and will be removed from the file system after deleting/putting.
+
 ## v2.1.1 (2022-12-02)
 
 ### Fixed
@@ -16,6 +36,7 @@
 
 - Some refactoring around text-printing in the preview space.
 - When you change the sort key, felix refresh the list more efficiently than ever by avoiding to read all the items.
+- Item order(Name): Case-insensitive instead of sensitive.
 
 ## v2.1.0 (2022-11-19)
 

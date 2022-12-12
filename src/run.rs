@@ -1,7 +1,6 @@
 use super::config::{make_config_if_not_exists, CONFIG_FILE};
 use super::errors::FxError;
 use super::functions::*;
-use super::help::HELP;
 use super::layout::Split;
 use super::nums::*;
 use super::op::*;
@@ -19,36 +18,19 @@ use std::fmt::Write as _;
 use std::io::{stdout, Write};
 use std::panic;
 use std::path::PathBuf;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
+pub const TRASH: &str = "Trash";
 /// Where the item list starts to scroll.
 const SCROLL_POINT: u16 = 3;
+const CLRSCR: &str = "\x1B[2J";
+const INITIAL_POS_RENAME: u16 = 12;
+const INITIAL_POS_SEARCH: usize = 3;
+const INITIAL_POS_SHELL: u16 = 3;
 
 /// Launch the app. If initializing goes wrong, return error.
 pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
-    //Prepare config file and trash directory path.
-    let config_dir_path = {
-        let mut path = dirs::config_dir()
-            .ok_or_else(|| FxError::Dirs("Cannot read config dir.".to_string()))?;
-        path.push(FX_CONFIG_DIR);
-        path
-    };
-    let config_file_path = config_dir_path.join(PathBuf::from(CONFIG_FILE));
-    let trash_dir_path = config_dir_path.join(PathBuf::from(TRASH));
-
-    if log {
-        init_log(&config_dir_path)?;
-    }
-
-    //Make config file and trash directory if not exists.
-    make_config_if_not_exists(&config_file_path, &trash_dir_path)?;
-
-    //If session file, which stores sortkey and whether to show hidden items, does not exist (i.e. first launch), make it.
-    let session_file_path = config_dir_path.join(PathBuf::from(SESSION_FILE));
-    if !session_file_path.exists() {
-        make_session(&session_file_path)?;
-    }
-
+    //Check if argument path is valid.
     if !&arg.exists() {
         println!(
             "Invalid path or argument: {}\n`fx -h` shows help.",
@@ -57,8 +39,46 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         return Ok(());
     }
 
-    //Initialize app state
-    let mut state = State::new(&config_file_path)?;
+    //Prepare config and data local path.
+    let config_dir_path = {
+        let mut path = dirs::config_dir()
+            .ok_or_else(|| FxError::Dirs("Cannot read config directory.".to_string()))?;
+        path.push(FELIX);
+        path
+    };
+    let data_local_path = dirs::data_local_dir()
+        .ok_or_else(|| FxError::Dirs("Cannot read data local directory.".to_string()))?;
+
+    //Set config file and trash dir path.
+    let config_file_path = config_dir_path.join(PathBuf::from(CONFIG_FILE));
+    let trash_dir_path = {
+        let mut path = data_local_path.clone();
+        path.push(FELIX);
+        path.push(TRASH);
+        path
+    };
+
+    //Make config file and trash directory if not exists.
+    make_config_if_not_exists(&config_file_path, &trash_dir_path)?;
+
+    //If `-l / --log` is set, initialize logger.
+    if log {
+        init_log(&data_local_path)?;
+    }
+
+    //If session file does not exist (i.e. first launch), make it.
+    let session_file_path = {
+        let mut path = data_local_path;
+        path.push(FELIX);
+        path.push(SESSION_FILE);
+        path
+    };
+    if !session_file_path.exists() {
+        make_session(&session_file_path)?;
+    }
+
+    //Initialize app state.
+    let mut state = State::new(&config_file_path, &session_file_path)?;
     state.trash_dir = trash_dir_path;
     state.current_dir = if cfg!(not(windows)) {
         // If executed this on windows, "//?" will be inserted at the beginning of the path.
@@ -67,6 +87,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         arg
     };
 
+    //If the main function causes panic, catch it.
     let result = panic::catch_unwind(|| _run(state, session_file_path));
     leave_raw_mode();
 
@@ -119,9 +140,9 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
             Event::Key(KeyEvent {
                 code, modifiers, ..
             }) => {
-                //If you use kitty, you must clear the screen or the previewed image remains.
+                //If you use kitty, you must clear the screen by the escape sequence or the previewed image remains.
                 if state.layout.is_kitty && state.layout.preview {
-                    print!("\x1B[2J");
+                    print!("{}", CLRSCR);
                     state.clear_and_show_headline();
                     state.list_up();
                     screen.flush()?;
@@ -169,8 +190,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                     //Go to top
                     KeyCode::Char('g') => {
-                        to_info_bar();
-                        clear_current_line();
+                        go_to_and_rest_info();
                         print!("g");
                         show_cursor();
                         screen.flush()?;
@@ -222,10 +242,6 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     }
                                     execute!(screen, EnterAlternateScreen)?;
                                     hide_cursor();
-                                    //Add thread sleep time after state.open_file().
-                                    // This is necessary because, with tiling window managers, the window resizing is sometimes slow and felix reloads the layout so quickly that the display may become broken.
-                                    //By the sleep (50ms for now and I think it's not easy to recognize this sleep), this will be avoided.
-                                    std::thread::sleep(Duration::from_millis(50));
                                     state.reload(state.layout.y)?;
                                     continue;
                                 }
@@ -268,8 +284,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                     }
 
                     //Open a file in a new window
-                    //This works only if [exec] is set in config file
-                    //and the extension of the item matches the key.
+                    //This works only if i) [exec] is set in config file
+                    //and ii) the extension of the item matches the key.
                     //If not, warning message appears.
                     KeyCode::Char('o') => {
                         if let Ok(item) = state.get_item() {
@@ -292,8 +308,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         }
                     }
 
-                    //Go to parent directory if exists.
-                    //If the list is filtered, reload current directory.
+                    //Go to the parent directory if exists.
                     KeyCode::Char('h') | KeyCode::Left => {
                         let pre = state.current_dir.clone();
 
@@ -326,8 +341,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                     //Jumps to the directory that matches the keyword (zoxide required).
                     KeyCode::Char('z') => {
-                        print!(" ");
-                        to_info_bar();
+                        delete_cursor();
+                        to_info_line();
                         clear_current_line();
                         print!("z");
                         show_cursor();
@@ -376,7 +391,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         current_pos -= 1;
 
                                         clear_current_line();
-                                        to_info_bar();
+                                        to_info_line();
                                         print!("{}", &command.iter().collect::<String>(),);
                                         move_to(current_pos, 2);
                                     }
@@ -404,7 +419,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     let output = output.stdout;
                                                     if output.is_empty() {
                                                         print_warning(
-                                                            "Keyword cannot match the database.",
+                                                            "Keyword does not match the database.",
                                                             state.layout.y,
                                                         );
                                                         break 'zoxide;
@@ -457,7 +472,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         command.insert((current_pos - initial_pos).into(), c);
                                         current_pos += 1;
                                         clear_current_line();
-                                        to_info_bar();
+                                        to_info_line();
                                         print!("{}", &command.iter().collect::<String>(),);
                                         move_to(current_pos, 2);
                                     }
@@ -556,7 +571,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         if state.layout.nums.index == 0 {
                                             continue;
                                         } else {
-                                            to_info_bar();
+                                            to_info_line();
                                             clear_current_line();
                                             print!("g");
                                             show_cursor();
@@ -698,7 +713,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         state.reorder(BEGINNING_ROW);
                     }
 
-                    // Show/hide hidden files or directories
+                    //Show/hide hidden items.
                     KeyCode::Backspace => {
                         match state.layout.show_hidden {
                             true => {
@@ -714,7 +729,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         state.redraw(BEGINNING_ROW);
                     }
 
-                    //toggle whether to show preview of text file
+                    //Toggle whether to show preview.
                     KeyCode::Char('v') => {
                         state.layout.preview = !state.layout.preview;
                         if state.layout.preview {
@@ -736,7 +751,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         }
                     }
 
-                    //toggle vertical or horizontal split
+                    //Toggle vertical <-> horizontal split.
                     KeyCode::Char('s') => match state.layout.split {
                         Split::Vertical => {
                             state.layout.split = Split::Horizontal;
@@ -761,7 +776,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         if len == 0 {
                             continue;
                         } else {
-                            to_info_bar();
+                            to_info_line();
                             clear_current_line();
                             print!("d");
                             show_cursor();
@@ -816,7 +831,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         if len == 0 {
                             continue;
                         }
-                        to_info_bar();
+                        to_info_line();
                         clear_current_line();
                         print!("y");
                         show_cursor();
@@ -859,7 +874,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                         let duration = duration_to_string(start.elapsed());
                         let registered_len = state.registered.len();
-                        let mut put_message: String = registered_len.to_string();
+                        let mut put_message = registered_len.to_string();
                         if registered_len == 1 {
                             let _ = write!(put_message, " item inserted [{}]", duration);
                         } else {
@@ -884,13 +899,11 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                         show_cursor();
                         let mut rename = item.file_name.chars().collect::<Vec<char>>();
-                        to_info_bar();
+                        to_info_line();
                         clear_current_line();
                         print!("New name: {}", &rename.iter().collect::<String>(),);
                         screen.flush()?;
 
-                        // position after "New name: "
-                        let initial_pos = 12;
                         let mut current_pos: u16 = 12 + item.file_name.len() as u16;
                         loop {
                             if let Event::Key(KeyEvent { code, .. }) = event::read()? {
@@ -925,7 +938,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     }
 
                                     KeyCode::Left => {
-                                        if current_pos == initial_pos {
+                                        if current_pos == INITIAL_POS_RENAME {
                                             continue;
                                         };
                                         current_pos -= 1;
@@ -934,7 +947,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                     KeyCode::Right => {
                                         if current_pos as usize
-                                            == rename.len() + initial_pos as usize
+                                            == rename.len() + INITIAL_POS_RENAME as usize
                                         {
                                             continue;
                                         };
@@ -943,23 +956,24 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     }
 
                                     KeyCode::Char(c) => {
-                                        rename.insert((current_pos - initial_pos).into(), c);
+                                        rename.insert((current_pos - INITIAL_POS_RENAME).into(), c);
                                         current_pos += 1;
 
-                                        to_info_bar();
+                                        to_info_line();
                                         clear_current_line();
                                         print!("New name: {}", &rename.iter().collect::<String>(),);
                                         move_to(current_pos, 2);
                                     }
 
                                     KeyCode::Backspace => {
-                                        if current_pos == initial_pos {
+                                        if current_pos == INITIAL_POS_RENAME {
                                             continue;
                                         };
-                                        rename.remove((current_pos - initial_pos - 1).into());
+                                        rename
+                                            .remove((current_pos - INITIAL_POS_RENAME - 1).into());
                                         current_pos -= 1;
 
-                                        to_info_bar();
+                                        to_info_line();
                                         clear_current_line();
                                         print!("New name: {}", &rename.iter().collect::<String>(),);
                                         move_to(current_pos, 2);
@@ -977,9 +991,9 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         if len == 0 {
                             continue;
                         }
-                        print!(" ");
+                        delete_cursor();
                         show_cursor();
-                        to_info_bar();
+                        to_info_line();
                         clear_current_line();
                         print!("/");
                         screen.flush()?;
@@ -987,9 +1001,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         let original_nums = state.layout.nums;
                         let original_y = state.layout.y;
                         let mut keyword: Vec<char> = Vec::new();
-                        // position after " /"
-                        let initial_pos = 3;
-                        let mut current_pos = initial_pos;
+
+                        let mut current_pos = INITIAL_POS_SEARCH;
                         loop {
                             let keyword_len = keyword.len();
                             if let Event::Key(KeyEvent { code, .. }) = event::read()? {
@@ -1008,7 +1021,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     }
 
                                     KeyCode::Left => {
-                                        if current_pos == initial_pos {
+                                        if current_pos == INITIAL_POS_SEARCH {
                                             continue;
                                         }
                                         current_pos -= 1;
@@ -1016,7 +1029,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     }
 
                                     KeyCode::Right => {
-                                        if current_pos == keyword_len + initial_pos as usize {
+                                        if current_pos == keyword_len + INITIAL_POS_SEARCH {
                                             continue;
                                         }
                                         current_pos += 1;
@@ -1024,12 +1037,12 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     }
 
                                     KeyCode::Backspace => {
-                                        if current_pos == initial_pos {
+                                        if current_pos == INITIAL_POS_SEARCH {
                                             hide_cursor();
                                             state.redraw(state.layout.y);
                                             break;
                                         } else {
-                                            keyword.remove(current_pos - initial_pos - 1);
+                                            keyword.remove(current_pos - INITIAL_POS_SEARCH - 1);
                                             current_pos -= 1;
 
                                             let key = &keyword.iter().collect::<String>();
@@ -1053,7 +1066,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     state.redraw(state.layout.y);
                                                 }
                                             }
-                                            to_info_bar();
+                                            to_info_line();
                                             clear_current_line();
                                             print!("/{}", key.clone());
                                             move_to(current_pos as u16, 2);
@@ -1061,7 +1074,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     }
 
                                     KeyCode::Char(c) => {
-                                        keyword.insert(current_pos - initial_pos, c);
+                                        keyword.insert(current_pos - INITIAL_POS_SEARCH, c);
                                         current_pos += 1;
 
                                         let key = &keyword.iter().collect::<String>();
@@ -1086,7 +1099,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
                                         }
 
-                                        to_info_bar();
+                                        to_info_line();
                                         clear_current_line();
                                         print!("/{}", key.clone());
                                         move_to(current_pos as u16, 2);
@@ -1100,6 +1113,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         hide_cursor();
                     }
 
+                    //Search forward.
                     KeyCode::Char('n') => match &state.keyword {
                         None => {
                             continue;
@@ -1124,6 +1138,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         }
                     },
 
+                    //Search backward.
                     KeyCode::Char('N') => match &state.keyword {
                         None => {
                             continue;
@@ -1149,8 +1164,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                     //shell mode
                     KeyCode::Char(':') => {
-                        print!(" ");
-                        to_info_bar();
+                        delete_cursor();
+                        to_info_line();
                         clear_current_line();
                         print!(":");
                         show_cursor();
@@ -1158,8 +1173,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                         let mut command: Vec<char> = Vec::new();
 
-                        let initial_pos = 3;
-                        let mut current_pos = 3;
+                        let mut current_pos = INITIAL_POS_SHELL;
                         'command: loop {
                             if let Event::Key(KeyEvent { code, .. }) = event::read()? {
                                 match code {
@@ -1171,7 +1185,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     }
 
                                     KeyCode::Left => {
-                                        if current_pos == initial_pos {
+                                        if current_pos == INITIAL_POS_SHELL {
                                             continue;
                                         };
                                         current_pos -= 1;
@@ -1180,7 +1194,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                     KeyCode::Right => {
                                         if current_pos as usize
-                                            == command.len() + initial_pos as usize
+                                            == command.len() + INITIAL_POS_SHELL as usize
                                         {
                                             continue;
                                         };
@@ -1189,140 +1203,100 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     }
 
                                     KeyCode::Backspace => {
-                                        if current_pos == initial_pos {
+                                        if current_pos == INITIAL_POS_SHELL {
                                             go_to_and_rest_info();
                                             hide_cursor();
                                             state.move_cursor(state.layout.y);
                                             break 'command;
                                         } else {
-                                            command.remove((current_pos - initial_pos - 1).into());
+                                            command.remove(
+                                                (current_pos - INITIAL_POS_SHELL - 1).into(),
+                                            );
                                             current_pos -= 1;
 
                                             clear_current_line();
-                                            to_info_bar();
+                                            to_info_line();
                                             print!(":{}", &command.iter().collect::<String>());
                                             move_to(current_pos, 2);
                                         }
                                     }
 
+                                    KeyCode::Char(c) => {
+                                        command.insert((current_pos - INITIAL_POS_SHELL).into(), c);
+                                        current_pos += 1;
+                                        clear_current_line();
+                                        to_info_line();
+                                        print!(":{}", &command.iter().collect::<String>(),);
+                                        move_to(current_pos, 2);
+                                    }
+
                                     KeyCode::Enter => {
                                         hide_cursor();
-                                        if command.is_empty() {
+                                        //Set the command and argument(s).
+                                        let commands: String = command.iter().collect();
+                                        let commands: Vec<&str> =
+                                            commands.split_whitespace().collect();
+                                        if commands.is_empty() {
                                             go_to_and_rest_info();
                                             state.move_cursor(state.layout.y);
                                             break;
                                         }
+                                        let command = commands[0];
 
-                                        if command == vec!['q'] {
-                                            //quit
-                                            break 'main;
-                                        } else if command == vec!['c', 'd'] || command == vec!['z']
-                                        {
-                                            //go to the home directory
-                                            let home_dir = dirs::home_dir().ok_or_else(|| {
-                                                FxError::Dirs("Cannot read home dir.".to_string())
-                                            })?;
-                                            if let Err(e) = state.chdir(&home_dir, Move::Jump) {
-                                                print_warning(e, state.layout.y);
-                                            }
-                                            break 'command;
-                                        } else if command == vec!['e'] {
-                                            //reload current dir
-                                            state.keyword = None;
-                                            state.layout.nums.reset();
-                                            state.reload(BEGINNING_ROW)?;
-                                            break 'command;
-                                        } else if command == vec!['h'] {
-                                            //Show help
-                                            clear_all();
-                                            move_to(1, 1);
-                                            screen.flush()?;
-                                            let help = format_txt(
-                                                HELP,
-                                                state.layout.terminal_column,
-                                                true,
-                                            );
-                                            print_help(&help, 0, state.layout.terminal_row);
-                                            screen.flush()?;
-
-                                            let mut skip = 0;
-                                            loop {
-                                                if let Event::Key(KeyEvent { code, .. }) =
-                                                    event::read()?
-                                                {
-                                                    match code {
-                                                        KeyCode::Char('j') | KeyCode::Down => {
-                                                            clear_all();
-                                                            skip += 1;
-                                                            print_help(
-                                                                &help,
-                                                                skip,
-                                                                state.layout.terminal_row,
-                                                            );
-                                                            screen.flush()?;
-                                                            continue;
-                                                        }
-                                                        KeyCode::Char('k') | KeyCode::Up => {
-                                                            if skip == 0 {
-                                                                continue;
-                                                            } else {
-                                                                clear_all();
-                                                                skip -= 1;
-                                                                print_help(
-                                                                    &help,
-                                                                    skip,
-                                                                    state.layout.terminal_row,
-                                                                );
-                                                                screen.flush()?;
-                                                                continue;
-                                                            }
-                                                        }
-                                                        _ => {
-                                                            break;
-                                                        }
-                                                    }
+                                        if commands.len() == 1 {
+                                            if command == "q" {
+                                                //quit
+                                                break 'main;
+                                            } else if command == "cd" || command == "z" {
+                                                //go to the home directory
+                                                let home_dir =
+                                                    dirs::home_dir().ok_or_else(|| {
+                                                        FxError::Dirs(
+                                                            "Cannot read home dir.".to_string(),
+                                                        )
+                                                    })?;
+                                                if let Err(e) = state.chdir(&home_dir, Move::Jump) {
+                                                    print_warning(e, state.layout.y);
                                                 }
+                                                break 'command;
+                                            } else if command == "e" {
+                                                //reload current dir
+                                                state.keyword = None;
+                                                state.layout.nums.reset();
+                                                state.reload(BEGINNING_ROW)?;
+                                                break 'command;
+                                            } else if command == "h" {
+                                                //show help
+                                                state.show_help(&screen)?;
+                                                state.redraw(state.layout.y);
+                                                break 'command;
+                                            } else if command == "trash" {
+                                                //move to trash dir
+                                                state.layout.nums.reset();
+                                                if let Err(e) = state
+                                                    .chdir(&(state.trash_dir.clone()), Move::Jump)
+                                                {
+                                                    print_warning(e, state.layout.y);
+                                                }
+                                                break 'command;
+                                            } else if command == "empty" {
+                                                //empty the trash dir
+                                                state.empty_trash(&screen)?;
+                                                break 'command;
                                             }
-                                            state.redraw(state.layout.y);
-                                            break 'command;
                                         }
 
-                                        let commands: String = command.iter().collect();
-                                        let commands = commands.split_ascii_whitespace();
-                                        let mut c = "";
-                                        let mut args = Vec::new();
-                                        let mut i = 0;
-                                        for s in commands {
-                                            if i == 0 {
-                                                c = s;
-                                                i += 1;
-                                            } else {
-                                                args.push(s);
-                                            }
-                                        }
-
-                                        if (c == "cd" || c == "z") && args.is_empty() {
-                                            //Change directory
-                                            state.layout.nums.reset();
-                                            let home_dir = dirs::home_dir().ok_or_else(|| {
-                                                FxError::Dirs("Cannot read home dir.".to_string())
-                                            })?;
-                                            if let Err(e) = state.chdir(&home_dir, Move::Jump) {
-                                                print_warning(e, state.layout.y);
-                                            }
-                                            break 'command;
-                                        }
-
-                                        if c == "z" && args.len() == 1 {
+                                        //zoxide jump
+                                        if command == "z" && commands.len() == 2 {
                                             //Change directory using zoxide
                                             if let Ok(output) = std::process::Command::new("zoxide")
-                                                .args(["query", args[0].trim()])
+                                                .args(["query", commands[1].trim()])
                                                 .output()
                                             {
                                                 let output = output.stdout;
                                                 if output.is_empty() {
                                                     print_warning(
-                                                        "Keyword cannot match the database.",
+                                                        "Keyword does not match the database.",
                                                         state.layout.y,
                                                     );
                                                     break 'command;
@@ -1361,60 +1335,6 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
                                         }
 
-                                        if c == "empty" && args.is_empty() {
-                                            //Empty the trash dir
-                                            print_warning(EMPTY_WARNING, state.layout.y);
-                                            screen.flush()?;
-
-                                            if let Event::Key(KeyEvent { code, .. }) =
-                                                event::read()?
-                                            {
-                                                match code {
-                                                    KeyCode::Char('y') | KeyCode::Char('Y') => {
-                                                        print_info(
-                                                            "EMPTY: Processing...",
-                                                            state.layout.y,
-                                                        );
-                                                        screen.flush()?;
-
-                                                        if let Err(e) = std::fs::remove_dir_all(
-                                                            &state.trash_dir,
-                                                        ) {
-                                                            print_warning(e, state.layout.y);
-                                                            continue 'main;
-                                                        }
-                                                        if let Err(e) =
-                                                            std::fs::create_dir(&state.trash_dir)
-                                                        {
-                                                            print_warning(e, state.layout.y);
-                                                            continue 'main;
-                                                        }
-                                                        go_to_and_rest_info();
-                                                        if state.current_dir == state.trash_dir {
-                                                            state.reload(BEGINNING_ROW)?;
-                                                            print_info(
-                                                                "Trash dir emptied",
-                                                                state.layout.y,
-                                                            );
-                                                        } else {
-                                                            print_info(
-                                                                "Trash dir emptied",
-                                                                state.layout.y,
-                                                            );
-                                                            state.move_cursor(state.layout.y);
-                                                        }
-                                                        screen.flush()?;
-                                                        break 'command;
-                                                    }
-                                                    _ => {
-                                                        go_to_and_rest_info();
-                                                        state.move_cursor(state.layout.y);
-                                                        break 'command;
-                                                    }
-                                                }
-                                            }
-                                        }
-
                                         //Execute the command as it is
                                         execute!(screen, EnterAlternateScreen)?;
                                         if std::env::set_current_dir(&state.current_dir).is_err() {
@@ -1422,8 +1342,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             print_warning("Cannot execute command", state.layout.y);
                                             break 'command;
                                         }
-                                        if std::process::Command::new(c)
-                                            .args(args.clone())
+                                        if std::process::Command::new(command)
+                                            .args(&commands[1..])
                                             .status()
                                             .is_err()
                                         {
@@ -1434,18 +1354,9 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         }
                                         execute!(screen, EnterAlternateScreen)?;
                                         hide_cursor();
-                                        info!("SHELL: {} {:?}", c, args);
+                                        info!("SHELL: {:?}", commands);
                                         state.reload(state.layout.y)?;
                                         break 'command;
-                                    }
-
-                                    KeyCode::Char(c) => {
-                                        command.insert((current_pos - initial_pos).into(), c);
-                                        current_pos += 1;
-                                        clear_current_line();
-                                        to_info_bar();
-                                        print!(":{}", &command.iter().collect::<String>(),);
-                                        move_to(current_pos, 2);
                                     }
 
                                     _ => continue,
@@ -1458,7 +1369,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                     //undo
                     KeyCode::Char('u') => {
                         let op_len = state.operations.op_list.len();
-                        if op_len < state.operations.pos + 1 {
+                        if op_len <= state.operations.pos {
                             print_info("No operations left.", state.layout.y);
                             continue;
                         }
@@ -1520,18 +1431,10 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         }
                     }
 
-                    //Debug print for undo/redo
-                    KeyCode::Char('P') => {
-                        if state.rust_log.is_some() {
-                            print_info(format!("{:?}", state), state.layout.y);
-                        }
-                    }
-
                     //exit by ZZ
                     KeyCode::Char('Z') => {
-                        print!(" ");
-                        to_info_bar();
-                        clear_current_line();
+                        delete_cursor();
+                        go_to_and_rest_info();
                         print!("Z");
                         show_cursor();
                         screen.flush()?;
@@ -1551,7 +1454,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         }
                     }
 
-                    //If input does not match any of the keys up to this point, ignore it
+                    //If input does not match any of the defined keys, ignore it.
                     _ => {
                         continue;
                     }
@@ -1618,7 +1521,7 @@ mod tests {
     #[test]
     fn zoxide_test() {
         let output = std::process::Command::new("zoxide")
-            .args(["query", "dotfiles"])
+            .args(["query", "felix"])
             .output()
             .unwrap();
         let stdout = std::str::from_utf8(&output.stdout).unwrap().trim();

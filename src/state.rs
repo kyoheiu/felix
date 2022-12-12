@@ -1,6 +1,7 @@
 use super::config::*;
 use super::errors::FxError;
 use super::functions::*;
+use super::help::HELP;
 use super::layout::*;
 use super::magic_image::is_supported_image_type;
 use super::magic_packed;
@@ -16,8 +17,9 @@ use log::{error, info};
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::ffi::OsStr;
-use std::fmt::Write as _;
 use std::fs;
+use std::io::Stdout;
+use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, ExitStatus, Stdio};
 use std::time::UNIX_EPOCH;
@@ -26,9 +28,8 @@ use syntect::highlighting::{Theme, ThemeSet};
 #[cfg(target_family = "unix")]
 use std::os::unix::fs::PermissionsExt;
 
+pub const FELIX: &str = "felix";
 pub const BEGINNING_ROW: u16 = 3;
-pub const FX_CONFIG_DIR: &str = "felix";
-pub const TRASH: &str = "trash";
 pub const EMPTY_WARNING: &str = "Are you sure to empty the trash directory? (if yes: y)";
 const TIME_PREFIX: usize = 11;
 
@@ -45,7 +46,6 @@ pub struct State {
     pub p_memo: Vec<StateMemo>,
     pub keyword: Option<String>,
     pub layout: Layout,
-    pub rust_log: Option<String>,
 }
 
 #[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -81,7 +81,7 @@ impl Default for FileType {
 
 impl State {
     /// Initialize the state of the app.
-    pub fn new(p: &std::path::Path) -> Result<Self, FxError> {
+    pub fn new(p: &std::path::Path, session_path: &std::path::Path) -> Result<Self, FxError> {
         let config = match read_config(p) {
             Ok(c) => c,
             Err(e) => {
@@ -105,7 +105,7 @@ impl State {
                 Config::default()
             }
         };
-        let session = read_session()?;
+        let session = read_session(session_path)?;
         let (original_column, original_row) = terminal_size()?;
 
         // Return error if terminal size may cause panic
@@ -172,7 +172,6 @@ impl State {
             c_memo: Vec::new(),
             p_memo: Vec::new(),
             keyword: None,
-            rust_log: std::env::var("RUST_LOG").ok(),
         })
     }
 
@@ -307,8 +306,8 @@ impl State {
         for (i, item) in targets.iter().enumerate() {
             let item = item.clone();
 
-            print!(" ");
-            to_info_bar();
+            delete_cursor();
+            to_info_line();
             clear_current_line();
             print!("{}", display_count(i, total_selected));
 
@@ -324,12 +323,16 @@ impl State {
                         Err(e) => {
                             return Err(e);
                         }
-                        Ok(path) => trash_vec.push(path),
+                        Ok(path) => {
+                            if let Some(p) = path {
+                                trash_vec.push(p);
+                            }
+                        }
                     }
                 }
             }
         }
-        if new_op {
+        if new_op && !trash_vec.is_empty() {
             self.operations.branch();
             //push deleted item information to operations
             self.operations.push(OpKind::Delete(DeletedFiles {
@@ -343,14 +346,18 @@ impl State {
     }
 
     /// Move single file to trash directory.
-    fn remove_and_yank_file(&mut self, item: ItemInfo, new_op: bool) -> Result<PathBuf, FxError> {
+    fn remove_and_yank_file(
+        &mut self,
+        item: ItemInfo,
+        new_op: bool,
+    ) -> Result<Option<PathBuf>, FxError> {
         //prepare from and to for copy
         let from = &item.file_path;
         let mut to = PathBuf::new();
 
         if item.file_type == FileType::Symlink && !from.exists() {
-            match Command::new("rm").arg(from).status() {
-                Ok(_) => Ok(PathBuf::new()),
+            match std::fs::remove_file(from) {
+                Ok(_) => Ok(None),
                 Err(_) => Err(FxError::RemoveItem(from.to_owned())),
             }
         } else {
@@ -375,7 +382,7 @@ impl State {
                 return Err(FxError::RemoveItem(from.to_owned()));
             }
 
-            Ok(to)
+            Ok(Some(to))
         }
     }
 
@@ -421,6 +428,12 @@ impl State {
 
                     continue;
                 } else {
+                    if entry.file_type().is_symlink() && !entry_path.exists() {
+                        if std::fs::remove_file(entry_path).is_err() {
+                            return Err(FxError::RemoveItem(entry_path.to_owned()));
+                        }
+                        continue;
+                    }
                     target = entry_path.iter().skip(base).collect();
                     target = trash_path.join(target);
                     if entry.file_type().is_dir() {
@@ -506,8 +519,8 @@ impl State {
 
         let total_selected = targets.len();
         for (i, item) in targets.iter().enumerate() {
-            print!(" ");
-            to_info_bar();
+            delete_cursor();
+            to_info_line();
             clear_current_line();
             print!("{}", display_count(i, total_selected));
 
@@ -618,10 +631,7 @@ impl State {
             if i == 0 {
                 base = entry_path.iter().count();
 
-                let parent = &original_path
-                    .parent()
-                    .ok_or_else(|| FxError::Io("Cannot read parent dir.".to_string()))?;
-                if parent == &self.trash_dir {
+                if original_path.parent() == Some(&self.trash_dir) {
                     let rename: String = buf.file_name.chars().skip(TIME_PREFIX).collect();
                     target = match &target_dir {
                         None => self.current_dir.join(&rename),
@@ -939,7 +949,7 @@ impl State {
     }
 
     /// Change the order of the list not reading all the items.
-    pub fn change_order(&mut self) {
+    fn change_order(&mut self) {
         let mut dir_v = Vec::new();
         let mut file_v = Vec::new();
         let mut result = Vec::with_capacity(self.list.len());
@@ -1010,6 +1020,83 @@ impl State {
                 item.selected = true;
             }
         }
+    }
+
+    //Show help
+    pub fn show_help(&self, mut screen: &Stdout) -> Result<(), FxError> {
+        clear_all();
+        move_to(1, 1);
+        screen.flush()?;
+        let (width, height) = terminal_size()?;
+        let help = format_txt(HELP, width, true);
+        print_help(&help, 0, height);
+        screen.flush()?;
+
+        let mut skip = 0;
+        loop {
+            if let Event::Key(KeyEvent { code, .. }) = crossterm::event::read()? {
+                match code {
+                    KeyCode::Char('j') | KeyCode::Down => {
+                        clear_all();
+                        skip += 1;
+                        print_help(&help, skip, height);
+                        screen.flush()?;
+                        continue;
+                    }
+                    KeyCode::Char('k') | KeyCode::Up => {
+                        if skip == 0 {
+                            continue;
+                        } else {
+                            clear_all();
+                            skip -= 1;
+                            print_help(&help, skip, height);
+                            screen.flush()?;
+                            continue;
+                        }
+                    }
+                    _ => {
+                        break;
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    //Empty the trash dir
+    pub fn empty_trash(&mut self, mut screen: &Stdout) -> Result<(), FxError> {
+        print_warning(EMPTY_WARNING, self.layout.y);
+        screen.flush()?;
+
+        if let Event::Key(KeyEvent { code, .. }) = crossterm::event::read()? {
+            match code {
+                KeyCode::Char('y') | KeyCode::Char('Y') => {
+                    print_info("EMPTY: Processing...", self.layout.y);
+                    screen.flush()?;
+
+                    //Delete trash dir.
+                    if let Err(e) = std::fs::remove_dir_all(&self.trash_dir) {
+                        print_warning(e, self.layout.y);
+                    }
+                    //Recreate the dir.
+                    if let Err(e) = std::fs::create_dir(&self.trash_dir) {
+                        print_warning(e, self.layout.y);
+                    }
+                    if self.current_dir == self.trash_dir {
+                        self.reload(BEGINNING_ROW)?;
+                    }
+                    go_to_and_rest_info();
+                    print_info("Trash dir emptied", self.layout.y);
+                    self.move_cursor(self.layout.y);
+                    screen.flush()?;
+                }
+                _ => {
+                    go_to_and_rest_info();
+                    self.move_cursor(self.layout.y);
+                }
+            }
+        }
+        Ok(())
     }
 
     pub fn chdir(&mut self, p: &std::path::Path, mv: Move) -> Result<(), FxError> {
@@ -1194,7 +1281,7 @@ impl State {
     fn make_footer(&self, item: &ItemInfo) -> String {
         match &item.file_ext {
             Some(ext) => {
-                let mut footer = match item.permissions {
+                let footer = match item.permissions {
                     Some(permissions) => {
                         format!(
                             " {}/{} {} {} {}",
@@ -1213,23 +1300,13 @@ impl State {
                         to_proper_size(item.file_size),
                     ),
                 };
-                if self.rust_log.is_some() {
-                    let _ = write!(
-                        footer,
-                        " i:{} s:{} c:{} r:{}",
-                        self.layout.nums.index,
-                        self.layout.nums.skip,
-                        self.layout.terminal_column,
-                        self.layout.terminal_row
-                    );
-                }
                 footer
                     .chars()
                     .take(self.layout.terminal_column.into())
                     .collect()
             }
             None => {
-                let mut footer = match item.permissions {
+                let footer = match item.permissions {
                     Some(permissions) => {
                         format!(
                             " {}/{} {} {}",
@@ -1246,16 +1323,6 @@ impl State {
                         to_proper_size(item.file_size),
                     ),
                 };
-                if self.rust_log.is_some() {
-                    let _ = write!(
-                        footer,
-                        " i:{} s:{} c:{} r:{}",
-                        self.layout.nums.index,
-                        self.layout.nums.skip,
-                        self.layout.terminal_column,
-                        self.layout.terminal_row
-                    );
-                }
                 footer
                     .chars()
                     .take(self.layout.terminal_column.into())
