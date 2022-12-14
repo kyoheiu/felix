@@ -18,7 +18,7 @@ pub enum FxError {
     Log(String),
     Unpack(String),
     Panic,
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "netbsd"))]
     Nix(String),
 }
 
