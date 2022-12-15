@@ -4,6 +4,12 @@
 
 ## Unreleased
 
+## v2.2.1 (2022-12-15)
+
+### Fixed
+
+- Fix the compilation on NetBSD.
+
 ## v2.2.0 (2022-12-12)
 
 ### Changed
