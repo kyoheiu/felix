@@ -18,7 +18,7 @@ pub enum FxError {
     Log(String),
     Unpack(String),
     Panic,
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "netbsd"))]
     Nix(String),
 }
 
@@ -43,7 +43,7 @@ impl std::fmt::Display for FxError {
             FxError::Log(s) => s.to_owned(),
             FxError::Unpack(s) => s.to_owned(),
             FxError::Panic => "Error: felix panicked".to_owned(),
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "netbsd"))]
             FxError::Nix(s) => s.to_owned(),
         };
         write!(f, "{}", printable)
@@ -91,7 +91,7 @@ impl From<zip::result::ZipError> for FxError {
     }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "netbsd"))]
 impl From<nix::errno::Errno> for FxError {
     fn from(err: nix::errno::Errno) -> Self {
         FxError::Nix(err.to_string())
