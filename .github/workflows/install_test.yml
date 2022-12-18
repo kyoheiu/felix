@@ -54,7 +54,7 @@ jobs:
         run: cargo install --path .
   netbsd-install:
     runs-on: macos-12
-    name: Install
+    name: netbsd-install
     steps:
     - uses: actions/checkout@v2
     - name: Test in NetBSD
