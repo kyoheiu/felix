@@ -4,6 +4,14 @@
 
 ## Unreleased
 
+## v2.2.2 (2022-12-19)
+
+### Fixed
+
+- Disable commands with Ctrl or other modifiers unless explicitly implemented. (For now, `Ctrl + r` to redo, `Alt + j` and `Alt + k` to scroll the preview text are implemented) This avoids for example the situation where `Ctrl + d` unintentionally deletes an item.
+- Add `create_dir_all` to `config_dir` and `data_local_dir` to avoid error.
+- Check if the argument is directory.
+
 ## v2.2.1 (2022-12-15)
 
 ### Fixed

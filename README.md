@@ -23,30 +23,13 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 
 ## New release
 
-## v2.2.1 (2022-12-15)
+## v2.2.2 (2022-12-19)
 
 ### Fixed
 
-- Fix the compilation on NetBSD.
-
-## v2.2.0 (2022-12-12)
-
-### Changed
-
-- **IMPORTANT**: Trash, log directory, and session file path changed.
-  - from v2.2.0, felix will use `dirs::data_local_dir()` to store the deleted items and log files, instead of `dirs::config_dir()`.
-  - Due to this change, the path for linux will be `$XDG_DATA_HOME/felix/{Trash, log, .session}`, in most case `/home/user/.local/share/felix/{Trash, log, .session}`. For Windows `{FOLDERID_LocalAppData}\felix\{Trash, log, .session}`, typically `C:\Users\user\AppData\Local\felix\{Trash, log, .session}`. No change for macOS users.
-  - Note that config file path does not change on any OS!
-  - Please don't forget deleting old files if you don't want them anymore.
-
-### Added
-
-- `:trash` to go to the trash directory.
-
-### Fixed
-
-- Support NetBSD to open file in a new window.
-- Properly remove broken symlink in Windows as well. Also, when deleting/puttiing a directory, broken symlink(s) in it won't cause any error and will be removed from the file system after deleting/putting.
+- Disable commands with Ctrl or other modifiers unless explicitly implemented. (For now, `Ctrl + r` to redo, `Alt + j` and `Alt + k` to scroll the preview text are implemented) This avoids for example the situation where `Ctrl + d` unintentionally deletes an item.
+- Add `create_dir_all` to `config_dir` and `data_local_dir` to avoid error.
+- Check if the argument is directory.
 
 For more details, see `CHANGELOG.md`.
 
@@ -123,7 +106,7 @@ These apps do not need any configuration to use with felix!
 
 ```
 `fx` => Show items in the current directory.
-`fx <directory path>` => Show items in the path.
+`fx <directory path>` => Show items in the directory.
 Both relative and absolute path available.
 ```
 
@@ -132,7 +115,7 @@ Both relative and absolute path available.
 ```
 `-h` | `--help` => Print help.
 `-v` | `--version` => Check update.
-`-l [path]` | `--log [path]` => Launch the app and create a log file.
+`-l` | `--log` => Launch the app, automatically generating a log file in `{data_local_dir}/felix/log`.
 ```
 
 <a id="key-manual"></a>
