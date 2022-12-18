@@ -38,22 +38,39 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         );
         return Ok(());
     }
+    if !&arg.is_dir() {
+        println!("Path should be directory.");
+        return Ok(());
+    }
 
     //Prepare config and data local path.
     let config_dir_path = {
         let mut path = dirs::config_dir()
-            .ok_or_else(|| FxError::Dirs("Cannot read config directory.".to_string()))?;
+            .ok_or_else(|| FxError::Dirs("Cannot read the config directory.".to_string()))?;
         path.push(FELIX);
         path
     };
-    let data_local_path = dirs::data_local_dir()
-        .ok_or_else(|| FxError::Dirs("Cannot read data local directory.".to_string()))?;
+    let data_local_path = {
+        let mut path = dirs::data_local_dir()
+            .ok_or_else(|| FxError::Dirs("Cannot read the data local directory.".to_string()))?;
+        path.push(FELIX);
+        path
+    };
+    if !config_dir_path.exists() {
+        std::fs::create_dir_all(&config_dir_path)?;
+    }
+    if !data_local_path.exists() {
+        std::fs::create_dir_all(&data_local_path)?;
+    }
 
     //Set config file and trash dir path.
-    let config_file_path = config_dir_path.join(PathBuf::from(CONFIG_FILE));
+    let config_file_path = {
+        let mut path = config_dir_path;
+        path.push(CONFIG_FILE);
+        path
+    };
     let trash_dir_path = {
         let mut path = data_local_path.clone();
-        path.push(FELIX);
         path.push(TRASH);
         path
     };
@@ -69,7 +86,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     //If session file does not exist (i.e. first launch), make it.
     let session_file_path = {
         let mut path = data_local_path;
-        path.push(FELIX);
         path.push(SESSION_FILE);
         path
     };

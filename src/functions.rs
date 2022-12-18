@@ -1,5 +1,3 @@
-use crate::state::FELIX;
-
 use super::config::Colorname;
 use super::errors::FxError;
 use super::term::*;
@@ -258,7 +256,6 @@ pub fn init_log(data_local_path: &Path) -> Result<(), FxError> {
         .build();
     let log_path = {
         let mut path = data_local_path.to_path_buf();
-        path.push(FELIX);
         path.push("log");
         path
     };
