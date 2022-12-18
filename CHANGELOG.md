@@ -8,7 +8,7 @@
 
 ### Fixed
 
-- Disable commands with Ctrl or other modifiers unless explicitly implemented. (For now, `Ctrl + r` to redo is implemented) This avoids for example the situation where `Ctrl + d` unintentionally deletes an item.
+- Disable commands with Ctrl or other modifiers unless explicitly implemented. (For now, `Ctrl + r` to redo, `Alt + j` and `Alt + k` to scroll the preview text are implemented) This avoids for example the situation where `Ctrl + d` unintentionally deletes an item.
 - Add `create_dir_all` to `config_dir` and `data_local_dir` to avoid error.
 - Check if the argument is directory.
 

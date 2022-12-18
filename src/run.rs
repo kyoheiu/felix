@@ -195,15 +195,26 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                             continue;
                         }
                     },
+                    KeyModifiers::ALT => match code {
+                        KeyCode::Char('j') | KeyCode::Down => {
+                            if state.layout.preview {
+                                state.scroll_down_preview(state.layout.y);
+                            }
+                        }
+                        KeyCode::Char('k') | KeyCode::Up => {
+                            if state.layout.preview {
+                                state.scroll_up_preview(state.layout.y);
+                            }
+                        }
+                        _ => {
+                            continue;
+                        }
+                    },
                     KeyModifiers::NONE | KeyModifiers::SHIFT => {
                         match code {
                             //Go up. If lists exceed max-row, lists "scrolls" before the top of the list
                             KeyCode::Char('j') | KeyCode::Down => {
-                                if modifiers == KeyModifiers::ALT {
-                                    if state.layout.preview {
-                                        state.scroll_down_preview(state.layout.y);
-                                    }
-                                } else if len == 0 || state.layout.nums.index == len - 1 {
+                                if len == 0 || state.layout.nums.index == len - 1 {
                                     continue;
                                 } else if state.layout.y
                                     >= state.layout.terminal_row - 1 - SCROLL_POINT
@@ -221,11 +232,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                             //Go down. If lists exceed max-row, lists "scrolls" before the bottom of the list
                             KeyCode::Char('k') | KeyCode::Up => {
-                                if modifiers == KeyModifiers::ALT {
-                                    if state.layout.preview {
-                                        state.scroll_up_preview(state.layout.y);
-                                    }
-                                } else if state.layout.nums.index == 0 {
+                                if state.layout.nums.index == 0 {
                                     continue;
                                 } else if state.layout.y <= BEGINNING_ROW + SCROLL_POINT
                                     && state.layout.nums.skip != 0
