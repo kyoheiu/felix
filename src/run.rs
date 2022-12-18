@@ -38,6 +38,10 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         );
         return Ok(());
     }
+    if !&arg.is_dir() {
+        println!("Path should be directory.");
+        return Ok(());
+    }
 
     //Prepare config and data local path.
     let config_dir_path = {
