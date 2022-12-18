@@ -123,7 +123,7 @@ These apps do not need any configuration to use with felix!
 
 ```
 `fx` => Show items in the current directory.
-`fx <directory path>` => Show items in the path.
+`fx <directory path>` => Show items in the directory.
 Both relative and absolute path available.
 ```
 
@@ -132,7 +132,7 @@ Both relative and absolute path available.
 ```
 `-h` | `--help` => Print help.
 `-v` | `--version` => Check update.
-`-l [path]` | `--log [path]` => Launch the app and create a log file.
+`-l` | `--log` => Launch the app, automatically generating a log file in `{data_local_dir}/felix/log`.
 ```
 
 <a id="key-manual"></a>
