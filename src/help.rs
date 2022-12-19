@@ -7,10 +7,10 @@ A simple TUI file manager with vim-like keymapping.
 `fx <directory path>` => Show items in the path.
 Both relative and absolute path available.
 
-## Arguments
+## Options 
 `-h` | `--help`    => Print help.
 `-v` | `--version` => Check update.
-`-l [path]` | `--log [path]` => Launch the app and create a log file.
+`-l` | `--log` => Launch the app, automatically generating a log file.
 
 ## Manual
 j / Down          :Go down.
@@ -59,8 +59,8 @@ Please see https://hpjansson.org/chafa/
 ## Configuration
 ### Linux
 config file    : $XDG_CONFIG_HOME/felix/config.yaml
-trash directory: $XDG_CONFIG_HOME/felix/trash
-log files      : $XDG_CONFIG_HOME/felix/log
+trash directory: $XDG_DATA_HOME/felix/trash
+log files      : $XDG_DATA_HOME/felix/log
 
 ### macOS
 config file    : $HOME/Library/Application Support/felix/config.yaml
@@ -69,8 +69,8 @@ log files      : $HOME/Library/Application Support/felix/log
 
 ### Windows
 config file     : $PROFILE\\AppData\\Roaming\\felix\\config.yaml
-trash directory : $PROFILE\\AppData\\Roaming\\felix\\trash
-log files       : $PROFILE\\AppData\\Roaming\\felix\\log
+trash directory : $PROFILE\\AppData\\Local\\felix\\trash
+log files       : $PROFILE\\AppData\\Local\\felix\\log
 
 For more details, visit https://github.com/kyoheiu/felix
 ";
