@@ -32,15 +32,15 @@ const INITIAL_POS_SHELL: u16 = 3;
 pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     //Check if argument path is valid.
     if !&arg.exists() {
-        println!(
-            "Invalid path or argument: {}\n`fx -h` shows help.",
+        println!();
+        return Err(FxError::Arg(format!(
+            "Invalid path: {}\n`fx -h` shows help.",
             &arg.display()
-        );
-        return Ok(());
-    }
-    if !&arg.is_dir() {
-        println!("Path should be directory.");
-        return Ok(());
+        )));
+    } else if !&arg.is_dir() {
+        return Err(FxError::Arg(
+            "Path should be directory.\n`fx -h` shows help.".to_owned(),
+        ));
     }
 
     //Prepare config and data local path.
