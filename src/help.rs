@@ -53,7 +53,7 @@ Esc               :Return to the normal mode.
 
 ## Preview feature
 By default, text files and directories can be previewed.
-To preview images, you need to install chafa.
+To preview images, you need to install chafa (>= v1.10.0).
 Please see https://hpjansson.org/chafa/
 
 ## Configuration
