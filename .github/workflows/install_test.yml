@@ -15,14 +15,14 @@ jobs:
   ubuntu-install:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Install
       run: |
         cargo install --path .
   macos-install:
     runs-on: macos-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Install
       run: |
         cargo install --path .
@@ -31,7 +31,7 @@ jobs:
     container:
       image: archlinux:base-devel
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Install
       run: |
         pacman -Syu --noconfirm
@@ -43,7 +43,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v1
+        uses: actions/checkout@v3
       - name: Install latest rust toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -56,7 +56,7 @@ jobs:
     runs-on: macos-12
     name: netbsd-install
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Test in NetBSD
       id: test
       uses: vmactions/netbsd-vm@v0
