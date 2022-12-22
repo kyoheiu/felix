@@ -15,7 +15,7 @@ use syntect::util::{as_24_bit_terminal_escaped, split_at, LinesWithEndings};
 
 pub const MAX_SIZE_TO_PREVIEW: u64 = 1_000_000_000;
 pub const CHAFA_WARNING: &str =
-    "From v1.1.0, the image preview needs chafa. For more details, please see help by `:h` ";
+    "From v1.1.0, the image preview needs chafa (>= v1.10.0). For more details, please see help by `:h` ";
 
 pub const PROPER_WIDTH: u16 = 28;
 pub const TIME_WIDTH: u16 = 16;
