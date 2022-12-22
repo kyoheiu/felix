@@ -1,9 +1,8 @@
-use super::session::SortKey;
-
 use super::config::*;
 use super::errors::FxError;
 use super::functions::*;
 use super::nums::*;
+use super::session::SortKey;
 use super::state::{ItemInfo, BEGINNING_ROW};
 use super::term::*;
 
@@ -204,7 +203,7 @@ impl Layout {
                         continue;
                     }
                     let sum = (i - item.preview_scroll) as u16;
-                    let row = self.preview_start.1 + sum as u16;
+                    let row = self.preview_start.1 + sum;
                     move_to(self.preview_start.0, row);
                     if syntex_highlight {
                         print!("{}", line);
@@ -223,7 +222,7 @@ impl Layout {
                         continue;
                     }
                     let sum = (i - item.preview_scroll) as u16;
-                    let row = self.preview_start.1 + sum as u16;
+                    let row = self.preview_start.1 + sum;
                     move_to(1, row);
                     if syntex_highlight {
                         print!("{}", line);
@@ -287,14 +286,14 @@ impl Layout {
         match self.split {
             Split::Vertical => {
                 for i in 0..=self.terminal_row {
-                    move_to(preview_start_point, BEGINNING_ROW + i as u16);
+                    move_to(preview_start_point, BEGINNING_ROW + i);
                     clear_until_newline();
                 }
                 move_to(self.preview_start.0, BEGINNING_ROW);
             }
             Split::Horizontal => {
                 for i in 0..=self.terminal_row {
-                    move_to(1, preview_start_point + i as u16);
+                    move_to(1, preview_start_point + i);
                     clear_until_newline();
                 }
                 move_to(1, preview_start_point);

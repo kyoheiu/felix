@@ -424,7 +424,7 @@ impl State {
                     }
                     trash_name.push_str(file_name.unwrap());
                     trash_path = self.trash_dir.join(&trash_name);
-                    std::fs::create_dir(&self.trash_dir.join(&trash_path))?;
+                    std::fs::create_dir(self.trash_dir.join(&trash_path))?;
 
                     continue;
                 } else {
@@ -836,7 +836,7 @@ impl State {
         let name = if item.file_name.bytes().len() <= self.layout.name_max_len {
             item.file_name.clone()
         } else {
-            let i = (self.layout.name_max_len - 2) as usize;
+            let i = self.layout.name_max_len - 2;
             let mut file_name = split_str(&item.file_name, i);
             file_name.push_str("..");
             file_name
@@ -1365,7 +1365,7 @@ impl State {
             split: Some(self.layout.split),
         };
         let serialized = serde_yaml::to_string(&session)?;
-        fs::write(&session_path, serialized)?;
+        fs::write(session_path, serialized)?;
         Ok(())
     }
 
