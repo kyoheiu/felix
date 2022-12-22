@@ -424,7 +424,7 @@ impl State {
                     }
                     trash_name.push_str(file_name.unwrap());
                     trash_path = self.trash_dir.join(&trash_name);
-                    std::fs::create_dir(&self.trash_dir.join(&trash_path))?;
+                    std::fs::create_dir(self.trash_dir.join(&trash_path))?;
 
                     continue;
                 } else {
@@ -836,7 +836,7 @@ impl State {
         let name = if item.file_name.bytes().len() <= self.layout.name_max_len {
             item.file_name.clone()
         } else {
-            let i = (self.layout.name_max_len - 2) as usize;
+            let i = self.layout.name_max_len - 2;
             let mut file_name = split_str(&item.file_name, i);
             file_name.push_str("..");
             file_name
@@ -1365,7 +1365,7 @@ impl State {
             split: Some(self.layout.split),
         };
         let serialized = serde_yaml::to_string(&session)?;
-        fs::write(&session_path, serialized)?;
+        fs::write(session_path, serialized)?;
         Ok(())
     }
 
@@ -1587,5 +1587,66 @@ fn choose_theme(dt: &DefaultTheme) -> Theme {
         DefaultTheme::InspiredGitHub => defaults.themes["InspiredGitHub"].clone(),
         DefaultTheme::SolarizedDark => defaults.themes["Solarized (dark)"].clone(),
         DefaultTheme::SolarizedLight => defaults.themes["Solarized (light)"].clone(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use devtimer::run_benchmark;
+    use rayon::prelude::{IntoParallelIterator, ParallelIterator};
+
+    use super::*;
+
+    fn bench_update1() -> Result<(), FxError> {
+        let mut dir_v = Vec::new();
+        let mut file_v = Vec::new();
+        for entry in fs::read_dir("src")? {
+            let e = entry?;
+            let entry = read_item(e);
+            match entry.file_type {
+                FileType::Directory => dir_v.push(entry),
+                FileType::File | FileType::Symlink => file_v.push(entry),
+            }
+        }
+        Ok(())
+    }
+
+    fn bench_update2() -> Result<(), FxError> {
+        let mut dir_v = Vec::new();
+        let mut file_v = Vec::new();
+        let mut temp = Vec::new();
+        for entry in fs::read_dir("src")? {
+            let e = entry?;
+            temp.push(e);
+        }
+
+        let temp: Vec<ItemInfo> = temp.into_par_iter().map(read_item).collect();
+
+        for entry in temp {
+            match entry.file_type {
+                FileType::Directory => dir_v.push(entry),
+                FileType::File | FileType::Symlink => file_v.push(entry),
+            }
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn bench_update_single() {
+        let bench_result = run_benchmark(100, |_| {
+            // Fake a long running operation
+            bench_update1().unwrap();
+        });
+        bench_result.print_stats();
+    }
+
+    #[test]
+    fn bench_update_parallel() {
+        let bench_result = run_benchmark(100, |_| {
+            // Fake a long running operation
+            bench_update2().unwrap();
+        });
+        bench_result.print_stats();
     }
 }
