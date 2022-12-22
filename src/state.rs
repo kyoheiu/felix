@@ -1589,3 +1589,64 @@ fn choose_theme(dt: &DefaultTheme) -> Theme {
         DefaultTheme::SolarizedLight => defaults.themes["Solarized (light)"].clone(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use devtimer::run_benchmark;
+    use rayon::prelude::{IntoParallelIterator, ParallelIterator};
+
+    use super::*;
+
+    fn bench_update1() -> Result<(), FxError> {
+        let mut dir_v = Vec::new();
+        let mut file_v = Vec::new();
+        for entry in fs::read_dir("src")? {
+            let e = entry?;
+            let entry = read_item(e);
+            match entry.file_type {
+                FileType::Directory => dir_v.push(entry),
+                FileType::File | FileType::Symlink => file_v.push(entry),
+            }
+        }
+        Ok(())
+    }
+
+    fn bench_update2() -> Result<(), FxError> {
+        let mut dir_v = Vec::new();
+        let mut file_v = Vec::new();
+        let mut temp = Vec::new();
+        for entry in fs::read_dir("src")? {
+            let e = entry?;
+            temp.push(e);
+        }
+
+        let temp: Vec<ItemInfo> = temp.into_par_iter().map(read_item).collect();
+
+        for entry in temp {
+            match entry.file_type {
+                FileType::Directory => dir_v.push(entry),
+                FileType::File | FileType::Symlink => file_v.push(entry),
+            }
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn bench_update_single() {
+        let bench_result = run_benchmark(100, |_| {
+            // Fake a long running operation
+            bench_update1().unwrap();
+        });
+        bench_result.print_stats();
+    }
+
+    #[test]
+    fn bench_update_parallel() {
+        let bench_result = run_benchmark(100, |_| {
+            // Fake a long running operation
+            bench_update2().unwrap();
+        });
+        bench_result.print_stats();
+    }
+}
