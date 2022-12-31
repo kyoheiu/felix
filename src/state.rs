@@ -9,6 +9,7 @@ use super::nums::*;
 use super::op::*;
 use super::session::*;
 use super::term::*;
+use rand::Rng;
 
 use chrono::prelude::*;
 use crossterm::event::{Event, KeyCode, KeyEvent};
@@ -293,6 +294,46 @@ impl State {
                     "Cannot open this type of item in new window".to_owned(),
                 )),
             },
+        }
+    }
+
+    /// Work like touch
+    pub fn add_new_file(&mut self) -> Result<(), FxError> {
+        let file_name;
+        if self.current_dir.join("untitled").exists() {
+            let mut rng = rand::thread_rng();
+            let nb = rng.gen_range(5000..9999);
+            file_name = self
+                .current_dir
+                .join("untitled".to_owned() + &nb.to_string());
+        } else {
+            file_name = self.current_dir.join("untitled");
+        }
+        let item = std::fs::File::create(file_name);
+        match item {
+            Err(_e) => {
+                return Err(FxError::Log("Couldnt create file".to_string()));
+            }
+            Ok(_) => Ok(()),
+        }
+    }
+
+    pub fn add_new_folder(&mut self) -> Result<(), FxError> {
+        let folder_name;
+        if self.current_dir.join("folder/").exists() {
+            let mut rng = rand::thread_rng();
+            let nb = rng.gen_range(5000..9999);
+            folder_name = self
+                .current_dir
+                .join("folder".to_owned() + &nb.to_string() + "/");
+        } else {
+            folder_name = self.current_dir.join("folder/");
+        }
+        match std::fs::create_dir(folder_name) {
+            Err(_e) => {
+                return Err(FxError::Log("Couldnt create folder".to_string()));
+            }
+            Ok(_) => Ok(()),
         }
     }
 
