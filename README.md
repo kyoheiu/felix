@@ -67,10 +67,10 @@ rustup update
 cargo install felix
 ```
 
-### From AUR
+### Arch Linux
 
 ```
-yay -S felix-rs
+pacman -S felix-rs
 ```
 
 ### NetBSD
