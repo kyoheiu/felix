@@ -326,6 +326,8 @@ mod tests {
         assert_eq!(CompressionSignature::Zstd, inspect_compression(&p).unwrap());
         let dest = PathBuf::from("testfiles/archives/zst_no_tar");
         assert!(unpack(&p, &dest).is_ok());
+        //Remove uncompressed file to clean
+        std::fs::remove_file("testfiles/archives/archive.txt").unwrap();
 
         let p = PathBuf::from("testfiles/archives/archive.tar");
         assert_eq!(CompressionSignature::Tar, inspect_compression(&p).unwrap());
