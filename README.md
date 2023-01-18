@@ -73,6 +73,9 @@ cargo install felix
 pacman -S felix-rs
 ```
 
+*The launcher binary name is `felix` via pacman.  
+Alias fx='felix' if you want, as this document (and other installations) uses `fx`.*
+
 ### NetBSD
 
 Available from the official repositories.
@@ -103,6 +106,8 @@ These apps do not need any configuration to use with felix!
 <a id="usage"></a>
 
 ## Usage
+
+*If you install this app via pacman, the default binary name is `felix`.*
 
 ```
 `fx` => Show items in the current directory.
