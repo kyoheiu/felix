@@ -6,6 +6,7 @@
 
 ### Added
 - `chafa`'s minimal supported version: >= v1.10.0
+- Add pacman installation.
 
 ## v2.2.2 (2022-12-19)
 
