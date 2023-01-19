@@ -767,7 +767,7 @@ impl State {
         self.layout.terminal_column = column;
         self.layout.preview_start = match self.layout.split {
             Split::Vertical => (column + 2, BEGINNING_ROW),
-            Split::Horizontal => (1, row + 2),
+            Split::Horizontal => (1, row + 1),
         };
         self.layout.preview_space = match self.layout.preview {
             true => match self.layout.split {
@@ -800,7 +800,7 @@ impl State {
         //current directory does not have any text attribute for now.
         let current_dir = self.current_dir.display().to_string();
         if current_dir.bytes().len() >= header_space {
-            let current_dir = split_str(&current_dir, header_space);
+            let current_dir = shorten_str_including_wide_char(&current_dir, header_space);
             set_color(&TermColor::ForeGround(&Colorname::Cyan));
             print!(" {}", current_dir);
             reset_color();
@@ -837,7 +837,7 @@ impl State {
             item.file_name.clone()
         } else {
             let i = self.layout.name_max_len - 2;
-            let mut file_name = split_str(&item.file_name, i);
+            let mut file_name = shorten_str_including_wide_char(&item.file_name, i);
             file_name.push_str("..");
             file_name
         };
