@@ -127,7 +127,7 @@ impl Layout {
         move_right(1);
         let mut file_name = format!("[{}]", item.file_name);
         if file_name.bytes().len() > self.preview_space.0 as usize {
-            file_name = split_str(&file_name, self.preview_space.0 as usize);
+            file_name = shorten_str_including_wide_char(&file_name, self.preview_space.0 as usize);
         }
         print!("{}", file_name);
     }

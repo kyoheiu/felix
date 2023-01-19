@@ -389,6 +389,7 @@ dependencies = [
  "simplelog",
  "syntect",
  "tar",
+ "unicode-width",
  "walkdir",
  "zip",
  "zstd",
