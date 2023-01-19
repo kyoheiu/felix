@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+### Fixed
+- Wide chars handling: Using unicode_width, now felix can properly split file name or previewed texts.
+- Preview space height: When horizontally split, image preview could break the layout. Fixed this by adjusting the height.
+
 ### Added
 - `chafa`'s minimal supported version: >= v1.10.0
 - Add pacman installation.
