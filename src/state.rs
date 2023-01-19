@@ -767,7 +767,7 @@ impl State {
         self.layout.terminal_column = column;
         self.layout.preview_start = match self.layout.split {
             Split::Vertical => (column + 2, BEGINNING_ROW),
-            Split::Horizontal => (1, row + 2),
+            Split::Horizontal => (1, row + 1),
         };
         self.layout.preview_space = match self.layout.preview {
             true => match self.layout.split {
