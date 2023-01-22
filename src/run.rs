@@ -713,6 +713,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 if let Err(e) =
                                                     state.remove_and_yank(&selected, true)
                                                 {
+                                                    state.reset_selection();
+                                                    state.redraw(state.layout.y);
                                                     print_warning(e, state.layout.y);
                                                     break;
                                                 }
