@@ -300,6 +300,12 @@ impl State {
     /// This does not actually delete items.
     /// If you'd like to delete, use `:empty` after this, or just `:rm`.  
     pub fn remove_and_yank(&mut self, targets: &[ItemInfo], new_op: bool) -> Result<(), FxError> {
+        if self.current_dir == self.trash_dir {
+            return Err(FxError::Io(
+                "Use `:empty` to delete item in the trash dir.".to_string(),
+            ));
+        }
+
         self.registered.clear();
         let total_selected = targets.len();
         let mut trash_vec = Vec::new();
