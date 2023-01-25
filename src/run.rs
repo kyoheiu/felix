@@ -250,7 +250,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         }
                                         KeyCode::Char('d') => {
                                             hide_cursor();
-                                            state.add_new_folder()?;
+                                            state.add_new_directory()?;
                                             print_info("Folder created", state.layout.y);
                                             state.reload(state.layout.y)?;
                                             screen.flush()?;
