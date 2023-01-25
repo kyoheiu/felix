@@ -1392,6 +1392,11 @@ impl State {
         magic_packed::unpack(&p, &dest)?;
         Ok(())
     }
+
+    pub fn is_out_of_bounds(&self) -> bool {
+        let current = self.layout.nums.skip + self.layout.y - BEGINNING_ROW + 1;
+        current as usize > self.list.len()
+    }
 }
 
 /// Read item information from `std::fs::DirEntry`.
