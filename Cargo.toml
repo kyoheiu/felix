@@ -1,6 +1,6 @@
 [package]
 name = "felix"
-version = "2.2.3"
+version = "2.2.4"
 authors = ["Kyohei Uto <im@kyoheiu.dev>"]
 edition = "2021"
 description = "tui file manager with vim-like key mapping"
@@ -9,6 +9,9 @@ repository = "https://github.com/kyoheiu/felix"
 license = "MIT"
 keywords = ["tui", "crossterm", "file-manager"]
 categories = ["command-line-utilities", "filesystem"]
+exclude = [
+    "testfiles/*"
+]
 
 [[bin]]
 name = "fx"

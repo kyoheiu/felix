@@ -300,6 +300,12 @@ impl State {
     /// This does not actually delete items.
     /// If you'd like to delete, use `:empty` after this, or just `:rm`.  
     pub fn remove_and_yank(&mut self, targets: &[ItemInfo], new_op: bool) -> Result<(), FxError> {
+        if self.current_dir == self.trash_dir {
+            return Err(FxError::Io(
+                "Use `:empty` to delete item in the trash dir.".to_string(),
+            ));
+        }
+
         self.registered.clear();
         let total_selected = targets.len();
         let mut trash_vec = Vec::new();
@@ -767,7 +773,7 @@ impl State {
         self.layout.terminal_column = column;
         self.layout.preview_start = match self.layout.split {
             Split::Vertical => (column + 2, BEGINNING_ROW),
-            Split::Horizontal => (1, row + 1),
+            Split::Horizontal => (1, row + 2),
         };
         self.layout.preview_space = match self.layout.preview {
             true => match self.layout.split {
@@ -1385,6 +1391,11 @@ impl State {
 
         magic_packed::unpack(&p, &dest)?;
         Ok(())
+    }
+
+    pub fn is_out_of_bounds(&self) -> bool {
+        let current = self.layout.nums.skip + self.layout.y - BEGINNING_ROW + 1;
+        current as usize > self.list.len()
     }
 }
 

@@ -246,7 +246,11 @@ impl Layout {
                 format!("--size={}x{}", self.preview_space.0, self.preview_space.1)
             }
             Split::Horizontal => {
-                format!("--size={}x{}", self.preview_space.0, self.preview_space.1)
+                format!(
+                    "--size={}x{}",
+                    self.preview_space.0,
+                    self.preview_space.1 - 1
+                )
             }
         };
 

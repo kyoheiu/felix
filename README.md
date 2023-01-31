@@ -23,6 +23,13 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 
 ## New release
 
+## v2.2.4 (2023-02-01)
+
+### Fixed
+- Disable remove_and_yank in the trash dir.
+- Clear selection in the select mode if something fails.
+- Cursor move after deleting multiple items in select mode.
+
 ## v2.2.3 (2023-01-20)
 
 ### Fixed
@@ -32,14 +39,6 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 ### Added
 - `chafa`'s minimal supported version: >= v1.10.0
 - Add pacman installation.
-
-## v2.2.2 (2022-12-19)
-
-### Fixed
-
-- Disable commands with Ctrl or other modifiers unless explicitly implemented. (For now, `Ctrl + r` to redo, `Alt + j` and `Alt + k` to scroll the preview text are implemented) This avoids for example the situation where `Ctrl + d` unintentionally deletes an item.
-- Add `create_dir_all` to `config_dir` and `data_local_dir` to avoid error.
-- Check if the argument is directory.
 
 For more details, see `CHANGELOG.md`.
 

@@ -4,6 +4,13 @@
 
 ## Unreleased
 
+## v2.2.4 (2023-02-01)
+
+### Fixed
+- Disable remove_and_yank in the trash dir.
+- Clear selection in the select mode if something fails.
+- Cursor move after deleting multiple items in select mode.
+
 ## v2.2.3 (2023-01-20)
 
 ### Fixed

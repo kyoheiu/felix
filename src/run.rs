@@ -713,17 +713,15 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 if let Err(e) =
                                                     state.remove_and_yank(&selected, true)
                                                 {
+                                                    state.reset_selection();
+                                                    state.redraw(state.layout.y);
                                                     print_warning(e, state.layout.y);
                                                     break;
                                                 }
 
                                                 state.update_list()?;
                                                 let new_len = state.list.len();
-                                                if usize::from(state.layout.nums.skip) >= new_len {
-                                                    state.layout.nums.reset();
-                                                }
                                                 state.clear_and_show_headline();
-                                                state.list_up();
 
                                                 let duration = duration_to_string(start.elapsed());
                                                 let delete_message: String = {
@@ -744,20 +742,30 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                                 if new_len == 0 {
                                                     state.layout.nums.reset();
+                                                    state.list_up();
                                                     state.move_cursor(BEGINNING_ROW);
-                                                } else if state.layout.nums.index > new_len - 1 {
-                                                    let mut new_y = state.layout.y
-                                                        - (state.layout.nums.index - (new_len - 1))
-                                                            as u16;
-                                                    if new_y < BEGINNING_ROW {
-                                                        new_y = BEGINNING_ROW;
+                                                } else if state.is_out_of_bounds() {
+                                                    if state.layout.nums.skip as usize >= new_len {
+                                                        state.layout.nums.skip =
+                                                            (new_len - 1) as u16;
+                                                        state.layout.nums.index =
+                                                            state.list.len() - 1;
+                                                        state.list_up();
+                                                        state.move_cursor(BEGINNING_ROW);
+                                                    } else {
+                                                        state.layout.nums.index =
+                                                            state.list.len() - 1;
+                                                        state.list_up();
+                                                        state.move_cursor(
+                                                            (state.list.len() as u16)
+                                                                - state.layout.nums.skip
+                                                                + BEGINNING_ROW
+                                                                - 1,
+                                                        );
                                                     }
-                                                    state.layout.nums.index = new_len - 1;
-                                                    state.move_cursor(new_y);
-                                                    screen.flush()?;
                                                 } else {
+                                                    state.list_up();
                                                     state.move_cursor(state.layout.y);
-                                                    screen.flush()?;
                                                 }
                                                 break;
                                             }
