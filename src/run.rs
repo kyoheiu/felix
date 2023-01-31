@@ -149,6 +149,10 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
     screen.flush()?;
 
     'main: loop {
+        if state.is_out_of_bounds() {
+            state.layout.nums.reset();
+            state.redraw(BEGINNING_ROW);
+        }
         screen.flush()?;
         let len = state.list.len();
 
