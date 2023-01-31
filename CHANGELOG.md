@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+## v2.2.4 (2023-02-01)
+
 ### Fixed
 - Disable remove_and_yank in the trash dir.
 - Clear selection in the select mode if something fails.
