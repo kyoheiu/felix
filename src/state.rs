@@ -210,10 +210,11 @@ impl State {
                             let mut ex = Command::new(commands[0]);
                             ex.arg(path).status().or(Err(FxError::OpenItem))
                         } else {
-                            let commands_os_str: Vec<&OsStr> =
+                            let mut args: Vec<&OsStr> =
                                 commands[1..].iter().map(|x| x.as_ref()).collect();
+                            args.push(path.as_ref());
                             let mut ex = Command::new(commands[0]);
-                            ex.args(commands_os_str).status().or(Err(FxError::OpenItem))
+                            ex.args(args).status().or(Err(FxError::OpenItem))
                         }
                     }
                     None => default.arg(path).status().or(Err(FxError::OpenItem)),
