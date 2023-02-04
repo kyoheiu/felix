@@ -1622,6 +1622,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                     print!("{}", CLRSCR);
                     state.clear_and_show_headline();
                     state.list_up();
+                    state.move_cursor(state.layout.y);
                     screen.flush()?;
                 }
             }
