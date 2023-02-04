@@ -205,8 +205,16 @@ impl State {
                 None => default.arg(path).status().or(Err(FxError::OpenItem)),
                 Some(extension) => match map.get(extension) {
                     Some(command) => {
-                        let mut ex = Command::new(command);
-                        ex.arg(path).status().or(Err(FxError::OpenItem))
+                        let commands: Vec<&str> = command.split_ascii_whitespace().collect();
+                        if commands.len() == 1 {
+                            let mut ex = Command::new(commands[0]);
+                            ex.arg(path).status().or(Err(FxError::OpenItem))
+                        } else {
+                            let commands_os_str: Vec<&OsStr> =
+                                commands[1..].iter().map(|x| x.as_ref()).collect();
+                            let mut ex = Command::new(commands[0]);
+                            ex.args(commands_os_str).status().or(Err(FxError::OpenItem))
+                        }
                     }
                     None => default.arg(path).status().or(Err(FxError::OpenItem)),
                 },
