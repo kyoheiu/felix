@@ -200,24 +200,38 @@ impl State {
         info!("OPEN: {:?}", path);
 
         match map {
-            None => default.arg(path).status().or(Err(FxError::OpenItem)),
+            None => default
+                .arg(path)
+                .status()
+                .map_err(|e| FxError::OpenItem(e.to_string())),
             Some(map) => match extension {
-                None => default.arg(path).status().or(Err(FxError::OpenItem)),
+                None => default
+                    .arg(path)
+                    .status()
+                    .map_err(|e| FxError::OpenItem(e.to_string())),
                 Some(extension) => match map.get(extension) {
                     Some(command) => {
-                        let commands: Vec<&str> = command.split_ascii_whitespace().collect();
-                        if commands.len() == 1 {
-                            let mut ex = Command::new(commands[0]);
-                            ex.arg(path).status().or(Err(FxError::OpenItem))
+                        let command: Vec<&str> = command.split_ascii_whitespace().collect();
+                        //If the key has no arguments
+                        if command.len() == 1 {
+                            let mut ex = Command::new(command[0]);
+                            ex.arg(path)
+                                .status()
+                                .map_err(|e| FxError::OpenItem(e.to_string()))
                         } else {
                             let mut args: Vec<&OsStr> =
-                                commands[1..].iter().map(|x| x.as_ref()).collect();
+                                command[1..].iter().map(|x| x.as_ref()).collect();
                             args.push(path.as_ref());
-                            let mut ex = Command::new(commands[0]);
-                            ex.args(args).status().or(Err(FxError::OpenItem))
+                            let mut ex = Command::new(command[0]);
+                            ex.args(args)
+                                .status()
+                                .map_err(|e| FxError::OpenItem(e.to_string()))
                         }
                     }
-                    None => default.arg(path).status().or(Err(FxError::OpenItem)),
+                    None => default
+                        .arg(path)
+                        .status()
+                        .map_err(|e| FxError::OpenItem(e.to_string())),
                 },
             },
         }
