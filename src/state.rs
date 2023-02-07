@@ -259,15 +259,31 @@ impl State {
                             }
                             nix::unistd::ForkResult::Child => {
                                 nix::unistd::setsid()?;
-                                let mut ex = Command::new(command);
-                                ex.arg(path)
-                                    .stdout(Stdio::null())
-                                    .stdin(Stdio::null())
-                                    .spawn()
-                                    .and(Ok(()))
-                                    .map_err(|_| FxError::OpenItem)?;
-                                drop(ex);
-                                std::process::exit(0);
+                                let command: Vec<&str> = command.split_ascii_whitespace().collect();
+                                if command.len() == 1 {
+                                    let mut ex = Command::new(command[0]);
+                                    ex.arg(path)
+                                        .stdout(Stdio::null())
+                                        .stdin(Stdio::null())
+                                        .spawn()
+                                        .and(Ok(()))
+                                        .map_err(|e| FxError::OpenItem(e.to_string()))?;
+                                    drop(ex);
+                                    std::process::exit(0);
+                                } else {
+                                    let mut args: Vec<&OsStr> =
+                                        command[1..].iter().map(|x| x.as_ref()).collect();
+                                    args.push(path.as_ref());
+                                    let mut ex = Command::new(command[0]);
+                                    ex.args(args)
+                                        .stdout(Stdio::null())
+                                        .stdin(Stdio::null())
+                                        .spawn()
+                                        .and(Ok(()))
+                                        .map_err(|e| FxError::OpenItem(e.to_string()))?;
+                                    drop(ex);
+                                    std::process::exit(0);
+                                }
                             }
                         },
                         Err(e) => Err(FxError::Nix(e.to_string())),
