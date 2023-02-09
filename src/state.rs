@@ -321,7 +321,7 @@ impl State {
                             .stdin(Stdio::null())
                             .spawn()
                             .and(Ok(()))
-                            .or(Err(FxError::OpenItem))
+                            .map_err(|e| (FxError::OpenItem(e.to_string())))
                     }
                     None => Err(FxError::OpenNewWindow(
                         "Cannot open this type of item in new window".to_owned(),
