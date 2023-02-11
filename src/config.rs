@@ -14,12 +14,13 @@ pub const CONFIG_EXAMPLE: &str = "# (Optional)
 # default: nvim
 
 # (Optional)
-# key (the command you want to use): [values] (extensions)
+# key (the command you want to use when opening files): [values] (extensions)
+# In the key, You can use arguments.
 # exec:
-#   feh:
-#     [jpg, jpeg, png, gif, svg]
 #   zathura:
 #     [pdf]
+#  'feh -.':
+#   [jpg, jpeg, png, gif, svg, hdr]
 
 # (Optional)
 # Whether to use syntax highlighting in the preview mode.

@@ -24,7 +24,6 @@ pub const TRASH: &str = "Trash";
 /// Where the item list starts to scroll.
 const SCROLL_POINT: u16 = 3;
 const CLRSCR: &str = "\x1B[2J";
-const INITIAL_POS_RENAME: u16 = 12;
 const INITIAL_POS_SEARCH: usize = 3;
 const INITIAL_POS_SHELL: u16 = 3;
 
@@ -149,6 +148,10 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
     screen.flush()?;
 
     'main: loop {
+        if state.is_out_of_bounds() {
+            state.layout.nums.reset();
+            state.redraw(BEGINNING_ROW);
+        }
         screen.flush()?;
         let len = state.list.len();
 
@@ -987,14 +990,6 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     continue;
                                 }
                                 let item = state.get_item()?.clone();
-                                if !is_editable(&item.file_name) {
-                                    print_warning(
-                                        "Item name cannot be renamed due to the character type.",
-                                        state.layout.y,
-                                    );
-                                    continue;
-                                }
-
                                 show_cursor();
                                 let mut rename = item.file_name.chars().collect::<Vec<char>>();
                                 to_info_line();
@@ -1002,7 +997,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 print!("New name: {}", &rename.iter().collect::<String>(),);
                                 screen.flush()?;
 
-                                let mut current_pos: u16 = 12 + item.file_name.len() as u16;
+                                let (mut current_pos, _) = cursor_pos()?;
+                                let mut current_char_pos = rename.len();
                                 loop {
                                     if let Event::Key(KeyEvent { code, .. }) = event::read()? {
                                         match code {
@@ -1040,55 +1036,73 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
 
                                             KeyCode::Left => {
-                                                if current_pos == INITIAL_POS_RENAME {
+                                                if current_char_pos == 0 {
                                                     continue;
                                                 };
-                                                current_pos -= 1;
-                                                move_left(1);
+                                                if let Some(to_be_skipped) =
+                                                    unicode_width::UnicodeWidthChar::width(
+                                                        rename[current_char_pos - 1],
+                                                    )
+                                                {
+                                                    current_char_pos -= 1;
+                                                    current_pos -= to_be_skipped as u16;
+                                                    move_left(to_be_skipped as u16);
+                                                }
                                             }
 
                                             KeyCode::Right => {
-                                                if current_pos as usize
-                                                    == rename.len() + INITIAL_POS_RENAME as usize
-                                                {
+                                                if current_char_pos as usize == rename.len() {
                                                     continue;
                                                 };
-                                                current_pos += 1;
-                                                move_right(1);
+                                                if let Some(to_be_skipped) =
+                                                    unicode_width::UnicodeWidthChar::width(
+                                                        rename[current_char_pos],
+                                                    )
+                                                {
+                                                    current_char_pos += 1;
+                                                    current_pos += to_be_skipped as u16;
+                                                    move_right(to_be_skipped as u16);
+                                                }
                                             }
 
                                             KeyCode::Char(c) => {
-                                                rename.insert(
-                                                    (current_pos - INITIAL_POS_RENAME).into(),
-                                                    c,
-                                                );
-                                                current_pos += 1;
+                                                if let Some(to_be_added) =
+                                                    unicode_width::UnicodeWidthChar::width(c)
+                                                {
+                                                    rename.insert((current_char_pos).into(), c);
+                                                    current_char_pos += 1;
+                                                    current_pos += to_be_added as u16;
 
-                                                to_info_line();
-                                                clear_current_line();
-                                                print!(
-                                                    "New name: {}",
-                                                    &rename.iter().collect::<String>(),
-                                                );
-                                                move_to(current_pos, 2);
+                                                    to_info_line();
+                                                    clear_current_line();
+                                                    print!(
+                                                        "New name: {}",
+                                                        &rename.iter().collect::<String>(),
+                                                    );
+                                                    move_to(current_pos + 1, 2);
+                                                }
                                             }
 
                                             KeyCode::Backspace => {
-                                                if current_pos == INITIAL_POS_RENAME {
+                                                if current_char_pos == 0 {
                                                     continue;
                                                 };
-                                                rename.remove(
-                                                    (current_pos - INITIAL_POS_RENAME - 1).into(),
-                                                );
-                                                current_pos -= 1;
+                                                let removed =
+                                                    rename.remove((current_char_pos - 1).into());
+                                                if let Some(to_be_removed) =
+                                                    unicode_width::UnicodeWidthChar::width(removed)
+                                                {
+                                                    current_char_pos -= 1;
+                                                    current_pos -= to_be_removed as u16;
 
-                                                to_info_line();
-                                                clear_current_line();
-                                                print!(
-                                                    "New name: {}",
-                                                    &rename.iter().collect::<String>(),
-                                                );
-                                                move_to(current_pos, 2);
+                                                    to_info_line();
+                                                    clear_current_line();
+                                                    print!(
+                                                        "New name: {}",
+                                                        &rename.iter().collect::<String>(),
+                                                    );
+                                                    move_to(current_pos + 1, 2);
+                                                }
                                             }
 
                                             _ => continue,
@@ -1618,6 +1632,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                     print!("{}", CLRSCR);
                     state.clear_and_show_headline();
                     state.list_up();
+                    state.move_cursor(state.layout.y);
                     screen.flush()?;
                 }
             }

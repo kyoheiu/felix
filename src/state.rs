@@ -200,15 +200,38 @@ impl State {
         info!("OPEN: {:?}", path);
 
         match map {
-            None => default.arg(path).status().or(Err(FxError::OpenItem)),
+            None => default
+                .arg(path)
+                .status()
+                .map_err(|e| FxError::OpenItem(e.to_string())),
             Some(map) => match extension {
-                None => default.arg(path).status().or(Err(FxError::OpenItem)),
+                None => default
+                    .arg(path)
+                    .status()
+                    .map_err(|e| FxError::OpenItem(e.to_string())),
                 Some(extension) => match map.get(extension) {
                     Some(command) => {
-                        let mut ex = Command::new(command);
-                        ex.arg(path).status().or(Err(FxError::OpenItem))
+                        let command: Vec<&str> = command.split_ascii_whitespace().collect();
+                        //If the key has no arguments
+                        if command.len() == 1 {
+                            let mut ex = Command::new(command[0]);
+                            ex.arg(path)
+                                .status()
+                                .map_err(|e| FxError::OpenItem(e.to_string()))
+                        } else {
+                            let mut args: Vec<&OsStr> =
+                                command[1..].iter().map(|x| x.as_ref()).collect();
+                            args.push(path.as_ref());
+                            let mut ex = Command::new(command[0]);
+                            ex.args(args)
+                                .status()
+                                .map_err(|e| FxError::OpenItem(e.to_string()))
+                        }
                     }
-                    None => default.arg(path).status().or(Err(FxError::OpenItem)),
+                    None => default
+                        .arg(path)
+                        .status()
+                        .map_err(|e| FxError::OpenItem(e.to_string())),
                 },
             },
         }
@@ -236,15 +259,31 @@ impl State {
                             }
                             nix::unistd::ForkResult::Child => {
                                 nix::unistd::setsid()?;
-                                let mut ex = Command::new(command);
-                                ex.arg(path)
-                                    .stdout(Stdio::null())
-                                    .stdin(Stdio::null())
-                                    .spawn()
-                                    .and(Ok(()))
-                                    .map_err(|_| FxError::OpenItem)?;
-                                drop(ex);
-                                std::process::exit(0);
+                                let command: Vec<&str> = command.split_ascii_whitespace().collect();
+                                if command.len() == 1 {
+                                    let mut ex = Command::new(command[0]);
+                                    ex.arg(path)
+                                        .stdout(Stdio::null())
+                                        .stdin(Stdio::null())
+                                        .spawn()
+                                        .and(Ok(()))
+                                        .map_err(|e| FxError::OpenItem(e.to_string()))?;
+                                    drop(ex);
+                                    std::process::exit(0);
+                                } else {
+                                    let mut args: Vec<&OsStr> =
+                                        command[1..].iter().map(|x| x.as_ref()).collect();
+                                    args.push(path.as_ref());
+                                    let mut ex = Command::new(command[0]);
+                                    ex.args(args)
+                                        .stdout(Stdio::null())
+                                        .stdin(Stdio::null())
+                                        .spawn()
+                                        .and(Ok(()))
+                                        .map_err(|e| FxError::OpenItem(e.to_string()))?;
+                                    drop(ex);
+                                    std::process::exit(0);
+                                }
                             }
                         },
                         Err(e) => Err(FxError::Nix(e.to_string())),
@@ -282,7 +321,7 @@ impl State {
                             .stdin(Stdio::null())
                             .spawn()
                             .and(Ok(()))
-                            .or(Err(FxError::OpenItem))
+                            .map_err(|e| (FxError::OpenItem(e.to_string())))
                     }
                     None => Err(FxError::OpenNewWindow(
                         "Cannot open this type of item in new window".to_owned(),

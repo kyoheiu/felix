@@ -229,11 +229,6 @@ pub fn print_help(v: &[String], skip_number: usize, row: u16) {
     }
 }
 
-/// Check if we can edit the file name safely.
-pub fn is_editable(s: &str) -> bool {
-    s.is_ascii()
-}
-
 /// Initialize the log if `-l` option is added.
 pub fn init_log(data_local_path: &Path) -> Result<(), FxError> {
     let mut log_name = chrono::Local::now().format("%F-%H-%M-%S").to_string();
@@ -365,18 +360,6 @@ mod tests {
         let p = PathBuf::from("./testfiles");
         let tree = list_up_contents(&p, 20).unwrap();
         assert_eq!(tree, "├ archives\n└ images".to_string());
-    }
-
-    #[test]
-    fn test_is_editable() {
-        let s1 = "Hello, world!";
-        let s2 = "image.jpg";
-        let s3 = "a̐éö̲\r\n";
-        let s4 = "日本の首都は東京です";
-        assert!(is_editable(s1));
-        assert!(is_editable(s2));
-        assert!(!is_editable(s3));
-        assert!(!is_editable(s4));
     }
 
     #[test]

@@ -4,6 +4,22 @@
 
 ## Unreleased
 
+## v2.2.5 (2023-02-12)
+
+### Added
+- Allow renaming even when item name contains non-ascii chars (i.e. wide chars).
+- Key command with arguments is now supported: For example,
+  ```
+  exec:
+  'feh -.':
+    [jpg, jpeg, png, gif, svg, hdr]
+  ```
+  this configuration enables you to execute `feh -. <item path>` by `Enter | l | Right`, or `o`.
+- Check for out-of-boundary of the cursor at the top of loop.
+
+### Fixed
+- Display when using in kitty: Correctly show the cursor and preview.
+
 ## v2.2.4 (2023-02-01)
 
 ### Fixed
