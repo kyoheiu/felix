@@ -32,6 +32,10 @@ pub fn terminal_size() -> Result<(u16, u16), FxError> {
     crossterm::terminal::size().map_err(|_| FxError::TerminalSizeDetection)
 }
 
+pub fn cursor_pos() -> Result<(u16, u16), FxError> {
+    Ok(crossterm::cursor::position()?)
+}
+
 pub fn move_to(x: u16, y: u16) {
     print!("{}", MoveTo(x - 1, y - 1));
 }
