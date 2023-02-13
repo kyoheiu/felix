@@ -134,12 +134,12 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
     if state.layout.preview {
         state.update_list()?;
         let new_column = match state.layout.split {
-            Split::Vertical => state.layout.terminal_column / 2,
+            Split::Vertical => state.layout.terminal_column >> 1,
             Split::Horizontal => state.layout.terminal_column,
         };
         let new_row = match state.layout.split {
             Split::Vertical => state.layout.terminal_row,
-            Split::Horizontal => state.layout.terminal_row / 2,
+            Split::Horizontal => state.layout.terminal_row >> 1,
         };
         state.refresh(new_column, new_row, BEGINNING_ROW)?;
     } else {
@@ -835,12 +835,12 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 if state.layout.preview {
                                     match state.layout.split {
                                         Split::Vertical => {
-                                            let new_column = state.layout.terminal_column / 2;
+                                            let new_column = state.layout.terminal_column >> 1;
                                             let new_row = state.layout.terminal_row;
                                             state.refresh(new_column, new_row, state.layout.y)?;
                                         }
                                         Split::Horizontal => {
-                                            let new_row = state.layout.terminal_row / 2;
+                                            let new_row = state.layout.terminal_row >> 1;
                                             let new_column = state.layout.terminal_column;
                                             state.refresh(new_column, new_row, state.layout.y)?;
                                         }
@@ -1649,12 +1649,12 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                 if state.layout.preview {
                     let new_column = match state.layout.split {
-                        Split::Vertical => column / 2,
+                        Split::Vertical => column >> 1,
                         Split::Horizontal => column,
                     };
                     let new_row = match state.layout.split {
                         Split::Vertical => row,
-                        Split::Horizontal => row / 2,
+                        Split::Horizontal => row >> 1,
                     };
                     let cursor_pos = if state.layout.y < new_row {
                         state.layout.y
