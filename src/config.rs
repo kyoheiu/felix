@@ -80,6 +80,7 @@ pub struct Config {
     pub syntax_highlight: Option<bool>,
     pub default_theme: Option<DefaultTheme>,
     pub theme_path: Option<PathBuf>,
+    pub use_chafa: Option<bool>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -135,6 +136,7 @@ impl Default for Config {
             syntax_highlight: Default::default(),
             default_theme: Default::default(),
             theme_path: Default::default(),
+            use_chafa: Default::default(),
         }
     }
 }

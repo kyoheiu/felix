@@ -125,6 +125,7 @@ impl State {
 
         let has_chafa = check_chafa();
         let is_kitty = check_kitty_support();
+        let use_chafa = config.use_chafa == Some(true);
 
         Ok(State {
             list: Vec::new(),
@@ -168,6 +169,7 @@ impl State {
                 theme: ts,
                 has_chafa,
                 is_kitty,
+                use_chafa,
             },
             c_memo: Vec::new(),
             p_memo: Vec::new(),

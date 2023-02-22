@@ -39,6 +39,7 @@ pub struct Layout {
     pub syntax_set: SyntaxSet,
     pub theme: Theme,
     pub has_chafa: bool,
+    pub use_chafa: bool,
     pub is_kitty: bool,
 }
 
@@ -241,44 +242,61 @@ impl Layout {
 
     /// Print text preview on the right half of the terminal (Experimental).
     fn preview_image(&self, item: &ItemInfo, y: u16) -> Result<(), FxError> {
-        let wxh = match self.split {
-            Split::Vertical => {
-                format!("--size={}x{}", self.preview_space.0, self.preview_space.1)
+        if !self.use_chafa {
+            //Set viuer config.
+            //use_kitty and use-iterm are disabled because previewed images cannot cleared properly.
+            let (w, h) = self.get_image_preview_size(item);
+            let conf = viuer::Config {
+                x: self.preview_start.0 - 1,
+                y: self.preview_start.1 as i16 - 1,
+                width: Some(w.into()),
+                height: Some(h.into()),
+                use_kitty: false,
+                use_iterm: true,
+                ..Default::default()
+            };
+
+            viuer::print_from_file(&item.file_path, &conf).unwrap();
+        } else {
+            let file_path = item.file_path.to_str();
+            if file_path.is_none() {
+                print_warning("Cannot read the file path correctly.", y);
+                return Ok(());
             }
-            Split::Horizontal => {
-                format!(
-                    "--size={}x{}",
-                    self.preview_space.0,
-                    self.preview_space.1 - 1
-                )
-            }
-        };
 
-        let file_path = item.file_path.to_str();
-        if file_path.is_none() {
-            print_warning("Cannot read the file path correctly.", y);
-            return Ok(());
-        }
-
-        let output = std::process::Command::new("chafa")
-            .args(["--animate=false", &wxh, file_path.unwrap()])
-            .output()?
-            .stdout;
-        let output = String::from_utf8(output)?;
-
-        match self.split {
-            Split::Vertical => {
-                for (i, line) in output.lines().enumerate() {
-                    print!("{}", line);
-                    let next_line: u16 = BEGINNING_ROW + (i as u16) + 1;
-                    move_to(self.preview_start.0, next_line);
+            let wxh = match self.split {
+                Split::Vertical => {
+                    format!("--size={}x{}", self.preview_space.0, self.preview_space.1)
                 }
-            }
-            Split::Horizontal => {
-                for (i, line) in output.lines().enumerate() {
-                    print!("{}", line);
-                    let next_line: u16 = self.preview_start.1 + (i as u16) + 1;
-                    move_to(1, next_line);
+                Split::Horizontal => {
+                    format!(
+                        "--size={}x{}",
+                        self.preview_space.0,
+                        self.preview_space.1 - 1
+                    )
+                }
+            };
+
+            let output = std::process::Command::new("chafa")
+                .args(["--animate=false", &wxh, file_path.unwrap()])
+                .output()?
+                .stdout;
+            let output = String::from_utf8(output)?;
+
+            match self.split {
+                Split::Vertical => {
+                    for (i, line) in output.lines().enumerate() {
+                        print!("{}", line);
+                        let next_line: u16 = BEGINNING_ROW + (i as u16) + 1;
+                        move_to(self.preview_start.0, next_line);
+                    }
+                }
+                Split::Horizontal => {
+                    for (i, line) in output.lines().enumerate() {
+                        print!("{}", line);
+                        let next_line: u16 = self.preview_start.1 + (i as u16) + 1;
+                        move_to(1, next_line);
+                    }
                 }
             }
         }
@@ -302,6 +320,30 @@ impl Layout {
                 }
                 move_to(1, preview_start_point);
             }
+        }
+    }
+
+    /// Get the proper aspect ratio of image to print.
+    fn get_image_preview_size(&self, item: &ItemInfo) -> (u16, u16) {
+        //preview space ratio by actual resolution
+        let term_height_actual = ((self.preview_space.1 - 1) * 2) as f32;
+        let term_ratio = self.preview_space.0 as f32 / ((self.preview_space.1 * 2) as f32);
+
+        if let Ok((w, h)) = image::image_dimensions(&item.file_path) {
+            let w_f32 = w as f32;
+            let h_f32 = h as f32;
+            let image_ratio = w_f32 / h_f32;
+            if term_ratio <= image_ratio {
+                let factor = w_f32 / self.preview_space.0 as f32;
+                let height = (h_f32 / factor) as u16;
+                (self.preview_space.0, height / 2)
+            } else {
+                let factor = h_f32 / term_height_actual;
+                let width = (w_f32 / factor) as u16;
+                (width, self.preview_space.1)
+            }
+        } else {
+            (0, 0)
         }
     }
 }
