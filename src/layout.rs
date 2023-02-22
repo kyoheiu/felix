@@ -243,20 +243,39 @@ impl Layout {
     /// Print text preview on the right half of the terminal (Experimental).
     fn preview_image(&self, item: &ItemInfo, y: u16) -> Result<(), FxError> {
         if !self.use_chafa {
-            //Set viuer config.
-            //use_kitty and use-iterm are disabled because previewed images cannot cleared properly.
-            let (w, h) = self.get_image_preview_size(item);
-            let conf = viuer::Config {
-                x: self.preview_start.0 - 1,
-                y: self.preview_start.1 as i16 - 1,
-                width: Some(w.into()),
-                height: Some(h.into()),
-                use_kitty: false,
-                use_iterm: true,
-                ..Default::default()
-            };
+            if let Ok((w, h)) = image::image_dimensions(&item.file_path) {
+                let is_portrait =
+                    (self.preview_space.0 as u32) * h >= ((self.preview_space.1 * 2) as u32) * w;
 
-            viuer::print_from_file(&item.file_path, &conf).unwrap();
+                //Set viuer config.
+                let conf = if is_portrait {
+                    viuer::Config {
+                        x: self.preview_start.0 - 1,
+                        y: self.preview_start.1 as i16 - 1,
+                        height: Some((self.preview_space.1 - 1).into()),
+                        use_kitty: false,
+                        use_iterm: false,
+                        ..Default::default()
+                    }
+                } else {
+                    viuer::Config {
+                        x: self.preview_start.0 - 1,
+                        y: self.preview_start.1 as i16 - 1,
+                        width: Some((self.preview_space.0 - 1).into()),
+                        use_kitty: false,
+                        use_iterm: false,
+                        ..Default::default()
+                    }
+                };
+
+                if viuer::print_from_file(&item.file_path, &conf).is_err() {
+                    print_warning("Cannot print the image.", y);
+                }
+                return Ok(());
+            } else {
+                print_warning("Cannot read the image width and height.", y);
+                return Ok(());
+            }
         } else {
             let file_path = item.file_path.to_str();
             if file_path.is_none() {
@@ -320,30 +339,6 @@ impl Layout {
                 }
                 move_to(1, preview_start_point);
             }
-        }
-    }
-
-    /// Get the proper aspect ratio of image to print.
-    fn get_image_preview_size(&self, item: &ItemInfo) -> (u16, u16) {
-        //preview space ratio by actual resolution
-        let term_height_actual = ((self.preview_space.1 - 1) * 2) as f32;
-        let term_ratio = self.preview_space.0 as f32 / ((self.preview_space.1 * 2) as f32);
-
-        if let Ok((w, h)) = image::image_dimensions(&item.file_path) {
-            let w_f32 = w as f32;
-            let h_f32 = h as f32;
-            let image_ratio = w_f32 / h_f32;
-            if term_ratio <= image_ratio {
-                let factor = w_f32 / self.preview_space.0 as f32;
-                let height = (h_f32 / factor) as u16;
-                (self.preview_space.0, height / 2)
-            } else {
-                let factor = h_f32 / term_height_actual;
-                let width = (w_f32 / factor) as u16;
-                (width, self.preview_space.1)
-            }
-        } else {
-            (0, 0)
         }
     }
 }
