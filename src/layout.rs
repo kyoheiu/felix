@@ -260,7 +260,7 @@ impl Layout {
                         y: self.preview_start.1 as i16 - 1,
                         height: Some((self.preview_space.1 - 1).into()),
                         use_kitty: false,
-                        use_iterm: false,
+                        use_iterm: true,
                         ..Default::default()
                     }
                 } else {
@@ -269,7 +269,7 @@ impl Layout {
                         y: self.preview_start.1 as i16 - 1,
                         width: Some((self.preview_space.0 - 1).into()),
                         use_kitty: false,
-                        use_iterm: false,
+                        use_iterm: true,
                         ..Default::default()
                     }
                 };
@@ -329,9 +329,7 @@ impl Layout {
     }
 
     fn preview_gif(&self, item: &ItemInfo, y: u16) -> Result<(), FxError> {
-        let mut decoder = gif::DecodeOptions::new();
-        // Configure the decoder such that it will expand the image to RGBA.
-        decoder.set_color_output(gif::ColorOutput::RGBA);
+        let decoder = gif::DecodeOptions::new();
         // Read the file header
         let file = std::fs::File::open(&item.file_path).unwrap();
         let mut decoder = decoder.read_info(file).unwrap();
@@ -348,14 +346,31 @@ impl Layout {
             drop(encoder);
             let dyn_image =
                 image::load_from_memory_with_format(&vec, image::ImageFormat::Gif).unwrap();
-            let config = viuer::Config {
-                x: self.preview_start.0 - 1,
-                y: self.preview_start.1 as i16 - 1,
-                height: Some((self.preview_space.1 - 1).into()),
-                use_kitty: false,
-                use_iterm: false,
-                ..Default::default()
+
+            let is_portrait =
+                (self.preview_space.0) * frame.height >= (self.preview_space.1 * 2) * frame.width;
+
+            //Set viuer config.
+            let config = if is_portrait {
+                viuer::Config {
+                    x: self.preview_start.0 - 1,
+                    y: self.preview_start.1 as i16 - 1,
+                    height: Some((self.preview_space.1 - 1).into()),
+                    use_kitty: true,
+                    use_iterm: true,
+                    ..Default::default()
+                }
+            } else {
+                viuer::Config {
+                    x: self.preview_start.0 - 1,
+                    y: self.preview_start.1 as i16 - 1,
+                    width: Some((self.preview_space.0 - 1).into()),
+                    use_kitty: true,
+                    use_iterm: true,
+                    ..Default::default()
+                }
             };
+
             viuer::print(&dyn_image, &config).unwrap();
         }
         Ok(())
