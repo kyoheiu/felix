@@ -102,19 +102,8 @@ impl Layout {
                 }
             }
             Some(PreviewType::Gif) => {
-                if self.has_chafa {
-                    if let Err(e) = self.preview_image(item, y) {
-                        print_warning(e, y);
-                    }
-                } else {
-                    let help = format_txt(CHAFA_WARNING, self.terminal_column - 1, false);
-                    for (i, line) in help.iter().enumerate() {
-                        move_to(self.preview_start.0, BEGINNING_ROW + i as u16);
-                        print!("{}", line,);
-                        if BEGINNING_ROW + i as u16 == self.terminal_row - 1 {
-                            break;
-                        }
-                    }
+                if let Err(e) = self.preview_gif(item, y) {
+                    print_warning(e, y);
                 }
             }
             Some(PreviewType::Text) => {
@@ -335,6 +324,39 @@ impl Layout {
                     }
                 }
             }
+        }
+        Ok(())
+    }
+
+    fn preview_gif(&self, item: &ItemInfo, y: u16) -> Result<(), FxError> {
+        let mut decoder = gif::DecodeOptions::new();
+        // Configure the decoder such that it will expand the image to RGBA.
+        decoder.set_color_output(gif::ColorOutput::RGBA);
+        // Read the file header
+        let file = std::fs::File::open(&item.file_path).unwrap();
+        let mut decoder = decoder.read_info(file).unwrap();
+        if let Some(frame) = decoder.read_next_frame().unwrap() {
+            let mut vec: Vec<u8> = vec![];
+            let mut encoder = gif::Encoder::new(
+                &mut vec,
+                frame.width,
+                frame.height,
+                &frame.palette.clone().unwrap(),
+            )
+            .unwrap();
+            encoder.write_frame(&frame).unwrap();
+            drop(encoder);
+            let dyn_image =
+                image::load_from_memory_with_format(&vec, image::ImageFormat::Gif).unwrap();
+            let config = viuer::Config {
+                x: self.preview_start.0 - 1,
+                y: self.preview_start.1 as i16 - 1,
+                height: Some((self.preview_space.1 - 1).into()),
+                use_kitty: false,
+                use_iterm: false,
+                ..Default::default()
+            };
+            viuer::print(&dyn_image, &config).unwrap();
         }
         Ok(())
     }
