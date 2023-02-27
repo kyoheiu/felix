@@ -44,6 +44,11 @@ enum ImageSignature {
     NotSupported,
 }
 
+pub enum ImageType {
+    Still,
+    Gif,
+}
+
 fn inspect_image(p: &Path) -> Result<ImageSignature, FxError> {
     let mut file = std::fs::File::open(p)?;
     let mut buffer = [0; 12];
@@ -84,11 +89,15 @@ fn inspect_image(p: &Path) -> Result<ImageSignature, FxError> {
     Ok(sign)
 }
 
-pub fn is_supported_image_type(p: &Path) -> bool {
+pub fn is_supported_image_type(p: &Path) -> Option<ImageType> {
     if let Ok(sign) = inspect_image(p) {
-        !matches!(sign, ImageSignature::NotSupported)
+        match sign {
+            ImageSignature::NotSupported => None,
+            ImageSignature::Gif => Some(ImageType::Gif),
+            _ => Some(ImageType::Still),
+        }
     } else {
-        false
+        None
     }
 }
 
