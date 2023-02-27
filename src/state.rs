@@ -4,6 +4,7 @@ use super::functions::*;
 use super::help::HELP;
 use super::layout::*;
 use super::magic_image::is_supported_image_type;
+use super::magic_image::ImageType;
 use super::magic_packed;
 use super::nums::*;
 use super::op::*;
@@ -1578,8 +1579,11 @@ fn check_kitty_support() -> bool {
 fn set_preview_content_type(item: &mut ItemInfo) {
     if item.file_size > MAX_SIZE_TO_PREVIEW {
         item.preview_type = Some(PreviewType::TooBigSize);
-    } else if is_supported_image(item) {
-        item.preview_type = Some(PreviewType::Image);
+    } else if let Some(image_type) = is_supported_image(item) {
+        match image_type {
+            ImageType::Still => item.preview_type = Some(PreviewType::Still),
+            ImageType::Gif => item.preview_type = Some(PreviewType::Gif),
+        }
     } else if let Ok(content) = &std::fs::read(&item.file_path) {
         if content_inspector::inspect(content).is_text() {
             if let Ok(content) = String::from_utf8(content.to_vec()) {
@@ -1609,7 +1613,7 @@ fn set_preview_type(item: &mut ItemInfo) {
     }
 }
 
-fn is_supported_image(item: &ItemInfo) -> bool {
+fn is_supported_image(item: &ItemInfo) -> Option<ImageType> {
     is_supported_image_type(&item.file_path)
 }
 

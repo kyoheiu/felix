@@ -48,7 +48,8 @@ pub enum PreviewType {
     NotReadable,
     TooBigSize,
     Directory,
-    Image,
+    Still,
+    Gif,
     Text,
     Binary,
 }
@@ -84,7 +85,23 @@ impl Layout {
             Some(PreviewType::Directory) => {
                 self.preview_directory(item);
             }
-            Some(PreviewType::Image) => {
+            Some(PreviewType::Still) => {
+                if self.has_chafa {
+                    if let Err(e) = self.preview_image(item, y) {
+                        print_warning(e, y);
+                    }
+                } else {
+                    let help = format_txt(CHAFA_WARNING, self.terminal_column - 1, false);
+                    for (i, line) in help.iter().enumerate() {
+                        move_to(self.preview_start.0, BEGINNING_ROW + i as u16);
+                        print!("{}", line,);
+                        if BEGINNING_ROW + i as u16 == self.terminal_row - 1 {
+                            break;
+                        }
+                    }
+                }
+            }
+            Some(PreviewType::Gif) => {
                 if self.has_chafa {
                     if let Err(e) = self.preview_image(item, y) {
                         print_warning(e, y);
