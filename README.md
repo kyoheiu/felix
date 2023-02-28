@@ -1,4 +1,4 @@
-[![crates.io](https://img.shields.io/crates/v/felix)](https://crates.io/crates/felix) ![arch linux](https://img.shields.io/archlinux/v/community/x86_64/felix-rs) ![MSRV](https://img.shields.io/badge/MSRV-1.60.0-orange)
+[![crates.io](https://img.shields.io/crates/v/felix)](https://crates.io/crates/felix) ![arch linux](https://img.shields.io/archlinux/v/community/x86_64/felix-rs) ![MSRV](https://img.shields.io/badge/MSRV-1.63.0-orange)
 
 # _felix_
 
@@ -63,7 +63,7 @@ _For Windows users: From v1.3.0, it can be at least compiled on Windows (see `.g
 - Make sure that `gcc` is installed.
 - MSRV(Minimum Supported rustc Version): **1.60.0**
 
-Update Rust if rustc < 1.60:
+Update Rust if rustc < 1.63:
 
 ```
 rustup update
