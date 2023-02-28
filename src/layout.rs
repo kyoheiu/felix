@@ -311,7 +311,7 @@ impl Layout {
                     x: self.preview_start.0 - 1,
                     y: self.preview_start.1 as i16 - 1,
                     height: Some((self.preview_space.1 - 1).into()),
-                    use_kitty: true,
+                    use_kitty: false,
                     use_iterm: true,
                     ..Default::default()
                 }
@@ -320,7 +320,7 @@ impl Layout {
                     x: self.preview_start.0 - 1,
                     y: self.preview_start.1 as i16 - 1,
                     width: Some((self.preview_space.0 - 1).into()),
-                    use_kitty: true,
+                    use_kitty: false,
                     use_iterm: true,
                     ..Default::default()
                 }
