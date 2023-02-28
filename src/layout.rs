@@ -6,6 +6,7 @@ use super::session::SortKey;
 use super::state::{ItemInfo, BEGINNING_ROW};
 use super::term::*;
 
+use image::GenericImageView;
 use serde::{Deserialize, Serialize};
 use syntect::easy::HighlightLines;
 use syntect::highlighting::Theme;
@@ -88,7 +89,7 @@ impl Layout {
             }
             Some(PreviewType::Still) => {
                 if self.has_chafa {
-                    if let Err(e) = self.preview_image(item, y) {
+                    if let Err(e) = self.preview_image(item) {
                         print_warning(e, y);
                     }
                 } else {
@@ -103,7 +104,7 @@ impl Layout {
                 }
             }
             Some(PreviewType::Gif) => {
-                if let Err(e) = self.preview_gif(item, y) {
+                if let Err(e) = self.preview_gif(item) {
                     print_warning(e, y);
                 }
             }
@@ -248,109 +249,62 @@ impl Layout {
     }
 
     /// Print text preview on the right half of the terminal (Experimental).
-    fn preview_image(&self, item: &ItemInfo, y: u16) -> Result<(), FxError> {
-        if !self.use_chafa {
-            if let Ok((w, h)) = image::image_dimensions(&item.file_path) {
-                let is_portrait =
-                    (self.preview_space.0 as u32) * h >= ((self.preview_space.1 * 2) as u32) * w;
+    fn preview_image(&self, item: &ItemInfo) -> Result<(), FxError> {
+        let (w, h) = image::image_dimensions(&item.file_path)?;
+        let is_portrait =
+            (self.preview_space.0 as u32) * h >= ((self.preview_space.1 * 2) as u32) * w;
 
-                //Set viuer config.
-                let conf = if is_portrait {
-                    viuer::Config {
-                        x: self.preview_start.0 - 1,
-                        y: self.preview_start.1 as i16 - 1,
-                        height: Some((self.preview_space.1 - 1).into()),
-                        use_kitty: false,
-                        use_iterm: true,
-                        ..Default::default()
-                    }
-                } else {
-                    viuer::Config {
-                        x: self.preview_start.0 - 1,
-                        y: self.preview_start.1 as i16 - 1,
-                        width: Some((self.preview_space.0 - 1).into()),
-                        use_kitty: false,
-                        use_iterm: true,
-                        ..Default::default()
-                    }
-                };
-
-                if viuer::print_from_file(&item.file_path, &conf).is_err() {
-                    print_warning("Cannot print the image.", y);
-                }
-                return Ok(());
-            } else {
-                print_warning("Cannot read the image width and height.", y);
-                return Ok(());
+        //Set viuer config.
+        let conf = if is_portrait {
+            viuer::Config {
+                x: self.preview_start.0 - 1,
+                y: self.preview_start.1 as i16 - 1,
+                height: Some((self.preview_space.1 - 1).into()),
+                use_kitty: false,
+                use_iterm: true,
+                ..Default::default()
             }
         } else {
-            let file_path = item.file_path.to_str();
-            if file_path.is_none() {
-                print_warning("Cannot read the file path correctly.", y);
-                return Ok(());
+            viuer::Config {
+                x: self.preview_start.0 - 1,
+                y: self.preview_start.1 as i16 - 1,
+                width: Some((self.preview_space.0 - 1).into()),
+                use_kitty: false,
+                use_iterm: true,
+                ..Default::default()
             }
+        };
 
-            let wxh = match self.split {
-                Split::Vertical => {
-                    format!("--size={}x{}", self.preview_space.0, self.preview_space.1)
-                }
-                Split::Horizontal => {
-                    format!(
-                        "--size={}x{}",
-                        self.preview_space.0,
-                        self.preview_space.1 - 1
-                    )
-                }
-            };
-
-            let output = std::process::Command::new("chafa")
-                .args(["--animate=false", &wxh, file_path.unwrap()])
-                .output()?
-                .stdout;
-            let output = String::from_utf8(output)?;
-
-            match self.split {
-                Split::Vertical => {
-                    for (i, line) in output.lines().enumerate() {
-                        print!("{}", line);
-                        let next_line: u16 = BEGINNING_ROW + (i as u16) + 1;
-                        move_to(self.preview_start.0, next_line);
-                    }
-                }
-                Split::Horizontal => {
-                    for (i, line) in output.lines().enumerate() {
-                        print!("{}", line);
-                        let next_line: u16 = self.preview_start.1 + (i as u16) + 1;
-                        move_to(1, next_line);
-                    }
-                }
-            }
-        }
+        viuer::print_from_file(&item.file_path, &conf)?;
         Ok(())
     }
 
-    fn preview_gif(&self, item: &ItemInfo, y: u16) -> Result<(), FxError> {
-        let decoder = gif::DecodeOptions::new();
+    fn preview_gif(&self, item: &ItemInfo) -> Result<(), FxError> {
+        let mut decoder = gif::DecodeOptions::new();
+        decoder.set_memory_limit(gif::MemoryLimit(GIF_MEMORY_LIMIT));
         // Read the file header
-        let file = std::fs::File::open(&item.file_path).unwrap();
-        let mut decoder = decoder.read_info(file).unwrap();
-        if let Some(frame) = decoder.read_next_frame().unwrap() {
+        let file = std::fs::File::open(&item.file_path)?;
+        let mut decoder = decoder.read_info(file)?;
+        if let Some(frame) = decoder.read_next_frame()? {
             let mut vec: Vec<u8> = vec![];
-            let mut encoder = gif::Encoder::new(
-                &mut vec,
-                frame.width,
-                frame.height,
-                &frame.palette.clone().unwrap(),
-            )
-            .unwrap();
-            encoder.write_frame(&frame).unwrap();
+            let mut encoder = if frame.palette.is_some() {
+                gif::Encoder::new(
+                    &mut vec,
+                    frame.width,
+                    frame.height,
+                    &frame.palette.clone().unwrap(),
+                )?
+            } else {
+                gif::Encoder::new(&mut vec, frame.width, frame.height, &[])?
+            };
+            encoder.write_frame(&frame)?;
             drop(encoder);
-            let dyn_image =
-                image::load_from_memory_with_format(&vec, image::ImageFormat::Gif).unwrap();
 
-            let is_portrait =
-                (self.preview_space.0) * frame.height >= (self.preview_space.1 * 2) * frame.width;
+            let dyn_image = image::load_from_memory_with_format(&vec, image::ImageFormat::Gif)?;
+            let dimensions = dyn_image.dimensions();
 
+            let is_portrait = (self.preview_space.0 as u32) * dimensions.1
+                >= ((self.preview_space.1 * 2) as u32) * dimensions.0;
             //Set viuer config.
             let config = if is_portrait {
                 viuer::Config {
@@ -371,8 +325,7 @@ impl Layout {
                     ..Default::default()
                 }
             };
-
-            viuer::print(&dyn_image, &config).unwrap();
+            viuer::print(&dyn_image, &config)?;
         }
         Ok(())
     }
