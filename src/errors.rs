@@ -18,6 +18,10 @@ pub enum FxError {
     TooSmallWindowSize,
     Log(String),
     Unpack(String),
+    GifDecoding(String),
+    GifEncoding(String),
+    Image(String),
+    Viuer(String),
     Panic,
     #[cfg(any(target_os = "linux", target_os = "netbsd"))]
     Nix(String),
@@ -45,6 +49,10 @@ impl std::fmt::Display for FxError {
             FxError::Log(s) => s.to_owned(),
             FxError::Unpack(s) => s.to_owned(),
             FxError::Panic => "Error: felix panicked".to_owned(),
+            FxError::GifDecoding(s) => s.to_owned(),
+            FxError::GifEncoding(s) => s.to_owned(),
+            FxError::Image(s) => s.to_owned(),
+            FxError::Viuer(s) => s.to_owned(),
             #[cfg(any(target_os = "linux", target_os = "netbsd"))]
             FxError::Nix(s) => s.to_owned(),
         };
@@ -90,6 +98,30 @@ impl From<std::string::FromUtf8Error> for FxError {
 impl From<zip::result::ZipError> for FxError {
     fn from(err: zip::result::ZipError) -> Self {
         FxError::Unpack(err.to_string())
+    }
+}
+
+impl From<gif::DecodingError> for FxError {
+    fn from(err: gif::DecodingError) -> Self {
+        FxError::GifDecoding(err.to_string())
+    }
+}
+
+impl From<gif::EncodingError> for FxError {
+    fn from(err: gif::EncodingError) -> Self {
+        FxError::GifEncoding(err.to_string())
+    }
+}
+
+impl From<image::ImageError> for FxError {
+    fn from(err: image::ImageError) -> Self {
+        FxError::Image(err.to_string())
+    }
+}
+
+impl From<viuer::ViuError> for FxError {
+    fn from(err: viuer::ViuError) -> Self {
+        FxError::Viuer(err.to_string())
     }
 }
 
