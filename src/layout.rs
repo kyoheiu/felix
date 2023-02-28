@@ -19,6 +19,7 @@ pub const CHAFA_WARNING: &str =
 pub const PROPER_WIDTH: u16 = 28;
 pub const TIME_WIDTH: u16 = 16;
 const EXTRA_SPACES: u16 = 3;
+const GIF_MEMORY_LIMIT: u32 = 1_000_000;
 
 #[derive(Debug)]
 pub struct Layout {
