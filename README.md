@@ -189,7 +189,6 @@ Esc               :Return to the normal mode.
 By default, *every terminal* can show an image by blocks (a.k.a low-res). In addition,
 - iTerm2 protocol is natively supported, so if your terminal implements it, you can see a high-res image.
 - By installing `chafa`, terminals that implement sixel or kitty protocol can display a high-res image.
-- Kitty protocol is *not* natively supported at the moment.
 
 <a id="configuration"></a>
 
