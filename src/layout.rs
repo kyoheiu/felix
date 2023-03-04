@@ -245,11 +245,11 @@ impl Layout {
         reset_color();
     }
 
-    /// Print text preview on the right half of the terminal (Experimental).
+    /// Print image preview, powered by `viuer` crate.
     fn preview_image(&self, item: &ItemInfo) -> Result<(), FxError> {
         let (w, h) = image::image_dimensions(&item.file_path)?;
         let is_portrait =
-            (self.preview_space.0 as u32) * h >= ((self.preview_space.1 * 2) as u32) * w;
+            (self.preview_space.0 as u32) * h >= (((self.preview_space.1 - 1) * 2) as u32) * w;
 
         //Set viuer config.
         let conf = if is_portrait {
@@ -276,6 +276,7 @@ impl Layout {
         Ok(())
     }
 
+    /// Print gif preview as a still, powered by `viuer` crate.
     fn preview_gif(&self, item: &ItemInfo) -> Result<(), FxError> {
         let mut decoder = gif::DecodeOptions::new();
         decoder.set_memory_limit(gif::MemoryLimit(GIF_MEMORY_LIMIT));
@@ -301,7 +302,7 @@ impl Layout {
             let dimensions = dyn_image.dimensions();
 
             let is_portrait = (self.preview_space.0 as u32) * dimensions.1
-                >= ((self.preview_space.1 * 2) as u32) * dimensions.0;
+                >= (((self.preview_space.1 - 1) * 2) as u32) * dimensions.0;
             //Set viuer config.
             let config = if is_portrait {
                 viuer::Config {
@@ -323,6 +324,52 @@ impl Layout {
                 }
             };
             viuer::print(&dyn_image, &config)?;
+        }
+        Ok(())
+    }
+
+    // Print image preview, powered by `chafa` (optional dependency).
+    fn preview_by_chafa(&self, item: &ItemInfo, y: u16) -> Result<(), FxError> {
+        let wxh = match self.split {
+            Split::Vertical => {
+                format!("--size={}x{}", self.preview_space.0, self.preview_space.1)
+            }
+            Split::Horizontal => {
+                format!(
+                    "--size={}x{}",
+                    self.preview_space.0,
+                    self.preview_space.1 - 1
+                )
+            }
+        };
+
+        let file_path = item.file_path.to_str();
+        if file_path.is_none() {
+            print_warning("Cannot read the file path correctly.", y);
+            return Ok(());
+        }
+
+        let output = std::process::Command::new("chafa")
+            .args(["--animate=false", &wxh, file_path.unwrap()])
+            .output()?
+            .stdout;
+        let output = String::from_utf8(output)?;
+
+        match self.split {
+            Split::Vertical => {
+                for (i, line) in output.lines().enumerate() {
+                    print!("{}", line);
+                    let next_line: u16 = BEGINNING_ROW + (i as u16) + 1;
+                    move_to(self.preview_start.0, next_line);
+                }
+            }
+            Split::Horizontal => {
+                for (i, line) in output.lines().enumerate() {
+                    print!("{}", line);
+                    let next_line: u16 = self.preview_start.1 + (i as u16) + 1;
+                    move_to(1, next_line);
+                }
+            }
         }
         Ok(())
     }
