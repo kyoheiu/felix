@@ -13,10 +13,7 @@ use syntect::highlighting::Theme;
 use syntect::parsing::SyntaxSet;
 use syntect::util::{as_24_bit_terminal_escaped, split_at, LinesWithEndings};
 
-pub const MAX_SIZE_TO_PREVIEW: u64 = 1_000_000_000;
-pub const CHAFA_WARNING: &str =
-    "From v1.1.0, the image preview needs chafa (>= v1.10.0). For more details, please see help by `:h` ";
-
+pub const MAX_SIZE_TO_PREVIEW: u64 = 2_000_000_000;
 pub const PROPER_WIDTH: u16 = 28;
 pub const TIME_WIDTH: u16 = 16;
 const EXTRA_SPACES: u16 = 3;
@@ -41,7 +38,6 @@ pub struct Layout {
     pub syntax_set: SyntaxSet,
     pub theme: Theme,
     pub has_chafa: bool,
-    pub use_chafa: bool,
     pub is_kitty: bool,
 }
 
@@ -89,23 +85,24 @@ impl Layout {
             }
             Some(PreviewType::Still) => {
                 if self.has_chafa {
-                    if let Err(e) = self.preview_image(item) {
+                    if let Err(e) = self.preview_by_chafa(item, y) {
                         print_warning(e, y);
                     }
                 } else {
-                    let help = format_txt(CHAFA_WARNING, self.terminal_column - 1, false);
-                    for (i, line) in help.iter().enumerate() {
-                        move_to(self.preview_start.0, BEGINNING_ROW + i as u16);
-                        print!("{}", line,);
-                        if BEGINNING_ROW + i as u16 == self.terminal_row - 1 {
-                            break;
-                        }
+                    if let Err(e) = self.preview_image(item) {
+                        print_warning(e, y);
                     }
                 }
             }
             Some(PreviewType::Gif) => {
-                if let Err(e) = self.preview_gif(item) {
-                    print_warning(e, y);
+                if self.has_chafa {
+                    if let Err(e) = self.preview_by_chafa(item, y) {
+                        print_warning(e, y);
+                    }
+                } else {
+                    if let Err(e) = self.preview_gif(item) {
+                        print_warning(e, y);
+                    }
                 }
             }
             Some(PreviewType::Text) => {
