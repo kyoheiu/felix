@@ -107,7 +107,7 @@ cargo install --path .
 In addition, you can use felix more conveniently by installing these two apps:
 
 - [zoxide](https://github.com/ajeetdsouza/zoxide): A smarter `cd` command, which enables you to jump to a directory that matches the keyword in felix.
-- [chafa](https://hpjansson.org/chafa/): Terminal graphics for the 21st century, by which you can preview images in felix. ***chafa must be v1.10.0 or later.***
+- [chafa](https://hpjansson.org/chafa/): Terminal graphics for the 21st century, by which you can preview images as high-res in felix. ***chafa must be v1.10.0 or later.***
 
 These apps do not need any configuration to use with felix!
 
@@ -179,8 +179,17 @@ Esc               :Return to the normal mode.
 
 ## Preview feature
 
-By default, text files and directories can be previewed.  
-Install `chafa` and you can preview images without any configuration.
+| type | previewable |
+| --- | --- |
+| directory | yes |
+| text | yes (and with syntax-highlighting if configured) |
+| image| see below |
+
+### Image preview feature
+By default, *every terminal* can show an image by blocks (a.k.a low-res). In addition,
+- iTerm2 protocol is natively supported, so if your terminal implements it, you can see a high-res image.
+- By installing `chafa`, terminals that implement sixel or kitty protocol can display a high-res image.
+- Kitty protocol is *not* natively supported at the moment.
 
 <a id="configuration"></a>
 
