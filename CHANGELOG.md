@@ -4,6 +4,15 @@
 
 ## Unreleased
 
+### Added
+- Native support for image preview: By default, every terminal can show images by blocks. in addition,
+  - iTerm2 protocol is natively supported, so if your terminal implements it, you can see a high-res image.
+  - By installing `chafa`, terminals that implement sixel or kitty protocol can display a high-res image.
+  - For this feature, added crate `viuer`, `image` and `gif`: The number of dependencies bumps up to around 220.
+
+### Changed
+- MSRV -> 1.63.0
+
 ## v2.2.5 (2023-02-12)
 
 ### Added
