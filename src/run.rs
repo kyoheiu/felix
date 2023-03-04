@@ -1627,8 +1627,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         continue;
                     }
                 }
-                //If you use kitty, you must clear the screen by the escape sequence or the previewed image remains.
-                if state.layout.is_kitty && state.layout.preview {
+                //If you use kitty, you must clear the screen by the escape sequence or the previewed image that chafa prints will remain.
+                if state.layout.is_kitty && state.layout.preview && state.layout.has_chafa {
                     print!("{}", CLRSCR);
                     state.clear_and_show_headline();
                     state.list_up();
