@@ -113,12 +113,14 @@ fx() {
     set -e
     if [ -n "$XDG_RUNTIME_DIR" ]; then
       local runtime_dir="$XDG_RUNTIME_DIR/felix"
-    else
+    elif [ -n "$TMPDIR" ]; then
       local runtime_dir="$TMPDIR/felix"
+    else
+      local runtime_dir=/tmp/felix
     fi
     cat "$runtime_dir/$$"
     # Clean up the current and any leftover lwd files
-    find "$runtime_dir" \( -type f -mtime +1s -or -name $$ \) -delete
+    find "$runtime_dir" -type f -and \( -mtime +1s -or -name $$ \) -delete
   )"
 }
 ```
