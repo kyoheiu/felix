@@ -13,7 +13,7 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::execute;
 use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
 use log::{error, info};
-use std::env::set_current_dir;
+use std::env::{self, set_current_dir};
 use std::fmt::Write as _;
 use std::io::{stdout, Write};
 use std::panic;
@@ -42,6 +42,8 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         ));
     }
 
+    let parent_pid = env::var("SHELL_PID").ok();
+
     //Prepare config and data local path.
     let config_dir_path = {
         let mut path = dirs::config_dir()
@@ -55,12 +57,36 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         path.push(FELIX);
         path
     };
+    let runtime_path = {
+        let mut path = {
+            #[cfg(not(target_os = "macos"))]
+            let path = dirs::runtime_dir()
+                .or_else(|| Some(env::temp_dir()))
+                .ok_or_else(|| FxError::Dirs("Cannot read the runtime directory.".to_string()))?;
+
+            #[cfg(target_os = "macos")]
+            let path = env::temp_dir();
+
+            path
+        };
+        path.push(FELIX);
+        path
+    };
     if !config_dir_path.exists() {
         std::fs::create_dir_all(&config_dir_path)?;
     }
     if !data_local_path.exists() {
         std::fs::create_dir_all(&data_local_path)?;
     }
+    if !runtime_path.exists() {
+        std::fs::create_dir_all(&runtime_path)?;
+    }
+
+    //Path of the file used to store lwd (Last Working Directory) at the end of the session.
+    let lwd_file_path = match parent_pid {
+        Some(parent_pid) => Some(runtime_path.join(parent_pid)),
+        _ => None,
+    };
 
     //Set config file and trash dir path.
     let config_file_path = {
@@ -95,6 +121,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     //Initialize app state.
     let mut state = State::new(&config_file_path, &session_file_path)?;
     state.trash_dir = trash_dir_path;
+    state.lwd_file = lwd_file_path;
     state.current_dir = if cfg!(not(windows)) {
         // If executed this on windows, "//?" will be inserted at the beginning of the path.
         arg.canonicalize()?
@@ -1603,7 +1630,18 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                 if let Event::Key(KeyEvent { code, .. }) = event::read()? {
                                     match code {
+                                        KeyCode::Char('Q') => {
+                                            break 'main;
+                                        }
+
                                         KeyCode::Char('Z') => {
+                                            //To communicate with the calling shell function for
+                                            //subsequent use by cd
+                                            match state.lwd_file.to_owned() {
+                                                Some(path) => std::fs::write(path, state.current_dir.to_str().unwrap())?,
+                                                _ => Err(FxError::MissingEnvVariable("SHELL_PID".to_owned()))?,
+                                            }
+
                                             break 'main;
                                         }
 

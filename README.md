@@ -2,10 +2,10 @@
 
 # _felix_
 
-A tui file manager with Vim-like key mapping, written in Rust.  
+A tui file manager with Vim-like key mapping, written in Rust.
 Fast, simple, and easy to configure & use.
 
-For an overview of this app, take a look at this README, especially [key manual](#key-manual).  
+For an overview of this app, take a look at this README, especially [key manual](#key-manual).
 For more detailed document, visit https://kyoheiu.dev/felix.
 
 - [New release](#new-release)
@@ -81,7 +81,7 @@ cargo install felix
 pacman -S felix-rs
 ```
 
-*The launcher binary name is `felix` via pacman.  
+*The launcher binary name is `felix` via pacman.
 Alias fx='felix' if you want, as this document (and other installations) uses `fx`.*
 
 ### NetBSD
@@ -103,6 +103,25 @@ cargo install --path .
 <a id="integrations"></a>
 
 ## Integrations
+
+In order for the shortcut `ZZ` to work, you need to add the following to your `.bashrc` or `.zshrc`
+or an equivalent depending on your (POSIX) shell:
+```sh
+fx() {
+  SHELL_PID=$$ command fx
+  cd "$(
+    set -e
+    if [ -n "$XDG_RUNTIME_DIR" ]; then
+      local runtime_dir="$XDG_RUNTIME_DIR/felix"
+    else
+      local runtime_dir="$TMPDIR/felix"
+    fi
+    cat "$runtime_dir/$$"
+    # Clean up the current and any leftover lwd files
+    find "$runtime_dir" \( -type f -mtime +1s -or -name $$ \) -delete
+  )"
+}
+```
 
 In addition, you can use felix more conveniently by installing these two apps:
 
@@ -172,14 +191,15 @@ Esc               :Return to the normal mode.
 :trash            :Go to the trash directory.
 :empty            :Empty the trash directory.
 :h                :Show help.
-:q / ZZ           :Exit.
+:ZZ               :cd to current directory and Exit.
+:q / ZQ           :Exit.
 ```
 
 <a id="preview"></a>
 
 ## Preview feature
 
-By default, text files and directories can be previewed.  
+By default, text files and directories can be previewed.
 Install `chafa` and you can preview images without any configuration.
 
 <a id="configuration"></a>

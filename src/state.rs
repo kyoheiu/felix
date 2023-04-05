@@ -38,6 +38,7 @@ pub struct State {
     pub list: Vec<ItemInfo>,
     pub current_dir: PathBuf,
     pub trash_dir: PathBuf,
+    pub lwd_file: Option<PathBuf>,
     pub default: String,
     pub commands: Option<BTreeMap<String, String>>,
     pub registered: Vec<ItemInfo>,
@@ -135,6 +136,7 @@ impl State {
             },
             current_dir: PathBuf::new(),
             trash_dir: PathBuf::new(),
+            lwd_file: None,
             default: config
                 .default
                 .unwrap_or_else(|| env::var("EDITOR").unwrap_or_default()),
@@ -337,7 +339,7 @@ impl State {
 
     /// Move items from the current directory to trash directory.
     /// This does not actually delete items.
-    /// If you'd like to delete, use `:empty` after this, or just `:rm`.  
+    /// If you'd like to delete, use `:empty` after this, or just `:rm`.
     pub fn remove_and_yank(&mut self, targets: &[ItemInfo], new_op: bool) -> Result<(), FxError> {
         if self.current_dir == self.trash_dir {
             return Err(FxError::Io(
