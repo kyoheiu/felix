@@ -119,7 +119,7 @@
 
 ### Added
 
-- Horizontal split, in addtion to the vertical split. To toggle, press `s`.
+- Horizontal split, in addition to the vertical split. To toggle, press `s`.
 - Syntax highlighting (if possible) in previewed texts. To turn on, state `syntax_hightlight = true` in `config.toml`. you can also choose your theme, either from the default theme set or your favorite .tmtheme.
 - Enable scrolling in the preview space. `Alt + j / Up` goes down, `Alt + k` goes up. Experimental and may have some bugs, and with a big text file the perf issue may arise.
 - Search by keyword. Similar to the filter mode, but this feature do not manipulate the item list, just let users jump to the item that matches the keyword, just like Vim's `/`. `n` and `N` after `/` also works.
@@ -127,7 +127,7 @@
 
 ### Fixed
 
-- Use `exists()` instead of `File::open()` to check whether the item path is valid when moving between direcotries. This allows Windows users to use this app at least with the basic commands.
+- Use `exists()` instead of `File::open()` to check whether the item path is valid when moving between directories. This allows Windows users to use this app at least with the basic commands.
 - Avoid `unwrap()` / `panic!` as possible and return the proper error.
 
 ### Removed
@@ -294,7 +294,7 @@
 ### Added
 
 - [Experimental] Image preview on the right half of the terminal (press `v`). This feature uses `viuer`, and high resolution preview, which can be used in kitty or terminals that support sixel, is disabled due to the clearance issues.
-- crate `viuer` and `image` to preview the image.
+- create `viuer` and `image` to preview the image.
 
 ### Fixed
 
@@ -374,7 +374,7 @@
 
 ### Added
 
-- New configuration: You can now use the full width of terminal by setting `use_full_width` to true (false by default). I hope this wil lead to a better user experience. _For those who use <=0.6.0, felix can work without replacing config.toml because `use_full_width` is an option._
+- New configuration: You can now use the full width of terminal by setting `use_full_width` to true (false by default). I hope this will lead to a better user experience. _For those who use <=0.6.0, felix can work without replacing config.toml because `use_full_width` is an option._
 
 ## v0.6.0 (2022-04-13)
 
@@ -564,7 +564,7 @@
 
 ### Added
 
-- select mode, where you can delete and yank muliple items
+- select mode, where you can delete and yank multiple items
 
 ### Changed
 
