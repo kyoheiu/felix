@@ -204,7 +204,7 @@ pub fn list_up_contents(path: &Path, width: u16) -> Result<String, FxError> {
 
 /// Format texts to print. Used when printing help or text preview.
 pub fn format_txt(txt: &str, width: u16, is_help: bool) -> Vec<String> {
-    let mut v = split_lines_includng_wide_char(txt, width.into());
+    let mut v = split_lines_including_wide_char(txt, width.into());
     if is_help {
         v.push("Press Enter to go back.".to_owned());
     }
@@ -299,7 +299,7 @@ pub fn shorten_str_including_wide_char(s: &str, i: usize) -> String {
     result
 }
 
-fn split_lines_includng_wide_char(s: &str, width: usize) -> Vec<String> {
+fn split_lines_including_wide_char(s: &str, width: usize) -> Vec<String> {
     let mut result = vec![];
     let mut new_line = "".to_owned();
     for c in s.chars() {
