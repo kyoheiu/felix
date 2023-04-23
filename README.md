@@ -77,7 +77,7 @@ report any problems._
 
 | package    | installation command  | notes                                                                                                                                       |
 | ---------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| crates.io  | `cargo install felix` |                                                                                                                                             |
+| crates.io  | `cargo install felix` | Minimal supported rustc version: **1.60.0**                                                                                                 |
 | Arch Linux | `pacman -S felix-rs`  | The binary name is `felix` if you install via pacman. Alias `fx='felix'` if you want, as this document (and other installations) uses `fx`. |
 | NetBSD     | `pkgin install felix` |                                                                                                                                             |
 
