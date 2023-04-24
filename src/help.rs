@@ -9,7 +9,6 @@ Both relative and absolute path available.
 
 ## Options 
 `-h` | `--help`    => Print help.
-`-v` | `--version` => Check update.
 `-l` | `--log` => Launch the app, automatically generating a log file.
 
 ## Manual
