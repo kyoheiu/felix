@@ -31,9 +31,6 @@ fn main() -> Result<(), errors::FxError> {
             "-h" | "--help" => {
                 print!("{}", help::HELP);
             }
-            "-v" | "--version" => {
-                functions::check_version()?;
-            }
             "-l" | "--log" => {
                 if let Err(e) = run::run(
                     std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),

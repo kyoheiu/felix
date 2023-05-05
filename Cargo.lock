@@ -474,7 +474,7 @@ dependencies = [
 
 [[package]]
 name = "felix"
-version = "2.2.5"
+version = "2.2.6"
 dependencies = [
  "chrono",
  "content_inspector",
