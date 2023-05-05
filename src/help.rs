@@ -1,5 +1,5 @@
 /// Help text.
-pub const HELP: &str = "# felix v2.2.6
+pub const HELP: &str = "# felix v2.2.7
 A simple TUI file manager with vim-like keymapping.
 
 ## Usage
@@ -9,7 +9,6 @@ Both relative and absolute path available.
 
 ## Options 
 `-h` | `--help`    => Print help.
-`-v` | `--version` => Check update.
 `-l` | `--log` => Launch the app, automatically generating a log file.
 
 ## Manual

@@ -4,6 +4,12 @@
 
 ## Unreleased
 
+## v2.2.7 (2023-05-05)
+
+### Added
+
+- Print `[RO]` on the headline if user do not have the write permission on the directory. This is available only on UNIX for now.
+
 ## v2.2.6 (2023-04-24)
 
 ### Removed

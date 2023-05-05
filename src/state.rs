@@ -27,6 +27,12 @@ use syntect::highlighting::{Theme, ThemeSet};
 
 #[cfg(target_family = "unix")]
 use std::os::unix::fs::PermissionsExt;
+#[cfg(target_family = "unix")]
+use std::os::unix::fs::MetadataExt;
+#[cfg(target_family = "unix")]
+use nix::sys::stat::Mode;
+#[cfg(target_family = "unix")]
+use nix::unistd::{Gid, Uid};
 
 pub const FELIX: &str = "felix";
 pub const BEGINNING_ROW: u16 = 3;
@@ -840,9 +846,9 @@ impl State {
 
         let mut header_space = (self.layout.terminal_column - 1) as usize;
 
-        //Show current directory path.
-        //crossterm's Stylize cannot be applied to PathBuf,
-        //current directory does not have any text attribute for now.
+        // Show current directory path.
+        // crossterm's Stylize cannot be applied to PathBuf,
+        // current directory does not have any text attribute for now.
         let current_dir = self.current_dir.display().to_string();
         if current_dir.bytes().len() >= header_space {
             let current_dir = shorten_str_including_wide_char(&current_dir, header_space);
@@ -855,6 +861,17 @@ impl State {
             print!(" {}", current_dir);
             reset_color();
             header_space -= current_dir.len();
+        }
+
+        #[cfg(target_family = "unix")]
+        // If without the write permission, print [RO].
+        if let Ok(false) = has_write_permission(&self.current_dir) {
+            if header_space > 5 {
+                set_color(&TermColor::ForeGround(&Colorname::Red));
+                print!(" [RO]");
+                reset_color();
+                header_space -= 5;
+            }
         }
 
         //If .git directory exists, get the branch information and print it.
@@ -1640,6 +1657,55 @@ fn choose_theme(dt: &DefaultTheme) -> Theme {
     }
 }
 
+// Check if the current process has the write permission to a path.
+// Currently available in unix only.
+// TODO: Use this function to determine if deleting items can be done in the first place?
+#[cfg(target_family = "unix")]
+fn has_write_permission(path: &std::path::Path) -> Result<bool, FxError> {
+    let metadata = std::fs::metadata(path)?;
+    let mode = metadata.mode();
+    if mode == 0 {
+        Ok(false)
+    } else {
+        let euid = Uid::effective();
+        if euid.is_root() {
+            Ok(true)
+        } else {
+            let uid = metadata.uid();
+            let gid = metadata.gid();
+
+            if uid == euid.as_raw() {
+                Ok(mode & (Mode::S_IWUSR.bits() as u32) != 0)
+            } else if gid == Gid::effective().as_raw() || in_groups(gid) {
+                Ok(mode & (Mode::S_IWGRP.bits() as u32) != 0)
+            } else {
+                Ok(mode & (Mode::S_IWOTH.bits() as u32) != 0)
+            }
+        }
+    }
+}
+
+#[cfg(all(target_family = "unix", not(target_os = "macos")))]
+fn in_groups(gid: u32) -> bool {
+    if let Ok(groups) = nix::unistd::getgroups() {
+        for group in groups {
+            if group.as_raw() == gid {
+                return true;
+            } else {
+                continue;
+            }
+        }
+        false
+    } else {
+        false
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn in_groups(gid: u32) -> bool {
+    false
+}
+
 #[cfg(test)]
 mod tests {
     use devtimer::run_benchmark;
@@ -1680,6 +1746,14 @@ mod tests {
         }
 
         Ok(())
+    }
+
+    #[test]
+    fn test_has_write_permission() {
+        let p = std::path::PathBuf::from("./testfiles/permission_test");
+        assert!(!has_write_permission(p.as_path()).unwrap());
+        let home_dir = dirs::home_dir().unwrap();
+        assert!(has_write_permission(&home_dir).unwrap());
     }
 
     #[test]
