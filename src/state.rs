@@ -1762,9 +1762,9 @@ mod tests {
         assert!(!has_write_permission(p.as_path()).unwrap());
         // Reset the permission
         let entries = vec![
-            AclEntry::allow_user("", Perm::READ | Perm::WRITE, None),
-            AclEntry::allow_group("", Perm::READ | Perm::WRITE, None),
-            AclEntry::allow_other(Perm::READ | Perm::WRITE, None),
+            AclEntry::allow_user("", Perm::READ | Perm::WRITE | Perm::EXECUTE, None),
+            AclEntry::allow_group("", Perm::READ | Perm::EXECUTE, None),
+            AclEntry::allow_other(Perm::READ | Perm::EXECUTE, None),
         ];
         setfacl(&[p], &entries, None).unwrap();
 
