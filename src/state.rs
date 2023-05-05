@@ -863,6 +863,17 @@ impl State {
             header_space -= current_dir.len();
         }
 
+        #[cfg(target_family = "unix")]
+        // If without the write permission, print [RO].
+        if let Ok(false) = has_write_permission(&self.current_dir) {
+            if header_space > 5 {
+                set_color(&TermColor::ForeGround(&Colorname::Red));
+                print!(" [RO]");
+                reset_color();
+                header_space -= 5;
+            }
+        }
+
         //If .git directory exists, get the branch information and print it.
         let git = self.current_dir.join(".git");
         if git.exists() {
@@ -878,16 +889,6 @@ impl State {
                     } else {
                     }
                 }
-            }
-        }
-
-        #[cfg(target_family = "unix")]
-        // If without the write permission, print [RO].
-        if let Ok(false) = has_write_permission(&self.current_dir) {
-            if header_space > 5 {
-                set_color(&TermColor::ForeGround(&Colorname::Red));
-                print!(" [RO]");
-                reset_color();
             }
         }
     }
