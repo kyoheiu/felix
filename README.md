@@ -26,6 +26,13 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 
 ## New release
 
+## v2.2.7 (2023-05-05)
+
+### Added
+
+- Print `[RO]` on the headline if user do not have the write permission on the directory. This is available only on UNIX for now.
+
+
 ## v2.2.6 (2023-04-24)
 
 ### Removed
@@ -34,25 +41,6 @@ For more detailed document, visit https://kyoheiu.dev/felix.
   do not have `cargo` installed, fetching latest version via `cargo` doesn't
   work for many, and ii) `-h | --help` option can already show the current
   version.
-
-## v2.2.5 (2023-02-12)
-
-### Added
-
-- Allow renaming even when item name contains non-ascii chars (i.e. wide chars).
-- Key command with arguments is now supported: For example,
-  ```
-  exec:
-  'feh -.':
-    [jpg, jpeg, png, gif, svg, hdr]
-  ```
-  this configuration enables you to execute `feh -. <item path>` by
-  `Enter | l | Right`, or `o`.
-- Check for out-of-boundary of the cursor at the top of loop.
-
-### Fixed
-
-- Display when using in kitty: Correctly show the cursor and preview.
 
 For more details, see `CHANGELOG.md`.
 
