@@ -27,8 +27,11 @@ use syntect::highlighting::{Theme, ThemeSet};
 
 #[cfg(target_family = "unix")]
 use std::os::unix::fs::PermissionsExt;
+#[cfg(target_family = "unix")]
 use std::os::unix::fs::MetadataExt;
+#[cfg(target_family = "unix")]
 use nix::sys::stat::Mode;
+#[cfg(target_family = "unix")]
 use nix::unistd::{Gid, Uid};
 
 pub const FELIX: &str = "felix";
