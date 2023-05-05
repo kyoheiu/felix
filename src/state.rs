@@ -26,13 +26,13 @@ use std::time::UNIX_EPOCH;
 use syntect::highlighting::{Theme, ThemeSet};
 
 #[cfg(target_family = "unix")]
-use std::os::unix::fs::PermissionsExt;
-#[cfg(target_family = "unix")]
-use std::os::unix::fs::MetadataExt;
-#[cfg(target_family = "unix")]
 use nix::sys::stat::Mode;
 #[cfg(target_family = "unix")]
 use nix::unistd::{Gid, Uid};
+#[cfg(target_family = "unix")]
+use std::os::unix::fs::MetadataExt;
+#[cfg(target_family = "unix")]
+use std::os::unix::fs::PermissionsExt;
 
 pub const FELIX: &str = "felix";
 pub const BEGINNING_ROW: u16 = 3;
