@@ -840,9 +840,9 @@ impl State {
 
         let mut header_space = (self.layout.terminal_column - 1) as usize;
 
-        //Show current directory path.
-        //crossterm's Stylize cannot be applied to PathBuf,
-        //current directory does not have any text attribute for now.
+        // Show current directory path.
+        // crossterm's Stylize cannot be applied to PathBuf,
+        // current directory does not have any text attribute for now.
         let current_dir = self.current_dir.display().to_string();
         if current_dir.bytes().len() >= header_space {
             let current_dir = shorten_str_including_wide_char(&current_dir, header_space);
