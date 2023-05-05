@@ -26,13 +26,13 @@ use std::time::UNIX_EPOCH;
 use syntect::highlighting::{Theme, ThemeSet};
 
 #[cfg(target_family = "unix")]
-use std::os::unix::fs::PermissionsExt;
-#[cfg(target_family = "unix")]
-use std::os::unix::fs::MetadataExt;
-#[cfg(target_family = "unix")]
 use nix::sys::stat::Mode;
 #[cfg(target_family = "unix")]
 use nix::unistd::{Gid, Uid};
+#[cfg(target_family = "unix")]
+use std::os::unix::fs::MetadataExt;
+#[cfg(target_family = "unix")]
+use std::os::unix::fs::PermissionsExt;
 
 pub const FELIX: &str = "felix";
 pub const BEGINNING_ROW: u16 = 3;
@@ -1708,10 +1708,11 @@ fn in_groups(gid: u32) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use devtimer::run_benchmark;
-    use rayon::prelude::{IntoParallelIterator, ParallelIterator};
-
     use super::*;
+
+    use devtimer::run_benchmark;
+    use exacl::{setfacl, AclEntry, Perm};
+    use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 
     fn bench_update1() -> Result<(), FxError> {
         let mut dir_v = Vec::new();
@@ -1751,7 +1752,23 @@ mod tests {
     #[test]
     fn test_has_write_permission() {
         let p = std::path::PathBuf::from("./testfiles/permission_test");
+        // Set the test file to read-only
+        let entries = vec![
+            AclEntry::allow_user("", Perm::READ, None),
+            AclEntry::allow_group("", Perm::READ, None),
+            AclEntry::allow_other(Perm::empty(), None),
+        ];
+        setfacl(&[p.clone()], &entries, None).unwrap();
         assert!(!has_write_permission(p.as_path()).unwrap());
+        // Reset the permission
+        let entries = vec![
+            AclEntry::allow_user("", Perm::READ | Perm::WRITE | Perm::EXECUTE, None),
+            AclEntry::allow_group("", Perm::READ | Perm::EXECUTE, None),
+            AclEntry::allow_other(Perm::READ | Perm::EXECUTE, None),
+        ];
+        setfacl(&[p], &entries, None).unwrap();
+
+        // Test the home directory, which should pass
         let home_dir = dirs::home_dir().unwrap();
         assert!(has_write_permission(&home_dir).unwrap());
     }
