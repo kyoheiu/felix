@@ -40,7 +40,7 @@ unicode-width = "0.1.10"
 devtimer = "4.0.0"
 rayon = "1.6.1"
 
-[target.'cfg(any(target_os = "linux", target_os = "netbsd"))'.dependencies]
+[target.'cfg(unix)'.dependencies]
 nix = {version = "0.25.0", features = ["process"]}
 
 [dependencies.serde]

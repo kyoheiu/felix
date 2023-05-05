@@ -335,7 +335,7 @@ mod tests {
     fn test_list_up_contents() {
         let p = PathBuf::from("./testfiles");
         let tree = list_up_contents(&p, 20).unwrap();
-        assert_eq!(tree, "├ archives\n└ images".to_string());
+        assert_eq!(tree, "├ archives\n├ images\n└ permission_test".to_string());
     }
 
     #[test]
