@@ -1674,11 +1674,11 @@ fn has_write_permission(path: &std::path::Path) -> Result<bool, FxError> {
             let gid = metadata.gid();
 
             if uid == euid.as_raw() {
-                Ok(mode & Mode::S_IWUSR.bits() != 0)
+                Ok(mode & (Mode::S_IWUSR.bits() as u32) != 0)
             } else if gid == Gid::effective().as_raw() || in_groups(gid) {
-                Ok(mode & Mode::S_IWGRP.bits() != 0)
+                Ok(mode & (Mode::S_IWGRP.bits() as u32) != 0)
             } else {
-                Ok(mode & Mode::S_IWOTH.bits() != 0)
+                Ok(mode & (Mode::S_IWOTH.bits() as u32) != 0)
             }
         }
     }
