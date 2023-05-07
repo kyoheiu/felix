@@ -1711,7 +1711,6 @@ mod tests {
     use super::*;
 
     use devtimer::run_benchmark;
-    use exacl::{setfacl, AclEntry, Perm};
     use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 
     fn bench_update1() -> Result<(), FxError> {
