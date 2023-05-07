@@ -38,7 +38,6 @@ unicode-width = "0.1.10"
 
 [dev-dependencies]
 devtimer = "4.0.0"
-exacl = "0.10.0"
 rayon = "1.6.1"
 
 [target.'cfg(unix)'.dependencies]
