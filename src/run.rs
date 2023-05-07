@@ -1690,20 +1690,3 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
     info!("===FINISH===");
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn zoxide_test() {
-        let output = std::process::Command::new("zoxide")
-            .args(["query", "felix"])
-            .output()
-            .unwrap();
-        let stdout = std::str::from_utf8(&output.stdout).unwrap().trim();
-        println!("{stdout}");
-        let path = PathBuf::from(stdout);
-        println!("{:?}", path.canonicalize());
-    }
-}

@@ -1711,7 +1711,6 @@ mod tests {
     use super::*;
 
     use devtimer::run_benchmark;
-    use exacl::{setfacl, AclEntry, Perm};
     use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 
     fn bench_update1() -> Result<(), FxError> {
@@ -1751,22 +1750,11 @@ mod tests {
 
     #[test]
     fn test_has_write_permission() {
+        // chmod to 444 and check if it's read-only
         let p = std::path::PathBuf::from("./testfiles/permission_test");
-        // Set the test file to read-only
-        let entries = vec![
-            AclEntry::allow_user("", Perm::READ, None),
-            AclEntry::allow_group("", Perm::READ, None),
-            AclEntry::allow_other(Perm::empty(), None),
-        ];
-        setfacl(&[p.clone()], &entries, None).unwrap();
+        let _status = std::process::Command::new("chmod").args(["444", "./testfiles/permission_test"]).status().unwrap();
         assert!(!has_write_permission(p.as_path()).unwrap());
-        // Reset the permission
-        let entries = vec![
-            AclEntry::allow_user("", Perm::READ | Perm::WRITE | Perm::EXECUTE, None),
-            AclEntry::allow_group("", Perm::READ | Perm::EXECUTE, None),
-            AclEntry::allow_other(Perm::READ | Perm::EXECUTE, None),
-        ];
-        setfacl(&[p], &entries, None).unwrap();
+        let _status = std::process::Command::new("chmod").args(["755", "./testfiles/permission_test"]).status().unwrap();
 
         // Test the home directory, which should pass
         let home_dir = dirs::home_dir().unwrap();
