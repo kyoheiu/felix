@@ -1629,11 +1629,15 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                 }
                 //If you use kitty, you must clear the screen by the escape sequence or the previewed image remains.
                 if state.layout.is_kitty && state.layout.preview {
-                    print!("{}", CLRSCR);
-                    state.clear_and_show_headline();
-                    state.list_up();
-                    state.move_cursor(state.layout.y);
-                    screen.flush()?;
+                    if let Ok(item) = state.get_item() {
+                        if item.preview_scroll == 0 {
+                            print!("{}", CLRSCR);
+                            state.clear_and_show_headline();
+                            state.list_up();
+                            state.move_cursor(state.layout.y);
+                            screen.flush()?;
+                        }
+                    }
                 }
             }
             Event::Resize(column, row) => {
