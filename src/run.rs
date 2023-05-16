@@ -1,7 +1,8 @@
+
 use super::config::{make_config_if_not_exists, CONFIG_FILE};
 use super::errors::FxError;
 use super::functions::*;
-use super::layout::Split;
+use super::layout::{Split, PreviewType};
 use super::nums::*;
 use super::op::*;
 use super::session::*;
@@ -1630,7 +1631,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                 //If you use kitty, you must clear the screen by the escape sequence or the previewed image remains.
                 if state.layout.is_kitty && state.layout.preview {
                     if let Ok(item) = state.get_item() {
-                        if item.preview_scroll == 0 {
+                        if item.preview_type == Some(PreviewType::Image) {
                             print!("{}", CLRSCR);
                             state.clear_and_show_headline();
                             state.list_up();
