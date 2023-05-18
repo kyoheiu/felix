@@ -4,6 +4,12 @@
 
 ## Unreleased
 
+## v2.2.8 (2023-05-19)
+
+### Fixed
+
+- Kitty-specific: Enable scrolling of the preview text by redrawing the screen only when needed (this also improves the perfomance entirely).
+
 ## v2.2.7 (2023-05-05)
 
 ### Added
