@@ -26,21 +26,17 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 
 ## New release
 
+## v2.2.8 (2023-05-19)
+
+### Fixed
+
+- Kitty-specific: Enable scrolling of the preview text by redrawing the screen only when needed (this also improves the perfomance entirely).
+
 ## v2.2.7 (2023-05-05)
 
 ### Added
 
 - Print `[RO]` on the headline if user does not have the write permission on the directory. This is available only on UNIX for now.
-
-
-## v2.2.6 (2023-04-24)
-
-### Removed
-
-- Remove duplicated `-v | --version` option. This is because i) Since some users
-  do not have `cargo` installed, fetching latest version via `cargo` doesn't
-  work for many, and ii) `-h | --help` option can already show the current
-  version.
 
 For more details, see `CHANGELOG.md`.
 
