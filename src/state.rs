@@ -1086,6 +1086,7 @@ impl State {
     }
 
     /// Creates temp file for directory. Works like touch, but with randomized suffix
+    #[allow(dead_code)]
     pub fn create_temp(&mut self, is_dir: bool) -> Result<PathBuf, FxError> {
         let mut new_name = self.current_dir.join(".tmp");
         if new_name.exists() {
