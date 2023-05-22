@@ -4,6 +4,14 @@
 
 ## Unreleased
 
+### Added
+
+- Create temp file or directory by `af` or `ad` respectively. This feature has to feel more "modal", so for now I comment out this feature.
+
+### Removed
+
+- NetBSD install test. It often failed while setting up the VM, which had nothing with felix.
+
 ## v2.2.8 (2023-05-19)
 
 ### Fixed
