@@ -38,7 +38,7 @@ pub const FELIX: &str = "felix";
 pub const BEGINNING_ROW: u16 = 3;
 pub const EMPTY_WARNING: &str = "Are you sure to empty the trash directory? (if yes: y)";
 const TIME_PREFIX: usize = 11;
-const ALPHABET: &[u8; 32] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+const BASE32: &[u8; 32] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
 #[derive(Debug)]
 pub struct State {
@@ -340,55 +340,6 @@ impl State {
                 )),
             },
         }
-    }
-
-    /// Works like touch, but with randomized suffix
-    pub fn add_new_file(&mut self) -> Result<(), FxError> {
-        let mut new_name = self.current_dir.join("untitled");
-        if new_name.exists() {
-            let mut nanos = std::time::SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .subsec_nanos();
-            let encoded: &mut [u8] = &mut [0, 0, 0, 0, 0];
-            for i in 0..5 {
-                let v = (nanos & 0x1f) as usize;
-                encoded[4 - i] = ALPHABET[v];
-                nanos >>= 5;
-            }
-            new_name = self.current_dir.join(format!(
-                "untitled_{}",
-                std::str::from_utf8(encoded).unwrap()
-            ))
-        }
-        if let Err(_) = std::fs::File::create(new_name) {
-            return Err(FxError::Log("Couldnt create file".to_string()));
-        }
-        Ok(())
-    }
-
-    pub fn add_new_directory(&mut self) -> Result<(), FxError> {
-        let mut new_name = self.current_dir.join("untitled");
-        if new_name.exists() {
-            let mut nanos = std::time::SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .subsec_nanos();
-            let encoded: &mut [u8] = &mut [0, 0, 0, 0, 0];
-            for i in 0..5 {
-                let v = (nanos & 0x1f) as usize;
-                encoded[4 - i] = ALPHABET[v];
-                nanos >>= 5;
-            }
-            new_name = self.current_dir.join(format!(
-                "untitled_{}",
-                std::str::from_utf8(encoded).unwrap()
-            ))
-        }
-        if let Err(_) = std::fs::create_dir(new_name) {
-            return Err(FxError::Log("Couldnt create file".to_string()));
-        }
-        Ok(())
     }
 
     /// Move items from the current directory to trash directory.
@@ -1132,6 +1083,32 @@ impl State {
                 item.selected = true;
             }
         }
+    }
+
+    /// Creates temp file for directory. Works like touch, but with randomized suffix
+    pub fn create_temp(&mut self, is_dir: bool) -> Result<PathBuf, FxError> {
+        let mut new_name = self.current_dir.join(".tmp");
+        if new_name.exists() {
+            let mut nanos = std::time::SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .subsec_nanos();
+            let encoded: &mut [u8] = &mut [0, 0, 0, 0, 0];
+            for i in 0..5 {
+                let v = (nanos & 0x1f) as usize;
+                encoded[4 - i] = BASE32[v];
+                nanos >>= 5;
+            }
+            new_name = self
+                .current_dir
+                .join(format!(".tmp_{}", std::str::from_utf8(encoded).unwrap()))
+        }
+        if is_dir {
+            std::fs::create_dir(new_name.clone())?;
+        } else {
+            std::fs::File::create(new_name.clone())?;
+        }
+        Ok(new_name)
     }
 
     //Show help

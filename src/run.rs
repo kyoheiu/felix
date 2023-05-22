@@ -234,39 +234,6 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                             }
 
-                            //new file/folder
-                            KeyCode::Char('a') => {
-                                to_info_line();
-                                clear_current_line();
-                                print!("a");
-                                show_cursor();
-                                screen.flush()?;
-
-                                if let Event::Key(KeyEvent { code, .. }) = event::read()? {
-                                    match code {
-                                        KeyCode::Char('f') => {
-                                            hide_cursor();
-                                            state.add_new_file()?;
-                                            print_info("Untitled created", state.layout.y);
-                                            state.reload(state.layout.y)?;
-                                            screen.flush()?;
-                                        }
-                                        KeyCode::Char('d') => {
-                                            hide_cursor();
-                                            state.add_new_directory()?;
-                                            print_info("Folder created", state.layout.y);
-                                            state.reload(state.layout.y)?;
-                                            screen.flush()?;
-                                        }
-                                        _ => {
-                                            go_to_and_rest_info();
-                                            hide_cursor();
-                                            state.move_cursor(state.layout.y);
-                                        }
-                                    }
-                                }
-                            }
-
                             //Go down. If lists exceed max-row, lists "scrolls" before the bottom of the list
                             KeyCode::Char('k') | KeyCode::Up => {
                                 if state.layout.nums.index == 0 {
@@ -1621,6 +1588,59 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         state.move_cursor(new_y)
                                     } else {
                                         state.move_cursor(state.layout.y);
+                                    }
+                                }
+                            }
+
+                            //Add new file or directory.
+                            KeyCode::Char('a') => {
+                                to_info_line();
+                                clear_current_line();
+                                print!("a");
+                                show_cursor();
+                                screen.flush()?;
+
+                                if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                                    match code {
+                                        //Add new file
+                                        KeyCode::Char('f') => {
+                                            hide_cursor();
+                                            match state.create_temp(false) {
+                                                Err(e) => {
+                                                    print_warning(e, state.layout.y);
+                                                    continue;
+                                                }
+                                                Ok(p) => {
+                                                    state.reload(state.layout.y)?;
+                                                    print_info(
+                                                        format!("New file {} added.", p.display()),
+                                                        state.layout.y,
+                                                    );
+                                                }
+                                            }
+                                        }
+                                        //Add new directory
+                                        KeyCode::Char('d') => {
+                                            hide_cursor();
+                                            match state.create_temp(true) {
+                                                Err(e) => {
+                                                    print_warning(e, state.layout.y);
+                                                    continue;
+                                                }
+                                                Ok(p) => {
+                                                    state.reload(state.layout.y)?;
+                                                    print_info(
+                                                        format!("New dir {} added.", p.display()),
+                                                        state.layout.y,
+                                                    );
+                                                }
+                                            }
+                                        }
+                                        _ => {
+                                            go_to_and_rest_info();
+                                            hide_cursor();
+                                            state.move_cursor(state.layout.y);
+                                        }
                                     }
                                 }
                             }
