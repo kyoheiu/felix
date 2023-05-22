@@ -235,6 +235,39 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                             }
 
+                            //new file/folder
+                            KeyCode::Char('a') => {
+                                to_info_line();
+                                clear_current_line();
+                                print!("a");
+                                show_cursor();
+                                screen.flush()?;
+
+                                if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                                    match code {
+                                        KeyCode::Char('f') => {
+                                            hide_cursor();
+                                            state.add_new_file()?;
+                                            print_info("Untitled created", state.layout.y);
+                                            state.reload(state.layout.y)?;
+                                            screen.flush()?;
+                                        }
+                                        KeyCode::Char('d') => {
+                                            hide_cursor();
+                                            state.add_new_directory()?;
+                                            print_info("Folder created", state.layout.y);
+                                            state.reload(state.layout.y)?;
+                                            screen.flush()?;
+                                        }
+                                        _ => {
+                                            go_to_and_rest_info();
+                                            hide_cursor();
+                                            state.move_cursor(state.layout.y);
+                                        }
+                                    }
+                                }
+                            }
+
                             //Go down. If lists exceed max-row, lists "scrolls" before the bottom of the list
                             KeyCode::Char('k') | KeyCode::Up => {
                                 if state.layout.nums.index == 0 {
@@ -871,7 +904,6 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     }
                                 }
                             },
-
                             //delete
                             KeyCode::Char('d') => {
                                 if len == 0 {
