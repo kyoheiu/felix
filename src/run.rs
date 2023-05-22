@@ -1,8 +1,7 @@
-
 use super::config::{make_config_if_not_exists, CONFIG_FILE};
 use super::errors::FxError;
 use super::functions::*;
-use super::layout::{Split, PreviewType};
+use super::layout::{PreviewType, Split};
 use super::nums::*;
 use super::op::*;
 use super::session::*;
@@ -232,39 +231,6 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 } else {
                                     state.layout.nums.go_down();
                                     state.move_cursor(state.layout.y + 1);
-                                }
-                            }
-
-                            //new file/folder
-                            KeyCode::Char('a') => {
-                                to_info_line();
-                                clear_current_line();
-                                print!("a");
-                                show_cursor();
-                                screen.flush()?;
-
-                                if let Event::Key(KeyEvent { code, .. }) = event::read()? {
-                                    match code {
-                                        KeyCode::Char('f') => {
-                                            hide_cursor();
-                                            state.add_new_file()?;
-                                            print_info("Untitled created", state.layout.y);
-                                            state.reload(state.layout.y)?;
-                                            screen.flush()?;
-                                        }
-                                        KeyCode::Char('d') => {
-                                            hide_cursor();
-                                            state.add_new_directory()?;
-                                            print_info("Folder created", state.layout.y);
-                                            state.reload(state.layout.y)?;
-                                            screen.flush()?;
-                                        }
-                                        _ => {
-                                            go_to_and_rest_info();
-                                            hide_cursor();
-                                            state.move_cursor(state.layout.y);
-                                        }
-                                    }
                                 }
                             }
 
@@ -1625,6 +1591,60 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     }
                                 }
                             }
+
+                            //Add new temp file or directory.
+                            //It has to feel like more "modal", so I comment this out for now.
+                            // KeyCode::Char('a') => {
+                            //     to_info_line();
+                            //     clear_current_line();
+                            //     print!("a");
+                            //     show_cursor();
+                            //     screen.flush()?;
+
+                            //     if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                            //         match code {
+                            //             //Add new file
+                            //             KeyCode::Char('f') => {
+                            //                 hide_cursor();
+                            //                 match state.create_temp(false) {
+                            //                     Err(e) => {
+                            //                         print_warning(e, state.layout.y);
+                            //                         continue;
+                            //                     }
+                            //                     Ok(p) => {
+                            //                         state.reload(state.layout.y)?;
+                            //                         print_info(
+                            //                             format!("New file {} added.", p.display()),
+                            //                             state.layout.y,
+                            //                         );
+                            //                     }
+                            //                 }
+                            //             }
+                            //             //Add new directory
+                            //             KeyCode::Char('d') => {
+                            //                 hide_cursor();
+                            //                 match state.create_temp(true) {
+                            //                     Err(e) => {
+                            //                         print_warning(e, state.layout.y);
+                            //                         continue;
+                            //                     }
+                            //                     Ok(p) => {
+                            //                         state.reload(state.layout.y)?;
+                            //                         print_info(
+                            //                             format!("New dir {} added.", p.display()),
+                            //                             state.layout.y,
+                            //                         );
+                            //                     }
+                            //                 }
+                            //             }
+                            //             _ => {
+                            //                 go_to_and_rest_info();
+                            //                 hide_cursor();
+                            //                 state.move_cursor(state.layout.y);
+                            //             }
+                            //         }
+                            //     }
+                            // }
 
                             //exit by ZZ
                             KeyCode::Char('Z') => {
