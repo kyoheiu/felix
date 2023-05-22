@@ -1802,9 +1802,15 @@ mod tests {
     fn test_has_write_permission() {
         // chmod to 444 and check if it's read-only
         let p = std::path::PathBuf::from("./testfiles/permission_test");
-        let _status = std::process::Command::new("chmod").args(["444", "./testfiles/permission_test"]).status().unwrap();
+        let _status = std::process::Command::new("chmod")
+            .args(["444", "./testfiles/permission_test"])
+            .status()
+            .unwrap();
         assert!(!has_write_permission(p.as_path()).unwrap());
-        let _status = std::process::Command::new("chmod").args(["755", "./testfiles/permission_test"]).status().unwrap();
+        let _status = std::process::Command::new("chmod")
+            .args(["755", "./testfiles/permission_test"])
+            .status()
+            .unwrap();
 
         // Test the home directory, which should pass
         let home_dir = dirs::home_dir().unwrap();

@@ -1,8 +1,7 @@
-
 use super::config::{make_config_if_not_exists, CONFIG_FILE};
 use super::errors::FxError;
 use super::functions::*;
-use super::layout::{Split, PreviewType};
+use super::layout::{PreviewType, Split};
 use super::nums::*;
 use super::op::*;
 use super::session::*;
