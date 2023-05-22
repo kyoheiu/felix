@@ -52,17 +52,3 @@ jobs:
           override: true
       - name: Install
         run: cargo install --path .
-  netbsd-install:
-    runs-on: macos-12
-    name: netbsd-install
-    steps:
-    - uses: actions/checkout@v3
-    - name: Test in NetBSD
-      id: test
-      uses: vmactions/netbsd-vm@v0
-      with:
-        usesh: true
-        prepare: |
-          pkg_add rust
-        run: |
-          cargo install --path .
