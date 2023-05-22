@@ -1102,7 +1102,7 @@ impl State {
             }
             new_name = self
                 .current_dir
-                .join(format!(".tmp_{}", std::str::from_utf8(encoded).unwrap()))
+                .join(format!(".tmp_{}", String::from_utf8(encoded.to_vec())?))
         }
         if is_dir {
             std::fs::create_dir(new_name.clone())?;
