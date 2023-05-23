@@ -1190,13 +1190,9 @@ impl State {
 
     pub fn chdir(&mut self, p: &std::path::Path, mv: Move) -> Result<(), FxError> {
         std::env::set_current_dir(p)?;
-        self.is_ro = if cfg!(not(windows)) {
-            match has_write_permission(p) {
-                Ok(b) => Some(b),
-                Err(_) => Some(false),
-            }
-        } else {
-            None
+        self.is_ro = match has_write_permission(p) {
+            Ok(b) => Some(b),
+            Err(_) => Some(false),
         };
         match mv {
             Move::Up => {
@@ -1718,6 +1714,12 @@ pub fn has_write_permission(path: &std::path::Path) -> Result<bool, FxError> {
             }
         }
     }
+}
+
+// Currently on non-unix OS, this always return true.
+#[cfg(not(target_family = "unix"))]
+pub fn has_write_permission(_path: &std::path::Path) -> Result<bool, FxError> {
+    Ok(true)
 }
 
 #[cfg(all(target_family = "unix", not(target_os = "macos")))]
