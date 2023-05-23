@@ -53,6 +53,7 @@ pub struct State {
     pub p_memo: Vec<StateMemo>,
     pub keyword: Option<String>,
     pub layout: Layout,
+    pub is_ro: Option<bool>,
 }
 
 #[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -179,6 +180,7 @@ impl State {
             c_memo: Vec::new(),
             p_memo: Vec::new(),
             keyword: None,
+            is_ro: None,
         })
     }
 
@@ -864,15 +866,12 @@ impl State {
             header_space -= current_dir.len();
         }
 
-        #[cfg(target_family = "unix")]
         // If without the write permission, print [RO].
-        if let Ok(false) = has_write_permission(&self.current_dir) {
-            if header_space > 5 {
-                set_color(&TermColor::ForeGround(&Colorname::Red));
-                print!(" [RO]");
-                reset_color();
-                header_space -= 5;
-            }
+        if self.is_ro == Some(false) && header_space > 5 {
+            set_color(&TermColor::ForeGround(&Colorname::Red));
+            print!(" [RO]");
+            reset_color();
+            header_space -= 5;
         }
 
         //If .git directory exists, get the branch information and print it.
@@ -1191,6 +1190,14 @@ impl State {
 
     pub fn chdir(&mut self, p: &std::path::Path, mv: Move) -> Result<(), FxError> {
         std::env::set_current_dir(p)?;
+        self.is_ro = if cfg!(not(windows)) {
+            match has_write_permission(p) {
+                Ok(b) => Some(b),
+                Err(_) => Some(false),
+            }
+        } else {
+            None
+        };
         match mv {
             Move::Up => {
                 // Push current state to c_memo
@@ -1689,7 +1696,7 @@ fn choose_theme(dt: &DefaultTheme) -> Theme {
 // Currently available in unix only.
 // TODO: Use this function to determine if deleting items can be done in the first place?
 #[cfg(target_family = "unix")]
-fn has_write_permission(path: &std::path::Path) -> Result<bool, FxError> {
+pub fn has_write_permission(path: &std::path::Path) -> Result<bool, FxError> {
     let metadata = std::fs::metadata(path)?;
     let mode = metadata.mode();
     if mode == 0 {

@@ -101,6 +101,14 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     } else {
         arg
     };
+    state.is_ro = if cfg!(not(windows)) {
+        match has_write_permission(&state.current_dir) {
+            Ok(b) => Some(b),
+            Err(_) => Some(false),
+        }
+    } else {
+        None
+    };
 
     //If the main function causes panic, catch it.
     let result = panic::catch_unwind(|| _run(state, session_file_path));
