@@ -140,17 +140,26 @@ impl Default for Config {
 }
 
 pub fn read_config(p: &Path) -> Result<Config, FxError> {
-    let config = read_to_string(p)?;
-    let deserialized: Config = serde_yaml::from_str(&config)?;
+    let s = read_to_string(p)?;
+    read_config_from_str(&s)
+}
+
+pub fn read_config_from_str(s: &str) -> Result<Config, FxError> {
+    let deserialized: Config = serde_yaml::from_str(s)?;
     Ok(deserialized)
 }
 
-pub fn make_config_if_not_exists(config_file: &Path, trash_dir: &Path) -> Result<(), FxError> {
-    if !trash_dir.exists() {
-        std::fs::create_dir_all(trash_dir)?;
+pub fn read_or_create_config(config_paths: &Vec<PathBuf>) -> Result<Config, FxError> {
+    let mut config_file: Option<PathBuf> = None;
+    for p in config_paths {
+        if p.exists() {
+            config_file = Some(p.to_path_buf());
+        }
     }
 
-    if !config_file.exists() {
+    if config_file.is_some() {
+        read_config(&config_file.unwrap())
+    } else {
         println!(
             "Config file not found: To set up, please enter the default command name to open a file. (e.g. nvim)\nIf you want to use the default $EDITOR, just press Enter."
         );
@@ -164,8 +173,9 @@ pub fn make_config_if_not_exists(config_file: &Path, trash_dir: &Path) -> Result
             match std::env::var("EDITOR") {
                 Ok(_) => {
                     let config = CONFIG_EXAMPLE.replace("default = \"nvim\"", "# default = \"\"");
-                    std::fs::write(config_file, config)?;
+                    std::fs::write(&config_paths[0], config.clone())?;
                     println!("Config file created. See {}", config_file_path_output()?);
+                    read_config_from_str(&config)
                 }
                 Err(_) => {
                     while trimmed.is_empty() {
@@ -176,26 +186,27 @@ pub fn make_config_if_not_exists(config_file: &Path, trash_dir: &Path) -> Result
                     }
                     let config =
                         CONFIG_EXAMPLE.replace("# default: nvim", &format!("default: {}", trimmed));
-                    std::fs::write(config_file, config)?;
+                    std::fs::write(&config_paths[0], config.clone())?;
                     println!(
                         "Default command set as [{}]. See {}",
                         trimmed,
                         config_file_path_output()?
                     );
+                    read_config_from_str(&config)
                 }
             }
         } else {
             let config =
                 CONFIG_EXAMPLE.replace("# default: nvim", &format!("default: {}", trimmed));
-            std::fs::write(config_file, config)?;
+            std::fs::write(&config_paths[0], config.clone())?;
             println!(
                 "Default command set as [{}]. See {}",
                 trimmed,
                 config_file_path_output()?
             );
+            read_config_from_str(&config)
         }
     }
-    Ok(())
 }
 
 fn config_file_path() -> Result<PathBuf, FxError> {

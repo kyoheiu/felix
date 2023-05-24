@@ -1,4 +1,3 @@
-use super::config::{make_config_if_not_exists, CONFIG_FILE};
 use super::errors::FxError;
 use super::functions::*;
 use super::layout::{PreviewType, Split};
@@ -49,25 +48,15 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         path.push(FELIX);
         path
     };
-    if !config_dir_path.exists() {
-        std::fs::create_dir_all(&config_dir_path)?;
-    }
     if !data_local_path.exists() {
         std::fs::create_dir_all(&data_local_path)?;
     }
 
-    //Set config file and trash dir path.
-    let config_file_path = {
-        let mut path = config_dir_path;
-        path.push(CONFIG_FILE);
-        path
-    };
     let trash_dir_path = {
         let mut path = data_local_path.clone();
         path.push(TRASH);
         path
     };
-
     if !trash_dir_path.exists() {
         std::fs::create_dir_all(&trash_dir_path)?;
     }
@@ -87,8 +76,8 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         make_session(&session_path)?;
     }
 
-    //Initialize app state.
-    let mut state = State::new(&config_file_path, &session_file_path)?;
+    //Initialize app state. Inside State::new(), config file is read or created.
+    let mut state = State::new(&session_path)?;
     state.trash_dir = trash_dir_path;
     state.current_dir = if cfg!(not(windows)) {
         // If executed this on windows, "//?" will be inserted at the beginning of the path.

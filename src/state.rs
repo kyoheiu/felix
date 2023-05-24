@@ -89,8 +89,47 @@ impl Default for FileType {
 
 impl State {
     /// Initialize the state of the app.
-    pub fn new(p: &std::path::Path, session_path: &std::path::Path) -> Result<Self, FxError> {
-        let config = match read_config(p) {
+    pub fn new(session_path: &std::path::Path) -> Result<Self, FxError> {
+        //First, declare default config file path.
+        let config_file_path = {
+            let config_dir_path = {
+                let mut path = dirs::config_dir().ok_or_else(|| {
+                    FxError::Dirs("Cannot read the config directory.".to_string())
+                })?;
+                path.push(FELIX);
+                path
+            };
+            if !config_dir_path.exists() {
+                std::fs::create_dir_all(&config_dir_path)?;
+            }
+
+            let mut path = config_dir_path;
+            path.push(CONFIG_FILE);
+            path
+        };
+
+        //On macOS, felix looks for 2 paths:
+        //$HOME/Library/Application Support/felix/config.yaml,
+        //and if it fails,
+        //~/.config/felix/config.yaml.
+        let config_file_paths = if cfg!(macos) {
+            let alt_config_file_path = {
+                let mut path = dirs::home_dir()
+                    .ok_or_else(|| FxError::Dirs("Cannot read the home directory.".to_string()))?;
+                path.push(".config");
+                path.push("FELIX");
+                path.push(CONFIG_FILE);
+                path
+            };
+            vec![config_file_path, alt_config_file_path]
+        } else {
+            vec![config_file_path]
+        };
+
+        //Read config file. Create new one if not exists.
+        let config = read_or_create_config(&config_file_paths);
+
+        let config = match config {
             Ok(c) => c,
             Err(e) => {
                 eprintln!("Cannot read the config file properly.\nError: {}\nDo you want to use the default config? [press Enter to continue]", e);
