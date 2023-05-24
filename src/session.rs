@@ -1,10 +1,9 @@
-use super::errors::FxError;
 use super::layout::Split;
 use serde::{Deserialize, Serialize};
 use std::fs::read_to_string;
 use std::path::Path;
 
-pub const SESSION_FILE: &str = ".session";
+#[allow(dead_code)]
 pub const SESSION_EXAMPLE: &str = "sort_by = \"Name\"
 show_hidden = false
 preview = false
@@ -43,9 +42,4 @@ pub fn read_session(session_path: &Path) -> Session {
             split: Some(Split::Vertical),
         },
     }
-}
-
-pub fn make_session(session_file: &Path) -> Result<(), FxError> {
-    std::fs::write(session_file, SESSION_EXAMPLE)?;
-    Ok(())
 }

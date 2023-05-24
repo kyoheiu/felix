@@ -1,3 +1,4 @@
+use super::config::FELIX;
 use super::errors::FxError;
 use super::functions::*;
 use super::layout::{PreviewType, Split};
@@ -19,14 +20,15 @@ use std::panic;
 use std::path::PathBuf;
 use std::time::Instant;
 
-pub const TRASH: &str = "Trash";
+const TRASH: &str = "Trash";
+const SESSION_FILE: &str = ".session";
 /// Where the item list starts to scroll.
 const SCROLL_POINT: u16 = 3;
 const CLRSCR: &str = "\x1B[2J";
 const INITIAL_POS_SEARCH: usize = 3;
 const INITIAL_POS_SHELL: u16 = 3;
 
-/// Launch the app. If initializing goes wrong, return error.
+/// Launch the app. If initialization goes wrong, return error.
 pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     //Check if argument path is valid.
     if !&arg.exists() {
@@ -66,15 +68,12 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         init_log(&data_local_path)?;
     }
 
-    //Set the session file path. If not exists (e.g. first launch), create it.
+    //Set the session file path.
     let session_path = {
         let mut path = data_local_path;
         path.push(SESSION_FILE);
         path
     };
-    if !session_path.exists() {
-        make_session(&session_path)?;
-    }
 
     //Initialize app state. Inside State::new(), config file is read or created.
     let mut state = State::new(&session_path)?;
@@ -87,7 +86,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     };
     state.is_ro = match has_write_permission(&state.current_dir) {
         Ok(b) => !b,
-        Err(_) => false
+        Err(_) => false,
     };
 
     //If the main function causes panic, catch it.

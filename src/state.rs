@@ -34,7 +34,6 @@ use std::os::unix::fs::MetadataExt;
 #[cfg(target_family = "unix")]
 use std::os::unix::fs::PermissionsExt;
 
-pub const FELIX: &str = "felix";
 pub const BEGINNING_ROW: u16 = 3;
 pub const EMPTY_WARNING: &str = "Are you sure to empty the trash directory? (if yes: y)";
 const TIME_PREFIX: usize = 11;
@@ -90,68 +89,17 @@ impl Default for FileType {
 impl State {
     /// Initialize the state of the app.
     pub fn new(session_path: &std::path::Path) -> Result<Self, FxError> {
-        //First, declare default config file path.
-        let config_file_path = {
-            let config_dir_path = {
-                let mut path = dirs::config_dir().ok_or_else(|| {
-                    FxError::Dirs("Cannot read the config directory.".to_string())
-                })?;
-                path.push(FELIX);
-                path
-            };
-            if !config_dir_path.exists() {
-                std::fs::create_dir_all(&config_dir_path)?;
-            }
-
-            let mut path = config_dir_path;
-            path.push(CONFIG_FILE);
-            path
-        };
-
-        //On macOS, felix looks for 2 paths:
-        //$HOME/Library/Application Support/felix/config.yaml,
-        //and if it fails,
-        //~/.config/felix/config.yaml.
-        let config_file_paths = if cfg!(macos) {
-            let alt_config_file_path = {
-                let mut path = dirs::home_dir()
-                    .ok_or_else(|| FxError::Dirs("Cannot read the home directory.".to_string()))?;
-                path.push(".config");
-                path.push("FELIX");
-                path.push(CONFIG_FILE);
-                path
-            };
-            vec![config_file_path, alt_config_file_path]
-        } else {
-            vec![config_file_path]
-        };
-
-        //Read config file. Create new one if not exists.
-        let config = read_or_create_config(&config_file_paths);
-
+        //Read config file.
+        //Use default configuration if the file does not exist or cannot be read.
+        let config = read_or_create_config();
         let config = match config {
             Ok(c) => c,
             Err(e) => {
-                eprintln!("Cannot read the config file properly.\nError: {}\nDo you want to use the default config? [press Enter to continue]", e);
-                enter_raw_mode();
-                loop {
-                    match crossterm::event::read()? {
-                        Event::Key(KeyEvent { code, .. }) => match code {
-                            KeyCode::Enter => break,
-                            _ => {
-                                leave_raw_mode();
-                                return Err(FxError::Yaml("Exit the app.".to_owned()));
-                            }
-                        },
-                        _ => {
-                            continue;
-                        }
-                    }
-                }
-                leave_raw_mode();
+                eprintln!("Cannot read the config file properly.\nError: {}\nfelix launches with default configuration.", e);
                 Config::default()
             }
         };
+
         let session = read_session(session_path);
         let (original_column, original_row) = terminal_size()?;
 
@@ -1231,7 +1179,7 @@ impl State {
         std::env::set_current_dir(p)?;
         self.is_ro = match has_write_permission(p) {
             Ok(b) => !b,
-            Err(_) => false
+            Err(_) => false,
         };
         match mv {
             Move::Up => {
@@ -1755,7 +1703,7 @@ pub fn has_write_permission(path: &std::path::Path) -> Result<bool, FxError> {
     }
 }
 
-// Currently on non-unix OS, this always return true.
+// Currently on non-unix OS, this always returns true.
 #[cfg(not(target_family = "unix"))]
 pub fn has_write_permission(_path: &std::path::Path) -> Result<bool, FxError> {
     Ok(true)
