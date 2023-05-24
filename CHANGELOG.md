@@ -4,6 +4,12 @@
 
 ## Unreleased
 
+### Changed
+
+- Add config file path for macOS: `/Users/$USER/.config/felix/config.yaml` will be read after `$HOME/Library/Application Support/felix/config.yaml`.
+- If config file is not found or broken, felix launches with the default configuration, without creating any file.
+- If the current directory is read-only, deleting and putting is disabled.
+
 ### Added
 
 - Create temp file or directory by `af` or `ad` respectively. This feature has to feel more "modal", so for now I comment out this feature.
