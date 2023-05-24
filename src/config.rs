@@ -167,7 +167,7 @@ pub fn read_or_create_config() -> Result<Config, FxError> {
     //On macOS, felix looks for 2 paths:
     //First `$HOME/Library/Application Support/felix/config.yaml`,
     //and if it fails,
-    //`~/.config/felix/config.yaml`.
+    //`$HOME/.config/felix/config.yaml`.
     let config_file_paths = if cfg!(macos) {
         let alt_config_file_path = {
             let mut path = dirs::home_dir()
