@@ -154,19 +154,14 @@ fn read_config_from_str(s: &str) -> Result<Config, FxError> {
 pub fn read_or_create_config() -> Result<Config, FxError> {
     //First, declare default config file path.
     let config_file_path = {
-        let config_dir_path = {
+        let mut config_path = {
             let mut path = dirs::config_dir()
                 .ok_or_else(|| FxError::Dirs("Cannot read the config directory.".to_string()))?;
             path.push(FELIX);
             path
         };
-        if !config_dir_path.exists() {
-            std::fs::create_dir_all(&config_dir_path)?;
-        }
-
-        let mut path = config_dir_path;
-        path.push(CONFIG_FILE);
-        path
+        config_path.push(CONFIG_FILE);
+        config_path
     };
 
     //On macOS, felix looks for 2 paths:
@@ -190,7 +185,8 @@ pub fn read_or_create_config() -> Result<Config, FxError> {
     let mut config_file: Option<PathBuf> = None;
     for p in config_file_paths {
         if p.exists() {
-            config_file = Some(p.to_path_buf());
+            config_file = Some(p);
+            break;
         }
     }
 
