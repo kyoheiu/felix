@@ -113,7 +113,7 @@ impl State {
                 Config::default()
             }
         };
-        let session = read_session(session_path)?;
+        let session = read_session(session_path);
         let (original_column, original_row) = terminal_size()?;
 
         // Return error if terminal size may cause panic
