@@ -53,7 +53,7 @@ pub struct State {
     pub p_memo: Vec<StateMemo>,
     pub keyword: Option<String>,
     pub layout: Layout,
-    pub is_ro: Option<bool>,
+    pub is_ro: bool,
 }
 
 #[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -180,7 +180,7 @@ impl State {
             c_memo: Vec::new(),
             p_memo: Vec::new(),
             keyword: None,
-            is_ro: None,
+            is_ro: false,
         })
     }
 
@@ -867,7 +867,7 @@ impl State {
         }
 
         // If without the write permission, print [RO].
-        if self.is_ro == Some(false) && header_space > 5 {
+        if self.is_ro && header_space > 5 {
             set_color(&TermColor::ForeGround(&Colorname::Red));
             print!(" [RO]");
             reset_color();
@@ -1191,8 +1191,8 @@ impl State {
     pub fn chdir(&mut self, p: &std::path::Path, mv: Move) -> Result<(), FxError> {
         std::env::set_current_dir(p)?;
         self.is_ro = match has_write_permission(p) {
-            Ok(b) => Some(b),
-            Err(_) => Some(false),
+            Ok(b) => !b,
+            Err(_) => false
         };
         match mv {
             Move::Up => {
