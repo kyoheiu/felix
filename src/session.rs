@@ -25,23 +25,23 @@ pub enum SortKey {
     Time,
 }
 
-pub fn read_session(session_path: &Path) -> Result<Session, FxError> {
+pub fn read_session(session_path: &Path) -> Session {
     match read_to_string(session_path) {
         Ok(s) => match serde_yaml::from_str(&s) {
-            Ok(de) => Ok(de),
-            Err(_) => Ok(Session {
+            Ok(de) => de,
+            Err(_) => Session {
                 sort_by: SortKey::Name,
                 show_hidden: true,
                 preview: Some(false),
                 split: Some(Split::Vertical),
-            }),
+            },
         },
-        Err(_) => Ok(Session {
+        Err(_) => Session {
             sort_by: SortKey::Name,
             show_hidden: true,
             preview: Some(false),
             split: Some(Split::Vertical),
-        }),
+        },
     }
 }
 
