@@ -77,14 +77,14 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         init_log(&data_local_path)?;
     }
 
-    //If session file does not exist (i.e. first launch), make it.
-    let session_file_path = {
+    //Set the session file path.If not exists (i.e. first launch), create it.
+    let session_path = {
         let mut path = data_local_path;
         path.push(SESSION_FILE);
         path
     };
-    if !session_file_path.exists() {
-        make_session(&session_file_path)?;
+    if !session_path.exists() {
+        make_session(&session_path)?;
     }
 
     //Initialize app state.
@@ -102,7 +102,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     };
 
     //If the main function causes panic, catch it.
-    let result = panic::catch_unwind(|| _run(state, session_file_path));
+    let result = panic::catch_unwind(|| _run(state, session_path));
     leave_raw_mode();
 
     if let Err(panic) = result {
