@@ -97,8 +97,8 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         arg
     };
     state.is_ro = match has_write_permission(&state.current_dir) {
-        Ok(b) => Some(b),
-        Err(_) => Some(false),
+        Ok(b) => !b,
+        Err(_) => false
     };
 
     //If the main function causes panic, catch it.
