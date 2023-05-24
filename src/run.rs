@@ -66,7 +66,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         init_log(&data_local_path)?;
     }
 
-    //Set the session file path.If not exists (i.e. first launch), create it.
+    //Set the session file path. If not exists (e.g. first launch), create it.
     let session_path = {
         let mut path = data_local_path;
         path.push(SESSION_FILE);
