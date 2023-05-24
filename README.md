@@ -1,5 +1,5 @@
 [![crates.io](https://img.shields.io/crates/v/felix)](https://crates.io/crates/felix)
-![arch linux](https://img.shields.io/archlinux/v/community/x86_64/felix-rs)
+![arch linux](https://img.shields.io/archlinux/v/extra/x86_64/felix-rs)
 ![MSRV](https://img.shields.io/badge/MSRV-1.60.0-orange)
 
 # _felix_
