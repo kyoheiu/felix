@@ -42,13 +42,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         ));
     }
 
-    //Prepare config and data local path.
-    let config_dir_path = {
-        let mut path = dirs::config_dir()
-            .ok_or_else(|| FxError::Dirs("Cannot read the config directory.".to_string()))?;
-        path.push(FELIX);
-        path
-    };
+    //Prepare data local and trash dir path.
     let data_local_path = {
         let mut path = dirs::data_local_dir()
             .ok_or_else(|| FxError::Dirs("Cannot read the data local directory.".to_string()))?;
@@ -74,8 +68,9 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         path
     };
 
-    //Make config file and trash directory if not exists.
-    make_config_if_not_exists(&config_file_path, &trash_dir_path)?;
+    if !trash_dir_path.exists() {
+        std::fs::create_dir_all(&trash_dir_path)?;
+    }
 
     //If `-l / --log` is set, initialize logger.
     if log {
