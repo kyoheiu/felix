@@ -688,6 +688,14 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
 
                                             KeyCode::Char('d') => {
+                                                //If read-only, deleting is disabled.
+                                                if state.is_ro {
+                                                    print_warning(
+                                                        "Cannot delete item in this directory.",
+                                                        state.layout.y,
+                                                    );
+                                                    continue;
+                                                }
                                                 print_info("DELETE: Processing...", state.layout.y);
                                                 let start = Instant::now();
                                                 screen.flush()?;
@@ -859,6 +867,14 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                             },
                             //delete
                             KeyCode::Char('d') => {
+                                //If read-only, deleting is disabled.
+                                if state.is_ro {
+                                    print_warning(
+                                        "Cannot delete in this directory.",
+                                        state.layout.y,
+                                    );
+                                    continue;
+                                }
                                 if len == 0 {
                                     continue;
                                 } else {
@@ -898,7 +914,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 };
                                                 let duration = duration_to_string(start.elapsed());
                                                 print_info(
-                                                    format!("1 item deleted [{}]", duration),
+                                                    format!("1 item deleted. [{}]", duration),
                                                     state.layout.y,
                                                 );
                                                 state.move_cursor(state.layout.y);
@@ -930,7 +946,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             state.yank_item(false);
                                             go_to_and_rest_info();
                                             hide_cursor();
-                                            print_info("1 item yanked", state.layout.y);
+                                            print_info("1 item yanked.", state.layout.y);
                                         }
 
                                         _ => {
@@ -944,6 +960,14 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                             //put
                             KeyCode::Char('p') => {
+                                //If read-only, putting is disabled.
+                                if state.is_ro {
+                                    print_warning(
+                                        "Cannot put into this directory.",
+                                        state.layout.y,
+                                    );
+                                    continue;
+                                }
                                 if state.registered.is_empty() {
                                     continue;
                                 }
@@ -963,9 +987,9 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 let registered_len = state.registered.len();
                                 let mut put_message = registered_len.to_string();
                                 if registered_len == 1 {
-                                    let _ = write!(put_message, " item inserted [{}]", duration);
+                                    let _ = write!(put_message, " item inserted. [{}]", duration);
                                 } else {
-                                    let _ = write!(put_message, " items inserted [{}]", duration);
+                                    let _ = write!(put_message, " items inserted. [{}]", duration);
                                 }
                                 print_info(put_message, state.layout.y);
                             }
