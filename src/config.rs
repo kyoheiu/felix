@@ -168,7 +168,7 @@ pub fn read_or_create_config() -> Result<Config, FxError> {
     //First `$HOME/Library/Application Support/felix/config.yaml`,
     //and if it fails,
     //`$HOME/.config/felix/config.yaml`.
-    let config_file_paths = if cfg!(macos) {
+    let config_file_paths = if cfg!(target_os = "macos") {
         let alt_config_file_path = {
             let mut path = dirs::home_dir()
                 .ok_or_else(|| FxError::Dirs("Cannot read the home directory.".to_string()))?;
