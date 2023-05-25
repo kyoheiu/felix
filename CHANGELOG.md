@@ -12,8 +12,8 @@
 
 ### Changed
 
-- Add config file path for macOS: `/Users/$USER/.config/felix/config.yaml` will be read after `$HOME/Library/Application Support/felix/config.yaml`.
-- If config file is not found or broken, felix launches with the default configuration, without creating any file.
+- Add extra config file path for macOS: `/Users/$USER/.config/felix/config.yaml` will be read after `$HOME/Library/Application Support/felix/config.yaml`.
+- If config file is not found, or found one is broken, felix launches with the default configuration, without creating new one.
 - If the current directory is read-only, `dd`, `Vd` and `p` is disabled in the first place.
 - Bump up MSRV to 1.65.
 
