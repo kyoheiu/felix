@@ -1,6 +1,6 @@
 [![crates.io](https://img.shields.io/crates/v/felix)](https://crates.io/crates/felix)
 ![arch linux](https://img.shields.io/archlinux/v/extra/x86_64/felix-rs)
-![MSRV](https://img.shields.io/badge/MSRV-1.60.0-orange)
+![MSRV](https://img.shields.io/badge/MSRV-1.65.0-orange)
 
 # _felix_
 
@@ -26,17 +26,20 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 
 ## New release
 
+## v2.3.0 (2023-05-26)
+
+### Changed
+
+- Add config file path for macOS: `/Users/$USER/.config/felix/config.yaml` will be read after `$HOME/Library/Application Support/felix/config.yaml`.
+- If config file is not found or broken, felix launches with the default configuration, without creating any file.
+- If the current directory is read-only, `dd`, `Vd` and `p` is disabled in the first place.
+- Bump up MSRV to 1.65.
+
 ## v2.2.8 (2023-05-19)
 
 ### Fixed
 
 - Kitty-specific: Enable scrolling of the preview text by redrawing the screen only when needed (this also improves the perfomance entirely).
-
-## v2.2.7 (2023-05-05)
-
-### Added
-
-- Print `[RO]` on the headline if user does not have the write permission on the directory. This is available only on UNIX for now.
 
 For more details, see `CHANGELOG.md`.
 
@@ -61,16 +64,16 @@ report any problems._
 
 | package    | installation command  | notes                                                                                                                                       |
 | ---------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| crates.io  | `cargo install felix` | Minimal supported rustc version: **1.60.0**                                                                                                 |
+| crates.io  | `cargo install felix` | Minimum Supported rustc Version: **1.65.0**                                                                                                 |
 | Arch Linux | `pacman -S felix-rs`  | The binary name is `felix` if you install via pacman. Alias `fx='felix'` if you want, as this document (and other installations) uses `fx`. |
 | NetBSD     | `pkgin install felix` |                                                                                                                                             |
 
 ### From this repository
 
 - Make sure that `gcc` is installed.
-- MSRV(Minimum Supported rustc Version): **1.60.0**
+- MSRV(Minimum Supported rustc Version): **1.65.0**
 
-Update Rust if rustc < 1.60:
+Update Rust if rustc < 1.65:
 
 ```
 rustup update
@@ -124,12 +127,12 @@ j / Down          :Go down.
 k / Up            :Go up.
 h / Left          :Go to the parent directory if exists.
 l / Right / Enter :Open a file or change directory.
-o                 :Open a file in a new window.
-e                 :Unpack archive/compressed file.
 gg                :Go to the top.
 G                 :Go to the bottom.
 z + Enter         :Go to the home directory.
 z <keyword>       :Jump to a directory that matches the keyword. (zoxide required)
+o                 :Open a file in a new window.
+e                 :Unpack archive/compressed file.
 dd                :Delete and yank one item.
 yy                :Yank one item.
 p                 :Put yanked item(s) in the current directory.
@@ -146,7 +149,7 @@ backspace         :Toggle whether to show hidden items.
 t                 :Toggle the sort order (name <-> modified time).
 :                 :Switch to the shell mode.
 c                 :Switch to the rename mode.
-/                 :Search items by the keyword.
+/                 :Search items by a keyword.
 n                 :Go forward to the item that matches the keyword.
 N                 :Go backward to the item that matches the keyword.
 Esc               :Return to the normal mode.
@@ -170,6 +173,14 @@ Install `chafa` and you can preview images without any configuration.
 
 ## Configuration
 
+### Config file
+If any config file is not found, or found one is broken, felix launches with the default configuration, without creating new one.
+Note that the default editor is `$EDITOR`, so if you've not set it, opening a file will fail.
+You can find default config file (`config.yaml`) in this repository.
+
+### Trash directory and log file
+Contrary to the config file, these directory and file will be automatically created.
+
 ### Linux
 
 ```
@@ -180,8 +191,12 @@ log files       : $XDG_DATA_HOME/felix/log
 
 ### macOS
 
+On macOS, felix looks for the config file in the following locations:
+
+1. `$HOME/Library/Application Support/felix/config.yaml`
+2. `$HOME/.config/felix/config.yaml`
+
 ```
-config file     : $HOME/Library/Application Support/felix/config.yaml
 trash directory : $HOME/Library/Application Support/felix/Trash
 log files       : $HOME/Library/Application Support/felix/log
 ```
