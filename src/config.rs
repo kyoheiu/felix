@@ -151,7 +151,7 @@ fn read_config_from_str(s: &str) -> Result<Config, FxError> {
     Ok(deserialized)
 }
 
-pub fn read_or_create_config() -> Result<Config, FxError> {
+pub fn read_config_or_default() -> Result<Config, FxError> {
     //First, declare default config file path.
     let config_file_path = {
         let mut config_path = {

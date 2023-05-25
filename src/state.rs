@@ -91,7 +91,7 @@ impl State {
     pub fn new(session_path: &std::path::Path) -> Result<Self, FxError> {
         //Read config file.
         //Use default configuration if the file does not exist or cannot be read.
-        let config = read_or_create_config();
+        let config = read_config_or_default();
         let config = match config {
             Ok(c) => c,
             Err(e) => {
