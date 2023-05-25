@@ -1726,7 +1726,7 @@ fn in_groups(gid: u32) -> bool {
 }
 
 #[cfg(target_os = "macos")]
-fn in_groups(gid: u32) -> bool {
+fn in_groups(_gid: u32) -> bool {
     false
 }
 
