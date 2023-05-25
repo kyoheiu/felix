@@ -6,7 +6,20 @@
 
 ### Added
 
-- Create temp file or directory by `af` or `ad` respectively. This feature has to feel more "modal", so for now I comment out this feature.
+- Create temp file or directory by `af` or `ad` respectively. This feature has to feel like more "modal", so for now I comment out this feature.
+
+## v2.3.0 (2023-05-26)
+
+### Changed
+
+- Add extra config file path for macOS: `/Users/$USER/.config/felix/config.yaml` will be read after `$HOME/Library/Application Support/felix/config.yaml`.
+- If config file is not found, or found one is broken, felix launches with the default configuration, without creating new one.
+- If the current directory is read-only, `dd`, `Vd` and `p` is disabled in the first place.
+- Bump up MSRV to 1.65.
+
+### Added
+
+- Add `is_ro` field to `State`.
 
 ### Removed
 

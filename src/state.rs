@@ -34,7 +34,6 @@ use std::os::unix::fs::MetadataExt;
 #[cfg(target_family = "unix")]
 use std::os::unix::fs::PermissionsExt;
 
-pub const FELIX: &str = "felix";
 pub const BEGINNING_ROW: u16 = 3;
 pub const EMPTY_WARNING: &str = "Are you sure to empty the trash directory? (if yes: y)";
 const TIME_PREFIX: usize = 11;
@@ -53,6 +52,7 @@ pub struct State {
     pub p_memo: Vec<StateMemo>,
     pub keyword: Option<String>,
     pub layout: Layout,
+    pub is_ro: bool,
 }
 
 #[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -88,31 +88,19 @@ impl Default for FileType {
 
 impl State {
     /// Initialize the state of the app.
-    pub fn new(p: &std::path::Path, session_path: &std::path::Path) -> Result<Self, FxError> {
-        let config = match read_config(p) {
+    pub fn new(session_path: &std::path::Path) -> Result<Self, FxError> {
+        //Read config file.
+        //Use default configuration if the file does not exist or cannot be read.
+        let config = read_config_or_default();
+        let config = match config {
             Ok(c) => c,
             Err(e) => {
-                eprintln!("Cannot read the config file properly.\nError: {}\nDo you want to use the default config? [press Enter to continue]", e);
-                enter_raw_mode();
-                loop {
-                    match crossterm::event::read()? {
-                        Event::Key(KeyEvent { code, .. }) => match code {
-                            KeyCode::Enter => break,
-                            _ => {
-                                leave_raw_mode();
-                                return Err(FxError::Yaml("Exit the app.".to_owned()));
-                            }
-                        },
-                        _ => {
-                            continue;
-                        }
-                    }
-                }
-                leave_raw_mode();
+                eprintln!("Cannot read the config file properly.\nError: {}\nfelix launches with default configuration.", e);
                 Config::default()
             }
         };
-        let session = read_session(session_path)?;
+
+        let session = read_session(session_path);
         let (original_column, original_row) = terminal_size()?;
 
         // Return error if terminal size may cause panic
@@ -179,6 +167,7 @@ impl State {
             c_memo: Vec::new(),
             p_memo: Vec::new(),
             keyword: None,
+            is_ro: false,
         })
     }
 
@@ -864,15 +853,12 @@ impl State {
             header_space -= current_dir.len();
         }
 
-        #[cfg(target_family = "unix")]
         // If without the write permission, print [RO].
-        if let Ok(false) = has_write_permission(&self.current_dir) {
-            if header_space > 5 {
-                set_color(&TermColor::ForeGround(&Colorname::Red));
-                print!(" [RO]");
-                reset_color();
-                header_space -= 5;
-            }
+        if self.is_ro && header_space > 5 {
+            set_color(&TermColor::ForeGround(&Colorname::Red));
+            print!(" [RO]");
+            reset_color();
+            header_space -= 5;
         }
 
         //If .git directory exists, get the branch information and print it.
@@ -1191,6 +1177,10 @@ impl State {
 
     pub fn chdir(&mut self, p: &std::path::Path, mv: Move) -> Result<(), FxError> {
         std::env::set_current_dir(p)?;
+        self.is_ro = match has_write_permission(p) {
+            Ok(b) => !b,
+            Err(_) => false,
+        };
         match mv {
             Move::Up => {
                 // Push current state to c_memo
@@ -1689,7 +1679,7 @@ fn choose_theme(dt: &DefaultTheme) -> Theme {
 // Currently available in unix only.
 // TODO: Use this function to determine if deleting items can be done in the first place?
 #[cfg(target_family = "unix")]
-fn has_write_permission(path: &std::path::Path) -> Result<bool, FxError> {
+pub fn has_write_permission(path: &std::path::Path) -> Result<bool, FxError> {
     let metadata = std::fs::metadata(path)?;
     let mode = metadata.mode();
     if mode == 0 {
@@ -1713,6 +1703,12 @@ fn has_write_permission(path: &std::path::Path) -> Result<bool, FxError> {
     }
 }
 
+// Currently on non-unix OS, this always returns true.
+#[cfg(not(target_family = "unix"))]
+pub fn has_write_permission(_path: &std::path::Path) -> Result<bool, FxError> {
+    Ok(true)
+}
+
 #[cfg(all(target_family = "unix", not(target_os = "macos")))]
 fn in_groups(gid: u32) -> bool {
     if let Ok(groups) = nix::unistd::getgroups() {
@@ -1730,7 +1726,7 @@ fn in_groups(gid: u32) -> bool {
 }
 
 #[cfg(target_os = "macos")]
-fn in_groups(gid: u32) -> bool {
+fn in_groups(_gid: u32) -> bool {
     false
 }
 
