@@ -1,1 +1,1 @@
-***Please read CONTRIBUTING.md before submitting any pull request.***
+<!-- Please read CONTRIBUTING.md before submitting any pull request. -->
