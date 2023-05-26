@@ -1,7 +1,7 @@
-use super::config::{make_config_if_not_exists, CONFIG_FILE};
+use super::config::FELIX;
 use super::errors::FxError;
 use super::functions::*;
-use super::layout::Split;
+use super::layout::{PreviewType, Split};
 use super::nums::*;
 use super::op::*;
 use super::session::*;
@@ -20,15 +20,15 @@ use std::panic;
 use std::path::PathBuf;
 use std::time::Instant;
 
-pub const TRASH: &str = "Trash";
+const TRASH: &str = "Trash";
+const SESSION_FILE: &str = ".session";
 /// Where the item list starts to scroll.
 const SCROLL_POINT: u16 = 3;
 const CLRSCR: &str = "\x1B[2J";
-const INITIAL_POS_RENAME: u16 = 12;
 const INITIAL_POS_SEARCH: usize = 3;
 const INITIAL_POS_SHELL: u16 = 3;
 
-/// Launch the app. If initializing goes wrong, return error.
+/// Launch the app. If initialization goes wrong, return error.
 pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     //Check if argument path is valid.
     if !&arg.exists() {
@@ -43,58 +43,40 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         ));
     }
 
-    //Prepare config and data local path.
-    let config_dir_path = {
-        let mut path = dirs::config_dir()
-            .ok_or_else(|| FxError::Dirs("Cannot read the config directory.".to_string()))?;
-        path.push(FELIX);
-        path
-    };
+    //Prepare data local and trash dir path.
     let data_local_path = {
         let mut path = dirs::data_local_dir()
             .ok_or_else(|| FxError::Dirs("Cannot read the data local directory.".to_string()))?;
         path.push(FELIX);
         path
     };
-    if !config_dir_path.exists() {
-        std::fs::create_dir_all(&config_dir_path)?;
-    }
     if !data_local_path.exists() {
         std::fs::create_dir_all(&data_local_path)?;
     }
 
-    //Set config file and trash dir path.
-    let config_file_path = {
-        let mut path = config_dir_path;
-        path.push(CONFIG_FILE);
-        path
-    };
     let trash_dir_path = {
         let mut path = data_local_path.clone();
         path.push(TRASH);
         path
     };
-
-    //Make config file and trash directory if not exists.
-    make_config_if_not_exists(&config_file_path, &trash_dir_path)?;
+    if !trash_dir_path.exists() {
+        std::fs::create_dir_all(&trash_dir_path)?;
+    }
 
     //If `-l / --log` is set, initialize logger.
     if log {
         init_log(&data_local_path)?;
     }
 
-    //If session file does not exist (i.e. first launch), make it.
-    let session_file_path = {
+    //Set the session file path.
+    let session_path = {
         let mut path = data_local_path;
         path.push(SESSION_FILE);
         path
     };
-    if !session_file_path.exists() {
-        make_session(&session_file_path)?;
-    }
 
-    //Initialize app state.
-    let mut state = State::new(&config_file_path, &session_file_path)?;
+    //Initialize app state. Inside State::new(), config file is read or created.
+    let mut state = State::new(&session_path)?;
     state.trash_dir = trash_dir_path;
     state.current_dir = if cfg!(not(windows)) {
         // If executed this on windows, "//?" will be inserted at the beginning of the path.
@@ -102,9 +84,13 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     } else {
         arg
     };
+    state.is_ro = match has_write_permission(&state.current_dir) {
+        Ok(b) => !b,
+        Err(_) => false,
+    };
 
     //If the main function causes panic, catch it.
-    let result = panic::catch_unwind(|| _run(state, session_file_path));
+    let result = panic::catch_unwind(|| _run(state, session_path));
     leave_raw_mode();
 
     if let Err(panic) = result {
@@ -135,12 +121,12 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
     if state.layout.preview {
         state.update_list()?;
         let new_column = match state.layout.split {
-            Split::Vertical => state.layout.terminal_column / 2,
+            Split::Vertical => state.layout.terminal_column >> 1,
             Split::Horizontal => state.layout.terminal_column,
         };
         let new_row = match state.layout.split {
             Split::Vertical => state.layout.terminal_row,
-            Split::Horizontal => state.layout.terminal_row / 2,
+            Split::Horizontal => state.layout.terminal_row >> 1,
         };
         state.refresh(new_column, new_row, BEGINNING_ROW)?;
     } else {
@@ -149,6 +135,10 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
     screen.flush()?;
 
     'main: loop {
+        if state.is_out_of_bounds() {
+            state.layout.nums.reset();
+            state.redraw(BEGINNING_ROW);
+        }
         screen.flush()?;
         let len = state.list.len();
 
@@ -228,39 +218,6 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 } else {
                                     state.layout.nums.go_down();
                                     state.move_cursor(state.layout.y + 1);
-                                }
-                            }
-
-                            //new file/folder
-                            KeyCode::Char('a') => {
-                                to_info_line();
-                                clear_current_line();
-                                print!("a");
-                                show_cursor();
-                                screen.flush()?;
-
-                                if let Event::Key(KeyEvent { code, .. }) = event::read()? {
-                                    match code {
-                                        KeyCode::Char('f') => {
-                                            hide_cursor();
-                                            state.add_new_file()?;
-                                            print_info("Untitled created", state.layout.y);
-                                            state.reload(state.layout.y)?;
-                                            screen.flush()?;
-                                        }
-                                        KeyCode::Char('d') => {
-                                            hide_cursor();
-                                            state.add_new_directory()?;
-                                            print_info("Folder created", state.layout.y);
-                                            state.reload(state.layout.y)?;
-                                            screen.flush()?;
-                                        }
-                                        _ => {
-                                            go_to_and_rest_info();
-                                            hide_cursor();
-                                            state.move_cursor(state.layout.y);
-                                        }
-                                    }
                                 }
                             }
 
@@ -731,6 +688,14 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
 
                                             KeyCode::Char('d') => {
+                                                //If read-only, deleting is disabled.
+                                                if state.is_ro {
+                                                    print_warning(
+                                                        "Cannot delete item in this directory.",
+                                                        state.layout.y,
+                                                    );
+                                                    continue;
+                                                }
                                                 print_info("DELETE: Processing...", state.layout.y);
                                                 let start = Instant::now();
                                                 screen.flush()?;
@@ -746,17 +711,15 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 if let Err(e) =
                                                     state.remove_and_yank(&selected, true)
                                                 {
+                                                    state.reset_selection();
+                                                    state.redraw(state.layout.y);
                                                     print_warning(e, state.layout.y);
                                                     break;
                                                 }
 
                                                 state.update_list()?;
                                                 let new_len = state.list.len();
-                                                if usize::from(state.layout.nums.skip) >= new_len {
-                                                    state.layout.nums.reset();
-                                                }
                                                 state.clear_and_show_headline();
-                                                state.list_up();
 
                                                 let duration = duration_to_string(start.elapsed());
                                                 let delete_message: String = {
@@ -777,20 +740,30 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                                 if new_len == 0 {
                                                     state.layout.nums.reset();
+                                                    state.list_up();
                                                     state.move_cursor(BEGINNING_ROW);
-                                                } else if state.layout.nums.index > new_len - 1 {
-                                                    let mut new_y = state.layout.y
-                                                        - (state.layout.nums.index - (new_len - 1))
-                                                            as u16;
-                                                    if new_y < BEGINNING_ROW {
-                                                        new_y = BEGINNING_ROW;
+                                                } else if state.is_out_of_bounds() {
+                                                    if state.layout.nums.skip as usize >= new_len {
+                                                        state.layout.nums.skip =
+                                                            (new_len - 1) as u16;
+                                                        state.layout.nums.index =
+                                                            state.list.len() - 1;
+                                                        state.list_up();
+                                                        state.move_cursor(BEGINNING_ROW);
+                                                    } else {
+                                                        state.layout.nums.index =
+                                                            state.list.len() - 1;
+                                                        state.list_up();
+                                                        state.move_cursor(
+                                                            (state.list.len() as u16)
+                                                                - state.layout.nums.skip
+                                                                + BEGINNING_ROW
+                                                                - 1,
+                                                        );
                                                     }
-                                                    state.layout.nums.index = new_len - 1;
-                                                    state.move_cursor(new_y);
-                                                    screen.flush()?;
                                                 } else {
+                                                    state.list_up();
                                                     state.move_cursor(state.layout.y);
-                                                    screen.flush()?;
                                                 }
                                                 break;
                                             }
@@ -857,12 +830,12 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 if state.layout.preview {
                                     match state.layout.split {
                                         Split::Vertical => {
-                                            let new_column = state.layout.terminal_column / 2;
+                                            let new_column = state.layout.terminal_column >> 1;
                                             let new_row = state.layout.terminal_row;
                                             state.refresh(new_column, new_row, state.layout.y)?;
                                         }
                                         Split::Horizontal => {
-                                            let new_row = state.layout.terminal_row / 2;
+                                            let new_row = state.layout.terminal_row >> 1;
                                             let new_column = state.layout.terminal_column;
                                             state.refresh(new_column, new_row, state.layout.y)?;
                                         }
@@ -894,6 +867,14 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                             },
                             //delete
                             KeyCode::Char('d') => {
+                                //If read-only, deleting is disabled.
+                                if state.is_ro {
+                                    print_warning(
+                                        "Cannot delete in this directory.",
+                                        state.layout.y,
+                                    );
+                                    continue;
+                                }
                                 if len == 0 {
                                     continue;
                                 } else {
@@ -933,7 +914,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 };
                                                 let duration = duration_to_string(start.elapsed());
                                                 print_info(
-                                                    format!("1 item deleted [{}]", duration),
+                                                    format!("1 item deleted. [{}]", duration),
                                                     state.layout.y,
                                                 );
                                                 state.move_cursor(state.layout.y);
@@ -965,7 +946,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             state.yank_item(false);
                                             go_to_and_rest_info();
                                             hide_cursor();
-                                            print_info("1 item yanked", state.layout.y);
+                                            print_info("1 item yanked.", state.layout.y);
                                         }
 
                                         _ => {
@@ -979,6 +960,14 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                             //put
                             KeyCode::Char('p') => {
+                                //If read-only, putting is disabled.
+                                if state.is_ro {
+                                    print_warning(
+                                        "Cannot put into this directory.",
+                                        state.layout.y,
+                                    );
+                                    continue;
+                                }
                                 if state.registered.is_empty() {
                                     continue;
                                 }
@@ -998,9 +987,9 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 let registered_len = state.registered.len();
                                 let mut put_message = registered_len.to_string();
                                 if registered_len == 1 {
-                                    let _ = write!(put_message, " item inserted [{}]", duration);
+                                    let _ = write!(put_message, " item inserted. [{}]", duration);
                                 } else {
-                                    let _ = write!(put_message, " items inserted [{}]", duration);
+                                    let _ = write!(put_message, " items inserted. [{}]", duration);
                                 }
                                 print_info(put_message, state.layout.y);
                             }
@@ -1011,14 +1000,6 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     continue;
                                 }
                                 let item = state.get_item()?.clone();
-                                if !is_editable(&item.file_name) {
-                                    print_warning(
-                                        "Item name cannot be renamed due to the character type.",
-                                        state.layout.y,
-                                    );
-                                    continue;
-                                }
-
                                 show_cursor();
                                 let mut rename = item.file_name.chars().collect::<Vec<char>>();
                                 to_info_line();
@@ -1026,7 +1007,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 print!("New name: {}", &rename.iter().collect::<String>(),);
                                 screen.flush()?;
 
-                                let mut current_pos: u16 = 12 + item.file_name.len() as u16;
+                                let (mut current_pos, _) = cursor_pos()?;
+                                let mut current_char_pos = rename.len();
                                 loop {
                                     if let Event::Key(KeyEvent { code, .. }) = event::read()? {
                                         match code {
@@ -1064,55 +1046,73 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
 
                                             KeyCode::Left => {
-                                                if current_pos == INITIAL_POS_RENAME {
+                                                if current_char_pos == 0 {
                                                     continue;
                                                 };
-                                                current_pos -= 1;
-                                                move_left(1);
+                                                if let Some(to_be_skipped) =
+                                                    unicode_width::UnicodeWidthChar::width(
+                                                        rename[current_char_pos - 1],
+                                                    )
+                                                {
+                                                    current_char_pos -= 1;
+                                                    current_pos -= to_be_skipped as u16;
+                                                    move_left(to_be_skipped as u16);
+                                                }
                                             }
 
                                             KeyCode::Right => {
-                                                if current_pos as usize
-                                                    == rename.len() + INITIAL_POS_RENAME as usize
-                                                {
+                                                if current_char_pos as usize == rename.len() {
                                                     continue;
                                                 };
-                                                current_pos += 1;
-                                                move_right(1);
+                                                if let Some(to_be_skipped) =
+                                                    unicode_width::UnicodeWidthChar::width(
+                                                        rename[current_char_pos],
+                                                    )
+                                                {
+                                                    current_char_pos += 1;
+                                                    current_pos += to_be_skipped as u16;
+                                                    move_right(to_be_skipped as u16);
+                                                }
                                             }
 
                                             KeyCode::Char(c) => {
-                                                rename.insert(
-                                                    (current_pos - INITIAL_POS_RENAME).into(),
-                                                    c,
-                                                );
-                                                current_pos += 1;
+                                                if let Some(to_be_added) =
+                                                    unicode_width::UnicodeWidthChar::width(c)
+                                                {
+                                                    rename.insert((current_char_pos).into(), c);
+                                                    current_char_pos += 1;
+                                                    current_pos += to_be_added as u16;
 
-                                                to_info_line();
-                                                clear_current_line();
-                                                print!(
-                                                    "New name: {}",
-                                                    &rename.iter().collect::<String>(),
-                                                );
-                                                move_to(current_pos, 2);
+                                                    to_info_line();
+                                                    clear_current_line();
+                                                    print!(
+                                                        "New name: {}",
+                                                        &rename.iter().collect::<String>(),
+                                                    );
+                                                    move_to(current_pos + 1, 2);
+                                                }
                                             }
 
                                             KeyCode::Backspace => {
-                                                if current_pos == INITIAL_POS_RENAME {
+                                                if current_char_pos == 0 {
                                                     continue;
                                                 };
-                                                rename.remove(
-                                                    (current_pos - INITIAL_POS_RENAME - 1).into(),
-                                                );
-                                                current_pos -= 1;
+                                                let removed =
+                                                    rename.remove((current_char_pos - 1).into());
+                                                if let Some(to_be_removed) =
+                                                    unicode_width::UnicodeWidthChar::width(removed)
+                                                {
+                                                    current_char_pos -= 1;
+                                                    current_pos -= to_be_removed as u16;
 
-                                                to_info_line();
-                                                clear_current_line();
-                                                print!(
-                                                    "New name: {}",
-                                                    &rename.iter().collect::<String>(),
-                                                );
-                                                move_to(current_pos, 2);
+                                                    to_info_line();
+                                                    clear_current_line();
+                                                    print!(
+                                                        "New name: {}",
+                                                        &rename.iter().collect::<String>(),
+                                                    );
+                                                    move_to(current_pos + 1, 2);
+                                                }
                                             }
 
                                             _ => continue,
@@ -1603,6 +1603,60 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                             }
 
+                            //Add new temp file or directory.
+                            //It has to feel like more "modal", so I comment this out for now.
+                            // KeyCode::Char('a') => {
+                            //     to_info_line();
+                            //     clear_current_line();
+                            //     print!("a");
+                            //     show_cursor();
+                            //     screen.flush()?;
+
+                            //     if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                            //         match code {
+                            //             //Add new file
+                            //             KeyCode::Char('f') => {
+                            //                 hide_cursor();
+                            //                 match state.create_temp(false) {
+                            //                     Err(e) => {
+                            //                         print_warning(e, state.layout.y);
+                            //                         continue;
+                            //                     }
+                            //                     Ok(p) => {
+                            //                         state.reload(state.layout.y)?;
+                            //                         print_info(
+                            //                             format!("New file {} added.", p.display()),
+                            //                             state.layout.y,
+                            //                         );
+                            //                     }
+                            //                 }
+                            //             }
+                            //             //Add new directory
+                            //             KeyCode::Char('d') => {
+                            //                 hide_cursor();
+                            //                 match state.create_temp(true) {
+                            //                     Err(e) => {
+                            //                         print_warning(e, state.layout.y);
+                            //                         continue;
+                            //                     }
+                            //                     Ok(p) => {
+                            //                         state.reload(state.layout.y)?;
+                            //                         print_info(
+                            //                             format!("New dir {} added.", p.display()),
+                            //                             state.layout.y,
+                            //                         );
+                            //                     }
+                            //                 }
+                            //             }
+                            //             _ => {
+                            //                 go_to_and_rest_info();
+                            //                 hide_cursor();
+                            //                 state.move_cursor(state.layout.y);
+                            //             }
+                            //         }
+                            //     }
+                            // }
+
                             //exit by ZZ
                             KeyCode::Char('Z') => {
                                 delete_cursor();
@@ -1639,10 +1693,15 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                 }
                 //If you use kitty, you must clear the screen by the escape sequence or the previewed image remains.
                 if state.layout.is_kitty && state.layout.preview {
-                    print!("{}", CLRSCR);
-                    state.clear_and_show_headline();
-                    state.list_up();
-                    screen.flush()?;
+                    if let Ok(item) = state.get_item() {
+                        if item.preview_type == Some(PreviewType::Image) {
+                            print!("{}", CLRSCR);
+                            state.clear_and_show_headline();
+                            state.list_up();
+                            state.move_cursor(state.layout.y);
+                            screen.flush()?;
+                        }
+                    }
                 }
             }
             Event::Resize(column, row) => {
@@ -1658,12 +1717,12 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                 if state.layout.preview {
                     let new_column = match state.layout.split {
-                        Split::Vertical => column / 2,
+                        Split::Vertical => column >> 1,
                         Split::Horizontal => column,
                     };
                     let new_row = match state.layout.split {
                         Split::Vertical => row,
-                        Split::Horizontal => row / 2,
+                        Split::Horizontal => row >> 1,
                     };
                     let cursor_pos = if state.layout.y < new_row {
                         state.layout.y
@@ -1698,21 +1757,4 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
     info!("===FINISH===");
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn zoxide_test() {
-        let output = std::process::Command::new("zoxide")
-            .args(["query", "felix"])
-            .output()
-            .unwrap();
-        let stdout = std::str::from_utf8(&output.stdout).unwrap().trim();
-        println!("{stdout}");
-        let path = PathBuf::from(stdout);
-        println!("{:?}", path.canonicalize());
-    }
 }

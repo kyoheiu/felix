@@ -1,5 +1,5 @@
 /// Help text.
-pub const HELP: &str = "# felix v2.2.2
+pub const HELP: &str = "# felix v2.3.0
 A simple TUI file manager with vim-like keymapping.
 
 ## Usage
@@ -9,7 +9,6 @@ Both relative and absolute path available.
 
 ## Options 
 `-h` | `--help`    => Print help.
-`-v` | `--version` => Check update.
 `-l` | `--log` => Launch the app, automatically generating a log file.
 
 ## Manual
@@ -17,12 +16,12 @@ j / Down          :Go down.
 k / Up            :Go up.
 h / Left          :Go to the parent directory if exists.
 l / Right / Enter :Open a file or change directory.
-o                 :Open a file in a new window.
-e                 :Unpack archive/compressed file.
 gg                :Go to the top.
 G                 :Go to the bottom.
 z + Enter         :Go to the home directory.
 z <keyword>       :Jump to a directory that matches the keyword. (zoxide required)
+o                 :Open a file in a new window.
+e                 :Unpack archive/compressed file.
 dd                :Delete and yank one item.
 yy                :Yank one item.
 p                 :Put yanked item(s) in the current directory.

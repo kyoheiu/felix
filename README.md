@@ -1,11 +1,14 @@
-[![crates.io](https://img.shields.io/crates/v/felix)](https://crates.io/crates/felix) ![aur:felix-rs](https://img.shields.io/aur/version/felix-rs) ![MSRV](https://img.shields.io/badge/MSRV-1.60.0-orange)
+[![crates.io](https://img.shields.io/crates/v/felix)](https://crates.io/crates/felix)
+![arch linux](https://img.shields.io/archlinux/v/extra/x86_64/felix-rs)
+![MSRV](https://img.shields.io/badge/MSRV-1.65.0-orange)
 
 # _felix_
 
-A tui file manager with Vim-like key mapping, written in Rust.  
+A tui file manager with Vim-like key mapping, written in Rust.\
 Fast, simple, and easy to configure & use.
 
-For an overview of this app, take a look at this README, especially [key manual](#key-manual).  
+For an overview of this app, take a look at this README, especially
+[key manual](#key-manual).\
 For more detailed document, visit https://kyoheiu.dev/felix.
 
 - [New release](#new-release)
@@ -23,13 +26,20 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 
 ## New release
 
-## v2.2.2 (2022-12-19)
+## v2.3.0 (2023-05-26)
+
+### Changed
+
+- Add extra config file path for macOS: `/Users/$USER/.config/felix/config.yaml` will be read after `$HOME/Library/Application Support/felix/config.yaml`.
+- If config file is not found, or found one is broken, felix launches with the default configuration, without creating new one.
+- If the current directory is read-only, `dd`, `Vd` and `p` is disabled in the first place.
+- Bump up MSRV to 1.65.
+
+## v2.2.8 (2023-05-19)
 
 ### Fixed
 
-- Disable commands with Ctrl or other modifiers unless explicitly implemented. (For now, `Ctrl + r` to redo, `Alt + j` and `Alt + k` to scroll the preview text are implemented) This avoids for example the situation where `Ctrl + d` unintentionally deletes an item.
-- Add `create_dir_all` to `config_dir` and `data_local_dir` to avoid error.
-- Check if the argument is directory.
+- Kitty-specific: Enable scrolling of the preview text by redrawing the screen only when needed (this also improves the perfomance entirely).
 
 For more details, see `CHANGELOG.md`.
 
@@ -44,44 +54,30 @@ For more details, see `CHANGELOG.md`.
 | MacOS   | works                |
 | Windows | not fully tested yet |
 
-_For Windows users: From v1.3.0, it can be at least compiled on Windows (see `.github/workflows/install_test.yml`.) If you're interested, please try and report any problems._
+_For Windows users: From v1.3.0, it can be at least compiled on Windows (see
+`.github/workflows/install_test.yml`.) If you're interested, please try and
+report any problems._
 
 <a id="installation"></a>
 
 ## Installation
 
-### Prerequisites
+| package    | installation command  | notes                                                                                                                                       |
+| ---------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| crates.io  | `cargo install felix` | Minimum Supported rustc Version: **1.65.0**                                                                                                 |
+| Arch Linux | `pacman -S felix-rs`  | The binary name is `felix` if you install via pacman. Alias `fx='felix'` if you want, as this document (and other installations) uses `fx`. |
+| NetBSD     | `pkgin install felix` |                                                                                                                                             |
+
+### From this repository
 
 - Make sure that `gcc` is installed.
-- MSRV(Minimum Supported rustc Version): **1.60.0**
+- MSRV(Minimum Supported rustc Version): **1.65.0**
 
-Update Rust if rustc < 1.60:
+Update Rust if rustc < 1.65:
 
 ```
 rustup update
 ```
-
-### From crates.io
-
-```
-cargo install felix
-```
-
-### From AUR
-
-```
-yay -S felix-rs
-```
-
-### NetBSD
-
-Available from the official repositories.
-
-```
-pkgin install felix
-```
-
-### From this repository
 
 ```
 git clone https://github.com/kyoheiu/felix.git
@@ -95,14 +91,19 @@ cargo install --path .
 
 In addition, you can use felix more conveniently by installing these two apps:
 
-- [zoxide](https://github.com/ajeetdsouza/zoxide): A smarter `cd` command, which enables you to jump to a directory that matches the keyword in felix.
-- [chafa](https://hpjansson.org/chafa/): Terminal graphics for the 21st century, by which you can preview images in felix. ***chafa must be v1.10.0 or later.***
+- [zoxide](https://github.com/ajeetdsouza/zoxide): A smarter `cd` command, which
+  enables you to jump to a directory that matches the keyword in felix.
+- [chafa](https://hpjansson.org/chafa/): Terminal graphics for the 21st century,
+  by which you can preview images in felix. _**chafa must be v1.10.0 or
+  later.**_
 
 These apps do not need any configuration to use with felix!
 
 <a id="usage"></a>
 
 ## Usage
+
+_If you install this app via pacman, the default binary name is `felix`._
 
 ```
 `fx` => Show items in the current directory.
@@ -114,7 +115,6 @@ Both relative and absolute path available.
 
 ```
 `-h` | `--help` => Print help.
-`-v` | `--version` => Check update.
 `-l` | `--log` => Launch the app, automatically generating a log file in `{data_local_dir}/felix/log`.
 ```
 
@@ -127,12 +127,12 @@ j / Down          :Go down.
 k / Up            :Go up.
 h / Left          :Go to the parent directory if exists.
 l / Right / Enter :Open a file or change directory.
-o                 :Open a file in a new window.
-e                 :Unpack archive/compressed file.
 gg                :Go to the top.
 G                 :Go to the bottom.
 z + Enter         :Go to the home directory.
 z <keyword>       :Jump to a directory that matches the keyword. (zoxide required)
+o                 :Open a file in a new window.
+e                 :Unpack archive/compressed file.
 dd                :Delete and yank one item.
 yy                :Yank one item.
 p                 :Put yanked item(s) in the current directory.
@@ -149,7 +149,7 @@ backspace         :Toggle whether to show hidden items.
 t                 :Toggle the sort order (name <-> modified time).
 :                 :Switch to the shell mode.
 c                 :Switch to the rename mode.
-/                 :Search items by the keyword.
+/                 :Search items by a keyword.
 n                 :Go forward to the item that matches the keyword.
 N                 :Go backward to the item that matches the keyword.
 Esc               :Return to the normal mode.
@@ -166,12 +166,20 @@ Esc               :Return to the normal mode.
 
 ## Preview feature
 
-By default, text files and directories can be previewed.  
+By default, text files and directories can be previewed.\
 Install `chafa` and you can preview images without any configuration.
 
 <a id="configuration"></a>
 
 ## Configuration
+
+### Config file
+If any config file is not found, or found one is broken, felix launches with the default configuration, without creating new one.
+Note that the default editor is `$EDITOR`, so if you've not set it, opening a file will fail.
+You can find default config file (`config.yaml`) in this repository.
+
+### Trash directory and log file
+Contrary to the config file, these directory and file will be automatically created.
 
 ### Linux
 
@@ -183,8 +191,12 @@ log files       : $XDG_DATA_HOME/felix/log
 
 ### macOS
 
+On macOS, felix looks for the config file in the following locations:
+
+1. `$HOME/Library/Application Support/felix/config.yaml`
+2. `$HOME/.config/felix/config.yaml`
+
 ```
-config file     : $HOME/Library/Application Support/felix/config.yaml
 trash directory : $HOME/Library/Application Support/felix/Trash
 log files       : $HOME/Library/Application Support/felix/log
 ```

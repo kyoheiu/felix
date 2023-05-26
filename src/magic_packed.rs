@@ -364,5 +364,15 @@ mod tests {
         );
         let dest = PathBuf::from("testfiles/archives/bz2");
         assert!(unpack(&p, &dest).is_err());
+
+        //Remove uncompressed items to clean
+        std::fs::remove_file("testfiles/archives/archive.txt").unwrap();
+        std::fs::remove_dir_all("testfiles/archives/bzip2").unwrap();
+        std::fs::remove_dir_all("testfiles/archives/deflate").unwrap();
+        std::fs::remove_dir_all("testfiles/archives/gz").unwrap();
+        std::fs::remove_dir_all("testfiles/archives/store").unwrap();
+        std::fs::remove_dir_all("testfiles/archives/tar").unwrap();
+        std::fs::remove_dir_all("testfiles/archives/xz").unwrap();
+        std::fs::remove_dir_all("testfiles/archives/zst").unwrap();
     }
 }

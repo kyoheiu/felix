@@ -1,25 +1,28 @@
-use super::errors::FxError;
-use super::state::FELIX;
+use crate::errors::FxError;
 
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
 
-pub const CONFIG_FILE: &str = "config.yaml";
+pub const FELIX: &str = "felix";
+const CONFIG_FILE: &str = "config.yaml";
 
-pub const CONFIG_EXAMPLE: &str = "# (Optional)
+#[allow(dead_code)]
+const CONFIG_EXAMPLE: &str = r###"
+# (Optional)
 # Default exec command when open files.
 # If not set, will default to $EDITOR.
 # default: nvim
 
 # (Optional)
-# key (the command you want to use): [values] (extensions)
+# key (the command you want to use when opening files): [values] (extensions)
+# In the key, You can use arguments.
 # exec:
-#   feh:
-#     [jpg, jpeg, png, gif, svg]
 #   zathura:
 #     [pdf]
+#  'feh -.':
+#   [jpg, jpeg, png, gif, svg, hdr]
 
 # (Optional)
 # Whether to use syntax highlighting in the preview mode.
@@ -69,7 +72,7 @@ color:
   dir_fg: LightCyan
   file_fg: LightWhite
   symlink_fg: LightYellow
-";
+"###;
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config {
@@ -138,77 +141,59 @@ impl Default for Config {
     }
 }
 
-pub fn read_config(p: &Path) -> Result<Config, FxError> {
-    let config = read_to_string(p)?;
-    let deserialized: Config = serde_yaml::from_str(&config)?;
+fn read_config(p: &Path) -> Result<Config, FxError> {
+    let s = read_to_string(p)?;
+    read_config_from_str(&s)
+}
+
+fn read_config_from_str(s: &str) -> Result<Config, FxError> {
+    let deserialized: Config = serde_yaml::from_str(s)?;
     Ok(deserialized)
 }
 
-pub fn make_config_if_not_exists(config_file: &Path, trash_dir: &Path) -> Result<(), FxError> {
-    if !trash_dir.exists() {
-        std::fs::create_dir_all(trash_dir)?;
-    }
+pub fn read_config_or_default() -> Result<Config, FxError> {
+    //First, declare default config file path.
+    let config_file_path = {
+        let mut config_path = {
+            let mut path = dirs::config_dir()
+                .ok_or_else(|| FxError::Dirs("Cannot read the config directory.".to_string()))?;
+            path.push(FELIX);
+            path
+        };
+        config_path.push(CONFIG_FILE);
+        config_path
+    };
 
-    if !config_file.exists() {
-        println!(
-            "Config file not found: To set up, please enter the default command name to open a file. (e.g. nvim)\nIf you want to use the default $EDITOR, just press Enter."
-        );
+    //On macOS, felix looks for 2 paths:
+    //First `$HOME/Library/Application Support/felix/config.yaml`,
+    //and if it fails,
+    //`$HOME/.config/felix/config.yaml`.
+    let config_file_paths = if cfg!(target_os = "macos") {
+        let alt_config_file_path = {
+            let mut path = dirs::home_dir()
+                .ok_or_else(|| FxError::Dirs("Cannot read the home directory.".to_string()))?;
+            path.push(".config");
+            path.push("FELIX");
+            path.push(CONFIG_FILE);
+            path
+        };
+        vec![config_file_path, alt_config_file_path]
+    } else {
+        vec![config_file_path]
+    };
 
-        let mut buffer = String::new();
-        let stdin = std::io::stdin();
-        stdin.read_line(&mut buffer)?;
-
-        let mut trimmed = buffer.trim();
-        if trimmed.is_empty() {
-            match std::env::var("EDITOR") {
-                Ok(_) => {
-                    let config = CONFIG_EXAMPLE.replace("default = \"nvim\"", "# default = \"\"");
-                    std::fs::write(config_file, config)?;
-                    println!("Config file created. See {}", config_file_path_output()?);
-                }
-                Err(_) => {
-                    while trimmed.is_empty() {
-                        println!("Cannot detect $EDITOR: Enter your default command.");
-                        buffer = String::new();
-                        std::io::stdin().read_line(&mut buffer)?;
-                        trimmed = buffer.trim();
-                    }
-                    let config =
-                        CONFIG_EXAMPLE.replace("# default: nvim", &format!("default: {}", trimmed));
-                    std::fs::write(config_file, config)?;
-                    println!(
-                        "Default command set as [{}]. See {}",
-                        trimmed,
-                        config_file_path_output()?
-                    );
-                }
-            }
-        } else {
-            let config =
-                CONFIG_EXAMPLE.replace("# default: nvim", &format!("default: {}", trimmed));
-            std::fs::write(config_file, config)?;
-            println!(
-                "Default command set as [{}]. See {}",
-                trimmed,
-                config_file_path_output()?
-            );
+    let mut config_file: Option<PathBuf> = None;
+    for p in config_file_paths {
+        if p.exists() {
+            config_file = Some(p);
+            break;
         }
     }
-    Ok(())
-}
 
-fn config_file_path() -> Result<PathBuf, FxError> {
-    let mut config =
-        dirs::config_dir().ok_or_else(|| FxError::Dirs("Cannot read config dir.".to_string()))?;
-    config.push(FELIX);
-    config.push(CONFIG_FILE);
-    Ok(config)
-}
-
-fn config_file_path_output() -> Result<String, FxError> {
-    if cfg!(target_os = "windows") {
-        Ok("~\\AppData\\Roaming\\felix\\config.yaml".to_owned())
+    if let Some(config_file) = config_file {
+        read_config(&config_file)
     } else {
-        Ok(config_file_path()?.to_str().unwrap().to_owned())
+        println!("Config file not found: felix launches with default configuration.");
+        Ok(Config::default())
     }
 }

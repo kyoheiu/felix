@@ -9,6 +9,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 pub const PROCESS_INDICATOR_LENGTH: u16 = 7;
 const KB: u64 = 1000;
@@ -77,7 +78,7 @@ pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
     info!("{}", message);
 
     let (width, _) = terminal_size().unwrap();
-    let trimmed = split_str(&message.to_string(), (width - 1).into());
+    let trimmed = shorten_str_including_wide_char(&message.to_string(), (width - 1).into());
     print!("{}", trimmed);
 
     hide_cursor();
@@ -93,7 +94,7 @@ pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
     warn!("{}", message);
 
     let (width, _) = terminal_size().unwrap();
-    let trimmed = split_str(&message.to_string(), (width - 1).into());
+    let trimmed = shorten_str_including_wide_char(&message.to_string(), (width - 1).into());
     set_color(&TermColor::ForeGround(&Colorname::White));
     set_color(&TermColor::BackGround(&Colorname::LightRed));
     print!("{}", trimmed);
@@ -189,7 +190,7 @@ pub fn list_up_contents(path: &Path, width: u16) -> Result<String, FxError> {
         if i == len - 1 {
             let mut line = "└ ".to_string();
             line.push_str(item);
-            line = split_str(&line, width.into());
+            line = shorten_str_including_wide_char(&line, width.into());
             result.push_str(&line);
         } else {
             let mut line = "├ ".to_string();
@@ -203,20 +204,7 @@ pub fn list_up_contents(path: &Path, width: u16) -> Result<String, FxError> {
 
 /// Format texts to print. Used when printing help or text preview.
 pub fn format_txt(txt: &str, width: u16, is_help: bool) -> Vec<String> {
-    let mut v = Vec::new();
-    for line in txt.lines() {
-        let mut line = line;
-        while line.bytes().len() > width as usize {
-            let mut i = width as usize;
-            while !line.is_char_boundary(i) {
-                i -= 1;
-            }
-            let (first, second) = line.split_at(i);
-            v.push(first.to_owned());
-            line = second;
-        }
-        v.push(line.to_owned());
-    }
+    let mut v = split_lines_including_wide_char(txt, width.into());
     if is_help {
         v.push("Press Enter to go back.".to_owned());
     }
@@ -239,11 +227,6 @@ pub fn print_help(v: &[String], skip_number: usize, row: u16) {
         print!("{}", line);
         row_count += 1;
     }
-}
-
-/// Check if we can edit the file name safely.
-pub fn is_editable(s: &str) -> bool {
-    s.is_ascii()
 }
 
 /// Initialize the log if `-l` option is added.
@@ -269,30 +252,6 @@ pub fn init_log(data_local_path: &Path) -> Result<(), FxError> {
     Ok(())
 }
 
-/// Check the latest version of felix.
-pub fn check_version() -> Result<(), FxError> {
-    let output = std::process::Command::new("cargo")
-        .args(["search", "felix", "--limit", "1"])
-        .output()?
-        .stdout;
-    if !output.is_empty() {
-        if let Ok(ver) = std::str::from_utf8(&output) {
-            let latest: String = ver.chars().skip(9).take_while(|x| *x != '\"').collect();
-            let current = env!("CARGO_PKG_VERSION");
-            if latest != current {
-                println!("felix v{}: Latest version is {}.", current, latest);
-            } else {
-                println!("felix v{}: Up to date.", current);
-            }
-        } else {
-            println!("Cannot read the version.");
-        }
-    } else {
-        println!("Cannot fetch the latest version: Check your internet connection.");
-    }
-    Ok(())
-}
-
 /// linux-specific: Convert u32 to permission-ish string.
 pub fn convert_to_permissions(permissions: u32) -> String {
     let permissions = format!("{permissions:o}");
@@ -300,19 +259,42 @@ pub fn convert_to_permissions(permissions: u32) -> String {
     permissions.chars().rev().collect()
 }
 
-///The length of the file name is counted by bytes(), not chars(),
-/// because it is possible that if the name contains multibyte characters
-/// (sometimes they are wide chars such as CJK),
-/// it may exceed the file-name space i.e. header, item list space or preview header.
-/// To avoid this, the file name is split by the nearest character boundary (round-off),
-/// even if extra space between the name and the modified time may appear.
-pub fn split_str(s: &str, i: usize) -> String {
-    let mut i = i;
-    while !s.is_char_boundary(i) {
-        i -= 1;
+/// Shorten &str to specific width. With unicode_width, even if the string includes wide chars, it's properly split, using full width of the terminal.
+pub fn shorten_str_including_wide_char(s: &str, i: usize) -> String {
+    let mut result = "".to_owned();
+    for c in s.chars() {
+        let result_length = UnicodeWidthStr::width(result.as_str());
+        if let Some(c_width) = UnicodeWidthChar::width(c) {
+            if result_length + c_width > i {
+                return result;
+            }
+            result.push(c);
+            continue;
+        }
     }
-    let (result, _) = s.split_at(i);
-    result.to_owned()
+    result
+}
+
+fn split_lines_including_wide_char(s: &str, width: usize) -> Vec<String> {
+    let mut result = vec![];
+    let mut new_line = "".to_owned();
+    for c in s.chars() {
+        let new_line_length = UnicodeWidthStr::width(new_line.as_str());
+        if c == '\n' {
+            result.push(new_line);
+            new_line = "".to_owned();
+        }
+        if let Some(c_width) = UnicodeWidthChar::width(c) {
+            if new_line_length + c_width > width {
+                result.push(new_line);
+                new_line = "".to_owned();
+            }
+            new_line.push(c);
+        }
+    }
+    result.push(new_line);
+
+    result
 }
 
 //cargo test -- --nocapture
@@ -353,19 +335,7 @@ mod tests {
     fn test_list_up_contents() {
         let p = PathBuf::from("./testfiles");
         let tree = list_up_contents(&p, 20).unwrap();
-        assert_eq!(tree, "├ archives\n└ images".to_string());
-    }
-
-    #[test]
-    fn test_is_editable() {
-        let s1 = "Hello, world!";
-        let s2 = "image.jpg";
-        let s3 = "a̐éö̲\r\n";
-        let s4 = "日本の首都は東京です";
-        assert!(is_editable(s1));
-        assert!(is_editable(s2));
-        assert!(!is_editable(s3));
-        assert!(!is_editable(s4));
+        assert_eq!(tree, "├ archives\n├ images\n└ permission_test".to_string());
     }
 
     #[test]
@@ -374,5 +344,22 @@ mod tests {
         let dir = 16877;
         assert_eq!(&convert_to_permissions(file), "644");
         assert_eq!(&convert_to_permissions(dir), "755");
+    }
+
+    #[test]
+    fn test_split_str_including_wide_char() {
+        let teststr = "Ｈｅｌｌｏ, ｗｏｒｌｄ!";
+        assert_eq!(
+            "Ｈｅｌｌｏ, ｗｏｒｌ".to_owned(),
+            shorten_str_including_wide_char(teststr, 20)
+        );
+        assert_eq!(
+            "Ｈｅｌｌｏ".to_owned(),
+            shorten_str_including_wide_char(teststr, 10)
+        );
+        assert_eq!(
+            "Ｈｅｌｌｏ, ｗ".to_owned(),
+            shorten_str_including_wide_char(teststr, 15)
+        );
     }
 }

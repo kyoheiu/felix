@@ -26,13 +26,18 @@ use std::time::UNIX_EPOCH;
 use syntect::highlighting::{Theme, ThemeSet};
 
 #[cfg(target_family = "unix")]
+use nix::sys::stat::Mode;
+#[cfg(target_family = "unix")]
+use nix::unistd::{Gid, Uid};
+#[cfg(target_family = "unix")]
+use std::os::unix::fs::MetadataExt;
+#[cfg(target_family = "unix")]
 use std::os::unix::fs::PermissionsExt;
 
-pub const FELIX: &str = "felix";
 pub const BEGINNING_ROW: u16 = 3;
 pub const EMPTY_WARNING: &str = "Are you sure to empty the trash directory? (if yes: y)";
 const TIME_PREFIX: usize = 11;
-const ALPHABET: &[u8; 32] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+const BASE32: &[u8; 32] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
 #[derive(Debug)]
 pub struct State {
@@ -47,6 +52,7 @@ pub struct State {
     pub p_memo: Vec<StateMemo>,
     pub keyword: Option<String>,
     pub layout: Layout,
+    pub is_ro: bool,
 }
 
 #[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -82,31 +88,19 @@ impl Default for FileType {
 
 impl State {
     /// Initialize the state of the app.
-    pub fn new(p: &std::path::Path, session_path: &std::path::Path) -> Result<Self, FxError> {
-        let config = match read_config(p) {
+    pub fn new(session_path: &std::path::Path) -> Result<Self, FxError> {
+        //Read config file.
+        //Use default configuration if the file does not exist or cannot be read.
+        let config = read_config_or_default();
+        let config = match config {
             Ok(c) => c,
             Err(e) => {
-                eprintln!("Cannot read the config file properly.\nError: {}\nDo you want to use the default config? [press Enter to continue]", e);
-                enter_raw_mode();
-                loop {
-                    match crossterm::event::read()? {
-                        Event::Key(KeyEvent { code, .. }) => match code {
-                            KeyCode::Enter => break,
-                            _ => {
-                                leave_raw_mode();
-                                return Err(FxError::Yaml("Exit the app.".to_owned()));
-                            }
-                        },
-                        _ => {
-                            continue;
-                        }
-                    }
-                }
-                leave_raw_mode();
+                eprintln!("Cannot read the config file properly.\nError: {}\nfelix launches with default configuration.", e);
                 Config::default()
             }
         };
-        let session = read_session(session_path)?;
+
+        let session = read_session(session_path);
         let (original_column, original_row) = terminal_size()?;
 
         // Return error if terminal size may cause panic
@@ -173,6 +167,7 @@ impl State {
             c_memo: Vec::new(),
             p_memo: Vec::new(),
             keyword: None,
+            is_ro: false,
         })
     }
 
@@ -201,15 +196,38 @@ impl State {
         info!("OPEN: {:?}", path);
 
         match map {
-            None => default.arg(path).status().or(Err(FxError::OpenItem)),
+            None => default
+                .arg(path)
+                .status()
+                .map_err(|e| FxError::OpenItem(e.to_string())),
             Some(map) => match extension {
-                None => default.arg(path).status().or(Err(FxError::OpenItem)),
+                None => default
+                    .arg(path)
+                    .status()
+                    .map_err(|e| FxError::OpenItem(e.to_string())),
                 Some(extension) => match map.get(extension) {
                     Some(command) => {
-                        let mut ex = Command::new(command);
-                        ex.arg(path).status().or(Err(FxError::OpenItem))
+                        let command: Vec<&str> = command.split_ascii_whitespace().collect();
+                        //If the key has no arguments
+                        if command.len() == 1 {
+                            let mut ex = Command::new(command[0]);
+                            ex.arg(path)
+                                .status()
+                                .map_err(|e| FxError::OpenItem(e.to_string()))
+                        } else {
+                            let mut args: Vec<&OsStr> =
+                                command[1..].iter().map(|x| x.as_ref()).collect();
+                            args.push(path.as_ref());
+                            let mut ex = Command::new(command[0]);
+                            ex.args(args)
+                                .status()
+                                .map_err(|e| FxError::OpenItem(e.to_string()))
+                        }
                     }
-                    None => default.arg(path).status().or(Err(FxError::OpenItem)),
+                    None => default
+                        .arg(path)
+                        .status()
+                        .map_err(|e| FxError::OpenItem(e.to_string())),
                 },
             },
         }
@@ -237,15 +255,31 @@ impl State {
                             }
                             nix::unistd::ForkResult::Child => {
                                 nix::unistd::setsid()?;
-                                let mut ex = Command::new(command);
-                                ex.arg(path)
-                                    .stdout(Stdio::null())
-                                    .stdin(Stdio::null())
-                                    .spawn()
-                                    .and(Ok(()))
-                                    .map_err(|_| FxError::OpenItem)?;
-                                drop(ex);
-                                std::process::exit(0);
+                                let command: Vec<&str> = command.split_ascii_whitespace().collect();
+                                if command.len() == 1 {
+                                    let mut ex = Command::new(command[0]);
+                                    ex.arg(path)
+                                        .stdout(Stdio::null())
+                                        .stdin(Stdio::null())
+                                        .spawn()
+                                        .and(Ok(()))
+                                        .map_err(|e| FxError::OpenItem(e.to_string()))?;
+                                    drop(ex);
+                                    std::process::exit(0);
+                                } else {
+                                    let mut args: Vec<&OsStr> =
+                                        command[1..].iter().map(|x| x.as_ref()).collect();
+                                    args.push(path.as_ref());
+                                    let mut ex = Command::new(command[0]);
+                                    ex.args(args)
+                                        .stdout(Stdio::null())
+                                        .stdin(Stdio::null())
+                                        .spawn()
+                                        .and(Ok(()))
+                                        .map_err(|e| FxError::OpenItem(e.to_string()))?;
+                                    drop(ex);
+                                    std::process::exit(0);
+                                }
                             }
                         },
                         Err(e) => Err(FxError::Nix(e.to_string())),
@@ -283,7 +317,7 @@ impl State {
                             .stdin(Stdio::null())
                             .spawn()
                             .and(Ok(()))
-                            .or(Err(FxError::OpenItem))
+                            .map_err(|e| (FxError::OpenItem(e.to_string())))
                     }
                     None => Err(FxError::OpenNewWindow(
                         "Cannot open this type of item in new window".to_owned(),
@@ -297,59 +331,16 @@ impl State {
         }
     }
 
-    /// Works like touch, but with randomized suffix
-    pub fn add_new_file(&mut self) -> Result<(), FxError> {
-        let mut new_name = self.current_dir.join("untitled");
-        if new_name.exists() {
-            let mut nanos = std::time::SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .subsec_nanos();
-            let encoded: &mut [u8] = &mut [0, 0, 0, 0, 0];
-            for i in 0..5 {
-                let v = (nanos & 0x1f) as usize;
-                encoded[4 - i] = ALPHABET[v];
-                nanos >>= 5;
-            }
-            new_name = self.current_dir.join(format!(
-                "untitled_{}",
-                std::str::from_utf8(encoded).unwrap()
-            ))
-        }
-        if let Err(_) = std::fs::File::create(new_name) {
-            return Err(FxError::Log("Couldnt create file".to_string()));
-        }
-        Ok(())
-    }
-
-    pub fn add_new_directory(&mut self) -> Result<(), FxError> {
-        let mut new_name = self.current_dir.join("untitled");
-        if new_name.exists() {
-            let mut nanos = std::time::SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .subsec_nanos();
-            let encoded: &mut [u8] = &mut [0, 0, 0, 0, 0];
-            for i in 0..5 {
-                let v = (nanos & 0x1f) as usize;
-                encoded[4 - i] = ALPHABET[v];
-                nanos >>= 5;
-            }
-            new_name = self.current_dir.join(format!(
-                "untitled_{}",
-                std::str::from_utf8(encoded).unwrap()
-            ))
-        }
-        if let Err(_) = std::fs::create_dir(new_name) {
-            return Err(FxError::Log("Couldnt create file".to_string()));
-        }
-        Ok(())
-    }
-
     /// Move items from the current directory to trash directory.
     /// This does not actually delete items.
     /// If you'd like to delete, use `:empty` after this, or just `:rm`.  
     pub fn remove_and_yank(&mut self, targets: &[ItemInfo], new_op: bool) -> Result<(), FxError> {
+        if self.current_dir == self.trash_dir {
+            return Err(FxError::Io(
+                "Use `:empty` to delete item in the trash dir.".to_string(),
+            ));
+        }
+
         self.registered.clear();
         let total_selected = targets.len();
         let mut trash_vec = Vec::new();
@@ -474,7 +465,7 @@ impl State {
                     }
                     trash_name.push_str(file_name.unwrap());
                     trash_path = self.trash_dir.join(&trash_name);
-                    std::fs::create_dir(&self.trash_dir.join(&trash_path))?;
+                    std::fs::create_dir(self.trash_dir.join(&trash_path))?;
 
                     continue;
                 } else {
@@ -845,12 +836,12 @@ impl State {
 
         let mut header_space = (self.layout.terminal_column - 1) as usize;
 
-        //Show current directory path.
-        //crossterm's Stylize cannot be applied to PathBuf,
-        //current directory does not have any text attribute for now.
+        // Show current directory path.
+        // crossterm's Stylize cannot be applied to PathBuf,
+        // current directory does not have any text attribute for now.
         let current_dir = self.current_dir.display().to_string();
         if current_dir.bytes().len() >= header_space {
-            let current_dir = split_str(&current_dir, header_space);
+            let current_dir = shorten_str_including_wide_char(&current_dir, header_space);
             set_color(&TermColor::ForeGround(&Colorname::Cyan));
             print!(" {}", current_dir);
             reset_color();
@@ -860,6 +851,14 @@ impl State {
             print!(" {}", current_dir);
             reset_color();
             header_space -= current_dir.len();
+        }
+
+        // If without the write permission, print [RO].
+        if self.is_ro && header_space > 5 {
+            set_color(&TermColor::ForeGround(&Colorname::Red));
+            print!(" [RO]");
+            reset_color();
+            header_space -= 5;
         }
 
         //If .git directory exists, get the branch information and print it.
@@ -886,8 +885,8 @@ impl State {
         let name = if item.file_name.bytes().len() <= self.layout.name_max_len {
             item.file_name.clone()
         } else {
-            let i = (self.layout.name_max_len - 2) as usize;
-            let mut file_name = split_str(&item.file_name, i);
+            let i = self.layout.name_max_len - 2;
+            let mut file_name = shorten_str_including_wide_char(&item.file_name, i);
             file_name.push_str("..");
             file_name
         };
@@ -1072,6 +1071,33 @@ impl State {
         }
     }
 
+    /// Creates temp file for directory. Works like touch, but with randomized suffix
+    #[allow(dead_code)]
+    pub fn create_temp(&mut self, is_dir: bool) -> Result<PathBuf, FxError> {
+        let mut new_name = self.current_dir.join(".tmp");
+        if new_name.exists() {
+            let mut nanos = std::time::SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .subsec_nanos();
+            let encoded: &mut [u8] = &mut [0, 0, 0, 0, 0];
+            for i in 0..5 {
+                let v = (nanos & 0x1f) as usize;
+                encoded[4 - i] = BASE32[v];
+                nanos >>= 5;
+            }
+            new_name = self
+                .current_dir
+                .join(format!(".tmp_{}", String::from_utf8(encoded.to_vec())?))
+        }
+        if is_dir {
+            std::fs::create_dir(new_name.clone())?;
+        } else {
+            std::fs::File::create(new_name.clone())?;
+        }
+        Ok(new_name)
+    }
+
     //Show help
     pub fn show_help(&self, mut screen: &Stdout) -> Result<(), FxError> {
         clear_all();
@@ -1151,6 +1177,10 @@ impl State {
 
     pub fn chdir(&mut self, p: &std::path::Path, mv: Move) -> Result<(), FxError> {
         std::env::set_current_dir(p)?;
+        self.is_ro = match has_write_permission(p) {
+            Ok(b) => !b,
+            Err(_) => false,
+        };
         match mv {
             Move::Up => {
                 // Push current state to c_memo
@@ -1415,7 +1445,7 @@ impl State {
             split: Some(self.layout.split),
         };
         let serialized = serde_yaml::to_string(&session)?;
-        fs::write(&session_path, serialized)?;
+        fs::write(session_path, serialized)?;
         Ok(())
     }
 
@@ -1435,6 +1465,11 @@ impl State {
 
         magic_packed::unpack(&p, &dest)?;
         Ok(())
+    }
+
+    pub fn is_out_of_bounds(&self) -> bool {
+        let current = self.layout.nums.skip + self.layout.y - BEGINNING_ROW + 1;
+        current as usize > self.list.len()
     }
 }
 
@@ -1637,5 +1672,140 @@ fn choose_theme(dt: &DefaultTheme) -> Theme {
         DefaultTheme::InspiredGitHub => defaults.themes["InspiredGitHub"].clone(),
         DefaultTheme::SolarizedDark => defaults.themes["Solarized (dark)"].clone(),
         DefaultTheme::SolarizedLight => defaults.themes["Solarized (light)"].clone(),
+    }
+}
+
+// Check if the current process has the write permission to a path.
+// Currently available in unix only.
+// TODO: Use this function to determine if deleting items can be done in the first place?
+#[cfg(target_family = "unix")]
+pub fn has_write_permission(path: &std::path::Path) -> Result<bool, FxError> {
+    let metadata = std::fs::metadata(path)?;
+    let mode = metadata.mode();
+    if mode == 0 {
+        Ok(false)
+    } else {
+        let euid = Uid::effective();
+        if euid.is_root() {
+            Ok(true)
+        } else {
+            let uid = metadata.uid();
+            let gid = metadata.gid();
+
+            if uid == euid.as_raw() {
+                Ok(mode & (Mode::S_IWUSR.bits() as u32) != 0)
+            } else if gid == Gid::effective().as_raw() || in_groups(gid) {
+                Ok(mode & (Mode::S_IWGRP.bits() as u32) != 0)
+            } else {
+                Ok(mode & (Mode::S_IWOTH.bits() as u32) != 0)
+            }
+        }
+    }
+}
+
+// Currently on non-unix OS, this always returns true.
+#[cfg(not(target_family = "unix"))]
+pub fn has_write_permission(_path: &std::path::Path) -> Result<bool, FxError> {
+    Ok(true)
+}
+
+#[cfg(all(target_family = "unix", not(target_os = "macos")))]
+fn in_groups(gid: u32) -> bool {
+    if let Ok(groups) = nix::unistd::getgroups() {
+        for group in groups {
+            if group.as_raw() == gid {
+                return true;
+            } else {
+                continue;
+            }
+        }
+        false
+    } else {
+        false
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn in_groups(_gid: u32) -> bool {
+    false
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use devtimer::run_benchmark;
+    use rayon::prelude::{IntoParallelIterator, ParallelIterator};
+
+    fn bench_update1() -> Result<(), FxError> {
+        let mut dir_v = Vec::new();
+        let mut file_v = Vec::new();
+        for entry in fs::read_dir("src")? {
+            let e = entry?;
+            let entry = read_item(e);
+            match entry.file_type {
+                FileType::Directory => dir_v.push(entry),
+                FileType::File | FileType::Symlink => file_v.push(entry),
+            }
+        }
+        Ok(())
+    }
+
+    fn bench_update2() -> Result<(), FxError> {
+        let mut dir_v = Vec::new();
+        let mut file_v = Vec::new();
+        let mut temp = Vec::new();
+        for entry in fs::read_dir("src")? {
+            let e = entry?;
+            temp.push(e);
+        }
+
+        let temp: Vec<ItemInfo> = temp.into_par_iter().map(read_item).collect();
+
+        for entry in temp {
+            match entry.file_type {
+                FileType::Directory => dir_v.push(entry),
+                FileType::File | FileType::Symlink => file_v.push(entry),
+            }
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_has_write_permission() {
+        // chmod to 444 and check if it's read-only
+        let p = std::path::PathBuf::from("./testfiles/permission_test");
+        let _status = std::process::Command::new("chmod")
+            .args(["444", "./testfiles/permission_test"])
+            .status()
+            .unwrap();
+        assert!(!has_write_permission(p.as_path()).unwrap());
+        let _status = std::process::Command::new("chmod")
+            .args(["755", "./testfiles/permission_test"])
+            .status()
+            .unwrap();
+
+        // Test the home directory, which should pass
+        let home_dir = dirs::home_dir().unwrap();
+        assert!(has_write_permission(&home_dir).unwrap());
+    }
+
+    #[test]
+    fn bench_update_single() {
+        let bench_result = run_benchmark(100, |_| {
+            // Fake a long running operation
+            bench_update1().unwrap();
+        });
+        bench_result.print_stats();
+    }
+
+    #[test]
+    fn bench_update_parallel() {
+        let bench_result = run_benchmark(100, |_| {
+            // Fake a long running operation
+            bench_update2().unwrap();
+        });
+        bench_result.print_stats();
     }
 }
