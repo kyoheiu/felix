@@ -40,6 +40,7 @@ pub struct Layout {
     pub theme: Theme,
     pub has_chafa: bool,
     pub is_kitty: bool,
+    pub is_tabby: bool,
 }
 
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone)]

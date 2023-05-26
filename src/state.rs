@@ -120,6 +120,8 @@ impl State {
 
         let has_chafa = check_chafa();
         let is_kitty = check_kitty_support();
+        let is_tabby = check_tabby_support();
+
 
         Ok(State {
             list: Vec::new(),
@@ -163,6 +165,7 @@ impl State {
                 theme: ts,
                 has_chafa,
                 is_kitty,
+                is_tabby,
             },
             c_memo: Vec::new(),
             p_memo: Vec::new(),
@@ -1608,6 +1611,14 @@ fn check_kitty_support() -> bool {
     }
 }
 
+// Check if the terminal is Tabby or not
+fn check_tabby_support() -> bool {
+    if let Ok(term) = std::env::var("TERM") {
+        term.contains("Tabby")
+    } else {
+        false
+    }
+}
 fn set_preview_content_type(item: &mut ItemInfo) {
     if item.file_size > MAX_SIZE_TO_PREVIEW {
         item.preview_type = Some(PreviewType::TooBigSize);

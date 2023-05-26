@@ -1692,7 +1692,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                     }
                 }
                 //If you use kitty, you must clear the screen by the escape sequence or the previewed image remains.
-                if state.layout.is_kitty && state.layout.preview {
+                if (state.layout.is_kitty || state.layout.is_tabby) && state.layout.preview {
                     if let Ok(item) = state.get_item() {
                         if item.preview_type == Some(PreviewType::Image) {
                             print!("{}", CLRSCR);
