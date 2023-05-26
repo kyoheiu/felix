@@ -569,6 +569,16 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 loop {
                                     if let Event::Key(KeyEvent { code, .. }) = event::read()? {
                                         match code {
+                                            KeyCode::Char('t') =>{
+                                                let mut item = state.get_item_mut()?;
+                                                if item.selected {
+                                                    item.selected = false;
+                                                }
+                                                else{
+                                                    item.selected = true;
+                                                }
+                                                state.redraw(state.layout.y);
+                                            },
                                             KeyCode::Char('j') | KeyCode::Down => {
                                                 if len == 0 || state.layout.nums.index == len - 1 {
                                                     continue;
