@@ -6,19 +6,18 @@ use super::session::SortKey;
 use super::state::{ItemInfo, BEGINNING_ROW};
 use super::term::*;
 
+use image::GenericImageView;
 use serde::{Deserialize, Serialize};
 use syntect::easy::HighlightLines;
 use syntect::highlighting::Theme;
 use syntect::parsing::SyntaxSet;
 use syntect::util::{as_24_bit_terminal_escaped, split_at, LinesWithEndings};
 
-pub const MAX_SIZE_TO_PREVIEW: u64 = 1_000_000_000;
-pub const CHAFA_WARNING: &str =
-    "From v1.1.0, the image preview needs chafa (>= v1.10.0). For more details, please see help by `:h` ";
-
+pub const MAX_SIZE_TO_PREVIEW: u64 = 2_000_000_000;
 pub const PROPER_WIDTH: u16 = 28;
 pub const TIME_WIDTH: u16 = 16;
 const EXTRA_SPACES: u16 = 3;
+const GIF_MEMORY_LIMIT: u32 = 1_000_000;
 
 #[derive(Debug)]
 pub struct Layout {
@@ -47,7 +46,8 @@ pub enum PreviewType {
     NotReadable,
     TooBigSize,
     Directory,
-    Image,
+    Still,
+    Gif,
     Text,
     Binary,
 }
@@ -83,19 +83,25 @@ impl Layout {
             Some(PreviewType::Directory) => {
                 self.preview_directory(item);
             }
-            Some(PreviewType::Image) => {
+            Some(PreviewType::Still) => {
                 if self.has_chafa {
-                    if let Err(e) = self.preview_image(item, y) {
+                    if let Err(e) = self.preview_by_chafa(item, y) {
                         print_warning(e, y);
                     }
                 } else {
-                    let help = format_txt(CHAFA_WARNING, self.terminal_column - 1, false);
-                    for (i, line) in help.iter().enumerate() {
-                        move_to(self.preview_start.0, BEGINNING_ROW + i as u16);
-                        print!("{}", line,);
-                        if BEGINNING_ROW + i as u16 == self.terminal_row - 1 {
-                            break;
-                        }
+                    if let Err(e) = self.preview_image(item) {
+                        print_warning(e, y);
+                    }
+                }
+            }
+            Some(PreviewType::Gif) => {
+                if self.has_chafa {
+                    if let Err(e) = self.preview_by_chafa(item, y) {
+                        print_warning(e, y);
+                    }
+                } else {
+                    if let Err(e) = self.preview_gif(item) {
+                        print_warning(e, y);
                     }
                 }
             }
@@ -239,8 +245,91 @@ impl Layout {
         reset_color();
     }
 
-    /// Print text preview on the right half of the terminal (Experimental).
-    fn preview_image(&self, item: &ItemInfo, y: u16) -> Result<(), FxError> {
+    /// Print image preview, powered by `viuer` crate.
+    fn preview_image(&self, item: &ItemInfo) -> Result<(), FxError> {
+        let (w, h) = image::image_dimensions(&item.file_path)?;
+        let is_portrait =
+            (self.preview_space.0 as u32) * h >= (((self.preview_space.1 - 1) * 2) as u32) * w;
+
+        //Set viuer config.
+        let conf = if is_portrait {
+            viuer::Config {
+                x: self.preview_start.0 - 1,
+                y: self.preview_start.1 as i16 - 1,
+                height: Some((self.preview_space.1 - 1).into()),
+                use_kitty: false,
+                use_iterm: true,
+                ..Default::default()
+            }
+        } else {
+            viuer::Config {
+                x: self.preview_start.0 - 1,
+                y: self.preview_start.1 as i16 - 1,
+                width: Some((self.preview_space.0 - 1).into()),
+                use_kitty: false,
+                use_iterm: true,
+                ..Default::default()
+            }
+        };
+
+        viuer::print_from_file(&item.file_path, &conf)?;
+        Ok(())
+    }
+
+    /// Print gif preview as a still, powered by `viuer` crate.
+    fn preview_gif(&self, item: &ItemInfo) -> Result<(), FxError> {
+        let mut decoder = gif::DecodeOptions::new();
+        decoder.set_memory_limit(gif::MemoryLimit(GIF_MEMORY_LIMIT));
+        // Read the file header
+        let file = std::fs::File::open(&item.file_path)?;
+        let mut decoder = decoder.read_info(file)?;
+        if let Some(frame) = decoder.read_next_frame()? {
+            let mut vec: Vec<u8> = vec![];
+            let mut encoder = if frame.palette.is_some() {
+                gif::Encoder::new(
+                    &mut vec,
+                    frame.width,
+                    frame.height,
+                    &frame.palette.clone().unwrap(),
+                )?
+            } else {
+                gif::Encoder::new(&mut vec, frame.width, frame.height, &[])?
+            };
+            encoder.write_frame(&frame)?;
+            drop(encoder);
+
+            let dyn_image = image::load_from_memory_with_format(&vec, image::ImageFormat::Gif)?;
+            let dimensions = dyn_image.dimensions();
+
+            let is_portrait = (self.preview_space.0 as u32) * dimensions.1
+                >= (((self.preview_space.1 - 1) * 2) as u32) * dimensions.0;
+            //Set viuer config.
+            let config = if is_portrait {
+                viuer::Config {
+                    x: self.preview_start.0 - 1,
+                    y: self.preview_start.1 as i16 - 1,
+                    height: Some((self.preview_space.1 - 1).into()),
+                    use_kitty: false,
+                    use_iterm: true,
+                    ..Default::default()
+                }
+            } else {
+                viuer::Config {
+                    x: self.preview_start.0 - 1,
+                    y: self.preview_start.1 as i16 - 1,
+                    width: Some((self.preview_space.0 - 1).into()),
+                    use_kitty: false,
+                    use_iterm: true,
+                    ..Default::default()
+                }
+            };
+            viuer::print(&dyn_image, &config)?;
+        }
+        Ok(())
+    }
+
+    // Print image preview, powered by `chafa` (optional dependency).
+    fn preview_by_chafa(&self, item: &ItemInfo, y: u16) -> Result<(), FxError> {
         let wxh = match self.split {
             Split::Vertical => {
                 format!("--size={}x{}", self.preview_space.0, self.preview_space.1)

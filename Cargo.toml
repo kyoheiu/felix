@@ -35,6 +35,9 @@ flate2 = "1.0.26"
 lzma-rs = "0.2.0"
 zstd = "0.11.2"
 unicode-width = "0.1.10"
+viuer = "0.6.2"
+image = "0.24.5"
+gif = "0.12.0"
 
 [dev-dependencies]
 devtimer = "4.0.0"
