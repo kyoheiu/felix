@@ -1694,7 +1694,9 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                 //If you use kitty, you must clear the screen by the escape sequence or the previewed image remains.
                 if state.layout.is_kitty && state.layout.preview {
                     if let Ok(item) = state.get_item() {
-                        if item.preview_type == Some(PreviewType::Image) {
+                        if item.preview_type == Some(PreviewType::Still)
+                            || item.preview_type == Some(PreviewType::Gif)
+                        {
                             print!("{}", CLRSCR);
                             state.clear_and_show_headline();
                             state.list_up();
