@@ -13,7 +13,36 @@
 ### Changed
 - MSRV -> 1.63.0
 
-- Print `[RO]` on the headline if user do not have the write permission on the directory. This is available only on UNIX for now.
+- Create temp file or directory by `af` or `ad` respectively. This feature has to feel like more "modal", so for now I comment out this feature.
+
+## v2.3.0 (2023-05-26)
+
+### Changed
+
+- Add extra config file path for macOS: `/Users/$USER/.config/felix/config.yaml` will be read after `$HOME/Library/Application Support/felix/config.yaml`.
+- If config file is not found, or found one is broken, felix launches with the default configuration, without creating new one.
+- If the current directory is read-only, `dd`, `Vd` and `p` is disabled in the first place.
+- Bump up MSRV to 1.65.
+
+### Added
+
+- Add `is_ro` field to `State`.
+
+### Removed
+
+- NetBSD install test. It often failed while setting up the VM, which had nothing with felix.
+
+## v2.2.8 (2023-05-19)
+
+### Fixed
+
+- Kitty-specific: Enable scrolling of the preview text by redrawing the screen only when needed (this also improves the perfomance entirely).
+
+## v2.2.7 (2023-05-05)
+
+### Added
+
+- Print `[RO]` on the headline if user does not have the write permission on the directory. This is available only on UNIX for now.
 
 ## v2.2.6 (2023-04-24)
 

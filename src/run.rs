@@ -1,7 +1,7 @@
-use super::config::{make_config_if_not_exists, CONFIG_FILE};
+use super::config::FELIX;
 use super::errors::FxError;
 use super::functions::*;
-use super::layout::Split;
+use super::layout::{PreviewType, Split};
 use super::nums::*;
 use super::op::*;
 use super::session::*;
@@ -20,14 +20,15 @@ use std::panic;
 use std::path::PathBuf;
 use std::time::Instant;
 
-pub const TRASH: &str = "Trash";
+const TRASH: &str = "Trash";
+const SESSION_FILE: &str = ".session";
 /// Where the item list starts to scroll.
 const SCROLL_POINT: u16 = 3;
 const CLRSCR: &str = "\x1B[2J";
 const INITIAL_POS_SEARCH: usize = 3;
 const INITIAL_POS_SHELL: u16 = 3;
 
-/// Launch the app. If initializing goes wrong, return error.
+/// Launch the app. If initialization goes wrong, return error.
 pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     //Check if argument path is valid.
     if !&arg.exists() {
@@ -42,58 +43,40 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         ));
     }
 
-    //Prepare config and data local path.
-    let config_dir_path = {
-        let mut path = dirs::config_dir()
-            .ok_or_else(|| FxError::Dirs("Cannot read the config directory.".to_string()))?;
-        path.push(FELIX);
-        path
-    };
+    //Prepare data local and trash dir path.
     let data_local_path = {
         let mut path = dirs::data_local_dir()
             .ok_or_else(|| FxError::Dirs("Cannot read the data local directory.".to_string()))?;
         path.push(FELIX);
         path
     };
-    if !config_dir_path.exists() {
-        std::fs::create_dir_all(&config_dir_path)?;
-    }
     if !data_local_path.exists() {
         std::fs::create_dir_all(&data_local_path)?;
     }
 
-    //Set config file and trash dir path.
-    let config_file_path = {
-        let mut path = config_dir_path;
-        path.push(CONFIG_FILE);
-        path
-    };
     let trash_dir_path = {
         let mut path = data_local_path.clone();
         path.push(TRASH);
         path
     };
-
-    //Make config file and trash directory if not exists.
-    make_config_if_not_exists(&config_file_path, &trash_dir_path)?;
+    if !trash_dir_path.exists() {
+        std::fs::create_dir_all(&trash_dir_path)?;
+    }
 
     //If `-l / --log` is set, initialize logger.
     if log {
         init_log(&data_local_path)?;
     }
 
-    //If session file does not exist (i.e. first launch), make it.
-    let session_file_path = {
+    //Set the session file path.
+    let session_path = {
         let mut path = data_local_path;
         path.push(SESSION_FILE);
         path
     };
-    if !session_file_path.exists() {
-        make_session(&session_file_path)?;
-    }
 
-    //Initialize app state.
-    let mut state = State::new(&config_file_path, &session_file_path)?;
+    //Initialize app state. Inside State::new(), config file is read or created.
+    let mut state = State::new(&session_path)?;
     state.trash_dir = trash_dir_path;
     state.current_dir = if cfg!(not(windows)) {
         // If executed this on windows, "//?" will be inserted at the beginning of the path.
@@ -101,9 +84,13 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     } else {
         arg
     };
+    state.is_ro = match has_write_permission(&state.current_dir) {
+        Ok(b) => !b,
+        Err(_) => false,
+    };
 
     //If the main function causes panic, catch it.
-    let result = panic::catch_unwind(|| _run(state, session_file_path));
+    let result = panic::catch_unwind(|| _run(state, session_path));
     leave_raw_mode();
 
     if let Err(panic) = result {
@@ -701,6 +688,14 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
 
                                             KeyCode::Char('d') => {
+                                                //If read-only, deleting is disabled.
+                                                if state.is_ro {
+                                                    print_warning(
+                                                        "Cannot delete item in this directory.",
+                                                        state.layout.y,
+                                                    );
+                                                    continue;
+                                                }
                                                 print_info("DELETE: Processing...", state.layout.y);
                                                 let start = Instant::now();
                                                 screen.flush()?;
@@ -870,9 +865,16 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     }
                                 }
                             },
-
                             //delete
                             KeyCode::Char('d') => {
+                                //If read-only, deleting is disabled.
+                                if state.is_ro {
+                                    print_warning(
+                                        "Cannot delete in this directory.",
+                                        state.layout.y,
+                                    );
+                                    continue;
+                                }
                                 if len == 0 {
                                     continue;
                                 } else {
@@ -912,7 +914,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 };
                                                 let duration = duration_to_string(start.elapsed());
                                                 print_info(
-                                                    format!("1 item deleted [{}]", duration),
+                                                    format!("1 item deleted. [{}]", duration),
                                                     state.layout.y,
                                                 );
                                                 state.move_cursor(state.layout.y);
@@ -944,7 +946,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             state.yank_item(false);
                                             go_to_and_rest_info();
                                             hide_cursor();
-                                            print_info("1 item yanked", state.layout.y);
+                                            print_info("1 item yanked.", state.layout.y);
                                         }
 
                                         _ => {
@@ -958,6 +960,14 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                             //put
                             KeyCode::Char('p') => {
+                                //If read-only, putting is disabled.
+                                if state.is_ro {
+                                    print_warning(
+                                        "Cannot put into this directory.",
+                                        state.layout.y,
+                                    );
+                                    continue;
+                                }
                                 if state.registered.is_empty() {
                                     continue;
                                 }
@@ -977,9 +987,9 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 let registered_len = state.registered.len();
                                 let mut put_message = registered_len.to_string();
                                 if registered_len == 1 {
-                                    let _ = write!(put_message, " item inserted [{}]", duration);
+                                    let _ = write!(put_message, " item inserted. [{}]", duration);
                                 } else {
-                                    let _ = write!(put_message, " items inserted [{}]", duration);
+                                    let _ = write!(put_message, " items inserted. [{}]", duration);
                                 }
                                 print_info(put_message, state.layout.y);
                             }
@@ -1593,6 +1603,60 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                             }
 
+                            //Add new temp file or directory.
+                            //It has to feel like more "modal", so I comment this out for now.
+                            // KeyCode::Char('a') => {
+                            //     to_info_line();
+                            //     clear_current_line();
+                            //     print!("a");
+                            //     show_cursor();
+                            //     screen.flush()?;
+
+                            //     if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                            //         match code {
+                            //             //Add new file
+                            //             KeyCode::Char('f') => {
+                            //                 hide_cursor();
+                            //                 match state.create_temp(false) {
+                            //                     Err(e) => {
+                            //                         print_warning(e, state.layout.y);
+                            //                         continue;
+                            //                     }
+                            //                     Ok(p) => {
+                            //                         state.reload(state.layout.y)?;
+                            //                         print_info(
+                            //                             format!("New file {} added.", p.display()),
+                            //                             state.layout.y,
+                            //                         );
+                            //                     }
+                            //                 }
+                            //             }
+                            //             //Add new directory
+                            //             KeyCode::Char('d') => {
+                            //                 hide_cursor();
+                            //                 match state.create_temp(true) {
+                            //                     Err(e) => {
+                            //                         print_warning(e, state.layout.y);
+                            //                         continue;
+                            //                     }
+                            //                     Ok(p) => {
+                            //                         state.reload(state.layout.y)?;
+                            //                         print_info(
+                            //                             format!("New dir {} added.", p.display()),
+                            //                             state.layout.y,
+                            //                         );
+                            //                     }
+                            //                 }
+                            //             }
+                            //             _ => {
+                            //                 go_to_and_rest_info();
+                            //                 hide_cursor();
+                            //                 state.move_cursor(state.layout.y);
+                            //             }
+                            //         }
+                            //     }
+                            // }
+
                             //exit by ZZ
                             KeyCode::Char('Z') => {
                                 delete_cursor();
@@ -1627,13 +1691,17 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         continue;
                     }
                 }
-                //If you use kitty, you must clear the screen by the escape sequence or the previewed image that chafa prints will remain.
-                if state.layout.is_kitty && state.layout.preview && state.layout.has_chafa {
-                    print!("{}", CLRSCR);
-                    state.clear_and_show_headline();
-                    state.list_up();
-                    state.move_cursor(state.layout.y);
-                    screen.flush()?;
+                //If you use kitty, you must clear the screen by the escape sequence or the previewed image remains.
+                if state.layout.is_kitty && state.layout.preview {
+                    if let Ok(item) = state.get_item() {
+                        if item.preview_type == Some(PreviewType::Image) {
+                            print!("{}", CLRSCR);
+                            state.clear_and_show_headline();
+                            state.list_up();
+                            state.move_cursor(state.layout.y);
+                            screen.flush()?;
+                        }
+                    }
                 }
             }
             Event::Resize(column, row) => {
@@ -1689,21 +1757,4 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
     info!("===FINISH===");
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn zoxide_test() {
-        let output = std::process::Command::new("zoxide")
-            .args(["query", "felix"])
-            .output()
-            .unwrap();
-        let stdout = std::str::from_utf8(&output.stdout).unwrap().trim();
-        println!("{stdout}");
-        let path = PathBuf::from(stdout);
-        println!("{:?}", path.canonicalize());
-    }
 }
