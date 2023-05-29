@@ -203,6 +203,13 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                     },
                     KeyModifiers::NONE | KeyModifiers::SHIFT => {
                         match code {
+                            //Debug print.
+                            KeyCode::Char('P') => {
+                                if std::env::var("RUST_LOG") == Ok("debug".to_string()) {
+                                    println!("{:?}", state.registers);
+                                }
+                            }
+
                             //Go up. If lists exceed max-row, lists "scrolls" before the top of the list
                             KeyCode::Char('j') | KeyCode::Down => {
                                 if len == 0 || state.layout.nums.index == len - 1 {
