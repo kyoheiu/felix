@@ -707,7 +707,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 let start = Instant::now();
                                                 screen.flush()?;
 
-                                                state.registered.clear();
+                                                state.registers.unnamed.clear();
                                                 let cloned = state.list.clone();
                                                 let selected: Vec<ItemInfo> = cloned
                                                     .into_iter()
@@ -780,7 +780,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 state.reset_selection();
                                                 state.list_up();
                                                 let mut yank_message: String =
-                                                    state.registered.len().to_string();
+                                                    state.registers.unnamed.len().to_string();
                                                 yank_message.push_str(" items yanked");
                                                 print_info(yank_message, state.layout.y);
                                                 break;
@@ -975,14 +975,14 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     );
                                     continue;
                                 }
-                                if state.registered.is_empty() {
+                                if state.registers.unnamed.is_empty() {
                                     continue;
                                 }
                                 print_info("PUT: Processing...", state.layout.y);
                                 screen.flush()?;
                                 let start = Instant::now();
 
-                                let targets = state.registered.clone();
+                                let targets = state.registers.unnamed.clone();
                                 if let Err(e) = state.put_items(&targets, None) {
                                     print_warning(e, state.layout.y);
                                     continue;
@@ -991,7 +991,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 state.reload(state.layout.y)?;
 
                                 let duration = duration_to_string(start.elapsed());
-                                let registered_len = state.registered.len();
+                                let registered_len = state.registers.unnamed.len();
                                 let mut put_message = registered_len.to_string();
                                 if registered_len == 1 {
                                     let _ = write!(put_message, " item inserted. [{}]", duration);

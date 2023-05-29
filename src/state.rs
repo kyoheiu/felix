@@ -14,6 +14,7 @@ use chrono::prelude::*;
 use crossterm::event::{Event, KeyCode, KeyEvent};
 use crossterm::style::Stylize;
 use log::{error, info};
+use std::collections::VecDeque;
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::ffi::OsStr;
@@ -46,13 +47,21 @@ pub struct State {
     pub trash_dir: PathBuf,
     pub default: String,
     pub commands: Option<BTreeMap<String, String>>,
-    pub registered: Vec<ItemInfo>,
+    pub registers: Registers,
     pub operations: Operation,
     pub c_memo: Vec<StateMemo>,
     pub p_memo: Vec<StateMemo>,
     pub keyword: Option<String>,
     pub layout: Layout,
     pub is_ro: bool,
+}
+
+#[derive(Debug)]
+pub struct Registers {
+    pub unnamed: Vec<ItemInfo>,
+    pub zero: Vec<ItemInfo>,
+    pub numbered: VecDeque<Vec<ItemInfo>>,
+    pub named: BTreeMap<char, Vec<ItemInfo>>,
 }
 
 #[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -123,7 +132,12 @@ impl State {
 
         Ok(State {
             list: Vec::new(),
-            registered: Vec::new(),
+            registers: Registers {
+                unnamed: vec![],
+                zero: vec![],
+                numbered: VecDeque::new(),
+                named: BTreeMap::new(),
+            },
             operations: Operation {
                 pos: 0,
                 op_list: Vec::new(),
@@ -341,7 +355,12 @@ impl State {
             ));
         }
 
-        self.registered.clear();
+        //Prepare register (unnamed and numbered[0])
+        self.registers.unnamed.clear();
+        if self.registers.numbered.len() == 9 {
+            self.registers.numbered.pop_back();
+        }
+        self.registers.numbered.push_front(vec![]);
         let total_selected = targets.len();
         let mut trash_vec = Vec::new();
         for (i, item) in targets.iter().enumerate() {
@@ -511,19 +530,27 @@ impl State {
         buf.file_path = file_path;
         buf.file_name = file_name;
         buf.selected = false;
-        self.registered.push(buf);
+
+        self.registers.unnamed.push(buf.clone());
+        self.registers.numbered[0].push(buf);
     }
 
     /// Register selected items to the registry.
     pub fn yank_item(&mut self, selected: bool) {
-        self.registered.clear();
+        //Clear both unnamed and numbered[0] register
+        self.registers.unnamed.clear();
+        self.registers.zero.clear();
         if selected {
+            let mut v = vec![];
             for item in self.list.iter_mut().filter(|item| item.selected) {
-                self.registered.push(item.clone());
+                v.push(item.clone());
             }
+            self.registers.unnamed = v.clone();
+            self.registers.zero = v;
         } else if let Ok(item) = self.get_item() {
-            let item = item.clone();
-            self.registered.push(item);
+            let item = vec![item.clone()];
+            self.registers.unnamed = item.clone();
+            self.registers.zero = item;
         }
     }
 
@@ -645,13 +672,13 @@ impl State {
     /// Put single directory recursively to current or target directory.
     fn put_dir(
         &mut self,
-        buf: &ItemInfo,
+        item: &ItemInfo,
         target_dir: &Option<PathBuf>,
         name_set: &mut BTreeSet<String>,
     ) -> Result<PathBuf, FxError> {
         let mut base: usize = 0;
         let mut target: PathBuf = PathBuf::new();
-        let original_path = &buf.file_path;
+        let original_path = &item.file_path;
 
         let len = walkdir::WalkDir::new(original_path).into_iter().count();
         let unit = len / 5;
@@ -673,7 +700,7 @@ impl State {
                 base = entry_path.iter().count();
 
                 if original_path.parent() == Some(&self.trash_dir) {
-                    let rename: String = buf.file_name.chars().skip(TIME_PREFIX).collect();
+                    let rename: String = item.file_name.chars().skip(TIME_PREFIX).collect();
                     target = match &target_dir {
                         None => self.current_dir.join(&rename),
                         Some(path) => path.join(&rename),
@@ -681,7 +708,7 @@ impl State {
                     let rename = rename_dir(&rename, name_set);
                     name_set.insert(rename);
                 } else {
-                    let rename = rename_dir(&buf.file_name, name_set);
+                    let rename = rename_dir(&item.file_name, name_set);
                     target = match &target_dir {
                         None => self.current_dir.join(&rename),
                         Some(path) => path.join(&rename),
