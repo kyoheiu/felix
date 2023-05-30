@@ -535,11 +535,8 @@ impl State {
         self.registers.numbered[0].push(buf);
     }
 
-    /// Register selected items to the registry.
+    /// Register selected items to unnamed and zero registers.
     pub fn yank_item(&mut self, selected: bool) {
-        //Clear both unnamed and numbered[0] register
-        self.registers.unnamed.clear();
-        self.registers.zero.clear();
         if selected {
             let mut v = vec![];
             for item in self.list.iter_mut().filter(|item| item.selected) {
