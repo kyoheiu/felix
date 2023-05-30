@@ -246,7 +246,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                             //Go to top
                             KeyCode::Char('g') => {
-                                go_to_and_rest_info();
+                                go_to_info_line_and_reset();
                                 print!("g");
                                 show_cursor();
                                 screen.flush()?;
@@ -412,7 +412,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     if let Event::Key(KeyEvent { code, .. }) = event::read()? {
                                         match code {
                                             KeyCode::Esc => {
-                                                go_to_and_rest_info();
+                                                go_to_info_line_and_reset();
                                                 hide_cursor();
                                                 state.move_cursor(state.layout.y);
                                                 break 'zoxide;
@@ -438,7 +438,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                             KeyCode::Backspace => {
                                                 if current_pos == initial_pos + 1 {
-                                                    go_to_and_rest_info();
+                                                    go_to_info_line_and_reset();
                                                     hide_cursor();
                                                     state.move_cursor(state.layout.y);
                                                     break 'zoxide;
@@ -667,7 +667,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                             }
 
                                                             _ => {
-                                                                go_to_and_rest_info();
+                                                                go_to_info_line_and_reset();
                                                                 hide_cursor();
                                                                 state.move_cursor(state.layout.y);
                                                             }
@@ -927,7 +927,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 state.move_cursor(state.layout.y);
                                             }
                                             _ => {
-                                                go_to_and_rest_info();
+                                                go_to_info_line_and_reset();
                                                 hide_cursor();
                                                 state.move_cursor(state.layout.y);
                                             }
@@ -951,13 +951,13 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     match code {
                                         KeyCode::Char('y') => {
                                             state.yank_item(false);
-                                            go_to_and_rest_info();
+                                            go_to_info_line_and_reset();
                                             hide_cursor();
                                             print_info("1 item yanked.", state.layout.y);
                                         }
 
                                         _ => {
-                                            go_to_and_rest_info();
+                                            go_to_info_line_and_reset();
                                             hide_cursor();
                                             state.move_cursor(state.layout.y);
                                         }
@@ -1046,7 +1046,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
 
                                             KeyCode::Esc => {
-                                                go_to_and_rest_info();
+                                                go_to_info_line_and_reset();
                                                 hide_cursor();
                                                 state.move_cursor(state.layout.y);
                                                 break;
@@ -1151,7 +1151,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     if let Event::Key(KeyEvent { code, .. }) = event::read()? {
                                         match code {
                                             KeyCode::Enter => {
-                                                go_to_and_rest_info();
+                                                go_to_info_line_and_reset();
                                                 state.keyword = Some(keyword.iter().collect());
                                                 state.move_cursor(state.layout.y);
                                                 break;
@@ -1323,7 +1323,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     if let Event::Key(KeyEvent { code, .. }) = event::read()? {
                                         match code {
                                             KeyCode::Esc => {
-                                                go_to_and_rest_info();
+                                                go_to_info_line_and_reset();
                                                 hide_cursor();
                                                 state.move_cursor(state.layout.y);
                                                 break 'command;
@@ -1349,7 +1349,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                             KeyCode::Backspace => {
                                                 if current_pos == INITIAL_POS_SHELL {
-                                                    go_to_and_rest_info();
+                                                    go_to_info_line_and_reset();
                                                     hide_cursor();
                                                     state.move_cursor(state.layout.y);
                                                     break 'command;
@@ -1389,7 +1389,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 let commands: Vec<&str> =
                                                     commands.split_whitespace().collect();
                                                 if commands.is_empty() {
-                                                    go_to_and_rest_info();
+                                                    go_to_info_line_and_reset();
                                                     state.move_cursor(state.layout.y);
                                                     break;
                                                 }
@@ -1667,7 +1667,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                             //exit by ZZ
                             KeyCode::Char('Z') => {
                                 delete_cursor();
-                                go_to_and_rest_info();
+                                go_to_info_line_and_reset();
                                 print!("Z");
                                 show_cursor();
                                 screen.flush()?;
@@ -1679,7 +1679,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         }
 
                                         _ => {
-                                            go_to_and_rest_info();
+                                            go_to_info_line_and_reset();
                                             hide_cursor();
                                             state.move_cursor(state.layout.y);
                                         }

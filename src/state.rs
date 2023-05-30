@@ -1188,13 +1188,13 @@ impl State {
                     if self.current_dir == self.trash_dir {
                         self.reload(BEGINNING_ROW)?;
                     }
-                    go_to_and_rest_info();
+                    go_to_info_line_and_reset();
                     print_info("Trash dir emptied", self.layout.y);
                     self.move_cursor(self.layout.y);
                     screen.flush()?;
                 }
                 _ => {
-                    go_to_and_rest_info();
+                    go_to_info_line_and_reset();
                     self.move_cursor(self.layout.y);
                 }
             }
