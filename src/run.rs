@@ -1307,6 +1307,99 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                             },
 
+                            //tinker with registers!
+                            KeyCode::Char('"') => {
+                                delete_cursor();
+                                to_info_line();
+                                clear_current_line();
+                                print!("\"");
+                                show_cursor();
+                                screen.flush()?;
+
+                                let mut command: Vec<char> = Vec::new();
+
+                                let mut current_pos = INITIAL_POS_SHELL;
+                                'command: loop {
+                                    if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                                        match code {
+                                            KeyCode::Esc => {
+                                                go_to_info_line_and_reset();
+                                                hide_cursor();
+                                                state.move_cursor(state.layout.y);
+                                                break 'command;
+                                            }
+
+                                            KeyCode::Left => {
+                                                if current_pos == INITIAL_POS_SHELL {
+                                                    continue;
+                                                };
+                                                current_pos -= 1;
+                                                move_left(1);
+                                            }
+
+                                            KeyCode::Right => {
+                                                if current_pos as usize
+                                                    == command.len() + INITIAL_POS_SHELL as usize
+                                                {
+                                                    continue;
+                                                };
+                                                current_pos += 1;
+                                                move_right(1);
+                                            }
+
+                                            KeyCode::Backspace => {
+                                                if current_pos == INITIAL_POS_SHELL {
+                                                    go_to_info_line_and_reset();
+                                                    hide_cursor();
+                                                    state.move_cursor(state.layout.y);
+                                                    break 'command;
+                                                } else {
+                                                    command.remove(
+                                                        (current_pos - INITIAL_POS_SHELL - 1)
+                                                            .into(),
+                                                    );
+                                                    current_pos -= 1;
+
+                                                    clear_current_line();
+                                                    to_info_line();
+                                                    print!(
+                                                        "\"{}",
+                                                        &command.iter().collect::<String>()
+                                                    );
+                                                    move_to(current_pos, 2);
+                                                }
+                                            }
+
+                                            KeyCode::Char(c) => {
+                                                command.insert(
+                                                    (current_pos - INITIAL_POS_SHELL).into(),
+                                                    c,
+                                                );
+                                                current_pos += 1;
+                                                clear_current_line();
+                                                to_info_line();
+                                                print!("\"{}", &command.iter().collect::<String>(),);
+                                                move_to(current_pos, 2);
+                                            }
+
+                                            KeyCode::Enter => {
+                                                go_to_info_line_and_reset();
+                                                hide_cursor();
+                                                if command.len() > 4 || command.len() < 3 {
+                                                    state.move_cursor(state.layout.y);
+                                                    break 'command;
+                                                }
+                                                state.move_cursor(state.layout.y);
+                                                break 'command;
+                                            }
+
+                                            _ => continue,
+                                        }
+                                        screen.flush()?;
+                                    }
+                                }
+                            }
+
                             //shell mode
                             KeyCode::Char(':') => {
                                 delete_cursor();
