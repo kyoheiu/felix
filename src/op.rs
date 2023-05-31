@@ -54,6 +54,20 @@ impl Operation {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct RegOperation {
+    pub reg: char,
+    pub kind: RegOpKind,
+}
+
+#[derive(Debug, Clone)]
+pub enum RegOpKind {
+    Yank,
+    Delete,
+    Put,
+    None,
+}
+
 fn log(op: &OpKind) {
     match op {
         OpKind::Put(op) => {

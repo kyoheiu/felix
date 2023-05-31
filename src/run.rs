@@ -967,38 +967,9 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                             //put
                             KeyCode::Char('p') => {
-                                //If read-only, putting is disabled.
-                                if state.is_ro {
-                                    print_warning(
-                                        "Cannot put into this directory.",
-                                        state.layout.y,
-                                    );
-                                    continue;
-                                }
-                                if state.registers.unnamed.is_empty() {
-                                    continue;
-                                }
-                                print_info("PUT: Processing...", state.layout.y);
-                                screen.flush()?;
-                                let start = Instant::now();
-
-                                let targets = state.registers.unnamed.clone();
-                                if let Err(e) = state.put_items(&targets, None) {
+                                if let Err(e) = state.put(&mut screen) {
                                     print_warning(e, state.layout.y);
-                                    continue;
                                 }
-
-                                state.reload(state.layout.y)?;
-
-                                let duration = duration_to_string(start.elapsed());
-                                let registered_len = state.registers.unnamed.len();
-                                let mut put_message = registered_len.to_string();
-                                if registered_len == 1 {
-                                    let _ = write!(put_message, " item inserted. [{}]", duration);
-                                } else {
-                                    let _ = write!(put_message, " items inserted. [{}]", duration);
-                                }
-                                print_info(put_message, state.layout.y);
                             }
 
                             //rename
@@ -1385,10 +1356,48 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             KeyCode::Enter => {
                                                 go_to_info_line_and_reset();
                                                 hide_cursor();
-                                                if command.len() > 4 || command.len() < 3 {
-                                                    state.move_cursor(state.layout.y);
+                                                //check the length of the input and the char
+                                                if command.len() > 3
+                                                    || command.len() < 2
+                                                    || !command[0].is_ascii_alphanumeric()
+                                                {
+                                                    print_warning(
+                                                        "Input not supported.",
+                                                        state.layout.y,
+                                                    );
                                                     break 'command;
                                                 }
+
+                                                let op = RegOperation {
+                                                    reg: command[0],
+                                                    kind: match command[1..]
+                                                        .iter()
+                                                        .collect::<String>()
+                                                        .as_str()
+                                                    {
+                                                        "yy" => RegOpKind::Yank,
+                                                        "dd" => RegOpKind::Delete,
+                                                        "p" => RegOpKind::Put,
+                                                        _ => RegOpKind::None,
+                                                    },
+                                                };
+                                                let target = match op.reg {
+                                                    '0' => state.registers.zero.clone(),
+                                                    '1'..='9' => state
+                                                        .registers
+                                                        .numbered
+                                                        .get(op.reg.to_digit(10).unwrap() as usize)
+                                                        .unwrap()
+                                                        .clone(),
+                                                    'a'..='z' => state
+                                                        .registers
+                                                        .named
+                                                        .get(&op.reg)
+                                                        .unwrap()
+                                                        .clone(),
+                                                    _ => vec![],
+                                                };
+
                                                 state.move_cursor(state.layout.y);
                                                 break 'command;
                                             }

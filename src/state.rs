@@ -18,11 +18,13 @@ use std::collections::VecDeque;
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::ffi::OsStr;
+use std::fmt::Write as _;
 use std::fs;
 use std::io::Stdout;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, ExitStatus, Stdio};
+use std::time::Instant;
 use std::time::UNIX_EPOCH;
 use syntect::highlighting::{Theme, ThemeSet};
 
@@ -355,12 +357,6 @@ impl State {
             ));
         }
 
-        //Prepare register (unnamed and numbered[0])
-        self.registers.unnamed.clear();
-        if self.registers.numbered.len() == 9 {
-            self.registers.numbered.pop_back();
-        }
-        self.registers.numbered.push_front(vec![]);
         let total_selected = targets.len();
         let mut trash_vec = Vec::new();
         for (i, item) in targets.iter().enumerate() {
@@ -551,9 +547,39 @@ impl State {
         }
     }
 
+    pub fn put(&mut self, screen: &mut Stdout) -> Result<(), FxError> {
+        //If read-only, putting is disabled.
+        if self.is_ro {
+            print_warning("Cannot put into this directory.", self.layout.y);
+            return Ok(());
+        }
+        if self.registers.unnamed.is_empty() {
+            return Ok(());
+        }
+        print_info("PUT: Processing...", self.layout.y);
+        screen.flush()?;
+        let start = Instant::now();
+
+        let targets = self.registers.unnamed.clone();
+        self.put_items(&targets, None)?;
+
+        self.reload(self.layout.y)?;
+
+        let duration = duration_to_string(start.elapsed());
+        let registered_len = self.registers.unnamed.len();
+        let mut put_message = registered_len.to_string();
+        if registered_len == 1 {
+            let _ = write!(put_message, " item inserted. [{}]", duration);
+        } else {
+            let _ = write!(put_message, " items inserted. [{}]", duration);
+        }
+        print_info(put_message, self.layout.y);
+        Ok(())
+    }
+
     /// Put items in registry to the current directory or target directory.
     /// Only Redo command uses target directory.
-    pub fn put_items(
+    fn put_items(
         &mut self,
         targets: &[ItemInfo],
         target_dir: Option<PathBuf>,
