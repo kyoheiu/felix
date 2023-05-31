@@ -60,10 +60,27 @@ pub struct State {
 
 #[derive(Debug)]
 pub struct Registers {
-    pub unnamed: Vec<ItemInfo>,
-    pub zero: Vec<ItemInfo>,
-    pub numbered: VecDeque<Vec<ItemInfo>>,
-    pub named: BTreeMap<char, Vec<ItemInfo>>,
+    pub unnamed: Vec<ItemBuffer>,
+    pub zero: Vec<ItemBuffer>,
+    pub numbered: VecDeque<Vec<ItemBuffer>>,
+    pub named: BTreeMap<char, Vec<ItemBuffer>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ItemBuffer {
+    pub file_type: FileType,
+    pub file_name: String,
+    pub file_path: std::path::PathBuf,
+}
+
+impl ItemBuffer {
+    pub fn new(item: &ItemInfo) -> Self {
+        ItemBuffer {
+            file_type: item.file_type,
+            file_name: item.file_name.clone(),
+            file_path: item.file_path.clone(),
+        }
+    }
 }
 
 #[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -350,32 +367,32 @@ impl State {
     /// Move items from the current directory to trash directory.
     /// This does not actually delete items.
     /// If you'd like to delete, use `:empty` after this, or just `:rm`.  
-    pub fn remove_and_yank(&mut self, targets: &[ItemInfo], new_op: bool) -> Result<(), FxError> {
+
+    pub fn remove_and_yank(&mut self, targets: &[ItemBuffer], new_op: bool) -> Result<(), FxError> {
         if self.current_dir == self.trash_dir {
             return Err(FxError::Io(
                 "Use `:empty` to delete item in the trash dir.".to_string(),
             ));
         }
 
+        self.registers.numbered.push_front(vec![]);
         let total_selected = targets.len();
         let mut trash_vec = Vec::new();
         for (i, item) in targets.iter().enumerate() {
-            let item = item.clone();
-
             delete_cursor();
             to_info_line();
             clear_current_line();
             print!("{}", display_count(i, total_selected));
 
             match item.file_type {
-                FileType::Directory => match self.remove_and_yank_dir(item.clone(), new_op) {
+                FileType::Directory => match self.remove_and_yank_dir(item, new_op) {
                     Err(e) => {
                         return Err(e);
                     }
                     Ok(path) => trash_vec.push(path),
                 },
                 FileType::File | FileType::Symlink => {
-                    match self.remove_and_yank_file(item.clone(), new_op) {
+                    match self.remove_and_yank_file(item, new_op) {
                         Err(e) => {
                             return Err(e);
                         }
@@ -389,6 +406,16 @@ impl State {
             }
         }
         if new_op && !trash_vec.is_empty() {
+            //save to unnamed reg
+            self.registers.unnamed = trash_vec.clone();
+            //If numbered registers is full, pop_back first
+            if self.registers.numbered.len() == 9 {
+                self.registers.numbered.pop_back();
+            }
+            //save to "1
+            self.registers.numbered.push_front(trash_vec.clone());
+
+            //Update operations value
             self.operations.branch();
             //push deleted item information to operations
             self.operations.push(OpKind::Delete(DeletedFiles {
@@ -401,49 +428,12 @@ impl State {
         Ok(())
     }
 
-    /// Move single file to trash directory.
-    fn remove_and_yank_file(
-        &mut self,
-        item: ItemInfo,
-        new_op: bool,
-    ) -> Result<Option<PathBuf>, FxError> {
-        //prepare from and to for copy
-        let from = &item.file_path;
-        let mut to = PathBuf::new();
-
-        if item.file_type == FileType::Symlink && !from.exists() {
-            match std::fs::remove_file(from) {
-                Ok(_) => Ok(None),
-                Err(_) => Err(FxError::RemoveItem(from.to_owned())),
-            }
-        } else {
-            let name = &item.file_name;
-            let mut rename = Local::now().timestamp().to_string();
-            rename.push('_');
-            rename.push_str(name);
-
-            if new_op {
-                to = self.trash_dir.join(&rename);
-
-                //copy
-                if std::fs::copy(from, &to).is_err() {
-                    return Err(FxError::PutItem(from.to_owned()));
-                }
-
-                self.push_to_registered(&item, to.clone(), rename);
-            }
-
-            //remove original
-            if std::fs::remove_file(from).is_err() {
-                return Err(FxError::RemoveItem(from.to_owned()));
-            }
-
-            Ok(Some(to))
-        }
-    }
-
     /// Move single directory recursively to trash directory.
-    fn remove_and_yank_dir(&mut self, item: ItemInfo, new_op: bool) -> Result<PathBuf, FxError> {
+    fn remove_and_yank_dir(
+        &mut self,
+        item: &ItemBuffer,
+        new_op: bool,
+    ) -> Result<ItemBuffer, FxError> {
         let mut trash_name = String::new();
         let mut base: usize = 0;
         let mut trash_path: std::path::PathBuf = PathBuf::new();
@@ -508,27 +498,60 @@ impl State {
                     }
                 }
             }
-
-            self.push_to_registered(&item, trash_path.clone(), trash_name);
         }
 
         //remove original
         if std::fs::remove_dir_all(&item.file_path).is_err() {
-            return Err(FxError::RemoveItem(item.file_path));
+            return Err(FxError::RemoveItem(item.file_path.clone()));
         }
 
-        Ok(trash_path)
+        Ok(ItemBuffer {
+            file_type: item.file_type,
+            file_name: trash_name,
+            file_path: trash_path,
+        })
     }
 
-    /// Register removed items to the registry.
-    fn push_to_registered(&mut self, item: &ItemInfo, file_path: PathBuf, file_name: String) {
-        let mut buf = item.clone();
-        buf.file_path = file_path;
-        buf.file_name = file_name;
-        buf.selected = false;
+    /// Move single file to trash directory.
+    fn remove_and_yank_file(
+        &mut self,
+        item: &ItemBuffer,
+        new_op: bool,
+    ) -> Result<Option<ItemBuffer>, FxError> {
+        //prepare from and to for copy
+        let from = &item.file_path;
+        let mut to = PathBuf::new();
 
-        self.registers.unnamed.push(buf.clone());
-        self.registers.numbered[0].push(buf);
+        if item.file_type == FileType::Symlink && !from.exists() {
+            match std::fs::remove_file(from) {
+                Ok(_) => Ok(None),
+                Err(_) => Err(FxError::RemoveItem(from.to_owned())),
+            }
+        } else {
+            let mut rename = Local::now().timestamp().to_string();
+            rename.push('_');
+            rename.push_str(&item.file_name);
+
+            if new_op {
+                to = self.trash_dir.join(&rename);
+
+                //copy
+                if std::fs::copy(from, &to).is_err() {
+                    return Err(FxError::PutItem(from.to_owned()));
+                }
+            }
+
+            //remove original
+            if std::fs::remove_file(from).is_err() {
+                return Err(FxError::RemoveItem(from.to_owned()));
+            }
+
+            Ok(Some(ItemBuffer {
+                file_type: item.file_type,
+                file_name: rename,
+                file_path: to,
+            }))
+        }
     }
 
     /// Register selected items to unnamed and zero registers.
@@ -536,12 +559,13 @@ impl State {
         if selected {
             let mut v = vec![];
             for item in self.list.iter_mut().filter(|item| item.selected) {
-                v.push(item.clone());
+                v.push(ItemBuffer::new(item));
             }
+
             self.registers.unnamed = v.clone();
             self.registers.zero = v;
         } else if let Ok(item) = self.get_item() {
-            let item = vec![item.clone()];
+            let item = vec![ItemBuffer::new(item)];
             self.registers.unnamed = item.clone();
             self.registers.zero = item;
         }
@@ -579,9 +603,9 @@ impl State {
 
     /// Put items in registry to the current directory or target directory.
     /// Only Redo command uses target directory.
-    fn put_items(
+    pub fn put_items(
         &mut self,
-        targets: &[ItemInfo],
+        targets: &[ItemBuffer],
         target_dir: Option<PathBuf>,
     ) -> Result<(), FxError> {
         //make HashSet<String> of file_name
@@ -644,7 +668,7 @@ impl State {
     /// Put single item to current or target directory.
     fn put_file(
         &mut self,
-        item: &ItemInfo,
+        item: &ItemBuffer,
         target_dir: &Option<PathBuf>,
         name_set: &mut BTreeSet<String>,
     ) -> Result<PathBuf, FxError> {
@@ -695,7 +719,7 @@ impl State {
     /// Put single directory recursively to current or target directory.
     fn put_dir(
         &mut self,
-        item: &ItemInfo,
+        item: &ItemBuffer,
         target_dir: &Option<PathBuf>,
         name_set: &mut BTreeSet<String>,
     ) -> Result<PathBuf, FxError> {
@@ -787,7 +811,7 @@ impl State {
                 print_info("UNDONE: PUT", BEGINNING_ROW);
             }
             OpKind::Delete(op) => {
-                let targets = trash_to_info(&self.trash_dir, &op.trash)?;
+                let targets = sellect_buffer(&self.trash_dir, &op.trash)?;
                 self.put_items(&targets, Some(op.dir.clone()))?;
                 self.operations.pos += 1;
                 self.update_list()?;
@@ -1625,14 +1649,19 @@ fn read_item(entry: fs::DirEntry) -> ItemInfo {
 }
 
 /// Generate item information from trash directory, in order to use when redoing.
-pub fn trash_to_info(trash_dir: &PathBuf, vec: &[PathBuf]) -> Result<Vec<ItemInfo>, FxError> {
+pub fn sellect_buffer(trash_dir: &PathBuf, vec: &[ItemBuffer]) -> Result<Vec<ItemBuffer>, FxError> {
     let total = vec.len();
     let mut count = 0;
     let mut result = Vec::new();
     for entry in fs::read_dir(trash_dir)? {
         let entry = entry?;
-        if vec.contains(&entry.path()) {
-            result.push(read_item(entry));
+        if vec
+            .iter()
+            .map(|x| x.file_path.clone())
+            .collect::<Vec<PathBuf>>()
+            .contains(&entry.path())
+        {
+            result.push(ItemBuffer::new(&read_item(entry)));
             count += 1;
             if count == total {
                 break;

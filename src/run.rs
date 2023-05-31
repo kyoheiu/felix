@@ -709,9 +709,10 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                                 state.registers.unnamed.clear();
                                                 let cloned = state.list.clone();
-                                                let selected: Vec<ItemInfo> = cloned
+                                                let selected: Vec<ItemBuffer> = cloned
                                                     .into_iter()
                                                     .filter(|item| item.selected)
+                                                    .map(|item| ItemBuffer::new(&item))
                                                     .collect();
                                                 let total = selected.len();
 
@@ -899,8 +900,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 screen.flush()?;
                                                 let start = Instant::now();
 
-                                                let target = state.get_item()?.clone();
-                                                let target = vec![target];
+                                                let target = state.get_item()?;
+                                                let target = vec![ItemBuffer::new(target)];
 
                                                 if let Err(e) = state.remove_and_yank(&target, true)
                                                 {
@@ -1368,31 +1369,18 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     break 'command;
                                                 }
 
-                                                let op = RegOperation {
-                                                    reg: command[0],
-                                                    kind: match command[1..]
-                                                        .iter()
-                                                        .collect::<String>()
-                                                        .as_str()
-                                                    {
-                                                        "yy" => RegOpKind::Yank,
-                                                        "dd" => RegOpKind::Delete,
-                                                        "p" => RegOpKind::Put,
-                                                        _ => RegOpKind::None,
-                                                    },
-                                                };
-                                                let target = match op.reg {
+                                                let target = match command[0] {
                                                     '0' => state.registers.zero.clone(),
                                                     '1'..='9' => state
                                                         .registers
                                                         .numbered
-                                                        .get(op.reg.to_digit(10).unwrap() as usize)
+                                                        .get(command[0].to_digit(10).unwrap() as usize)
                                                         .unwrap()
                                                         .clone(),
                                                     'a'..='z' => state
                                                         .registers
                                                         .named
-                                                        .get(&op.reg)
+                                                        .get(&command[0])
                                                         .unwrap()
                                                         .clone(),
                                                     _ => vec![],
