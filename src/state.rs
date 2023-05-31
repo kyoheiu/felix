@@ -375,7 +375,6 @@ impl State {
             ));
         }
 
-        self.registers.numbered.push_front(vec![]);
         let total_selected = targets.len();
         let mut trash_vec = Vec::new();
         for (i, item) in targets.iter().enumerate() {
@@ -571,21 +570,20 @@ impl State {
         }
     }
 
-    pub fn put(&mut self, screen: &mut Stdout) -> Result<(), FxError> {
+    pub fn put(&mut self, reg: Vec<ItemBuffer>, screen: &mut Stdout) -> Result<(), FxError> {
         //If read-only, putting is disabled.
         if self.is_ro {
             print_warning("Cannot put into this directory.", self.layout.y);
             return Ok(());
         }
-        if self.registers.unnamed.is_empty() {
+        if reg.is_empty() {
             return Ok(());
         }
         print_info("PUT: Processing...", self.layout.y);
         screen.flush()?;
         let start = Instant::now();
 
-        let targets = self.registers.unnamed.clone();
-        self.put_items(&targets, None)?;
+        self.put_items(&reg, None)?;
 
         self.reload(self.layout.y)?;
 

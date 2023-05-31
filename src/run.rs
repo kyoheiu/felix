@@ -968,7 +968,9 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                             //put
                             KeyCode::Char('p') => {
-                                if let Err(e) = state.put(&mut screen) {
+                                if let Err(e) =
+                                    state.put(state.registers.unnamed.clone(), &mut screen)
+                                {
                                     print_warning(e, state.layout.y);
                                 }
                             }
@@ -1374,7 +1376,11 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     '1'..='9' => state
                                                         .registers
                                                         .numbered
-                                                        .get(command[0].to_digit(10).unwrap() as usize)
+                                                        .get(
+                                                            command[0].to_digit(10).unwrap()
+                                                                as usize
+                                                                - 1,
+                                                        )
                                                         .unwrap()
                                                         .clone(),
                                                     'a'..='z' => state
@@ -1385,6 +1391,11 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                         .clone(),
                                                     _ => vec![],
                                                 };
+                                                //Assume that command is always 'put'
+                                                if let Err(e) = state.put(target, &mut screen) {
+                                                    print_warning(e, state.layout.y);
+                                                    break 'command;
+                                                }
 
                                                 state.move_cursor(state.layout.y);
                                                 break 'command;
