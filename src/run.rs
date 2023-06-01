@@ -707,12 +707,10 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 let start = Instant::now();
                                                 screen.flush()?;
 
-                                                state.registers.unnamed.clear();
-                                                let cloned = state.list.clone();
-                                                let selected: Vec<ItemBuffer> = cloned
-                                                    .into_iter()
+                                                let selected: Vec<ItemBuffer> = state.list
+                                                    .iter()
                                                     .filter(|item| item.selected)
-                                                    .map(|item| ItemBuffer::new(&item))
+                                                    .map(ItemBuffer::new)
                                                     .collect();
                                                 let total = selected.len();
 
@@ -777,11 +775,17 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
 
                                             KeyCode::Char('y') => {
-                                                state.yank_item(true);
+                                                let items: Vec<ItemBuffer> = state
+                                                    .list
+                                                    .iter()
+                                                    .filter(|item| item.selected)
+                                                    .map(ItemBuffer::new)
+                                                    .collect();
+                                                let item_len = state.yank_item(&items, None);
                                                 state.reset_selection();
                                                 state.list_up();
                                                 let mut yank_message: String =
-                                                    state.registers.unnamed.len().to_string();
+                                                    item_len.to_string();
                                                 yank_message.push_str(" items yanked");
                                                 print_info(yank_message, state.layout.y);
                                                 break;
@@ -951,10 +955,12 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 if let Event::Key(KeyEvent { code, .. }) = event::read()? {
                                     match code {
                                         KeyCode::Char('y') => {
-                                            state.yank_item(false);
-                                            go_to_info_line_and_reset();
-                                            hide_cursor();
-                                            print_info("1 item yanked.", state.layout.y);
+                                            if let Ok(item) = state.get_item() {
+                                                state.yank_item(&[ItemBuffer::new(item)], None);
+                                                go_to_info_line_and_reset();
+                                                hide_cursor();
+                                                print_info("1 item yanked.", state.layout.y);
+                                            }
                                         }
 
                                         _ => {

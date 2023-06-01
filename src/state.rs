@@ -554,20 +554,19 @@ impl State {
     }
 
     /// Register selected items to unnamed and zero registers.
-    pub fn yank_item(&mut self, selected: bool) {
-        if selected {
-            let mut v = vec![];
-            for item in self.list.iter_mut().filter(|item| item.selected) {
-                v.push(ItemBuffer::new(item));
+    pub fn yank_item(&mut self, items: &[ItemBuffer], reg: Option<char>) -> usize {
+        self.registers.unnamed = items.to_vec();
+        match reg {
+            None => {
+                self.registers.zero = items.to_vec();
             }
-
-            self.registers.unnamed = v.clone();
-            self.registers.zero = v;
-        } else if let Ok(item) = self.get_item() {
-            let item = vec![ItemBuffer::new(item)];
-            self.registers.unnamed = item.clone();
-            self.registers.zero = item;
+            Some(c) => {
+                if let Some(old) = self.registers.named.get_mut(&c) {
+                    *old = items.to_vec();
+                }
+            }
         }
+        items.len()
     }
 
     pub fn put(&mut self, reg: Vec<ItemBuffer>, screen: &mut Stdout) -> Result<(), FxError> {
