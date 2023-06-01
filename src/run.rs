@@ -957,7 +957,6 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     let mut yank_message: String = item_len.to_string();
                                     yank_message.push_str(" items yanked");
                                     print_info(yank_message, state.layout.y);
-                                    state.reset_selection();
                                 } else {
                                     //normal mode
                                     if len == 0 {
