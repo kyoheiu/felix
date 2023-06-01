@@ -55,6 +55,7 @@ pub struct State {
     pub p_memo: Vec<StateMemo>,
     pub keyword: Option<String>,
     pub layout: Layout,
+    pub v_start: Option<usize>,
     pub is_ro: bool,
 }
 
@@ -200,6 +201,7 @@ impl State {
             c_memo: Vec::new(),
             p_memo: Vec::new(),
             keyword: None,
+            v_start: None,
             is_ro: false,
         })
     }
@@ -1108,6 +1110,7 @@ impl State {
         for mut item in self.list.iter_mut() {
             item.selected = false;
         }
+        self.v_start = None;
     }
 
     pub fn highlight_matches(&mut self, keyword: &str) {
@@ -1344,6 +1347,7 @@ impl State {
                 self.reload(BEGINNING_ROW)?;
             }
         }
+        self.v_start = None;
         Ok(())
     }
 
