@@ -333,8 +333,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     if state.layout.nums.index == 0 {
                                         continue;
                                     } else {
-                                        to_info_line();
-                                        clear_current_line();
+                                        go_to_info_line_and_reset();
                                         print!("g");
                                         show_cursor();
                                         screen.flush()?;
@@ -548,8 +547,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     continue;
                                 }
                                 delete_cursor();
-                                to_info_line();
-                                clear_current_line();
+                                go_to_info_line_and_reset();
                                 print!("z");
                                 show_cursor();
 
@@ -884,8 +882,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     if len == 0 {
                                         continue;
                                     } else {
-                                        to_info_line();
-                                        clear_current_line();
+                                        go_to_info_line_and_reset();
                                         print!("d");
                                         show_cursor();
                                         screen.flush()?;
@@ -962,8 +959,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     if len == 0 {
                                         continue;
                                     }
-                                    to_info_line();
-                                    clear_current_line();
+                                    go_to_info_line_and_reset();
                                     print!("y");
                                     show_cursor();
                                     screen.flush()?;
@@ -1095,8 +1091,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     current_char_pos += 1;
                                                     current_pos += to_be_added as u16;
 
-                                                    to_info_line();
-                                                    clear_current_line();
+                                                    go_to_info_line_and_reset();
                                                     print!(
                                                         "New name: {}",
                                                         &rename.iter().collect::<String>(),
@@ -1117,8 +1112,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     current_char_pos -= 1;
                                                     current_pos -= to_be_removed as u16;
 
-                                                    to_info_line();
-                                                    clear_current_line();
+                                                    go_to_info_line_and_reset();
                                                     print!(
                                                         "New name: {}",
                                                         &rename.iter().collect::<String>(),
@@ -1146,8 +1140,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                                 delete_cursor();
                                 show_cursor();
-                                to_info_line();
-                                clear_current_line();
+                                go_to_info_line_and_reset();
                                 print!("/");
                                 screen.flush()?;
 
@@ -1221,8 +1214,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                             state.redraw(state.layout.y);
                                                         }
                                                     }
-                                                    to_info_line();
-                                                    clear_current_line();
+                                                    go_to_info_line_and_reset();
                                                     print!("/{}", key.clone());
                                                     move_to(current_pos as u16, 2);
                                                 }
@@ -1254,8 +1246,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     }
                                                 }
 
-                                                to_info_line();
-                                                clear_current_line();
+                                                go_to_info_line_and_reset();
                                                 print!("/{}", key.clone());
                                                 move_to(current_pos as u16, 2);
                                             }
@@ -1332,8 +1323,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                             //tinker with registers!
                             KeyCode::Char('"') => {
                                 delete_cursor();
-                                to_info_line();
-                                clear_current_line();
+                                go_to_info_line_and_reset();
                                 print!("\"");
                                 show_cursor();
                                 screen.flush()?;
@@ -1463,8 +1453,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     continue;
                                 }
                                 delete_cursor();
-                                to_info_line();
-                                clear_current_line();
+                                go_to_info_line_and_reset();
                                 print!(":");
                                 show_cursor();
                                 screen.flush()?;
