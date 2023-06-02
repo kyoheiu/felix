@@ -182,7 +182,11 @@ impl State {
                 },
                 sort_by: session.sort_by,
                 show_hidden: session.show_hidden,
-                preview: session.preview.unwrap_or(false),
+                side: if session.preview.unwrap_or(false) {
+                    Side::Preview
+                } else {
+                    Side::None
+                },
                 split,
                 preview_start: match split {
                     Split::Vertical => (0, 0),
@@ -883,7 +887,7 @@ impl State {
             Split::Vertical => (column + 2, BEGINNING_ROW),
             Split::Horizontal => (1, row + 2),
         };
-        self.layout.preview_space = match self.layout.preview {
+        self.layout.preview_space = match self.layout.is_preview() {
             true => match self.layout.split {
                 Split::Vertical => (original_column - column - 1, row - BEGINNING_ROW),
                 Split::Horizontal => (column, original_row - row - 1),
@@ -1356,7 +1360,7 @@ impl State {
     /// (To preview image, you must install chafa. See help).
     pub fn move_cursor(&mut self, y: u16) {
         // If preview is enabled, set the preview type, read the content (if text type) and reset the scroll.
-        if self.layout.preview {
+        if self.layout.is_preview() {
             if let Ok(item) = self.get_item_mut() {
                 if item.preview_type.is_none() {
                     set_preview_type(item);
@@ -1372,8 +1376,10 @@ impl State {
             self.print_footer(item);
 
             //Print preview if preview is on
-            if self.layout.preview {
+            if self.layout.is_preview() {
                 self.layout.print_preview(item, y);
+            } else if self.layout.is_reg() {
+                self.layout.print_reg(y);
             }
         }
         move_to(1, y);
@@ -1516,7 +1522,7 @@ impl State {
         let session = Session {
             sort_by: self.layout.sort_by.clone(),
             show_hidden: self.layout.show_hidden,
-            preview: Some(self.layout.preview),
+            preview: Some(self.layout.is_preview()),
             split: Some(self.layout.split),
         };
         let serialized = serde_yaml::to_string(&session)?;

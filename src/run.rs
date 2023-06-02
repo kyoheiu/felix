@@ -119,7 +119,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
     execute!(screen, EnterAlternateScreen)?;
 
     //If preview is on, refresh the layout.
-    if state.layout.preview {
+    if state.layout.is_preview() {
         state.update_list()?;
         let new_column = match state.layout.split {
             Split::Vertical => state.layout.terminal_column >> 1,
@@ -191,12 +191,12 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                     },
                     KeyModifiers::ALT => match code {
                         KeyCode::Char('j') | KeyCode::Down => {
-                            if state.layout.preview {
+                            if state.layout.is_preview() {
                                 state.scroll_down_preview(state.layout.y);
                             }
                         }
                         KeyCode::Char('k') | KeyCode::Up => {
-                            if state.layout.preview {
+                            if state.layout.is_preview() {
                                 state.scroll_up_preview(state.layout.y);
                             }
                         }
@@ -766,7 +766,11 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                             //Toggle whether to show preview.
                             KeyCode::Char('v') => {
-                                state.layout.preview = !state.layout.preview;
+                                if state.layout.is_preview() || state.layout.is_reg() {
+                                    state.layout.reset_side();
+                                } else {
+                                    state.layout.show_preview();
+                                }
                                 let (new_column, new_row) = state.layout.update_column_and_row()?;
                                 state.refresh(new_column, new_row, state.layout.y)?;
                             }
@@ -775,7 +779,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                             KeyCode::Char('s') => match state.layout.split {
                                 Split::Vertical => {
                                     state.layout.split = Split::Horizontal;
-                                    if state.layout.preview {
+                                    if state.layout.is_preview() || state.layout.is_reg() {
                                         let (new_column, mut new_row) = terminal_size()?;
                                         new_row /= 2;
                                         state.refresh(new_column, new_row, state.layout.y)?;
@@ -783,7 +787,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                                 Split::Horizontal => {
                                     state.layout.split = Split::Vertical;
-                                    if state.layout.preview {
+                                    if state.layout.is_preview() || state.layout.is_reg() {
                                         let (mut new_column, new_row) = terminal_size()?;
                                         new_column /= 2;
                                         state.refresh(new_column, new_row, state.layout.y)?;
@@ -1563,6 +1567,30 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                         state.show_help(&screen)?;
                                                         state.redraw(state.layout.y);
                                                         break 'command;
+                                                    } else if command == "reg" {
+                                                        //:reg
+                                                        if state.layout.is_preview() {
+                                                            state.layout.show_reg();
+                                                            state.redraw(state.layout.y);
+                                                        } else if state.layout.is_reg() {
+                                                            go_to_info_line_and_reset();
+                                                            hide_cursor();
+                                                            state.move_cursor(state.layout.y);
+                                                        } else {
+                                                            state.layout.show_reg();
+                                                            let (new_column, new_row) = state
+                                                                .layout
+                                                                .update_column_and_row()?;
+                                                            state.refresh(
+                                                                new_column,
+                                                                new_row,
+                                                                state.layout.y,
+                                                            )?;
+                                                            go_to_info_line_and_reset();
+                                                            hide_cursor();
+                                                            state.move_cursor(state.layout.y);
+                                                        }
+                                                        break 'command;
                                                     } else if command == "trash" {
                                                         //move to trash dir
                                                         state.layout.nums.reset();
@@ -1849,7 +1877,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                     }
                 }
                 //If you use kitty, you must clear the screen by the escape sequence or the previewed image remains.
-                if state.layout.is_kitty && state.layout.preview {
+                if state.layout.is_kitty && state.layout.is_preview() {
                     if let Ok(item) = state.get_item() {
                         if item.preview_type == Some(PreviewType::Image) {
                             print!("{}", CLRSCR);
@@ -1872,7 +1900,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                     panic!("Error: Too small terminal size (less than 4 rows). Please restart.");
                 };
 
-                if state.layout.preview {
+                if state.layout.is_preview() {
                     let new_column = match state.layout.split {
                         Split::Vertical => column >> 1,
                         Split::Horizontal => column,
