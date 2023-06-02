@@ -304,6 +304,23 @@ impl Layout {
             }
         }
     }
+    
+    pub fn update_column_and_row(&mut self) -> Result<(u16, u16), FxError> {
+        if self.preview {
+            match self.split {
+                Split::Vertical => {
+                    Ok((self.terminal_column >> 1,
+                    self.terminal_row))
+                }
+                Split::Horizontal => {
+                    Ok((self.terminal_row >> 1,
+                    self.terminal_column))
+                }
+            }
+        } else {
+            terminal_size()
+        }
+    }
 }
 
 /// Make app's layout according to terminal width and app's config.

@@ -767,23 +767,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                             //Toggle whether to show preview.
                             KeyCode::Char('v') => {
                                 state.layout.preview = !state.layout.preview;
-                                if state.layout.preview {
-                                    match state.layout.split {
-                                        Split::Vertical => {
-                                            let new_column = state.layout.terminal_column >> 1;
-                                            let new_row = state.layout.terminal_row;
-                                            state.refresh(new_column, new_row, state.layout.y)?;
-                                        }
-                                        Split::Horizontal => {
-                                            let new_row = state.layout.terminal_row >> 1;
-                                            let new_column = state.layout.terminal_column;
-                                            state.refresh(new_column, new_row, state.layout.y)?;
-                                        }
-                                    }
-                                } else {
-                                    let (new_column, new_row) = terminal_size()?;
-                                    state.refresh(new_column, new_row, state.layout.y)?;
-                                }
+                                let (new_column, new_row) = state.layout.update_column_and_row()?;
+                                state.refresh(new_column, new_row, state.layout.y)?;
                             }
 
                             //Toggle vertical <-> horizontal split.
