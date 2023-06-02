@@ -1395,7 +1395,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
 
                                             KeyCode::Enter => {
-                                                go_to_info_line_and_reset();
+                                                clear_current_line();
                                                 hide_cursor();
                                                 //check the length of the input and the char
                                                 if command.len() > 3
@@ -1409,34 +1409,45 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     break 'command;
                                                 }
 
-                                                let target = match command[0] {
-                                                    '0' => state.registers.zero.clone(),
-                                                    '1'..='9' => state
-                                                        .registers
-                                                        .numbered
-                                                        .get(
-                                                            command[0].to_digit(10).unwrap()
-                                                                as usize
-                                                                - 1,
-                                                        )
-                                                        .unwrap()
-                                                        .clone(),
-                                                    'a'..='z' => state
-                                                        .registers
-                                                        .named
-                                                        .get(&command[0])
-                                                        .unwrap()
-                                                        .clone(),
-                                                    _ => vec![],
-                                                };
-                                                //Assume that command is always 'put'
-                                                if let Err(e) = state.put(target, &mut screen) {
-                                                    print_warning(e, state.layout.y);
-                                                    break 'command;
-                                                }
+                                                let action: String = command[1..].iter().collect();
+                                                match action.as_str() {
+                                                    "p" => {
+                                                        let target = match command[0] {
+                                                            '0' => Some(&state.registers.zero),
+                                                            '1'..='9' => {
+                                                                state.registers.numbered.get(
+                                                                    command[0].to_digit(10).unwrap()
+                                                                        as usize
+                                                                        - 1,
+                                                                )
+                                                            }
+                                                            'a'..='z' => state
+                                                                .registers
+                                                                .named
+                                                                .get(&command[0]),
+                                                            _ => None,
+                                                        };
 
-                                                state.move_cursor(state.layout.y);
-                                                break 'command;
+                                                        if let Some(target) = target {
+                                                            let target = target.clone();
+                                                            if let Err(e) =
+                                                                state.put(target, &mut screen)
+                                                            {
+                                                                print_warning(e, state.layout.y);
+                                                                break 'command;
+                                                            }
+                                                        } else {
+                                                            print_warning(
+                                                                "Register not found.",
+                                                                state.layout.y,
+                                                            );
+                                                        }
+                                                        break 'command;
+                                                    }
+                                                    _ => {
+                                                        break 'command;
+                                                    }
+                                                }
                                             }
 
                                             _ => continue,
