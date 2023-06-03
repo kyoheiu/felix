@@ -1900,7 +1900,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                     panic!("Error: Too small terminal size (less than 4 rows). Please restart.");
                 };
 
-                if state.layout.is_preview() {
+                if state.layout.is_preview() || state.layout.is_reg() {
                     let new_column = match state.layout.split {
                         Split::Vertical => column >> 1,
                         Split::Horizontal => column,
