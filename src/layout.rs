@@ -86,7 +86,7 @@ impl Layout {
         self.side = Side::None;
     }
 
-    pub fn print_reg(&self, y: u16) {
+    pub fn print_reg(&self, reg: &[String], y: u16) {
         match self.split {
             Split::Vertical => {
                 self.clear_preview(self.preview_start.0);
@@ -96,7 +96,33 @@ impl Layout {
             }
         }
 
-        println!("This is reg.");
+        if reg.is_empty() {
+            print!("No registers.");
+            return;
+        }
+
+        match self.split {
+            Split::Vertical => {
+                for (i, line) in reg.iter().enumerate() {
+                    let row = self.preview_start.1 + i as u16;
+                    move_to(self.preview_start.0, row);
+                    print!("{}", line);
+                    if row == self.preview_space.1 {
+                        break;
+                    }
+                }
+            }
+            Split::Horizontal => {
+                for (i, line) in reg.iter().enumerate() {
+                    let row = self.preview_start.1 + i as u16;
+                    move_to(1, row);
+                    print!("{}", line);
+                    if row == self.terminal_row + self.preview_space.1 {
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     /// Print preview according to the preview type.

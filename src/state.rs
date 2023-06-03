@@ -67,6 +67,50 @@ pub struct Registers {
     pub named: BTreeMap<char, Vec<ItemBuffer>>,
 }
 
+impl Registers {
+    pub fn prepare_reg(&self) -> Vec<String> {
+        let mut v: Vec<String> = vec![];
+
+        //registers.unnamed
+        let mut unnamed = "\"\"".to_string();
+        if !self.unnamed.is_empty() {
+            for b in self.unnamed.iter() {
+                unnamed.push(' ');
+                unnamed.push_str(&b.file_name);
+            }
+            unnamed.push('\n');
+            v.push(unnamed);
+        }
+
+        //registers.zero
+        let mut zero = "\"0".to_string();
+        if !self.zero.is_empty() {
+            for b in self.zero.iter() {
+                zero.push(' ');
+                zero.push_str(&b.file_name);
+            }
+            zero.push('\n');
+            v.push(zero);
+        }
+
+        //registers.numbered
+        for i in 1..=9 {
+            if let Some(reg) = self.numbered.get(i - 1) {
+                let mut numbered = "\"".to_string();
+                numbered.push_str(&i.to_string());
+                for b in reg {
+                    numbered.push(' ');
+                    numbered.push_str(&b.file_name);
+                }
+                numbered.push('\n');
+                v.push(numbered);
+            }
+        }
+
+        v
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ItemBuffer {
     pub file_type: FileType,
@@ -1379,7 +1423,8 @@ impl State {
             if self.layout.is_preview() {
                 self.layout.print_preview(item, y);
             } else if self.layout.is_reg() {
-                self.layout.print_reg(y);
+                let reg = self.registers.prepare_reg();
+                self.layout.print_reg(&reg, y);
             }
         }
         move_to(1, y);
