@@ -1,4 +1,4 @@
-/// Based on the page of Wikipedia ([List of file signatures - Wikipedia](https://en.wikipedia.org/wiki/List_of_file_signatures))
+/// Based on [List of file signatures - Wikipedia](https://en.wikipedia.org/wiki/List_of_file_signatures)
 use super::errors::FxError;
 use std::io::Read;
 use std::path::Path;
@@ -285,10 +285,12 @@ mod tests {
     use std::path::PathBuf;
 
     /// Supported:
-    /// tar.gz(Gzip),
-    /// tar.xz(lzma),
-    /// tar.zst(Zstandard & tar),
+    /// gz(Gzip),
+    /// tar.gz,
+    /// xz(lzma),
+    /// tar.xz,
     /// zst(Zstandard),
+    /// tar.zst,
     /// tar,
     /// zip file format and formats based on it(zip, docx, ...)
     #[test]
