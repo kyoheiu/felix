@@ -107,6 +107,18 @@ impl Registers {
             }
         }
 
+        //registers.named
+        for (c, b) in self.named.iter() {
+            let mut named = "\"".to_string();
+            named.push(*c);
+            for buffer in b {
+                named.push(' ');
+                named.push_str(&buffer.file_name);
+            }
+            named.push('\n');
+            v.push(named);
+        }
+
         v
     }
 }
@@ -604,6 +616,7 @@ impl State {
     }
 
     /// Register selected items to unnamed and zero registers.
+    /// Also register to named when needed.
     pub fn yank_item(&mut self, items: &[ItemBuffer], reg: Option<char>) -> usize {
         self.registers.unnamed = items.to_vec();
         match reg {
@@ -611,9 +624,7 @@ impl State {
                 self.registers.zero = items.to_vec();
             }
             Some(c) => {
-                if let Some(old) = self.registers.named.get_mut(&c) {
-                    *old = items.to_vec();
-                }
+                self.registers.named.insert(c, items.to_vec());
             }
         }
         items.len()

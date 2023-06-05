@@ -1400,6 +1400,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                                 let action: String = command[1..].iter().collect();
                                                 match action.as_str() {
+                                                    //TODO! y(visual mode), d(visual mode), dd,
+                                                    //"Ayy, "Add
                                                     "p" => {
                                                         let target = match command[0] {
                                                             '0' => Some(&state.registers.zero),
@@ -1433,6 +1435,24 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                         }
                                                         break 'command;
                                                     }
+                                                    "yy" => {
+                                                        if command[0].is_ascii_lowercase() {
+                                                            if let Ok(item) = state.get_item() {
+                                                                state.yank_item(
+                                                                    &[ItemBuffer::new(item)],
+                                                                    Some(command[0]),
+                                                                );
+                                                                go_to_info_line_and_reset();
+                                                                hide_cursor();
+                                                                print_info(
+                                                                    "1 item yanked.",
+                                                                    state.layout.y,
+                                                                );
+                                                            }
+                                                        }
+                                                        break 'command;
+                                                    }
+
                                                     _ => {
                                                         break 'command;
                                                     }
