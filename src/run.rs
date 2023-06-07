@@ -1402,7 +1402,13 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 match action.as_str() {
                                                     //TODO! y(visual mode), d(visual mode), dd,
                                                     //"Ayy, "Add
+                                                    //
+                                                    //put (works only in normal mode)
                                                     "p" => {
+                                                        if state.v_start.is_some() {
+                                                            state.move_cursor(state.layout.y);
+                                                            break 'command;
+                                                        }
                                                         let target = match command[0] {
                                                             '0' => Some(&state.registers.zero),
                                                             '1'..='9' => {
@@ -1433,9 +1439,15 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                 state.layout.y,
                                                             );
                                                         }
+                                                        state.move_cursor(state.layout.y);
                                                         break 'command;
                                                     }
+                                                    //yank (normal mode)
                                                     "yy" => {
+                                                        if state.v_start.is_some() {
+                                                            state.move_cursor(state.layout.y);
+                                                            break 'command;
+                                                        }
                                                         if command[0].is_ascii_lowercase() {
                                                             if let Ok(item) = state.get_item() {
                                                                 state.yank_item(
@@ -1450,10 +1462,38 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                 );
                                                             }
                                                         }
+                                                        state.move_cursor(state.layout.y);
+                                                        break 'command;
+                                                    }
+                                                    //yank (visual mode)
+                                                    "y" => {
+                                                        if state.v_start.is_some()
+                                                            && command[0].is_ascii_lowercase()
+                                                        {
+                                                            let items: Vec<ItemBuffer> = state
+                                                                .list
+                                                                .iter()
+                                                                .filter(|item| item.selected)
+                                                                .map(ItemBuffer::new)
+                                                                .collect();
+                                                            let item_len =
+                                                                state.yank_item(&items, Some(command[0]));
+                                                            state.reset_selection();
+                                                            state.list_up();
+                                                            let mut yank_message: String =
+                                                                item_len.to_string();
+                                                            yank_message.push_str(" items yanked");
+                                                            print_info(
+                                                                yank_message,
+                                                                state.layout.y,
+                                                            );
+                                                        }
+                                                        state.move_cursor(state.layout.y);
                                                         break 'command;
                                                     }
 
                                                     _ => {
+                                                        state.move_cursor(state.layout.y);
                                                         break 'command;
                                                     }
                                                 }
