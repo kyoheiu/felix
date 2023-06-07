@@ -615,6 +615,23 @@ impl State {
         }
     }
 
+    // Append ItemBuffer to named register.
+    pub fn append_item(&mut self, items: &[ItemBuffer], reg: char) -> usize {
+        let v = self.registers.named.get(&reg);
+        match v {
+            Some(v) => {
+                let mut v = v.clone();
+                v.append(&mut items.to_vec());
+                self.registers.named.insert(reg, v.to_vec());
+            }
+            None => {
+                self.registers.named.insert(reg, items.to_vec());
+            }
+        }
+
+        items.len()
+    }
+
     /// Register selected items to unnamed and zero registers.
     /// Also register to named when needed.
     pub fn yank_item(&mut self, items: &[ItemBuffer], reg: Option<char>) -> usize {
