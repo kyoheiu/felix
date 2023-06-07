@@ -643,14 +643,13 @@ impl State {
         screen.flush()?;
         let start = Instant::now();
 
-        self.put_items(&reg, None)?;
+        let total = self.put_items(&reg, None)?;
 
         self.reload(self.layout.y)?;
 
         let duration = duration_to_string(start.elapsed());
-        let registered_len = self.registers.unnamed.len();
-        let mut put_message = registered_len.to_string();
-        if registered_len == 1 {
+        let mut put_message = total.to_string();
+        if total == 1 {
             let _ = write!(put_message, " item inserted. [{}]", duration);
         } else {
             let _ = write!(put_message, " items inserted. [{}]", duration);
@@ -660,12 +659,13 @@ impl State {
     }
 
     /// Put items in registry to the current directory or target directory.
+    /// Return the total number of put items.
     /// Only Redo command uses target directory.
     pub fn put_items(
         &mut self,
         targets: &[ItemBuffer],
         target_dir: Option<PathBuf>,
-    ) -> Result<(), FxError> {
+    ) -> Result<usize, FxError> {
         //make HashSet<String> of file_name
         let mut name_set = BTreeSet::new();
         match &target_dir {
@@ -715,12 +715,12 @@ impl State {
             //push put item information to operations
             self.operations.push(OpKind::Put(PutFiles {
                 original: targets.to_owned(),
-                put: put_v,
+                put: put_v.clone(),
                 dir: self.current_dir.clone(),
             }));
         }
 
-        Ok(())
+        Ok(put_v.len())
     }
 
     /// Put single item to current or target directory.
