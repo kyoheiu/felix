@@ -1400,8 +1400,9 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                                 let action: String = command[1..].iter().collect();
                                                 match action.as_str() {
-                                                    //TODO! y(visual mode), d(visual mode), dd,
-                                                    //"Ayy, "Add
+                                                    //TODO!
+                                                    //"ad(visual mode), "add, "Ad(visual mode), "Add
+                                                    //"Ay(visual mode)
                                                     //
                                                     //put (works only in normal mode)
                                                     "p" => {
@@ -1461,6 +1462,20 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                     state.layout.y,
                                                                 );
                                                             }
+                                                        } else if command[0].is_ascii_uppercase() {
+                                                            if let Ok(item) = state.get_item() {
+                                                                state.append_item(
+                                                                    &[ItemBuffer::new(item)],
+                                                                    command[0].to_ascii_lowercase(),
+                                                                );
+                                                                go_to_info_line_and_reset();
+                                                                hide_cursor();
+                                                                print_info(
+                                                                    "1 item yanked.",
+                                                                    state.layout.y,
+                                                                );
+                                                            }
+
                                                         }
                                                         state.move_cursor(state.layout.y);
                                                         break 'command;
