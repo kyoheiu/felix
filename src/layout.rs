@@ -96,7 +96,7 @@ impl Layout {
             }
         }
 
-        if reg.is_empty() {
+        if reg.iter().all(|x| x.is_empty()) {
             print!("No registers.");
             return;
         }
