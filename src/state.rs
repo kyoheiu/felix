@@ -426,20 +426,132 @@ impl State {
         }
     }
 
+    pub fn delete(
+        &mut self,
+        reg: Option<char>,
+        append: bool,
+        screen: &mut Stdout,
+    ) -> Result<(), FxError> {
+        hide_cursor();
+        print_info("DELETE: Processing...", self.layout.y);
+        screen.flush()?;
+        let start = Instant::now();
+
+        let target = self.get_item()?;
+        let target = vec![ItemBuffer::new(target)];
+
+        match self.remove(&target, true) {
+            Err(e) => {
+                return Err(e);
+            }
+            Ok((src, dest)) => {
+                self.yank_after_delete(&src, &dest, reg, append)?;
+            }
+        }
+
+        self.clear_and_show_headline();
+        self.update_list()?;
+        self.list_up();
+        self.layout.y = if self.list.is_empty() {
+            BEGINNING_ROW
+        } else if self.layout.nums.index == self.list.len() {
+            self.layout.nums.go_up();
+            self.layout.y - 1
+        } else {
+            self.layout.y
+        };
+        let duration = duration_to_string(start.elapsed());
+        print_info(format!("1 item deleted. [{}]", duration), self.layout.y);
+        self.move_cursor(self.layout.y);
+        Ok(())
+    }
+
+    pub fn delete_in_visual(
+        &mut self,
+        reg: Option<char>,
+        append: bool,
+        screen: &mut Stdout,
+    ) -> Result<(), FxError> {
+        print_info("DELETE: Processing...", self.layout.y);
+        let start = Instant::now();
+        screen.flush()?;
+
+        let selected: Vec<ItemBuffer> = self
+            .list
+            .iter()
+            .filter(|item| item.selected)
+            .map(ItemBuffer::new)
+            .collect();
+        let mut total: usize = 0;
+
+        match self.remove(&selected, true) {
+            Err(e) => {
+                return Err(e);
+            }
+            Ok((src, dest)) => {
+                total = self.yank_after_delete(&src, &dest, reg, append)?;
+            }
+        }
+
+        self.update_list()?;
+        let new_len = self.list.len();
+        self.clear_and_show_headline();
+
+        let duration = duration_to_string(start.elapsed());
+        let delete_message: String = {
+            if total == 1 {
+                format!("1 item deleted [{}]", duration)
+            } else {
+                let mut count = total.to_string();
+                let _ = write!(count, " items deleted [{}]", duration);
+                count
+            }
+        };
+        print_info(delete_message, self.layout.y);
+        delete_cursor();
+
+        self.reset_selection();
+        if new_len == 0 {
+            self.layout.nums.reset();
+            self.list_up();
+            self.move_cursor(BEGINNING_ROW);
+        } else if self.is_out_of_bounds() {
+            if self.layout.nums.skip as usize >= new_len {
+                self.layout.nums.skip = (new_len - 1) as u16;
+                self.layout.nums.index = self.list.len() - 1;
+                self.list_up();
+                self.move_cursor(BEGINNING_ROW);
+            } else {
+                self.layout.nums.index = self.list.len() - 1;
+                self.list_up();
+                self.move_cursor(
+                    (self.list.len() as u16) - self.layout.nums.skip + BEGINNING_ROW - 1,
+                );
+            }
+        } else {
+            self.list_up();
+            self.move_cursor(self.layout.y);
+        }
+        Ok(())
+    }
+
     /// Move items from the current directory to trash directory.
     /// This does not actually delete items.
-    /// If you'd like to delete, use `:empty` after this, or just `:rm`.  
-
-    pub fn remove_and_yank(&mut self, targets: &[ItemBuffer], new_op: bool) -> Result<(), FxError> {
+    /// If you'd like to delete, use `:empty` after this.
+    fn remove(
+        &mut self,
+        src: &[ItemBuffer],
+        new_op: bool,
+    ) -> Result<(Vec<ItemBuffer>, Vec<ItemBuffer>), FxError> {
         if self.current_dir == self.trash_dir {
             return Err(FxError::Io(
                 "Use `:empty` to delete item in the trash dir.".to_string(),
             ));
         }
 
-        let total_selected = targets.len();
-        let mut trash_vec = Vec::new();
-        for (i, item) in targets.iter().enumerate() {
+        let total_selected = src.len();
+        let mut dest = Vec::new();
+        for (i, item) in src.iter().enumerate() {
             delete_cursor();
             to_info_line();
             clear_current_line();
@@ -450,7 +562,7 @@ impl State {
                     Err(e) => {
                         return Err(e);
                     }
-                    Ok(path) => trash_vec.push(path),
+                    Ok(path) => dest.push(path),
                 },
                 FileType::File | FileType::Symlink => {
                     match self.remove_and_yank_file(item, new_op) {
@@ -459,34 +571,53 @@ impl State {
                         }
                         Ok(path) => {
                             if let Some(p) = path {
-                                trash_vec.push(p);
+                                dest.push(p);
                             }
                         }
                     }
                 }
             }
         }
-        if new_op && !trash_vec.is_empty() {
+
+        Ok((src.to_vec(), dest))
+    }
+
+    fn yank_after_delete(
+        &mut self,
+        src: &[ItemBuffer],
+        dest: &[ItemBuffer],
+        reg: Option<char>,
+        append: bool,
+    ) -> Result<usize, FxError> {
+        if !dest.is_empty() {
             //save to unnamed reg
-            self.registers.unnamed = trash_vec.clone();
+            self.registers.unnamed = dest.to_vec();
             //If numbered registers is full, pop_back first
             if self.registers.numbered.len() == 9 {
                 self.registers.numbered.pop_back();
             }
             //save to "1
-            self.registers.numbered.push_front(trash_vec.clone());
+            self.registers.numbered.push_front(dest.to_vec());
+
+            if let Some(reg) = reg {
+                if append {
+                    self.append_item(dest, reg);
+                } else {
+                    self.registers.named.insert(reg, dest.to_vec());
+                }
+            }
 
             //Update operations value
             self.operations.branch();
             //push deleted item information to operations
             self.operations.push(OpKind::Delete(DeletedFiles {
-                trash: trash_vec,
-                original: targets.to_vec(),
+                trash: dest.to_vec(),
+                original: src.to_vec(),
                 dir: self.current_dir.clone(),
             }));
         }
 
-        Ok(())
+        Ok(dest.len())
     }
 
     /// Move single directory recursively to trash directory.
@@ -634,14 +765,18 @@ impl State {
 
     /// Register selected items to unnamed and zero registers.
     /// Also register to named when needed.
-    pub fn yank_item(&mut self, items: &[ItemBuffer], reg: Option<char>) -> usize {
+    pub fn yank_item(&mut self, items: &[ItemBuffer], reg: Option<char>, append: bool) -> usize {
         self.registers.unnamed = items.to_vec();
         match reg {
             None => {
                 self.registers.zero = items.to_vec();
             }
             Some(c) => {
-                self.registers.named.insert(c, items.to_vec());
+                if append {
+                    self.append_item(items, c);
+                } else {
+                    self.registers.named.insert(c, items.to_vec());
+                }
             }
         }
         items.len()
@@ -678,7 +813,7 @@ impl State {
     /// Put items in registry to the current directory or target directory.
     /// Return the total number of put items.
     /// Only Redo command uses target directory.
-    pub fn put_items(
+    fn put_items(
         &mut self,
         targets: &[ItemBuffer],
         target_dir: Option<PathBuf>,
@@ -919,7 +1054,7 @@ impl State {
                 print_info("REDONE: PUT", BEGINNING_ROW);
             }
             OpKind::Delete(op) => {
-                self.remove_and_yank(&op.original, false)?;
+                self.remove(&op.original, false)?;
                 self.operations.pos -= 1;
                 self.update_list()?;
                 self.clear_and_show_headline();

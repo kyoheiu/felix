@@ -15,7 +15,6 @@ use crossterm::execute;
 use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
 use log::{error, info};
 use std::env::set_current_dir;
-use std::fmt::Write as _;
 use std::io::{stdout, Write};
 use std::panic;
 use std::path::PathBuf;
@@ -794,6 +793,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     }
                                 }
                             },
+
                             //delete
                             KeyCode::Char('d') => {
                                 //If read-only, deleting is disabled.
@@ -806,65 +806,12 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                                 if let Some(_start_pos) = state.v_start {
                                     //visual mode
-                                    print_info("DELETE: Processing...", state.layout.y);
-                                    let start = Instant::now();
-                                    screen.flush()?;
-
-                                    let selected: Vec<ItemBuffer> = state
-                                        .list
-                                        .iter()
-                                        .filter(|item| item.selected)
-                                        .map(ItemBuffer::new)
-                                        .collect();
-                                    let total = selected.len();
-
-                                    if let Err(e) = state.remove_and_yank(&selected, true) {
+                                    if let Err(e) = state.delete_in_visual(None, false, &mut screen)
+                                    {
                                         state.reset_selection();
                                         state.redraw(state.layout.y);
                                         print_warning(e, state.layout.y);
-                                        break;
-                                    }
-
-                                    state.update_list()?;
-                                    let new_len = state.list.len();
-                                    state.clear_and_show_headline();
-
-                                    let duration = duration_to_string(start.elapsed());
-                                    let delete_message: String = {
-                                        if total == 1 {
-                                            format!("1 item deleted [{}]", duration)
-                                        } else {
-                                            let mut count = total.to_string();
-                                            let _ = write!(count, " items deleted [{}]", duration);
-                                            count
-                                        }
-                                    };
-                                    print_info(delete_message, state.layout.y);
-                                    delete_cursor();
-
-                                    state.reset_selection();
-                                    if new_len == 0 {
-                                        state.layout.nums.reset();
-                                        state.list_up();
-                                        state.move_cursor(BEGINNING_ROW);
-                                    } else if state.is_out_of_bounds() {
-                                        if state.layout.nums.skip as usize >= new_len {
-                                            state.layout.nums.skip = (new_len - 1) as u16;
-                                            state.layout.nums.index = state.list.len() - 1;
-                                            state.list_up();
-                                            state.move_cursor(BEGINNING_ROW);
-                                        } else {
-                                            state.layout.nums.index = state.list.len() - 1;
-                                            state.list_up();
-                                            state.move_cursor(
-                                                (state.list.len() as u16) - state.layout.nums.skip
-                                                    + BEGINNING_ROW
-                                                    - 1,
-                                            );
-                                        }
-                                    } else {
-                                        state.list_up();
-                                        state.move_cursor(state.layout.y);
+                                        continue;
                                     }
                                 } else {
                                     //normal mode
@@ -879,42 +826,12 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         if let Event::Key(KeyEvent { code, .. }) = event::read()? {
                                             match code {
                                                 KeyCode::Char('d') => {
-                                                    hide_cursor();
-                                                    print_info(
-                                                        "DELETE: Processing...",
-                                                        state.layout.y,
-                                                    );
-                                                    screen.flush()?;
-                                                    let start = Instant::now();
-
-                                                    let target = state.get_item()?;
-                                                    let target = vec![ItemBuffer::new(target)];
-
                                                     if let Err(e) =
-                                                        state.remove_and_yank(&target, true)
+                                                        state.delete(None, false, &mut screen)
                                                     {
                                                         print_warning(e, state.layout.y);
                                                         continue;
                                                     }
-
-                                                    state.clear_and_show_headline();
-                                                    state.update_list()?;
-                                                    state.list_up();
-                                                    state.layout.y = if state.list.is_empty() {
-                                                        BEGINNING_ROW
-                                                    } else if state.layout.nums.index == len - 1 {
-                                                        state.layout.nums.go_up();
-                                                        state.layout.y - 1
-                                                    } else {
-                                                        state.layout.y
-                                                    };
-                                                    let duration =
-                                                        duration_to_string(start.elapsed());
-                                                    print_info(
-                                                        format!("1 item deleted. [{}]", duration),
-                                                        state.layout.y,
-                                                    );
-                                                    state.move_cursor(state.layout.y);
                                                 }
                                                 _ => {
                                                     go_to_info_line_and_reset();
@@ -937,7 +854,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         .filter(|item| item.selected)
                                         .map(ItemBuffer::new)
                                         .collect();
-                                    let item_len = state.yank_item(&items, None);
+                                    let item_len = state.yank_item(&items, None, false);
                                     state.reset_selection();
                                     state.list_up();
                                     let mut yank_message: String = item_len.to_string();
@@ -957,7 +874,11 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         match code {
                                             KeyCode::Char('y') => {
                                                 if let Ok(item) = state.get_item() {
-                                                    state.yank_item(&[ItemBuffer::new(item)], None);
+                                                    state.yank_item(
+                                                        &[ItemBuffer::new(item)],
+                                                        None,
+                                                        false,
+                                                    );
                                                     go_to_info_line_and_reset();
                                                     hide_cursor();
                                                     print_info("1 item yanked.", state.layout.y);
@@ -1311,7 +1232,6 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                             //tinker with registers!
                             KeyCode::Char('"') => {
-                                delete_cursor();
                                 go_to_info_line_and_reset();
                                 print!("\"");
                                 show_cursor();
@@ -1401,7 +1321,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 let action: String = command[1..].iter().collect();
                                                 match action.as_str() {
                                                     //TODO!
-                                                    //"ad(visual mode), "add, "Ad(visual mode), "Add
+                                                    //"ad(visual mode), "Ad(visual mode),
                                                     //"Ay(visual mode)
                                                     //
                                                     //put (works only in normal mode)
@@ -1454,59 +1374,138 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                 state.yank_item(
                                                                     &[ItemBuffer::new(item)],
                                                                     Some(command[0]),
-                                                                );
-                                                                go_to_info_line_and_reset();
-                                                                hide_cursor();
-                                                                print_info(
-                                                                    "1 item yanked.",
-                                                                    state.layout.y,
+                                                                    false,
                                                                 );
                                                             }
                                                         } else if command[0].is_ascii_uppercase() {
                                                             if let Ok(item) = state.get_item() {
-                                                                state.append_item(
+                                                                state.yank_item(
                                                                     &[ItemBuffer::new(item)],
-                                                                    command[0].to_ascii_lowercase(),
-                                                                );
-                                                                go_to_info_line_and_reset();
-                                                                hide_cursor();
-                                                                print_info(
-                                                                    "1 item yanked.",
-                                                                    state.layout.y,
+                                                                    Some(
+                                                                        command[0]
+                                                                            .to_ascii_lowercase(),
+                                                                    ),
+                                                                    true,
                                                                 );
                                                             }
-
+                                                        } else {
+                                                            state.move_cursor(state.layout.y);
+                                                            break 'command;
                                                         }
+                                                        go_to_info_line_and_reset();
+                                                        hide_cursor();
+                                                        print_info(
+                                                            "1 item yanked.",
+                                                            state.layout.y,
+                                                        );
                                                         state.move_cursor(state.layout.y);
                                                         break 'command;
                                                     }
                                                     //yank (visual mode)
                                                     "y" => {
-                                                        if state.v_start.is_some()
-                                                            && command[0].is_ascii_lowercase()
-                                                        {
-                                                            let items: Vec<ItemBuffer> = state
-                                                                .list
-                                                                .iter()
-                                                                .filter(|item| item.selected)
-                                                                .map(ItemBuffer::new)
-                                                                .collect();
-                                                            let item_len =
-                                                                state.yank_item(&items, Some(command[0]));
-                                                            state.reset_selection();
-                                                            state.list_up();
-                                                            let mut yank_message: String =
-                                                                item_len.to_string();
-                                                            yank_message.push_str(" items yanked");
-                                                            print_info(
-                                                                yank_message,
-                                                                state.layout.y,
-                                                            );
+                                                        if state.v_start.is_none() {
+                                                            state.move_cursor(state.layout.y);
+                                                            break 'command;
                                                         }
+                                                        let items: Vec<ItemBuffer> = state
+                                                            .list
+                                                            .iter()
+                                                            .filter(|item| item.selected)
+                                                            .map(ItemBuffer::new)
+                                                            .collect();
+                                                        let item_len: usize;
+                                                        if command[0].is_ascii_lowercase() {
+                                                            item_len = state.yank_item(
+                                                                &items,
+                                                                Some(command[0]),
+                                                                false,
+                                                            );
+                                                        } else if command[0].is_ascii_uppercase() {
+                                                            item_len = state.yank_item(
+                                                                &items,
+                                                                Some(
+                                                                    command[0].to_ascii_lowercase(),
+                                                                ),
+                                                                true,
+                                                            );
+                                                        } else {
+                                                            state.move_cursor(state.layout.y);
+                                                            break 'command;
+                                                        }
+                                                        state.reset_selection();
+                                                        state.list_up();
+                                                        let mut yank_message: String =
+                                                            item_len.to_string();
+                                                        yank_message.push_str(" items yanked");
+                                                        print_info(yank_message, state.layout.y);
                                                         state.move_cursor(state.layout.y);
                                                         break 'command;
                                                     }
 
+                                                    //delete (normal mode)
+                                                    "dd" => {
+                                                        if state.v_start.is_some() {
+                                                            state.move_cursor(state.layout.y);
+                                                            break 'command;
+                                                        }
+                                                        if command[0].is_ascii_lowercase() {
+                                                            if let Err(e) = state.delete(
+                                                                Some(command[0]),
+                                                                false,
+                                                                &mut screen,
+                                                            ) {
+                                                                print_warning(e, state.layout.y);
+                                                                break 'command;
+                                                            }
+                                                        } else if command[0].is_ascii_uppercase() {
+                                                            if let Err(e) = state.delete(
+                                                                Some(
+                                                                    command[0].to_ascii_lowercase(),
+                                                                ),
+                                                                true,
+                                                                &mut screen,
+                                                            ) {
+                                                                print_warning(e, state.layout.y);
+                                                                break 'command;
+                                                            }
+                                                        }
+                                                        state.move_cursor(state.layout.y);
+                                                        break 'command;
+                                                    }
+                                                    //delete (visual mode)
+                                                    "d" => {
+                                                        if state.v_start.is_none() {
+                                                            state.move_cursor(state.layout.y);
+                                                            break 'command;
+                                                        }
+                                                        if command[0].is_ascii_lowercase() {
+                                                            if let Err(e) = state.delete_in_visual(
+                                                                Some(command[0]),
+                                                                false,
+                                                                &mut screen,
+                                                            ) {
+                                                                state.reset_selection();
+                                                                state.redraw(state.layout.y);
+                                                                print_warning(e, state.layout.y);
+                                                                break 'command;
+                                                            }
+                                                        } else if command[0].is_ascii_uppercase() {
+                                                            if let Err(e) = state.delete_in_visual(
+                                                                Some(
+                                                                    command[0].to_ascii_lowercase(),
+                                                                ),
+                                                                true,
+                                                                &mut screen,
+                                                            ) {
+                                                                state.reset_selection();
+                                                                state.redraw(state.layout.y);
+                                                                print_warning(e, state.layout.y);
+                                                                break 'command;
+                                                            }
+                                                        }
+                                                        state.move_cursor(state.layout.y);
+                                                        break 'command;
+                                                    }
                                                     _ => {
                                                         state.move_cursor(state.layout.y);
                                                         break 'command;
