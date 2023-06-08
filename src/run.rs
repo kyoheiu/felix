@@ -206,13 +206,6 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                     },
                     KeyModifiers::NONE | KeyModifiers::SHIFT => {
                         match code {
-                            //Debug print.
-                            KeyCode::Char('P') => {
-                                if std::env::var("RUST_LOG") == Ok("debug".to_string()) {
-                                    println!("{:?}", state.registers);
-                                }
-                            }
-
                             KeyCode::Esc => {
                                 //reset visual selection and return to normal mode
                                 state.reset_selection();
