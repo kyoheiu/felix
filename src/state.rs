@@ -68,8 +68,8 @@ pub struct Registers {
 }
 
 impl Registers {
-    pub fn prepare_reg(&self) -> Vec<String> {
-        let mut v: Vec<String> = vec![];
+    pub fn prepare_reg(&self, width: u16) -> Vec<String> {
+        let mut s = String::new();
 
         //registers.unnamed
         let mut unnamed = "\"\"".to_string();
@@ -79,7 +79,7 @@ impl Registers {
                 unnamed.push_str(&b.file_name);
             }
             unnamed.push('\n');
-            v.push(unnamed);
+            s.push_str(&unnamed);
         }
 
         //registers.zero
@@ -90,7 +90,7 @@ impl Registers {
                 zero.push_str(&b.file_name);
             }
             zero.push('\n');
-            v.push(zero);
+            s.push_str(&zero);
         }
 
         //registers.numbered
@@ -103,7 +103,7 @@ impl Registers {
                     numbered.push_str(&b.file_name);
                 }
                 numbered.push('\n');
-                v.push(numbered);
+                s.push_str(&numbered);
             }
         }
 
@@ -116,10 +116,11 @@ impl Registers {
                 named.push_str(&buffer.file_name);
             }
             named.push('\n');
-            v.push(named);
+            s.push_str(&named);
         }
 
-        v
+        s.pop();
+        split_lines_including_wide_char(&s, width.into())
     }
 }
 
@@ -1094,12 +1095,13 @@ impl State {
             Split::Vertical => (column + 2, BEGINNING_ROW),
             Split::Horizontal => (1, row + 2),
         };
-        self.layout.preview_space = match self.layout.is_preview() {
-            true => match self.layout.split {
+        self.layout.preview_space = if self.layout.is_preview() || self.layout.is_reg() {
+            match self.layout.split {
                 Split::Vertical => (original_column - column - 1, row - BEGINNING_ROW),
                 Split::Horizontal => (column, original_row - row - 1),
-            },
-            false => (0, 0),
+            }
+        } else {
+            (0, 0)
         };
         self.layout.name_max_len = name_max;
         self.layout.time_start_pos = time_start;
@@ -1586,8 +1588,8 @@ impl State {
             if self.layout.is_preview() {
                 self.layout.print_preview(item, y);
             } else if self.layout.is_reg() {
-                let reg = self.registers.prepare_reg();
-                self.layout.print_reg(&reg, y);
+                let reg = self.registers.prepare_reg(self.layout.preview_space.0);
+                self.layout.print_reg(&reg);
             }
         }
         move_to(1, y);

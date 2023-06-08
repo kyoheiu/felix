@@ -86,7 +86,7 @@ impl Layout {
         self.side = Side::None;
     }
 
-    pub fn print_reg(&self, reg: &[String], y: u16) {
+    pub fn print_reg(&self, reg: &[String]) {
         match self.split {
             Split::Vertical => {
                 self.clear_preview(self.preview_start.0);
@@ -107,7 +107,7 @@ impl Layout {
                     let row = self.preview_start.1 + i as u16;
                     move_to(self.preview_start.0, row);
                     print!("{}", line);
-                    if row == self.preview_space.1 {
+                    if i as u16 == self.preview_space.1 - 1 {
                         break;
                     }
                 }

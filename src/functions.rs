@@ -275,7 +275,7 @@ pub fn shorten_str_including_wide_char(s: &str, i: usize) -> String {
     result
 }
 
-fn split_lines_including_wide_char(s: &str, width: usize) -> Vec<String> {
+pub fn split_lines_including_wide_char(s: &str, width: usize) -> Vec<String> {
     let mut result = vec![];
     let mut new_line = "".to_owned();
     for c in s.chars() {
