@@ -881,11 +881,11 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             _ => {
                                                 go_to_info_line_and_reset();
                                                 hide_cursor();
-                                                state.move_cursor(state.layout.y);
                                             }
                                         }
                                     }
                                 }
+                                state.move_cursor(state.layout.y);
                             }
 
                             //put
