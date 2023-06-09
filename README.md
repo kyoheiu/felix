@@ -126,19 +126,29 @@ Both relative and absolute path available.
 j / Down          :Go down.
 k / Up            :Go up.
 h / Left          :Go to the parent directory if exists.
-l / Right / Enter :Open a file or change directory.
+l / Right / Enter :Open item or change directory.
 gg                :Go to the top.
 G                 :Go to the bottom.
 z + Enter         :Go to the home directory.
 z <keyword>       :Jump to a directory that matches the keyword. (zoxide required)
-o                 :Open a file in a new window.
+o                 :Open item in a new window.
 e                 :Unpack archive/compressed file.
-dd                :Delete and yank one item.
-yy                :Yank one item.
+dd                :Delete and yank item.
+yy                :Yank item.
 p                 :Put yanked item(s) in the current directory.
-V                 :Switch to the select mode.
-  - d             :In the select mode, delete and yank selected item(s).
-  - y             :In the select mode, yank selected item(s).
+:reg              :Show registers. To hide it, press v.
+"ayy              :Yank item to register a.
+"add              :Delete and yank item to register a.
+"Ayy              :Append item to register a.
+"Add              :Delete and append item to register a.
+"ap               :Put item(s) from register a.
+V                 :Switch to the linewise visual mode.
+  - y             :In the visual mode, yank selected item(s).
+  - d             :In the visual mode, delete and yank selected item(s).
+  - "ay           :In the visual mode, yank items to register a.
+  - "ad           :In the visual mode, delete and yank items to register a.
+  - "Ay           :In the visual mode, append items to register a.
+  - "Ad           :In the visual mode, delete and append items to register a.
 u                 :Undo put/delete/rename.
 Ctrl + r          :Redo put/delete/rename.
 v                 :Toggle whether to show the preview.
