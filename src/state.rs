@@ -68,6 +68,41 @@ pub struct Registers {
 }
 
 impl Registers {
+    // Append ItemBuffer to named register.
+    pub fn append_item(&mut self, items: &[ItemBuffer], reg: char) -> usize {
+        let v = self.named.get(&reg);
+        match v {
+            Some(v) => {
+                let mut v = v.clone();
+                v.append(&mut items.to_vec());
+                self.named.insert(reg, v.to_vec());
+            }
+            None => {
+                self.named.insert(reg, items.to_vec());
+            }
+        }
+
+        items.len()
+    }
+
+    /// Register selected items to unnamed and zero registers.
+    /// Also register to named when needed.
+    pub fn yank_item(&mut self, items: &[ItemBuffer], reg: Option<char>, append: bool) -> usize {
+        self.unnamed = items.to_vec();
+        match reg {
+            None => {
+                self.zero = items.to_vec();
+            }
+            Some(c) => {
+                if append {
+                    self.append_item(items, c);
+                } else {
+                    self.named.insert(c, items.to_vec());
+                }
+            }
+        }
+        items.len()
+    }
     pub fn prepare_reg(&self, width: u16) -> Vec<String> {
         let mut s = String::new();
 
