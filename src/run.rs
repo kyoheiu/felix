@@ -847,7 +847,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         .filter(|item| item.selected)
                                         .map(ItemBuffer::new)
                                         .collect();
-                                    let item_len = state.yank_item(&items, None, false);
+                                    let item_len = state.registers.yank_item(&items, None, false);
                                     state.reset_selection();
                                     state.list_up();
                                     let mut yank_message: String = item_len.to_string();
@@ -867,7 +867,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         match code {
                                             KeyCode::Char('y') => {
                                                 if let Ok(item) = state.get_item() {
-                                                    state.yank_item(
+                                                    state.registers.yank_item(
                                                         &[ItemBuffer::new(item)],
                                                         None,
                                                         false,

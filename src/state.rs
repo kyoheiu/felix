@@ -476,7 +476,7 @@ impl State {
         let target = self.get_item()?;
         let target = vec![ItemBuffer::new(target)];
 
-        match self.remove(&target, true) {
+        match self.move_to_trash(&target, true) {
             Err(e) => {
                 return Err(e);
             }
@@ -518,16 +518,12 @@ impl State {
             .filter(|item| item.selected)
             .map(ItemBuffer::new)
             .collect();
-        let mut total: usize = 0;
-
-        match self.remove(&selected, true) {
+        let total: usize = match self.move_to_trash(&selected, true) {
             Err(e) => {
                 return Err(e);
             }
-            Ok((src, dest)) => {
-                total = self.yank_after_delete(&src, &dest, reg, append)?;
-            }
-        }
+            Ok((src, dest)) => self.yank_after_delete(&src, &dest, reg, append)?,
+        };
 
         self.update_list()?;
         let new_len = self.list.len();
@@ -574,7 +570,7 @@ impl State {
     /// Move items from the current directory to trash directory.
     /// This does not actually delete items.
     /// If you'd like to delete, use `:empty` after this.
-    fn remove(
+    fn move_to_trash(
         &mut self,
         src: &[ItemBuffer],
         new_op: bool,
@@ -594,14 +590,14 @@ impl State {
             print!("{}", display_count(i, total_selected));
 
             match item.file_type {
-                FileType::Directory => match self.remove_and_yank_dir(item, new_op) {
+                FileType::Directory => match self.remove_dir(item, new_op) {
                     Err(e) => {
                         return Err(e);
                     }
                     Ok(path) => dest.push(path),
                 },
                 FileType::File | FileType::Symlink => {
-                    match self.remove_and_yank_file(item, new_op) {
+                    match self.remove_file(item, new_op) {
                         Err(e) => {
                             return Err(e);
                         }
@@ -637,7 +633,7 @@ impl State {
 
             if let Some(reg) = reg {
                 if append {
-                    self.append_item(dest, reg);
+                    self.registers.append_item(dest, reg);
                 } else {
                     self.registers.named.insert(reg, dest.to_vec());
                 }
@@ -657,7 +653,7 @@ impl State {
     }
 
     /// Move single directory recursively to trash directory.
-    fn remove_and_yank_dir(
+    fn remove_dir(
         &mut self,
         item: &ItemBuffer,
         new_op: bool,
@@ -741,7 +737,7 @@ impl State {
     }
 
     /// Move single file to trash directory.
-    fn remove_and_yank_file(
+    fn remove_file(
         &mut self,
         item: &ItemBuffer,
         new_op: bool,
@@ -782,42 +778,6 @@ impl State {
         }
     }
 
-    // Append ItemBuffer to named register.
-    pub fn append_item(&mut self, items: &[ItemBuffer], reg: char) -> usize {
-        let v = self.registers.named.get(&reg);
-        match v {
-            Some(v) => {
-                let mut v = v.clone();
-                v.append(&mut items.to_vec());
-                self.registers.named.insert(reg, v.to_vec());
-            }
-            None => {
-                self.registers.named.insert(reg, items.to_vec());
-            }
-        }
-
-        items.len()
-    }
-
-    /// Register selected items to unnamed and zero registers.
-    /// Also register to named when needed.
-    pub fn yank_item(&mut self, items: &[ItemBuffer], reg: Option<char>, append: bool) -> usize {
-        self.registers.unnamed = items.to_vec();
-        match reg {
-            None => {
-                self.registers.zero = items.to_vec();
-            }
-            Some(c) => {
-                if append {
-                    self.append_item(items, c);
-                } else {
-                    self.registers.named.insert(c, items.to_vec());
-                }
-            }
-        }
-        items.len()
-    }
-
     pub fn put(&mut self, reg: Vec<ItemBuffer>, screen: &mut Stdout) -> Result<(), FxError> {
         //If read-only, putting is disabled.
         if self.is_ro {
@@ -831,7 +791,7 @@ impl State {
         screen.flush()?;
         let start = Instant::now();
 
-        let total = self.put_items(&reg, None)?;
+        let total = self.put_item(&reg, None)?;
 
         self.reload(self.layout.y)?;
 
@@ -846,10 +806,10 @@ impl State {
         Ok(())
     }
 
-    /// Put items in registry to the current directory or target directory.
+    /// Put items in the register to the current directory or target directory.
     /// Return the total number of put items.
     /// Only Redo command uses target directory.
-    fn put_items(
+    fn put_item(
         &mut self,
         targets: &[ItemBuffer],
         target_dir: Option<PathBuf>,
@@ -1058,7 +1018,7 @@ impl State {
             }
             OpKind::Delete(op) => {
                 let targets = sellect_buffer(&self.trash_dir, &op.trash)?;
-                self.put_items(&targets, Some(op.dir.clone()))?;
+                self.put_item(&targets, Some(op.dir.clone()))?;
                 self.operations.pos += 1;
                 self.update_list()?;
                 self.clear_and_show_headline();
@@ -1082,7 +1042,7 @@ impl State {
                 print_info("REDONE: RENAME", BEGINNING_ROW);
             }
             OpKind::Put(op) => {
-                self.put_items(&op.original, Some(op.dir.clone()))?;
+                self.put_item(&op.original, Some(op.dir.clone()))?;
                 self.operations.pos -= 1;
                 self.update_list()?;
                 self.clear_and_show_headline();
@@ -1090,7 +1050,7 @@ impl State {
                 print_info("REDONE: PUT", BEGINNING_ROW);
             }
             OpKind::Delete(op) => {
-                self.remove(&op.original, false)?;
+                self.move_to_trash(&op.original, false)?;
                 self.operations.pos -= 1;
                 self.update_list()?;
                 self.clear_and_show_headline();
