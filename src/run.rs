@@ -1289,220 +1289,260 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     (current_pos - INITIAL_POS_SHELL).into(),
                                                     c,
                                                 );
-                                                current_pos += 1;
-                                                clear_current_line();
-                                                to_info_line();
-                                                print!("\"{}", &command.iter().collect::<String>(),);
-                                                move_to(current_pos, 2);
-                                            }
-
-                                            KeyCode::Enter => {
-                                                clear_current_line();
-                                                hide_cursor();
-                                                //check the length of the input and the char
-                                                if command.len() > 3
-                                                    || command.len() < 2
-                                                    || !command[0].is_ascii_alphanumeric()
+                                                if ((state.v_start.is_some() || c == 'p')
+                                                    && command.len() == 2)
+                                                    || (state.v_start.is_none()
+                                                        && command.len() == 3)
                                                 {
-                                                    print_warning(
-                                                        "Input not supported.",
-                                                        state.layout.y,
-                                                    );
-                                                    break 'command;
-                                                }
-
-                                                let action: String = command[1..].iter().collect();
-                                                match action.as_str() {
-                                                    //TODO!
-                                                    //"ad(visual mode), "Ad(visual mode),
-                                                    //"Ay(visual mode)
-                                                    //
-                                                    //put (works only in normal mode)
-                                                    "p" => {
-                                                        if state.v_start.is_some() {
-                                                            state.move_cursor(state.layout.y);
-                                                            break 'command;
-                                                        }
-                                                        let target = match command[0] {
-                                                            '0' => Some(&state.registers.zero),
-                                                            '1'..='9' => {
-                                                                state.registers.numbered.get(
-                                                                    command[0].to_digit(10).unwrap()
-                                                                        as usize
-                                                                        - 1,
-                                                                )
-                                                            }
-                                                            'a'..='z' => state
-                                                                .registers
-                                                                .named
-                                                                .get(&command[0]),
-                                                            _ => None,
-                                                        };
-
-                                                        if let Some(target) = target {
-                                                            let target = target.clone();
-                                                            if let Err(e) =
-                                                                state.put(target, &mut screen)
-                                                            {
-                                                                print_warning(e, state.layout.y);
-                                                                break 'command;
-                                                            }
-                                                        } else {
-                                                            print_warning(
-                                                                "Register not found.",
-                                                                state.layout.y,
-                                                            );
-                                                        }
-                                                        state.move_cursor(state.layout.y);
+                                                    if !command[0].is_ascii_alphanumeric() {
+                                                        print_warning(
+                                                            "Input not supported.",
+                                                            state.layout.y,
+                                                        );
                                                         break 'command;
                                                     }
-                                                    //yank (normal mode)
-                                                    "yy" => {
-                                                        if state.v_start.is_some() {
+                                                    let action: String =
+                                                        command[1..].iter().collect();
+                                                    match action.as_str() {
+                                                        "p" => {
+                                                            if state.v_start.is_some() {
+                                                                clear_current_line();
+                                                                hide_cursor();
+                                                                state.move_cursor(state.layout.y);
+                                                                break 'command;
+                                                            }
+                                                            let target = match command[0] {
+                                                                '0' => Some(&state.registers.zero),
+                                                                '1'..='9' => {
+                                                                    state.registers.numbered.get(
+                                                                        command[0]
+                                                                            .to_digit(10)
+                                                                            .unwrap()
+                                                                            as usize
+                                                                            - 1,
+                                                                    )
+                                                                }
+                                                                'a'..='z' => state
+                                                                    .registers
+                                                                    .named
+                                                                    .get(&command[0]),
+                                                                _ => None,
+                                                            };
+
+                                                            if let Some(target) = target {
+                                                                let target = target.clone();
+                                                                if let Err(e) =
+                                                                    state.put(target, &mut screen)
+                                                                {
+                                                                    print_warning(
+                                                                        e,
+                                                                        state.layout.y,
+                                                                    );
+                                                                    break 'command;
+                                                                }
+                                                            } else {
+                                                                print_warning(
+                                                                    "Register not found.",
+                                                                    state.layout.y,
+                                                                );
+                                                            }
                                                             state.move_cursor(state.layout.y);
                                                             break 'command;
                                                         }
-                                                        if command[0].is_ascii_lowercase() {
-                                                            if let Ok(item) = state.get_item() {
-                                                                state.yank_item(
-                                                                    &[ItemBuffer::new(item)],
+                                                        //yank (normal mode)
+                                                        "yy" => {
+                                                            if state.v_start.is_some() {
+                                                                state.move_cursor(state.layout.y);
+                                                                break 'command;
+                                                            }
+                                                            if command[0].is_ascii_lowercase() {
+                                                                if let Ok(item) = state.get_item() {
+                                                                    state.registers.yank_item(
+                                                                        &[ItemBuffer::new(item)],
+                                                                        Some(command[0]),
+                                                                        false,
+                                                                    );
+                                                                }
+                                                            } else if command[0]
+                                                                .is_ascii_uppercase()
+                                                            {
+                                                                if let Ok(item) = state.get_item() {
+                                                                    state.registers.yank_item(
+                                                                        &[ItemBuffer::new(item)],
+                                                                        Some(
+                                                                            command[0]
+                                                                                .to_ascii_lowercase(
+                                                                                ),
+                                                                        ),
+                                                                        true,
+                                                                    );
+                                                                }
+                                                            } else {
+                                                                state.move_cursor(state.layout.y);
+                                                                break 'command;
+                                                            }
+                                                            go_to_info_line_and_reset();
+                                                            hide_cursor();
+                                                            print_info(
+                                                                "1 item yanked.",
+                                                                state.layout.y,
+                                                            );
+                                                            state.move_cursor(state.layout.y);
+                                                            break 'command;
+                                                        }
+                                                        //yank (visual mode)
+                                                        "y" => {
+                                                            if state.v_start.is_none() {
+                                                                state.move_cursor(state.layout.y);
+                                                                break 'command;
+                                                            }
+                                                            let items: Vec<ItemBuffer> = state
+                                                                .list
+                                                                .iter()
+                                                                .filter(|item| item.selected)
+                                                                .map(ItemBuffer::new)
+                                                                .collect();
+                                                            let item_len: usize;
+                                                            if command[0].is_ascii_lowercase() {
+                                                                item_len =
+                                                                    state.registers.yank_item(
+                                                                        &items,
+                                                                        Some(command[0]),
+                                                                        false,
+                                                                    );
+                                                            } else if command[0]
+                                                                .is_ascii_uppercase()
+                                                            {
+                                                                item_len =
+                                                                    state.registers.yank_item(
+                                                                        &items,
+                                                                        Some(
+                                                                            command[0]
+                                                                                .to_ascii_lowercase(
+                                                                                ),
+                                                                        ),
+                                                                        true,
+                                                                    );
+                                                            } else {
+                                                                state.move_cursor(state.layout.y);
+                                                                break 'command;
+                                                            }
+                                                            state.reset_selection();
+                                                            state.list_up();
+                                                            let mut yank_message: String =
+                                                                item_len.to_string();
+                                                            yank_message.push_str(" items yanked");
+                                                            print_info(
+                                                                yank_message,
+                                                                state.layout.y,
+                                                            );
+                                                            state.move_cursor(state.layout.y);
+                                                            break 'command;
+                                                        }
+
+                                                        //delete (normal mode)
+                                                        "dd" => {
+                                                            if state.v_start.is_some() {
+                                                                state.move_cursor(state.layout.y);
+                                                                break 'command;
+                                                            }
+                                                            if command[0].is_ascii_lowercase() {
+                                                                if let Err(e) = state.delete(
                                                                     Some(command[0]),
                                                                     false,
-                                                                );
-                                                            }
-                                                        } else if command[0].is_ascii_uppercase() {
-                                                            if let Ok(item) = state.get_item() {
-                                                                state.yank_item(
-                                                                    &[ItemBuffer::new(item)],
+                                                                    &mut screen,
+                                                                ) {
+                                                                    print_warning(
+                                                                        e,
+                                                                        state.layout.y,
+                                                                    );
+                                                                    break 'command;
+                                                                }
+                                                            } else if command[0]
+                                                                .is_ascii_uppercase()
+                                                            {
+                                                                if let Err(e) = state.delete(
                                                                     Some(
                                                                         command[0]
                                                                             .to_ascii_lowercase(),
                                                                     ),
                                                                     true,
-                                                                );
+                                                                    &mut screen,
+                                                                ) {
+                                                                    print_warning(
+                                                                        e,
+                                                                        state.layout.y,
+                                                                    );
+                                                                    break 'command;
+                                                                }
                                                             }
-                                                        } else {
                                                             state.move_cursor(state.layout.y);
                                                             break 'command;
                                                         }
-                                                        go_to_info_line_and_reset();
-                                                        hide_cursor();
-                                                        print_info(
-                                                            "1 item yanked.",
-                                                            state.layout.y,
-                                                        );
-                                                        state.move_cursor(state.layout.y);
-                                                        break 'command;
-                                                    }
-                                                    //yank (visual mode)
-                                                    "y" => {
-                                                        if state.v_start.is_none() {
-                                                            state.move_cursor(state.layout.y);
-                                                            break 'command;
-                                                        }
-                                                        let items: Vec<ItemBuffer> = state
-                                                            .list
-                                                            .iter()
-                                                            .filter(|item| item.selected)
-                                                            .map(ItemBuffer::new)
-                                                            .collect();
-                                                        let item_len: usize;
-                                                        if command[0].is_ascii_lowercase() {
-                                                            item_len = state.yank_item(
-                                                                &items,
-                                                                Some(command[0]),
-                                                                false,
-                                                            );
-                                                        } else if command[0].is_ascii_uppercase() {
-                                                            item_len = state.yank_item(
-                                                                &items,
-                                                                Some(
-                                                                    command[0].to_ascii_lowercase(),
-                                                                ),
-                                                                true,
-                                                            );
-                                                        } else {
-                                                            state.move_cursor(state.layout.y);
-                                                            break 'command;
-                                                        }
-                                                        state.reset_selection();
-                                                        state.list_up();
-                                                        let mut yank_message: String =
-                                                            item_len.to_string();
-                                                        yank_message.push_str(" items yanked");
-                                                        print_info(yank_message, state.layout.y);
-                                                        state.move_cursor(state.layout.y);
-                                                        break 'command;
-                                                    }
-
-                                                    //delete (normal mode)
-                                                    "dd" => {
-                                                        if state.v_start.is_some() {
-                                                            state.move_cursor(state.layout.y);
-                                                            break 'command;
-                                                        }
-                                                        if command[0].is_ascii_lowercase() {
-                                                            if let Err(e) = state.delete(
-                                                                Some(command[0]),
-                                                                false,
-                                                                &mut screen,
-                                                            ) {
-                                                                print_warning(e, state.layout.y);
+                                                        //delete (visual mode)
+                                                        "d" => {
+                                                            if state.v_start.is_none() {
+                                                                state.move_cursor(state.layout.y);
                                                                 break 'command;
                                                             }
-                                                        } else if command[0].is_ascii_uppercase() {
-                                                            if let Err(e) = state.delete(
-                                                                Some(
-                                                                    command[0].to_ascii_lowercase(),
-                                                                ),
-                                                                true,
-                                                                &mut screen,
-                                                            ) {
-                                                                print_warning(e, state.layout.y);
-                                                                break 'command;
+                                                            if command[0].is_ascii_lowercase() {
+                                                                if let Err(e) = state
+                                                                    .delete_in_visual(
+                                                                        Some(command[0]),
+                                                                        false,
+                                                                        &mut screen,
+                                                                    )
+                                                                {
+                                                                    state.reset_selection();
+                                                                    state.redraw(state.layout.y);
+                                                                    print_warning(
+                                                                        e,
+                                                                        state.layout.y,
+                                                                    );
+                                                                    break 'command;
+                                                                }
+                                                            } else if command[0]
+                                                                .is_ascii_uppercase()
+                                                            {
+                                                                if let Err(e) = state
+                                                                    .delete_in_visual(
+                                                                        Some(
+                                                                            command[0]
+                                                                                .to_ascii_lowercase(
+                                                                                ),
+                                                                        ),
+                                                                        true,
+                                                                        &mut screen,
+                                                                    )
+                                                                {
+                                                                    state.reset_selection();
+                                                                    state.redraw(state.layout.y);
+                                                                    print_warning(
+                                                                        e,
+                                                                        state.layout.y,
+                                                                    );
+                                                                    break 'command;
+                                                                }
                                                             }
-                                                        }
-                                                        state.move_cursor(state.layout.y);
-                                                        break 'command;
-                                                    }
-                                                    //delete (visual mode)
-                                                    "d" => {
-                                                        if state.v_start.is_none() {
                                                             state.move_cursor(state.layout.y);
                                                             break 'command;
                                                         }
-                                                        if command[0].is_ascii_lowercase() {
-                                                            if let Err(e) = state.delete_in_visual(
-                                                                Some(command[0]),
-                                                                false,
-                                                                &mut screen,
-                                                            ) {
-                                                                state.reset_selection();
-                                                                state.redraw(state.layout.y);
-                                                                print_warning(e, state.layout.y);
-                                                                break 'command;
-                                                            }
-                                                        } else if command[0].is_ascii_uppercase() {
-                                                            if let Err(e) = state.delete_in_visual(
-                                                                Some(
-                                                                    command[0].to_ascii_lowercase(),
-                                                                ),
-                                                                true,
-                                                                &mut screen,
-                                                            ) {
-                                                                state.reset_selection();
-                                                                state.redraw(state.layout.y);
-                                                                print_warning(e, state.layout.y);
-                                                                break 'command;
-                                                            }
+                                                        _ => {
+                                                            clear_current_line();
+                                                            hide_cursor();
+                                                            state.move_cursor(state.layout.y);
+                                                            break 'command;
                                                         }
-                                                        state.move_cursor(state.layout.y);
-                                                        break 'command;
                                                     }
-                                                    _ => {
-                                                        state.move_cursor(state.layout.y);
-                                                        break 'command;
-                                                    }
+                                                } else {
+                                                    current_pos += 1;
+                                                    clear_current_line();
+                                                    to_info_line();
+                                                    print!(
+                                                        "\"{}",
+                                                        &command.iter().collect::<String>(),
+                                                    );
+                                                    move_to(current_pos, 2);
                                                 }
                                             }
 
