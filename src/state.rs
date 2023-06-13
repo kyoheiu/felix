@@ -596,18 +596,16 @@ impl State {
                     }
                     Ok(path) => dest.push(path),
                 },
-                FileType::File | FileType::Symlink => {
-                    match self.remove_file(item, new_op) {
-                        Err(e) => {
-                            return Err(e);
-                        }
-                        Ok(path) => {
-                            if let Some(p) = path {
-                                dest.push(p);
-                            }
+                FileType::File | FileType::Symlink => match self.remove_file(item, new_op) {
+                    Err(e) => {
+                        return Err(e);
+                    }
+                    Ok(path) => {
+                        if let Some(p) = path {
+                            dest.push(p);
                         }
                     }
-                }
+                },
             }
         }
 
@@ -653,11 +651,7 @@ impl State {
     }
 
     /// Move single directory recursively to trash directory.
-    fn remove_dir(
-        &mut self,
-        item: &ItemBuffer,
-        new_op: bool,
-    ) -> Result<ItemBuffer, FxError> {
+    fn remove_dir(&mut self, item: &ItemBuffer, new_op: bool) -> Result<ItemBuffer, FxError> {
         let mut trash_name = String::new();
         let mut base: usize = 0;
         let mut trash_path: std::path::PathBuf = PathBuf::new();
