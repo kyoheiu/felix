@@ -26,6 +26,17 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 
 ## New release
 
+## v2.4.0 (2023-06-14)
+
+### Added
+
+- Add registers (unnamed, zero, numbered, named): Now you can view registers by `:reg`, and add items to registers by usual vim command (prefixed by `"`). See the key manual for more details.
+- Refactor unpacking command: `e` unpacks / decompresses gz(Gzip), tar.gz, xz(lzma), tar.xz, zst(Zstandard), tar.zst, tar, and zip file format and formats based on it.
+
+### Removed
+
+- `:z` - Use `z` instead.
+
 ## v2.3.0 (2023-05-26)
 
 ### Changed
@@ -34,12 +45,6 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 - If config file is not found, or found one is broken, felix launches with the default configuration, without creating new one.
 - If the current directory is read-only, `dd`, `Vd` and `p` is disabled in the first place.
 - Bump up MSRV to 1.65.
-
-## v2.2.8 (2023-05-19)
-
-### Fixed
-
-- Kitty-specific: Enable scrolling of the preview text by redrawing the screen only when needed (this also improves the perfomance entirely).
 
 For more details, see `CHANGELOG.md`.
 
@@ -163,8 +168,7 @@ c                 :Switch to the rename mode.
 n                 :Go forward to the item that matches the keyword.
 N                 :Go backward to the item that matches the keyword.
 Esc               :Return to the normal mode.
-:cd / :z          :Go to the home directory.
-:z <keyword>      :Same as `z <keyword>`.
+:cd               :Go to the home directory.
 :e                :Reload the current directory.
 :trash            :Go to the trash directory.
 :empty            :Empty the trash directory.
