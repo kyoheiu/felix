@@ -48,7 +48,7 @@ pub fn clear_current_line() {
     print!("{}", Clear(crossterm::terminal::ClearType::CurrentLine));
 }
 
-pub fn go_to_and_rest_info() {
+pub fn go_to_info_line_and_reset() {
     to_info_line();
     clear_current_line();
 }

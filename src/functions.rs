@@ -74,7 +74,7 @@ pub fn rename_dir(dir_name: &str, name_set: &BTreeSet<String>) -> String {
 /// Print the result of operation, such as put/delete/redo/undo.
 pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
     delete_cursor();
-    go_to_and_rest_info();
+    go_to_info_line_and_reset();
     info!("{}", message);
 
     let (width, _) = terminal_size().unwrap();
@@ -90,7 +90,7 @@ pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
 /// When something goes wrong or does not work, print information about it.
 pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
     delete_cursor();
-    go_to_and_rest_info();
+    go_to_info_line_and_reset();
     warn!("{}", message);
 
     let (width, _) = terminal_size().unwrap();
@@ -275,7 +275,7 @@ pub fn shorten_str_including_wide_char(s: &str, i: usize) -> String {
     result
 }
 
-fn split_lines_including_wide_char(s: &str, width: usize) -> Vec<String> {
+pub fn split_lines_including_wide_char(s: &str, width: usize) -> Vec<String> {
     let mut result = vec![];
     let mut new_line = "".to_owned();
     for c in s.chars() {
