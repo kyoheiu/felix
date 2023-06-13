@@ -1742,69 +1742,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     }
                                                 }
 
-                                                //zoxide jump
-                                                if command == "z" && commands.len() == 2 {
-                                                    //Change directory using zoxide
-                                                    if let Ok(output) =
-                                                        std::process::Command::new("zoxide")
-                                                            .args(["query", commands[1].trim()])
-                                                            .output()
-                                                    {
-                                                        let output = output.stdout;
-                                                        if output.is_empty() {
-                                                            print_warning(
-                                                        "Keyword does not match the database.",
-                                                        state.layout.y,
-                                                    );
-                                                            break 'command;
-                                                        } else {
-                                                            let target_dir =
-                                                                std::str::from_utf8(&output);
-                                                            match target_dir {
-                                                                Err(e) => {
-                                                                    print_warning(
-                                                                        e,
-                                                                        state.layout.y,
-                                                                    );
-                                                                    break 'command;
-                                                                }
-                                                                Ok(target_dir) => {
-                                                                    state.layout.nums.reset();
-                                                                    let target_path = PathBuf::from(
-                                                                        target_dir.trim(),
-                                                                    );
-                                                                    if let Err(e) = set_current_dir(
-                                                                        target_path.clone(),
-                                                                    ) {
-                                                                        print_warning(
-                                                                            e,
-                                                                            state.layout.y,
-                                                                        );
-                                                                        break 'command;
-                                                                    }
-                                                                    if let Err(e) = state.chdir(
-                                                                        &target_path,
-                                                                        Move::Jump,
-                                                                    ) {
-                                                                        print_warning(
-                                                                            e,
-                                                                            state.layout.y,
-                                                                        );
-                                                                    }
-                                                                    break 'command;
-                                                                }
-                                                            }
-                                                        }
-                                                    } else {
-                                                        print_warning(
-                                                            "zoxide not installed?",
-                                                            state.layout.y,
-                                                        );
-                                                        break 'command;
-                                                    }
-                                                }
-
-                                                //Execute the command as it is
+                                                //Execute command as is
                                                 execute!(screen, EnterAlternateScreen)?;
                                                 if std::env::set_current_dir(&state.current_dir)
                                                     .is_err()
