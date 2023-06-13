@@ -3,7 +3,7 @@ use super::errors::FxError;
 use super::functions::*;
 use super::help::HELP;
 use super::layout::*;
-use super::magic_image::is_supported_image_type;
+use super::magic_image;
 use super::magic_packed;
 use super::nums::*;
 use super::op::*;
@@ -68,7 +68,7 @@ pub struct Registers {
 }
 
 impl Registers {
-    // Append ItemBuffer to named register.
+    /// Append ItemBuffer to named register.
     pub fn append_item(&mut self, items: &[ItemBuffer], reg: char) -> usize {
         let v = self.named.get(&reg);
         match v {
@@ -103,6 +103,8 @@ impl Registers {
         }
         items.len()
     }
+
+    /// Return Vec<String> that contains item names in the register.
     pub fn prepare_reg(&self, width: u16) -> Vec<String> {
         let mut s = String::new();
 
@@ -159,6 +161,7 @@ impl Registers {
     }
 }
 
+/// To avoid cost copying ItemInfo, use ItemBuffer when tinkering with register.
 #[derive(Debug, Clone)]
 pub struct ItemBuffer {
     pub file_type: FileType,
@@ -302,14 +305,14 @@ impl State {
         })
     }
 
-    /// Select an item that the cursor points to.
+    /// Select item that the cursor points to.
     pub fn get_item(&self) -> Result<&ItemInfo, FxError> {
         self.list
             .get(self.layout.nums.index)
             .ok_or(FxError::GetItem)
     }
 
-    /// Select an item that the cursor points to, as mut.
+    /// Select item that the cursor points to, as mut.
     pub fn get_item_mut(&mut self) -> Result<&mut ItemInfo, FxError> {
         self.list
             .get_mut(self.layout.nums.index)
@@ -462,6 +465,7 @@ impl State {
         }
     }
 
+    /// Delete item.
     pub fn delete(
         &mut self,
         reg: Option<char>,
@@ -502,6 +506,7 @@ impl State {
         Ok(())
     }
 
+    /// Delete items in visual mode.
     pub fn delete_in_visual(
         &mut self,
         reg: Option<char>,
@@ -611,7 +616,8 @@ impl State {
 
         Ok((src.to_vec(), dest))
     }
-
+    
+    /// Add dest to register, and item infomation to operation
     fn yank_after_delete(
         &mut self,
         src: &[ItemBuffer],
@@ -772,6 +778,7 @@ impl State {
         }
     }
 
+    /// Put.
     pub fn put(&mut self, reg: Vec<ItemBuffer>, screen: &mut Stdout) -> Result<(), FxError> {
         //If read-only, putting is disabled.
         if self.is_ro {
@@ -985,7 +992,7 @@ impl State {
         Ok(target)
     }
 
-    /// Undo operations (put/delete/rename).
+    /// Undo operations (put/delete/rename)
     pub fn undo(&mut self, op: &OpKind) -> Result<(), FxError> {
         match op {
             OpKind::Rename(op) => {
@@ -1272,7 +1279,7 @@ impl State {
         self.move_cursor(y);
     }
 
-    /// Change the order of the list not reading all the items.
+    /// Change the order of the list without re-reading all the items.
     fn change_order(&mut self) {
         let mut dir_v = Vec::new();
         let mut file_v = Vec::new();
@@ -1315,6 +1322,7 @@ impl State {
         self.v_start = None;
     }
 
+    /// Highlight matched items.
     pub fn highlight_matches(&mut self, keyword: &str) {
         for item in self.list.iter_mut() {
             if item.file_name.contains(keyword) {
@@ -1374,7 +1382,7 @@ impl State {
         Ok(new_name)
     }
 
-    //Show help
+    /// Show help
     pub fn show_help(&self, mut screen: &Stdout) -> Result<(), FxError> {
         clear_all();
         move_to(1, 1);
@@ -1415,7 +1423,7 @@ impl State {
         Ok(())
     }
 
-    //Empty the trash dir
+    /// Empty the trash dir.
     pub fn empty_trash(&mut self, mut screen: &Stdout) -> Result<(), FxError> {
         print_warning(EMPTY_WARNING, self.layout.y);
         screen.flush()?;
@@ -1451,6 +1459,7 @@ impl State {
         Ok(())
     }
 
+    /// Change directory.
     pub fn chdir(&mut self, p: &std::path::Path, mv: Move) -> Result<(), FxError> {
         std::env::set_current_dir(p)?;
         self.is_ro = match has_write_permission(p) {
@@ -1554,8 +1563,7 @@ impl State {
     }
 
     /// Change the cursor position, and print item information at the bottom.
-    /// If preview is enabled, print text preview, contents of the directory or image preview on the right half of the terminal
-    /// (To preview image, you must install chafa. See help).
+    /// If preview is enabled, print text preview, contents of the directory or image preview.
     pub fn move_cursor(&mut self, y: u16) {
         // If preview is enabled, set the preview type, read the content (if text type) and reset the scroll.
         if self.layout.is_preview() {
@@ -1589,11 +1597,12 @@ impl State {
         self.layout.y = y;
     }
 
-    pub fn to_status_bar(&self) {
+    fn to_status_bar(&self) {
         move_to(1, self.layout.terminal_row);
     }
 
-    pub fn clear_status_line(&self) {
+    /// Clear status line.
+    fn clear_status_line(&self) {
         self.to_status_bar();
         clear_current_line();
         reset_color();
@@ -1638,6 +1647,7 @@ impl State {
         print!("{}", footer.negative());
     }
 
+    /// Return footer string.
     fn make_footer(&self, item: &ItemInfo) -> String {
         match &item.file_ext {
             Some(ext) => {
@@ -1691,6 +1701,7 @@ impl State {
         }
     }
 
+    /// Scroll down previewed text.
     pub fn scroll_down_preview(&mut self, y: u16) {
         if let Ok(item) = self.get_item_mut() {
             item.preview_scroll += 1;
@@ -1698,6 +1709,7 @@ impl State {
         }
     }
 
+    /// Scroll up previewed text.
     pub fn scroll_up_preview(&mut self, y: u16) {
         if let Ok(item) = self.get_item_mut() {
             if item.preview_scroll != 0 {
@@ -1707,6 +1719,7 @@ impl State {
         }
     }
 
+    /// Scroll preview.
     fn scroll_preview(&self, y: u16) {
         if let Ok(item) = self.get_item() {
             self.layout.print_preview(item, y);
@@ -1716,7 +1729,7 @@ impl State {
         }
     }
 
-    /// Store the sort key and whether to show hidden items to session file.
+    /// Save the sort key and whether to show hidden items to session file.
     pub fn write_session(&self, session_path: PathBuf) -> Result<(), FxError> {
         let session = Session {
             sort_by: self.layout.sort_by.clone(),
@@ -1729,7 +1742,7 @@ impl State {
         Ok(())
     }
 
-    /// Unpack/unarchive a file.
+    /// Unpack or unarchive a file.
     pub fn unpack(&self) -> Result<(), FxError> {
         let item = self.get_item()?;
         let p = item.file_path.clone();
@@ -1747,6 +1760,7 @@ impl State {
         Ok(())
     }
 
+    /// Check if the cursor is out of bounds.
     pub fn is_out_of_bounds(&self) -> bool {
         let current = self.layout.nums.skip + self.layout.y - BEGINNING_ROW + 1;
         current as usize > self.list.len()
@@ -1877,6 +1891,7 @@ pub fn sellect_buffer(trash_dir: &PathBuf, vec: &[ItemBuffer]) -> Result<Vec<Ite
     Ok(result)
 }
 
+/// Check if chafa is installed.
 fn check_chafa() -> bool {
     std::process::Command::new("chafa")
         .arg("--help")
@@ -1884,7 +1899,7 @@ fn check_chafa() -> bool {
         .is_ok()
 }
 
-// Check if the terminal is Kitty or not
+/// Check if the terminal is Kitty or not
 fn check_kitty_support() -> bool {
     if let Ok(term) = std::env::var("TERM") {
         term.contains("kitty")
@@ -1893,6 +1908,7 @@ fn check_kitty_support() -> bool {
     }
 }
 
+/// Set content type from ItemInfo.
 fn set_preview_content_type(item: &mut ItemInfo) {
     if item.file_size > MAX_SIZE_TO_PREVIEW {
         item.preview_type = Some(PreviewType::TooBigSize);
@@ -1927,10 +1943,12 @@ fn set_preview_type(item: &mut ItemInfo) {
     }
 }
 
+/// Check if item is supported image type.
 fn is_supported_image(item: &ItemInfo) -> bool {
-    is_supported_image_type(&item.file_path)
+    magic_image::is_supported_image_type(&item.file_path)
 }
 
+/// Set highlighting theme.
 fn set_theme(config: &Config) -> Theme {
     match &config.theme_path {
         Some(p) => match ThemeSet::get_theme(p) {
@@ -1947,6 +1965,7 @@ fn set_theme(config: &Config) -> Theme {
     }
 }
 
+/// Choose highlighting theme according to config.
 fn choose_theme(dt: &DefaultTheme) -> Theme {
     let defaults = ThemeSet::load_defaults();
     match dt {

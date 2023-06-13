@@ -14,7 +14,6 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::execute;
 use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
 use log::{error, info};
-use std::env::set_current_dir;
 use std::io::{stdout, Write};
 use std::panic;
 use std::path::PathBuf;
