@@ -602,88 +602,76 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 let commands = command
                                                     .split_whitespace()
                                                     .collect::<Vec<&str>>();
-                                                if commands[0] == "z" {
-                                                    if commands.len() > 2 {
-                                                        //Invalid argument.
-                                                        print_warning(
-                                                            "Invalid argument for zoxide.",
-                                                            state.layout.y,
-                                                        );
-                                                        state.move_cursor(state.layout.y);
-                                                        break 'zoxide;
-                                                    } else if commands.len() == 1 {
-                                                        //go to the home directory
-                                                        let home_dir = dirs::home_dir()
-                                                            .ok_or_else(|| {
-                                                                FxError::Dirs(
-                                                                    "Cannot read home dir."
-                                                                        .to_string(),
-                                                                )
-                                                            })?;
-                                                        if let Err(e) =
-                                                            state.chdir(&home_dir, Move::Jump)
-                                                        {
-                                                            print_warning(e, state.layout.y);
-                                                        }
-                                                        break 'zoxide;
-                                                    } else if let Ok(output) =
-                                                        std::process::Command::new("zoxide")
-                                                            .args(["query", commands[1]])
-                                                            .output()
-                                                    {
-                                                        let output = output.stdout;
-                                                        if output.is_empty() {
-                                                            print_warning(
-                                                        "Keyword does not match the database.",
+                                                if commands.len() > 2 {
+                                                    //Invalid argument.
+                                                    print_warning(
+                                                        "Invalid argument for zoxide.",
                                                         state.layout.y,
                                                     );
-                                                            break 'zoxide;
-                                                        } else {
-                                                            let target_dir =
-                                                                std::str::from_utf8(&output);
-                                                            match target_dir {
-                                                                Err(e) => {
-                                                                    print_warning(
-                                                                        e,
-                                                                        state.layout.y,
-                                                                    );
-                                                                    break 'zoxide;
-                                                                }
-                                                                Ok(target_dir) => {
-                                                                    hide_cursor();
-                                                                    state.layout.nums.reset();
-                                                                    let target_path = PathBuf::from(
-                                                                        target_dir.trim(),
-                                                                    );
-                                                                    std::env::set_current_dir(
-                                                                        &target_path,
-                                                                    )?;
-                                                                    state.current_dir =
-                                                                        if cfg!(not(windows)) {
-                                                                            target_path
-                                                                                .canonicalize()?
-                                                                        } else {
-                                                                            target_path
-                                                                        };
-                                                                    state.reload(BEGINNING_ROW)?;
-                                                                    break 'zoxide;
-                                                                }
-                                                            }
-                                                        }
-                                                    } else {
+                                                    state.move_cursor(state.layout.y);
+                                                    break 'zoxide;
+                                                } else if commands.len() == 1 {
+                                                    //go to the home directory
+                                                    let home_dir =
+                                                        dirs::home_dir().ok_or_else(|| {
+                                                            FxError::Dirs(
+                                                                "Cannot read home dir.".to_string(),
+                                                            )
+                                                        })?;
+                                                    if let Err(e) =
+                                                        state.chdir(&home_dir, Move::Jump)
+                                                    {
+                                                        print_warning(e, state.layout.y);
+                                                    }
+                                                    break 'zoxide;
+                                                } else if let Ok(output) =
+                                                    std::process::Command::new("zoxide")
+                                                        .args(["query", commands[1]])
+                                                        .output()
+                                                {
+                                                    let output = output.stdout;
+                                                    if output.is_empty() {
                                                         print_warning(
-                                                            "zoxide not installed?",
+                                                            "Keyword does not match the database.",
                                                             state.layout.y,
                                                         );
                                                         break 'zoxide;
+                                                    } else {
+                                                        let target_dir =
+                                                            std::str::from_utf8(&output);
+                                                        match target_dir {
+                                                            Err(e) => {
+                                                                print_warning(e, state.layout.y);
+                                                                break 'zoxide;
+                                                            }
+                                                            Ok(target_dir) => {
+                                                                hide_cursor();
+                                                                state.layout.nums.reset();
+                                                                let target_path = PathBuf::from(
+                                                                    target_dir.trim(),
+                                                                );
+                                                                std::env::set_current_dir(
+                                                                    &target_path,
+                                                                )?;
+                                                                state.current_dir =
+                                                                    if cfg!(not(windows)) {
+                                                                        target_path
+                                                                            .canonicalize()?
+                                                                    } else {
+                                                                        target_path
+                                                                    };
+                                                                state.reload(BEGINNING_ROW)?;
+                                                                break 'zoxide;
+                                                            }
+                                                        }
                                                     }
+                                                } else {
+                                                    print_warning(
+                                                        "zoxide not installed?",
+                                                        state.layout.y,
+                                                    );
+                                                    break 'zoxide;
                                                 }
-                                                //  else {
-                                                //     go_to_and_rest_info();
-                                                //     hide_cursor();
-                                                //     state.move_cursor(state.layout.y);
-                                                //     break 'zoxide;
-                                                // }
                                             }
 
                                             KeyCode::Char(c) => {
