@@ -1295,7 +1295,19 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     let action: String =
                                                         command[1..].iter().collect();
                                                     match action.as_str() {
+                                                        //put
                                                         "p" => {
+                                                            //In read-only directory, put disabled
+                                                            if state.is_ro {
+                                                                go_to_info_line_and_reset();
+                                                                print_warning(
+                                        "Cannot put item in this directory.",
+                                        state.layout.y,
+                                    );
+                                                                hide_cursor();
+                                                                state.move_cursor(state.layout.y);
+                                                                break 'command;
+                                                            }
                                                             if state.v_start.is_some() {
                                                                 clear_current_line();
                                                                 hide_cursor();
@@ -1433,6 +1445,18 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                                         //delete (normal mode)
                                                         "dd" => {
+                                                            //In read-only directory, delete
+                                                            //disabled
+                                                            if state.is_ro {
+                                                                go_to_info_line_and_reset();
+                                                                print_warning(
+                                        "Cannot delete item in this directory.",
+                                        state.layout.y,
+                                    );
+                                                                hide_cursor();
+                                                                state.move_cursor(state.layout.y);
+                                                                break 'command;
+                                                            }
                                                             if state.v_start.is_some() {
                                                                 state.move_cursor(state.layout.y);
                                                                 break 'command;
@@ -1472,6 +1496,18 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                         }
                                                         //delete (visual mode)
                                                         "d" => {
+                                                            //In read-only directory, delete
+                                                            //disabled
+                                                            if state.is_ro {
+                                                                go_to_info_line_and_reset();
+                                                                print_warning(
+                                        "Cannot delete item in this directory.",
+                                        state.layout.y,
+                                    );
+                                                                hide_cursor();
+                                                                state.move_cursor(state.layout.y);
+                                                                break 'command;
+                                                            }
                                                             if state.v_start.is_none() {
                                                                 state.move_cursor(state.layout.y);
                                                                 break 'command;
