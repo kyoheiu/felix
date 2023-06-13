@@ -148,6 +148,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
             }) => {
                 match modifiers {
                     KeyModifiers::CONTROL => match code {
+                        //redo
                         KeyCode::Char('r') => {
                             if state.v_start.is_some() {
                                 continue;
@@ -189,11 +190,13 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         }
                     },
                     KeyModifiers::ALT => match code {
+                        //scroll down the previewed text
                         KeyCode::Char('j') | KeyCode::Down => {
                             if state.layout.is_preview() {
                                 state.scroll_down_preview(state.layout.y);
                             }
                         }
+                        //scroll up the previewed text
                         KeyCode::Char('k') | KeyCode::Up => {
                             if state.layout.is_preview() {
                                 state.scroll_up_preview(state.layout.y);
@@ -206,8 +209,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                     },
                     KeyModifiers::NONE | KeyModifiers::SHIFT => {
                         match code {
+                            //Reset visual selection and return to normal mode
                             KeyCode::Esc => {
-                                //reset visual selection and return to normal mode
                                 state.reset_selection();
                                 state.redraw(state.layout.y);
                                 continue;
@@ -492,7 +495,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                             }
 
-                            //Go to the parent directory if exists.
+                            //Go to the parent directory if exists
                             KeyCode::Char('h') | KeyCode::Left => {
                                 //In visual mode, this is disabled.
                                 if state.v_start.is_some() {
@@ -512,7 +515,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                             }
 
-                            //Unpack archive file. Fails if it is not an archive file or any of supported types.
+                            //Unpack archive file. Fails if it is not any of supported types
                             KeyCode::Char('e') => {
                                 //In visual mode, this is disabled.
                                 //TODO! Enable this in visual mode.
@@ -532,7 +535,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 print_info(format!("Unpacked. [{}]", duration), state.layout.y);
                             }
 
-                            //Jumps to the directory that matches the keyword (zoxide required).
+                            //Jumps to the directory that matches the keyword (zoxide required)
                             KeyCode::Char('z') => {
                                 //In visual mode, this is disabled.
                                 if state.v_start.is_some() {
@@ -718,7 +721,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 continue;
                             }
 
-                            //toggle sortkey
+                            //Toggle sortkey
                             KeyCode::Char('t') => {
                                 //In visual mode, this is disabled.
                                 if state.v_start.is_some() {
@@ -736,7 +739,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 state.reorder(BEGINNING_ROW);
                             }
 
-                            //Show/hide hidden items.
+                            //Show or hide hidden items
                             KeyCode::Backspace => {
                                 //In visual mode, this is disabled.
                                 if state.v_start.is_some() {
@@ -756,7 +759,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 state.redraw(BEGINNING_ROW);
                             }
 
-                            //Toggle whether to show preview.
+                            //Toggle whether to show preview. Also hide registers.
                             KeyCode::Char('v') => {
                                 if state.layout.is_preview() || state.layout.is_reg() {
                                     state.layout.reset_side();
@@ -767,7 +770,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 state.refresh(new_column, new_row, state.layout.y)?;
                             }
 
-                            //Toggle vertical <-> horizontal split.
+                            //Toggle vertical <-> horizontal split
                             KeyCode::Char('s') => match state.layout.split {
                                 Split::Vertical => {
                                     state.layout.split = Split::Horizontal;
@@ -1031,7 +1034,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                             }
 
-                            //search mode
+                            //Search mode
                             KeyCode::Char('/') => {
                                 //In visual mode, this is disabled.
                                 //TODO! Enable this in visual mode.
@@ -1162,7 +1165,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 hide_cursor();
                             }
 
-                            //Search forward.
+                            //Search forward
                             KeyCode::Char('n') => {
                                 //In visual mode, this is disabled.
                                 if state.v_start.is_some() {
@@ -1193,7 +1196,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                             }
 
-                            //Search backward.
+                            //Search backward
                             KeyCode::Char('N') => {
                                 //In visual mode, this is disabled.
                                 if state.v_start.is_some() {
@@ -1223,7 +1226,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                             }
 
-                            //tinker with registers!
+                            //Tinker with registers
                             KeyCode::Char('"') => {
                                 go_to_info_line_and_reset();
                                 print!("\"");
@@ -1675,7 +1678,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                         state.redraw(state.layout.y);
                                                         break 'command;
                                                     } else if command == "reg" {
-                                                        //:reg
+                                                        //:reg - Show registers
                                                         if state.layout.is_preview() {
                                                             state.layout.show_reg();
                                                             state.redraw(state.layout.y);
@@ -1983,7 +1986,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         continue;
                     }
                 }
-                //If you use kitty, you must clear the screen by the escape sequence or the previewed image remains.
+                //If you use kitty, clear the screen by the escape sequence or the previewed image remains.
                 if state.layout.is_kitty && state.layout.is_preview() {
                     if let Ok(item) = state.get_item() {
                         if item.preview_type == Some(PreviewType::Image) {
