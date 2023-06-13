@@ -1818,44 +1818,6 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                             }
 
-                            //redo
-                            KeyCode::Char('r') if modifiers == KeyModifiers::CONTROL => {
-                                //In visual mode, this is disabled.
-                                if state.v_start.is_some() {
-                                    continue;
-                                }
-                                let op_len = state.operations.op_list.len();
-                                if op_len == 0
-                                    || state.operations.pos == 0
-                                    || op_len < state.operations.pos
-                                {
-                                    print_info("No operations left.", state.layout.y);
-                                    continue;
-                                }
-                                if let Some(op) =
-                                    state.operations.op_list.get(op_len - state.operations.pos)
-                                {
-                                    let op = op.clone();
-                                    if let Err(e) = state.redo(&op) {
-                                        print_warning(e, state.layout.y);
-                                        continue;
-                                    }
-
-                                    let new_len = state.list.len();
-                                    if new_len == 0 {
-                                        state.layout.nums.reset();
-                                        state.move_cursor(BEGINNING_ROW);
-                                    } else if state.layout.nums.index > new_len - 1 {
-                                        let new_y = state.layout.y
-                                            - (state.layout.nums.index - (new_len - 1)) as u16;
-                                        state.layout.nums.index = new_len - 1;
-                                        state.move_cursor(new_y)
-                                    } else {
-                                        state.move_cursor(state.layout.y);
-                                    }
-                                }
-                            }
-
                             //Add new temp file or directory.
                             //It has to feel like more "modal", so I comment this out for now.
                             // KeyCode::Char('a') => {
