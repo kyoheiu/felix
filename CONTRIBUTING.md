@@ -19,4 +19,4 @@ If you have gone through the documentation and existing issues but still haven't
 If you have identified a bug, implemented a new feature, or made improvements to the project, I welcome your pull request. However, I strongly encourage you to follow the steps mentioned above before proceeding with creating a PR.
 And note that pull requests should be focused to one issue.
 
-Thank you for your reading! 
+Thank you for reading! 

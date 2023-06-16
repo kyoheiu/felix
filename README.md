@@ -26,6 +26,17 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 
 ## New release
 
+## v2.4.0 (2023-06-14)
+
+### Added
+
+- Add registers (unnamed, zero, numbered, named): Now you can view registers by `:reg`, and add items to registers by usual vim command (prefixed by `"`). See the key manual for more details.
+- Refactor unpacking command: `e` unpacks / decompresses gz(Gzip), tar.gz, xz(lzma), tar.xz, zst(Zstandard), tar.zst, tar, and zip file format and formats based on it.
+
+### Removed
+
+- `:z` - Use `z` instead.
+
 ## v2.3.0 (2023-05-26)
 
 ### Changed
@@ -34,12 +45,6 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 - If config file is not found, or found one is broken, felix launches with the default configuration, without creating new one.
 - If the current directory is read-only, `dd`, `Vd` and `p` is disabled in the first place.
 - Bump up MSRV to 1.65.
-
-## v2.2.8 (2023-05-19)
-
-### Fixed
-
-- Kitty-specific: Enable scrolling of the preview text by redrawing the screen only when needed (this also improves the perfomance entirely).
 
 For more details, see `CHANGELOG.md`.
 
@@ -126,19 +131,29 @@ Both relative and absolute path available.
 j / Down          :Go down.
 k / Up            :Go up.
 h / Left          :Go to the parent directory if exists.
-l / Right / Enter :Open a file or change directory.
+l / Right / Enter :Open item or change directory.
 gg                :Go to the top.
 G                 :Go to the bottom.
 z + Enter         :Go to the home directory.
 z <keyword>       :Jump to a directory that matches the keyword. (zoxide required)
-o                 :Open a file in a new window.
+o                 :Open item in a new window.
 e                 :Unpack archive/compressed file.
-dd                :Delete and yank one item.
-yy                :Yank one item.
+dd                :Delete and yank item.
+yy                :Yank item.
 p                 :Put yanked item(s) in the current directory.
-V                 :Switch to the select mode.
-  - d             :In the select mode, delete and yank selected item(s).
-  - y             :In the select mode, yank selected item(s).
+:reg              :Show registers. To hide it, press v.
+"ayy              :Yank item to register a.
+"add              :Delete and yank item to register a.
+"Ayy              :Append item to register a.
+"Add              :Delete and append item to register a.
+"ap               :Put item(s) from register a.
+V                 :Switch to the linewise visual mode.
+  - y             :In the visual mode, yank selected item(s).
+  - d             :In the visual mode, delete and yank selected item(s).
+  - "ay           :In the visual mode, yank items to register a.
+  - "ad           :In the visual mode, delete and yank items to register a.
+  - "Ay           :In the visual mode, append items to register a.
+  - "Ad           :In the visual mode, delete and append items to register a.
 u                 :Undo put/delete/rename.
 Ctrl + r          :Redo put/delete/rename.
 v                 :Toggle whether to show the preview.
@@ -153,8 +168,7 @@ c                 :Switch to the rename mode.
 n                 :Go forward to the item that matches the keyword.
 N                 :Go backward to the item that matches the keyword.
 Esc               :Return to the normal mode.
-:cd / :z          :Go to the home directory.
-:z <keyword>      :Same as `z <keyword>`.
+:cd               :Go to the home directory.
 :e                :Reload the current directory.
 :trash            :Go to the trash directory.
 :empty            :Empty the trash directory.

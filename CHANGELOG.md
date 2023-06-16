@@ -8,6 +8,17 @@
 
 - Create temp file or directory by `af` or `ad` respectively. This feature has to feel like more "modal", so for now I comment out this feature.
 
+## v2.4.0 (2023-06-14)
+
+### Added
+
+- Add registers (unnamed, zero, numbered, named): Now you can view registers by `:reg`, and add items to registers by usual vim command (prefixed by `"`). See the key manual for more details.
+- Refactor unpacking command: `e` unpacks / decompresses gz(Gzip), tar.gz, xz(lzma), tar.xz, zst(Zstandard), tar.zst, tar, and zip file format and formats based on it.
+
+### Removed
+
+- `:z` - Use `z` instead.
+
 ## v2.3.0 (2023-05-26)
 
 ### Changed

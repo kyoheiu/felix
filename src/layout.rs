@@ -31,7 +31,7 @@ pub struct Layout {
     pub colors: ConfigColor,
     pub sort_by: SortKey,
     pub show_hidden: bool,
-    pub preview: bool,
+    pub side: Side,
     pub split: Split,
     pub preview_start: (u16, u16),
     pub preview_space: (u16, u16),
@@ -52,6 +52,13 @@ pub enum PreviewType {
     Binary,
 }
 
+#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone)]
+pub enum Side {
+    Preview,
+    Reg,
+    None,
+}
+
 #[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Clone, Copy)]
 pub enum Split {
     Vertical,
@@ -59,6 +66,65 @@ pub enum Split {
 }
 
 impl Layout {
+    pub fn is_preview(&self) -> bool {
+        self.side == Side::Preview
+    }
+
+    pub fn is_reg(&self) -> bool {
+        self.side == Side::Reg
+    }
+
+    pub fn show_preview(&mut self) {
+        self.side = Side::Preview;
+    }
+
+    pub fn show_reg(&mut self) {
+        self.side = Side::Reg;
+    }
+
+    pub fn reset_side(&mut self) {
+        self.side = Side::None;
+    }
+
+    pub fn print_reg(&self, reg: &[String]) {
+        match self.split {
+            Split::Vertical => {
+                self.clear_preview(self.preview_start.0);
+            }
+            Split::Horizontal => {
+                self.clear_preview(self.preview_start.1);
+            }
+        }
+
+        if reg.iter().all(|x| x.is_empty()) {
+            print!("No registers found.");
+            return;
+        }
+
+        match self.split {
+            Split::Vertical => {
+                for (i, line) in reg.iter().enumerate() {
+                    let row = self.preview_start.1 + i as u16;
+                    move_to(self.preview_start.0, row);
+                    print!("{}", line);
+                    if i as u16 == self.preview_space.1 - 1 {
+                        break;
+                    }
+                }
+            }
+            Split::Horizontal => {
+                for (i, line) in reg.iter().enumerate() {
+                    let row = self.preview_start.1 + i as u16;
+                    move_to(1, row);
+                    print!("{}", line);
+                    if row == self.terminal_row + self.preview_space.1 {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     /// Print preview according to the preview type.
     pub fn print_preview(&self, item: &ItemInfo, y: u16) {
         match self.split {
@@ -302,6 +368,17 @@ impl Layout {
                 }
                 move_to(1, preview_start_point);
             }
+        }
+    }
+
+    pub fn update_column_and_row(&mut self) -> Result<(u16, u16), FxError> {
+        if self.is_preview() || self.is_reg() {
+            match self.split {
+                Split::Vertical => Ok((self.terminal_column >> 1, self.terminal_row)),
+                Split::Horizontal => Ok((self.terminal_column, self.terminal_row >> 1)),
+            }
+        } else {
+            terminal_size()
         }
     }
 }
