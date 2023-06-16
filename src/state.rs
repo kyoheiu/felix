@@ -39,7 +39,6 @@ use std::os::unix::fs::PermissionsExt;
 
 pub const BEGINNING_ROW: u16 = 3;
 pub const EMPTY_WARNING: &str = "Are you sure to empty the trash directory? (if yes: y)";
-const TIME_PREFIX: usize = 11;
 const BASE32: &[u8; 32] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
 #[derive(Debug)]
@@ -889,24 +888,13 @@ impl State {
                 Ok(to.to_path_buf())
             }
             Some(path) => {
-                if item.file_path.parent() == Some(&self.trash_dir) {
-                    let rename: String = item.file_name.chars().skip(TIME_PREFIX).collect();
-                    let rename = rename_file(&rename, name_set);
-                    let to = path.join(&rename);
-                    if std::fs::copy(&item.file_path, to.clone()).is_err() {
-                        return Err(FxError::PutItem(item.file_path.clone()));
-                    }
-                    name_set.insert(rename);
-                    Ok(to)
-                } else {
-                    let rename = rename_file(&item.file_name, name_set);
-                    let to = &path.join(&rename);
-                    if std::fs::copy(&item.file_path, to).is_err() {
-                        return Err(FxError::PutItem(item.file_path.clone()));
-                    }
-                    name_set.insert(rename);
-                    Ok(to.to_path_buf())
+                let rename = rename_file(&item.file_name, name_set);
+                let to = &path.join(&rename);
+                if std::fs::copy(&item.file_path, to).is_err() {
+                    return Err(FxError::PutItem(item.file_path.clone()));
                 }
+                name_set.insert(rename);
+                Ok(to.to_path_buf())
             }
         }
     }
