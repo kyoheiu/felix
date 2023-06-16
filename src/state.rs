@@ -616,7 +616,7 @@ impl State {
 
         Ok((src.to_vec(), dest))
     }
-    
+
     /// Add dest to register, and item infomation to operation
     fn yank_after_delete(
         &mut self,
@@ -658,7 +658,6 @@ impl State {
 
     /// Move single directory recursively to trash directory.
     fn remove_dir(&mut self, item: &ItemBuffer, new_op: bool) -> Result<ItemBuffer, FxError> {
-        let mut trash_name = String::new();
         let mut base: usize = 0;
         let mut trash_path: std::path::PathBuf = PathBuf::new();
         let mut target: PathBuf;
@@ -686,7 +685,7 @@ impl State {
                 if i == 0 {
                     base = entry_path.iter().count();
 
-                    trash_name = chrono::Local::now().timestamp().to_string();
+                    let mut trash_name = chrono::Local::now().timestamp().to_string();
                     trash_name.push('_');
                     let file_name = entry.file_name().to_str();
                     if file_name.is_none() {
@@ -731,7 +730,7 @@ impl State {
 
         Ok(ItemBuffer {
             file_type: item.file_type,
-            file_name: trash_name,
+            file_name: item.file_name.clone(),
             file_path: trash_path,
         })
     }
@@ -772,7 +771,7 @@ impl State {
 
             Ok(Some(ItemBuffer {
                 file_type: item.file_type,
-                file_name: rename,
+                file_name: item.file_name.clone(),
                 file_path: to,
             }))
         }
@@ -881,24 +880,13 @@ impl State {
     ) -> Result<PathBuf, FxError> {
         match target_dir {
             None => {
-                if item.file_path.parent() == Some(&self.trash_dir) {
-                    let rename: String = item.file_name.chars().skip(TIME_PREFIX).collect();
-                    let rename = rename_file(&rename, name_set);
-                    let to = &self.current_dir.join(&rename);
-                    if std::fs::copy(&item.file_path, to).is_err() {
-                        return Err(FxError::PutItem(item.file_path.clone()));
-                    }
-                    name_set.insert(rename);
-                    Ok(to.to_path_buf())
-                } else {
-                    let rename = rename_file(&item.file_name, name_set);
-                    let to = &self.current_dir.join(&rename);
-                    if std::fs::copy(&item.file_path, to).is_err() {
-                        return Err(FxError::PutItem(item.file_path.clone()));
-                    }
-                    name_set.insert(rename);
-                    Ok(to.to_path_buf())
+                let rename = rename_file(&item.file_name, name_set);
+                let to = &self.current_dir.join(&rename);
+                if std::fs::copy(&item.file_path, to).is_err() {
+                    return Err(FxError::PutItem(item.file_path.clone()));
                 }
+                name_set.insert(rename);
+                Ok(to.to_path_buf())
             }
             Some(path) => {
                 if item.file_path.parent() == Some(&self.trash_dir) {
@@ -953,22 +941,12 @@ impl State {
             if i == 0 {
                 base = entry_path.iter().count();
 
-                if original_path.parent() == Some(&self.trash_dir) {
-                    let rename: String = item.file_name.chars().skip(TIME_PREFIX).collect();
-                    target = match &target_dir {
-                        None => self.current_dir.join(&rename),
-                        Some(path) => path.join(&rename),
-                    };
-                    let rename = rename_dir(&rename, name_set);
-                    name_set.insert(rename);
-                } else {
-                    let rename = rename_dir(&item.file_name, name_set);
-                    target = match &target_dir {
-                        None => self.current_dir.join(&rename),
-                        Some(path) => path.join(&rename),
-                    };
-                    name_set.insert(rename);
-                }
+                let rename = rename_dir(&item.file_name, name_set);
+                target = match &target_dir {
+                    None => self.current_dir.join(&rename),
+                    Some(path) => path.join(&rename),
+                };
+                name_set.insert(rename);
                 std::fs::create_dir(&target)?;
                 continue;
             } else {
@@ -1018,8 +996,7 @@ impl State {
                 print_info("UNDONE: PUT", BEGINNING_ROW);
             }
             OpKind::Delete(op) => {
-                let targets = sellect_buffer(&self.trash_dir, &op.trash)?;
-                self.put_item(&targets, Some(op.dir.clone()))?;
+                self.put_item(&op.trash, Some(op.dir.clone()))?;
                 self.operations.pos += 1;
                 self.update_list()?;
                 self.clear_and_show_headline();
@@ -1869,27 +1846,27 @@ fn read_item(entry: fs::DirEntry) -> ItemInfo {
 }
 
 /// Generate item information from trash directory, in order to use when redoing.
-pub fn sellect_buffer(trash_dir: &PathBuf, vec: &[ItemBuffer]) -> Result<Vec<ItemBuffer>, FxError> {
-    let total = vec.len();
-    let mut count = 0;
-    let mut result = Vec::new();
-    for entry in fs::read_dir(trash_dir)? {
-        let entry = entry?;
-        if vec
-            .iter()
-            .map(|x| x.file_path.clone())
-            .collect::<Vec<PathBuf>>()
-            .contains(&entry.path())
-        {
-            result.push(ItemBuffer::new(&read_item(entry)));
-            count += 1;
-            if count == total {
-                break;
-            }
-        }
-    }
-    Ok(result)
-}
+// pub fn sellect_buffer(trash_dir: &PathBuf, vec: &[ItemBuffer]) -> Result<Vec<ItemBuffer>, FxError> {
+//     let total = vec.len();
+//     let mut count = 0;
+//     let mut result = Vec::new();
+//     for entry in fs::read_dir(trash_dir)? {
+//         let entry = entry?;
+//         if vec
+//             .iter()
+//             .map(|x| x.file_path.clone())
+//             .collect::<Vec<PathBuf>>()
+//             .contains(&entry.path())
+//         {
+//             result.push(ItemBuffer::new(&read_item(entry)));
+//             count += 1;
+//             if count == total {
+//                 break;
+//             }
+//         }
+//     }
+//     Ok(result)
+// }
 
 /// Check if chafa is installed.
 fn check_chafa() -> bool {
