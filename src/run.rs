@@ -540,7 +540,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 if state.v_start.is_some() {
                                     continue;
                                 }
-                                delete_cursor();
+                                delete_pointer();
                                 go_to_info_line_and_reset();
                                 print!("z");
                                 show_cursor();
@@ -1031,7 +1031,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 if len == 0 {
                                     continue;
                                 }
-                                delete_cursor();
+                                delete_pointer();
                                 show_cursor();
                                 go_to_info_line_and_reset();
                                 print!("/");
@@ -1585,7 +1585,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 if state.v_start.is_some() {
                                     continue;
                                 }
-                                delete_cursor();
+                                delete_pointer();
                                 go_to_info_line_and_reset();
                                 print!(":");
                                 show_cursor();
@@ -1877,7 +1877,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 if state.v_start.is_some() {
                                     continue;
                                 }
-                                delete_cursor();
+                                delete_pointer();
                                 go_to_info_line_and_reset();
                                 print!("Z");
                                 show_cursor();
