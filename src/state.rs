@@ -544,7 +544,7 @@ impl State {
             }
         };
         print_info(delete_message, self.layout.y);
-        delete_cursor();
+        delete_pointer();
 
         self.reset_selection();
         if new_len == 0 {
@@ -588,7 +588,7 @@ impl State {
         let total_selected = src.len();
         let mut dest = Vec::new();
         for (i, item) in src.iter().enumerate() {
-            delete_cursor();
+            delete_pointer();
             to_info_line();
             clear_current_line();
             print!("{}", display_count(i, total_selected));
@@ -839,7 +839,7 @@ impl State {
 
         let total_selected = targets.len();
         for (i, item) in targets.iter().enumerate() {
-            delete_cursor();
+            delete_pointer();
             to_info_line();
             clear_current_line();
             print!("{}", display_count(i, total_selected));
@@ -1540,23 +1540,24 @@ impl State {
             }
         }
 
-        if let Ok(item) = self.get_item() {
-            delete_cursor();
+        delete_pointer();
 
-            //Print item information at the bottom
-            self.print_footer(item);
-
-            //Print preview if preview is on
-            if self.layout.is_preview() {
-                self.layout.print_preview(item, y);
-            } else if self.layout.is_reg() {
-                let reg = self.registers.prepare_reg(self.layout.preview_space.0);
-                self.layout.print_reg(&reg);
-            }
+        if self.layout.is_reg() {
+            //Print registers by :reg
+            let reg = self.registers.prepare_reg(self.layout.preview_space.0);
+            self.layout.print_reg(&reg);
         }
+
+        let item = self.get_item().ok();
+        //Print item information at the bottom
+        self.print_footer(item);
+        if self.layout.is_preview() {
+            //Print preview if preview is on
+            self.layout.print_preview(item, y);
+        }
+
         move_to(1, y);
         print_pointer();
-        move_left(1);
 
         //Store cursor position when cursor moves
         self.layout.y = y;
@@ -1579,7 +1580,7 @@ impl State {
     }
 
     /// Print item information at the bottom of the terminal.
-    fn print_footer(&self, item: &ItemInfo) {
+    fn print_footer(&self, item: Option<&ItemInfo>) {
         self.clear_status_line();
 
         if let Some(keyword) = &self.keyword {
@@ -1608,8 +1609,10 @@ impl State {
             return;
         }
 
-        let footer = self.make_footer(item);
-        print!("{}", footer.negative());
+        if let Some(item) = item {
+            let footer = self.make_footer(item);
+            print!("{}", footer.negative());
+        }
     }
 
     /// Return footer string.
@@ -1686,12 +1689,9 @@ impl State {
 
     /// Scroll preview.
     fn scroll_preview(&self, y: u16) {
-        if let Ok(item) = self.get_item() {
-            self.layout.print_preview(item, y);
-            move_to(1, y);
-            print_pointer();
-            move_left(1);
-        }
+        self.layout.print_preview(self.get_item().ok(), y);
+        move_to(1, y);
+        print_pointer();
     }
 
     /// Save the sort key and whether to show hidden items to session file.
