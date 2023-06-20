@@ -126,62 +126,67 @@ impl Layout {
     }
 
     /// Print preview according to the preview type.
-    pub fn print_preview(&self, item: &ItemInfo, y: u16) {
-        match self.split {
-            Split::Vertical => {
-                //At least print the item name
-                self.print_file_name(item);
-                //Clear preview space
-                self.clear_preview(self.preview_start.0);
+    pub fn print_preview(&self, item: Option<&ItemInfo>, y: u16) {
+        if item.is_none() {
+            return;
+        } else {
+            let item = item.unwrap();
+            match self.split {
+                Split::Vertical => {
+                    //At least print the item name
+                    self.print_file_name(item);
+                    //Clear preview space
+                    self.clear_preview(self.preview_start.0);
+                }
+                Split::Horizontal => {
+                    self.clear_preview(self.preview_start.1);
+                }
             }
-            Split::Horizontal => {
-                self.clear_preview(self.preview_start.1);
-            }
-        }
 
-        match item.preview_type {
-            Some(PreviewType::NotReadable) => {
-                print!("(file not readable)");
-            }
-            Some(PreviewType::TooBigSize) => {
-                print!("(file too big for preview)");
-            }
-            Some(PreviewType::Directory) => {
-                self.preview_directory(item);
-            }
-            Some(PreviewType::Image) => {
-                if self.has_chafa {
-                    if let Err(e) = self.preview_image(item, y) {
-                        print_warning(e, y);
-                    }
-                } else {
-                    let help = format_txt(CHAFA_WARNING, self.terminal_column - 1, false);
-                    for (i, line) in help.iter().enumerate() {
-                        move_to(self.preview_start.0, BEGINNING_ROW + i as u16);
-                        print!("{}", line,);
-                        if BEGINNING_ROW + i as u16 == self.terminal_row - 1 {
-                            break;
+            match item.preview_type {
+                Some(PreviewType::NotReadable) => {
+                    print!("(file not readable)");
+                }
+                Some(PreviewType::TooBigSize) => {
+                    print!("(file too big for preview)");
+                }
+                Some(PreviewType::Directory) => {
+                    self.preview_directory(item);
+                }
+                Some(PreviewType::Image) => {
+                    if self.has_chafa {
+                        if let Err(e) = self.preview_image(item, y) {
+                            print_warning(e, y);
+                        }
+                    } else {
+                        let help = format_txt(CHAFA_WARNING, self.terminal_column - 1, false);
+                        for (i, line) in help.iter().enumerate() {
+                            move_to(self.preview_start.0, BEGINNING_ROW + i as u16);
+                            print!("{}", line,);
+                            if BEGINNING_ROW + i as u16 == self.terminal_row - 1 {
+                                break;
+                            }
                         }
                     }
                 }
-            }
-            Some(PreviewType::Text) => {
-                if self.syntax_highlight {
-                    match self.preview_text_with_highlight(item) {
-                        Ok(_) => {}
-                        Err(e) => {
-                            print!("{}", e);
+                Some(PreviewType::Text) => {
+                    if self.syntax_highlight {
+                        match self.preview_text_with_highlight(item) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                print!("{}", e);
+                            }
                         }
+                    } else {
+                        self.preview_text(item);
                     }
-                } else {
-                    self.preview_text(item);
                 }
-            }
-            Some(PreviewType::Binary) => {
-                print!("(Binary file)");
-            }
-            _ => {
-                print!("(Not Available)");
+                Some(PreviewType::Binary) => {
+                    print!("(Binary file)");
+                }
+                _ => {
+                    print!("(Not Available)");
+                }
             }
         }
     }

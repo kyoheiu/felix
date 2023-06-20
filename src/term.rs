@@ -79,9 +79,10 @@ pub fn show_cursor() {
 
 pub fn print_pointer() {
     print!(">");
+    move_left(1);
 }
 
-pub fn delete_cursor() {
+pub fn delete_pointer() {
     print!(" ");
     move_left(1);
 }

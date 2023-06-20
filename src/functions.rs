@@ -73,7 +73,7 @@ pub fn rename_dir(dir_name: &str, name_set: &BTreeSet<String>) -> String {
 
 /// Print the result of operation, such as put/delete/redo/undo.
 pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
-    delete_cursor();
+    delete_pointer();
     go_to_info_line_and_reset();
     info!("{}", message);
 
@@ -84,12 +84,11 @@ pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
     hide_cursor();
     move_to(1, then);
     print_pointer();
-    move_left(1);
 }
 
 /// When something goes wrong or does not work, print information about it.
 pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
-    delete_cursor();
+    delete_pointer();
     go_to_info_line_and_reset();
     warn!("{}", message);
 
@@ -103,7 +102,6 @@ pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
     hide_cursor();
     move_to(1, then);
     print_pointer();
-    move_left(1);
 }
 
 /// Print process of put/delete.
