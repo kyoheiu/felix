@@ -26,6 +26,12 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 
 ## New release
 
+## v2.4.1 (2023-06-21)
+
+### Changed
+
+- Show status bar and registers even if current directory does not contain any item.
+
 ## v2.4.0 (2023-06-14)
 
 ### Added
@@ -188,8 +194,8 @@ Install `chafa` and you can preview images without any configuration.
 ## Configuration
 
 ### Config file
-If any config file is not found, or found one is broken, felix launches with the default configuration, without creating new one.
-Note that the default editor is `$EDITOR`, so if you've not set it, opening a file will fail.
+If any config file is not found, or found one is broken, felix launches with the default configuration, without creating new one.  
+Note that the default editor is `$EDITOR`, so if you've not set it, opening a file will fail.  
 You can find default config file (`config.yaml`) in this repository.
 
 ### Trash directory and log file
