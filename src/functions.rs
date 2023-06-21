@@ -73,8 +73,8 @@ pub fn rename_dir(dir_name: &str, name_set: &BTreeSet<String>) -> String {
 
 /// Print the result of operation, such as put/delete/redo/undo.
 pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
-    delete_cursor();
-    go_to_and_rest_info();
+    delete_pointer();
+    go_to_info_line_and_reset();
     info!("{}", message);
 
     let (width, _) = terminal_size().unwrap();
@@ -84,13 +84,12 @@ pub fn print_info<T: std::fmt::Display>(message: T, then: u16) {
     hide_cursor();
     move_to(1, then);
     print_pointer();
-    move_left(1);
 }
 
 /// When something goes wrong or does not work, print information about it.
 pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
-    delete_cursor();
-    go_to_and_rest_info();
+    delete_pointer();
+    go_to_info_line_and_reset();
     warn!("{}", message);
 
     let (width, _) = terminal_size().unwrap();
@@ -103,7 +102,6 @@ pub fn print_warning<T: std::fmt::Display>(message: T, then: u16) {
     hide_cursor();
     move_to(1, then);
     print_pointer();
-    move_left(1);
 }
 
 /// Print process of put/delete.
@@ -204,7 +202,7 @@ pub fn list_up_contents(path: &Path, width: u16) -> Result<String, FxError> {
 
 /// Format texts to print. Used when printing help or text preview.
 pub fn format_txt(txt: &str, width: u16, is_help: bool) -> Vec<String> {
-    let mut v = split_lines_includng_wide_char(txt, width.into());
+    let mut v = split_lines_including_wide_char(txt, width.into());
     if is_help {
         v.push("Press Enter to go back.".to_owned());
     }
@@ -252,30 +250,6 @@ pub fn init_log(data_local_path: &Path) -> Result<(), FxError> {
     Ok(())
 }
 
-/// Check the latest version of felix.
-pub fn check_version() -> Result<(), FxError> {
-    let output = std::process::Command::new("cargo")
-        .args(["search", "felix", "--limit", "1"])
-        .output()?
-        .stdout;
-    if !output.is_empty() {
-        if let Ok(ver) = std::str::from_utf8(&output) {
-            let latest: String = ver.chars().skip(9).take_while(|x| *x != '\"').collect();
-            let current = env!("CARGO_PKG_VERSION");
-            if latest != current {
-                println!("felix v{}: Latest version is {}.", current, latest);
-            } else {
-                println!("felix v{}: Up to date.", current);
-            }
-        } else {
-            println!("Cannot read the version.");
-        }
-    } else {
-        println!("Cannot fetch the latest version: Check your internet connection.");
-    }
-    Ok(())
-}
-
 /// linux-specific: Convert u32 to permission-ish string.
 pub fn convert_to_permissions(permissions: u32) -> String {
     let permissions = format!("{permissions:o}");
@@ -299,7 +273,7 @@ pub fn shorten_str_including_wide_char(s: &str, i: usize) -> String {
     result
 }
 
-fn split_lines_includng_wide_char(s: &str, width: usize) -> Vec<String> {
+pub fn split_lines_including_wide_char(s: &str, width: usize) -> Vec<String> {
     let mut result = vec![];
     let mut new_line = "".to_owned();
     for c in s.chars() {
@@ -359,7 +333,7 @@ mod tests {
     fn test_list_up_contents() {
         let p = PathBuf::from("./testfiles");
         let tree = list_up_contents(&p, 20).unwrap();
-        assert_eq!(tree, "├ archives\n└ images".to_string());
+        assert_eq!(tree, "├ archives\n├ images\n└ permission_test".to_string());
     }
 
     #[test]

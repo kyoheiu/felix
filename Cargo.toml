@@ -1,6 +1,6 @@
 [package]
 name = "felix"
-version = "2.2.5"
+version = "2.4.1"
 authors = ["Kyohei Uto <im@kyoheiu.dev>"]
 edition = "2021"
 description = "tui file manager with vim-like key mapping"
@@ -21,7 +21,7 @@ bench = false
 
 [dependencies]
 dirs = "4.0.0"
-walkdir = "2.3.2"
+walkdir = "2.3.3"
 natord = "1.0.9"
 log = "0.4.16"
 simplelog = "0.12.0"
@@ -29,9 +29,9 @@ content_inspector = "0.2.4"
 crossterm = "0.25.0"
 syntect = {version = "5.0.0", git = "https://github.com/kyoheiu/syntect"}
 serde_yaml = "0.9.14"
-zip = "0.6.3"
+zip = "0.6.4"
 tar = "0.4.38"
-flate2 = "1.0.24"
+flate2 = "1.0.26"
 lzma-rs = "0.2.0"
 zstd = "0.11.2"
 unicode-width = "0.1.10"
@@ -40,14 +40,14 @@ unicode-width = "0.1.10"
 devtimer = "4.0.0"
 rayon = "1.6.1"
 
-[target.'cfg(any(target_os = "linux", target_os = "netbsd"))'.dependencies]
+[target.'cfg(unix)'.dependencies]
 nix = {version = "0.25.0", features = ["process"]}
 
 [dependencies.serde]
-version = "1.0.136"
+version = "1.0.162"
 features = ["derive"]
 
 [dependencies.chrono]
-version = "0.4.22"
+version = "0.4.24"
 default-features = false
 features = ["clock"]

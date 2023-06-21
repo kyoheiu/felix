@@ -31,7 +31,7 @@ pub struct Layout {
     pub colors: ConfigColor,
     pub sort_by: SortKey,
     pub show_hidden: bool,
-    pub preview: bool,
+    pub side: Side,
     pub split: Split,
     pub preview_start: (u16, u16),
     pub preview_space: (u16, u16),
@@ -52,6 +52,13 @@ pub enum PreviewType {
     Binary,
 }
 
+#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone)]
+pub enum Side {
+    Preview,
+    Reg,
+    None,
+}
+
 #[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Clone, Copy)]
 pub enum Split {
     Vertical,
@@ -59,13 +66,29 @@ pub enum Split {
 }
 
 impl Layout {
-    /// Print preview according to the preview type.
-    pub fn print_preview(&self, item: &ItemInfo, y: u16) {
+    pub fn is_preview(&self) -> bool {
+        self.side == Side::Preview
+    }
+
+    pub fn is_reg(&self) -> bool {
+        self.side == Side::Reg
+    }
+
+    pub fn show_preview(&mut self) {
+        self.side = Side::Preview;
+    }
+
+    pub fn show_reg(&mut self) {
+        self.side = Side::Reg;
+    }
+
+    pub fn reset_side(&mut self) {
+        self.side = Side::None;
+    }
+
+    pub fn print_reg(&self, reg: &[String]) {
         match self.split {
             Split::Vertical => {
-                //At least print the item name
-                self.print_file_name(item);
-                //Clear preview space
                 self.clear_preview(self.preview_start.0);
             }
             Split::Horizontal => {
@@ -73,49 +96,97 @@ impl Layout {
             }
         }
 
-        match item.preview_type {
-            Some(PreviewType::NotReadable) => {
-                print!("(file not readable)");
-            }
-            Some(PreviewType::TooBigSize) => {
-                print!("(file too big for preview)");
-            }
-            Some(PreviewType::Directory) => {
-                self.preview_directory(item);
-            }
-            Some(PreviewType::Image) => {
-                if self.has_chafa {
-                    if let Err(e) = self.preview_image(item, y) {
-                        print_warning(e, y);
-                    }
-                } else {
-                    let help = format_txt(CHAFA_WARNING, self.terminal_column - 1, false);
-                    for (i, line) in help.iter().enumerate() {
-                        move_to(self.preview_start.0, BEGINNING_ROW + i as u16);
-                        print!("{}", line,);
-                        if BEGINNING_ROW + i as u16 == self.terminal_row - 1 {
-                            break;
-                        }
+        if reg.iter().all(|x| x.is_empty()) {
+            print!("No registers found.");
+            return;
+        }
+
+        match self.split {
+            Split::Vertical => {
+                for (i, line) in reg.iter().enumerate() {
+                    let row = self.preview_start.1 + i as u16;
+                    move_to(self.preview_start.0, row);
+                    print!("{}", line);
+                    if i as u16 == self.preview_space.1 - 1 {
+                        break;
                     }
                 }
             }
-            Some(PreviewType::Text) => {
-                if self.syntax_highlight {
-                    match self.preview_text_with_highlight(item) {
-                        Ok(_) => {}
-                        Err(e) => {
-                            print!("{}", e);
-                        }
+            Split::Horizontal => {
+                for (i, line) in reg.iter().enumerate() {
+                    let row = self.preview_start.1 + i as u16;
+                    move_to(1, row);
+                    print!("{}", line);
+                    if row == self.terminal_row + self.preview_space.1 {
+                        break;
                     }
-                } else {
-                    self.preview_text(item);
                 }
             }
-            Some(PreviewType::Binary) => {
-                print!("(Binary file)");
+        }
+    }
+
+    /// Print preview according to the preview type.
+    pub fn print_preview(&self, item: Option<&ItemInfo>, y: u16) {
+        if item.is_none() {
+            return;
+        } else {
+            let item = item.unwrap();
+            match self.split {
+                Split::Vertical => {
+                    //At least print the item name
+                    self.print_file_name(item);
+                    //Clear preview space
+                    self.clear_preview(self.preview_start.0);
+                }
+                Split::Horizontal => {
+                    self.clear_preview(self.preview_start.1);
+                }
             }
-            _ => {
-                print!("(Not Available)");
+
+            match item.preview_type {
+                Some(PreviewType::NotReadable) => {
+                    print!("(file not readable)");
+                }
+                Some(PreviewType::TooBigSize) => {
+                    print!("(file too big for preview)");
+                }
+                Some(PreviewType::Directory) => {
+                    self.preview_directory(item);
+                }
+                Some(PreviewType::Image) => {
+                    if self.has_chafa {
+                        if let Err(e) = self.preview_image(item, y) {
+                            print_warning(e, y);
+                        }
+                    } else {
+                        let help = format_txt(CHAFA_WARNING, self.terminal_column - 1, false);
+                        for (i, line) in help.iter().enumerate() {
+                            move_to(self.preview_start.0, BEGINNING_ROW + i as u16);
+                            print!("{}", line,);
+                            if BEGINNING_ROW + i as u16 == self.terminal_row - 1 {
+                                break;
+                            }
+                        }
+                    }
+                }
+                Some(PreviewType::Text) => {
+                    if self.syntax_highlight {
+                        match self.preview_text_with_highlight(item) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                print!("{}", e);
+                            }
+                        }
+                    } else {
+                        self.preview_text(item);
+                    }
+                }
+                Some(PreviewType::Binary) => {
+                    print!("(Binary file)");
+                }
+                _ => {
+                    print!("(Not Available)");
+                }
             }
         }
     }
@@ -302,6 +373,17 @@ impl Layout {
                 }
                 move_to(1, preview_start_point);
             }
+        }
+    }
+
+    pub fn update_column_and_row(&mut self) -> Result<(u16, u16), FxError> {
+        if self.is_preview() || self.is_reg() {
+            match self.split {
+                Split::Vertical => Ok((self.terminal_column >> 1, self.terminal_row)),
+                Split::Horizontal => Ok((self.terminal_column, self.terminal_row >> 1)),
+            }
+        } else {
+            terminal_size()
         }
     }
 }

@@ -1,4 +1,4 @@
-use super::state::ItemInfo;
+use super::state::ItemBuffer;
 
 use log::info;
 use std::path::PathBuf;
@@ -17,16 +17,16 @@ pub enum OpKind {
 }
 
 #[derive(Debug, Clone)]
-pub struct PutFiles {
-    pub original: Vec<ItemInfo>,
-    pub put: Vec<PathBuf>,
+pub struct DeletedFiles {
+    pub trash: Vec<ItemBuffer>,
+    pub original: Vec<ItemBuffer>,
     pub dir: PathBuf,
 }
 
 #[derive(Debug, Clone)]
-pub struct DeletedFiles {
-    pub trash: Vec<PathBuf>,
-    pub original: Vec<ItemInfo>,
+pub struct PutFiles {
+    pub original: Vec<ItemBuffer>,
+    pub put: Vec<PathBuf>,
     pub dir: PathBuf,
 }
 
@@ -90,7 +90,7 @@ pub fn relog(op: &OpKind, undo: bool) {
     }
 }
 
-fn item_to_pathvec(v: &Vec<ItemInfo>) -> Vec<PathBuf> {
+fn item_to_pathvec(v: &Vec<ItemBuffer>) -> Vec<PathBuf> {
     let mut result = Vec::new();
     for p in v {
         result.push(p.file_path.clone());

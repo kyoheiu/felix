@@ -1,7 +1,8 @@
-use super::config::{make_config_if_not_exists, CONFIG_FILE};
+#![allow(unreachable_code)]
+use super::config::FELIX;
 use super::errors::FxError;
 use super::functions::*;
-use super::layout::Split;
+use super::layout::{PreviewType, Split};
 use super::nums::*;
 use super::op::*;
 use super::session::*;
@@ -20,14 +21,15 @@ use std::panic;
 use std::path::PathBuf;
 use std::time::Instant;
 
-pub const TRASH: &str = "Trash";
+const TRASH: &str = "Trash";
+const SESSION_FILE: &str = ".session";
 /// Where the item list starts to scroll.
 const SCROLL_POINT: u16 = 3;
 const CLRSCR: &str = "\x1B[2J";
 const INITIAL_POS_SEARCH: usize = 3;
 const INITIAL_POS_SHELL: u16 = 3;
 
-/// Launch the app. If initializing goes wrong, return error.
+/// Launch the app. If initialization goes wrong, return error.
 pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     //Check if argument path is valid.
     if !&arg.exists() {
@@ -51,6 +53,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         path.push(FELIX);
         path
     };
+    //Prepare data local and trash dir path.
     let data_local_path = {
         let mut path = dirs::data_local_dir()
             .ok_or_else(|| FxError::Dirs("Cannot read the data local directory.".to_string()))?;
@@ -88,38 +91,29 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         _ => None,
     };
 
-    //Set config file and trash dir path.
-    let config_file_path = {
-        let mut path = config_dir_path;
-        path.push(CONFIG_FILE);
-        path
-    };
     let trash_dir_path = {
         let mut path = data_local_path.clone();
         path.push(TRASH);
         path
     };
-
-    //Make config file and trash directory if not exists.
-    make_config_if_not_exists(&config_file_path, &trash_dir_path)?;
+    if !trash_dir_path.exists() {
+        std::fs::create_dir_all(&trash_dir_path)?;
+    }
 
     //If `-l / --log` is set, initialize logger.
     if log {
         init_log(&data_local_path)?;
     }
 
-    //If session file does not exist (i.e. first launch), make it.
-    let session_file_path = {
+    //Set the session file path.
+    let session_path = {
         let mut path = data_local_path;
         path.push(SESSION_FILE);
         path
     };
-    if !session_file_path.exists() {
-        make_session(&session_file_path)?;
-    }
 
-    //Initialize app state.
-    let mut state = State::new(&config_file_path, &session_file_path)?;
+    //Initialize app state. Inside State::new(), config file is read or created.
+    let mut state = State::new(&session_path)?;
     state.trash_dir = trash_dir_path;
     state.lwd_file = lwd_file_path;
     state.current_dir = if cfg!(not(windows)) {
@@ -128,9 +122,13 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     } else {
         arg
     };
+    state.is_ro = match has_write_permission(&state.current_dir) {
+        Ok(b) => !b,
+        Err(_) => false,
+    };
 
     //If the main function causes panic, catch it.
-    let result = panic::catch_unwind(|| _run(state, session_file_path));
+    let result = panic::catch_unwind(|| _run(state, session_path));
     leave_raw_mode();
 
     if let Err(panic) = result {
@@ -158,7 +156,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
     execute!(screen, EnterAlternateScreen)?;
 
     //If preview is on, refresh the layout.
-    if state.layout.preview {
+    if state.layout.is_preview() {
         state.update_list()?;
         let new_column = match state.layout.split {
             Split::Vertical => state.layout.terminal_column >> 1,
@@ -188,7 +186,11 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
             }) => {
                 match modifiers {
                     KeyModifiers::CONTROL => match code {
+                        //redo
                         KeyCode::Char('r') => {
+                            if state.v_start.is_some() {
+                                continue;
+                            }
                             let op_len = state.operations.op_list.len();
                             if op_len == 0
                                 || state.operations.pos == 0
@@ -226,13 +228,15 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         }
                     },
                     KeyModifiers::ALT => match code {
+                        //scroll down the previewed text
                         KeyCode::Char('j') | KeyCode::Down => {
-                            if state.layout.preview {
+                            if state.layout.is_preview() {
                                 state.scroll_down_preview(state.layout.y);
                             }
                         }
+                        //scroll up the previewed text
                         KeyCode::Char('k') | KeyCode::Up => {
-                            if state.layout.preview {
+                            if state.layout.is_preview() {
                                 state.scroll_up_preview(state.layout.y);
                             }
                         }
@@ -243,59 +247,167 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                     },
                     KeyModifiers::NONE | KeyModifiers::SHIFT => {
                         match code {
+                            //Reset visual selection and return to normal mode
+                            KeyCode::Esc => {
+                                state.reset_selection();
+                                state.redraw(state.layout.y);
+                                continue;
+                            }
+
                             //Go up. If lists exceed max-row, lists "scrolls" before the top of the list
                             KeyCode::Char('j') | KeyCode::Down => {
-                                if len == 0 || state.layout.nums.index == len - 1 {
-                                    continue;
-                                } else if state.layout.y
-                                    >= state.layout.terminal_row - 1 - SCROLL_POINT
-                                    && len
-                                        > (state.layout.terminal_row - BEGINNING_ROW) as usize - 1
-                                {
-                                    state.layout.nums.go_down();
-                                    state.layout.nums.inc_skip();
-                                    state.redraw(state.layout.y);
+                                if let Some(start_pos) = state.v_start {
+                                    //In visual mode
+                                    if len == 0 || state.layout.nums.index == len - 1 {
+                                        continue;
+                                    } else if state.layout.y >= state.layout.terminal_row - 4
+                                        && len
+                                            > (state.layout.terminal_row - BEGINNING_ROW) as usize
+                                                - 1
+                                    {
+                                        if state.layout.nums.index >= start_pos {
+                                            state.layout.nums.go_down();
+                                            state.layout.nums.inc_skip();
+                                            let mut item = state.get_item_mut()?;
+                                            item.selected = true;
+                                            state.redraw(state.layout.y);
+                                        } else {
+                                            let mut item = state.get_item_mut()?;
+                                            item.selected = false;
+                                            state.layout.nums.go_down();
+                                            state.layout.nums.inc_skip();
+                                            state.redraw(state.layout.y);
+                                        }
+                                    } else if state.layout.nums.index >= start_pos {
+                                        state.layout.nums.go_down();
+                                        let mut item = state.get_item_mut()?;
+                                        item.selected = true;
+                                        state.redraw(state.layout.y + 1);
+                                    } else {
+                                        let mut item = state.get_item_mut()?;
+                                        item.selected = false;
+                                        state.layout.nums.go_down();
+                                        state.redraw(state.layout.y + 1);
+                                    }
                                 } else {
-                                    state.layout.nums.go_down();
-                                    state.move_cursor(state.layout.y + 1);
+                                    //normal mode
+                                    if len == 0 || state.layout.nums.index == len - 1 {
+                                        continue;
+                                    } else if state.layout.y
+                                        >= state.layout.terminal_row - 1 - SCROLL_POINT
+                                        && len
+                                            > (state.layout.terminal_row - BEGINNING_ROW) as usize
+                                                - 1
+                                    {
+                                        state.layout.nums.go_down();
+                                        state.layout.nums.inc_skip();
+                                        state.redraw(state.layout.y);
+                                    } else {
+                                        state.layout.nums.go_down();
+                                        state.move_cursor(state.layout.y + 1);
+                                    }
                                 }
                             }
 
                             //Go down. If lists exceed max-row, lists "scrolls" before the bottom of the list
                             KeyCode::Char('k') | KeyCode::Up => {
-                                if state.layout.nums.index == 0 {
-                                    continue;
-                                } else if state.layout.y <= BEGINNING_ROW + SCROLL_POINT
-                                    && state.layout.nums.skip != 0
-                                {
-                                    state.layout.nums.go_up();
-                                    state.layout.nums.dec_skip();
-                                    state.redraw(state.layout.y);
+                                if let Some(start_pos) = state.v_start {
+                                    //visual mode
+                                    if state.layout.nums.index == 0 {
+                                        continue;
+                                    } else if state.layout.y <= BEGINNING_ROW + 3
+                                        && state.layout.nums.skip != 0
+                                    {
+                                        if state.layout.nums.index > start_pos {
+                                            let mut item = state.get_item_mut()?;
+                                            item.selected = false;
+                                            state.layout.nums.go_up();
+                                            state.layout.nums.dec_skip();
+                                            state.redraw(state.layout.y);
+                                        } else {
+                                            state.layout.nums.go_up();
+                                            state.layout.nums.dec_skip();
+                                            let mut item = state.get_item_mut()?;
+                                            item.selected = true;
+                                            state.redraw(state.layout.y);
+                                        }
+                                    } else if state.layout.nums.index > start_pos {
+                                        let mut item = state.get_item_mut()?;
+                                        item.selected = false;
+                                        state.layout.nums.go_up();
+                                        state.redraw(state.layout.y - 1);
+                                    } else {
+                                        state.layout.nums.go_up();
+                                        let mut item = state.get_item_mut()?;
+                                        item.selected = true;
+                                        state.redraw(state.layout.y - 1);
+                                    }
                                 } else {
-                                    state.layout.nums.go_up();
-                                    state.move_cursor(state.layout.y - 1);
+                                    //normal mode
+                                    if state.layout.nums.index == 0 {
+                                        continue;
+                                    } else if state.layout.y <= BEGINNING_ROW + SCROLL_POINT
+                                        && state.layout.nums.skip != 0
+                                    {
+                                        state.layout.nums.go_up();
+                                        state.layout.nums.dec_skip();
+                                        state.redraw(state.layout.y);
+                                    } else {
+                                        state.layout.nums.go_up();
+                                        state.move_cursor(state.layout.y - 1);
+                                    }
                                 }
                             }
 
                             //Go to top
                             KeyCode::Char('g') => {
-                                go_to_and_rest_info();
-                                print!("g");
-                                show_cursor();
-                                screen.flush()?;
+                                if let Some(start_pos) = state.v_start {
+                                    //visual mode
+                                    if state.layout.nums.index == 0 {
+                                        continue;
+                                    } else {
+                                        go_to_info_line_and_reset();
+                                        print!("g");
+                                        show_cursor();
+                                        screen.flush()?;
 
-                                if let Event::Key(KeyEvent { code, .. }) = event::read()? {
-                                    match code {
-                                        KeyCode::Char('g') => {
-                                            hide_cursor();
-                                            state.layout.nums.reset();
-                                            state.redraw(BEGINNING_ROW);
+                                        if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                                            match code {
+                                                KeyCode::Char('g') => {
+                                                    hide_cursor();
+                                                    state.select_from_top(start_pos);
+                                                    state.layout.nums.reset();
+                                                    state.redraw(BEGINNING_ROW);
+                                                }
+
+                                                _ => {
+                                                    go_to_info_line_and_reset();
+                                                    hide_cursor();
+                                                    state.move_cursor(state.layout.y);
+                                                }
+                                            }
                                         }
+                                    }
+                                } else {
+                                    //normal mode
+                                    go_to_info_line_and_reset();
+                                    print!("g");
+                                    show_cursor();
+                                    screen.flush()?;
 
-                                        _ => {
-                                            hide_cursor();
-                                            clear_current_line();
-                                            state.move_cursor(state.layout.y);
+                                    if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                                        match code {
+                                            KeyCode::Char('g') => {
+                                                hide_cursor();
+                                                state.layout.nums.reset();
+                                                state.redraw(BEGINNING_ROW);
+                                            }
+
+                                            _ => {
+                                                hide_cursor();
+                                                clear_current_line();
+                                                state.move_cursor(state.layout.y);
+                                            }
                                         }
                                     }
                                 }
@@ -303,23 +415,43 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                             //Go to bottom
                             KeyCode::Char('G') => {
-                                if len == 0 {
-                                    continue;
-                                }
-                                if len > (state.layout.terminal_row - BEGINNING_ROW) as usize {
-                                    state.layout.nums.skip =
-                                        (len as u16) + BEGINNING_ROW - state.layout.terminal_row;
-                                    state.layout.nums.go_bottom(len - 1);
-                                    let cursor_pos = state.layout.terminal_row - 1;
-                                    state.redraw(cursor_pos);
+                                if let Some(start_pos) = state.v_start {
+                                    //visual mode
+                                    if len > (state.layout.terminal_row - BEGINNING_ROW) as usize {
+                                        state.select_to_bottom(start_pos);
+                                        state.layout.nums.skip = (len as u16) + BEGINNING_ROW
+                                            - state.layout.terminal_row;
+                                        state.layout.nums.go_bottom(len - 1);
+                                        state.redraw(state.layout.terminal_row - 1);
+                                    } else {
+                                        state.select_to_bottom(start_pos);
+                                        state.layout.nums.go_bottom(len - 1);
+                                        state.redraw(len as u16 + BEGINNING_ROW - 1);
+                                    }
                                 } else {
-                                    state.layout.nums.go_bottom(len - 1);
-                                    state.move_cursor(len as u16 + BEGINNING_ROW - 1);
+                                    //normal mode
+                                    if len == 0 {
+                                        continue;
+                                    }
+                                    if len > (state.layout.terminal_row - BEGINNING_ROW) as usize {
+                                        state.layout.nums.skip = (len as u16) + BEGINNING_ROW
+                                            - state.layout.terminal_row;
+                                        state.layout.nums.go_bottom(len - 1);
+                                        let cursor_pos = state.layout.terminal_row - 1;
+                                        state.redraw(cursor_pos);
+                                    } else {
+                                        state.layout.nums.go_bottom(len - 1);
+                                        state.move_cursor(len as u16 + BEGINNING_ROW - 1);
+                                    }
                                 }
                             }
 
                             //Open file or change directory
                             KeyCode::Char('l') | KeyCode::Enter | KeyCode::Right => {
+                                //In visual mode, this is disabled.
+                                if state.v_start.is_some() {
+                                    continue;
+                                }
                                 let mut dest: Option<PathBuf> = None;
                                 if let Ok(item) = state.get_item() {
                                     match item.file_type {
@@ -377,6 +509,10 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                             //and ii) the extension of the item matches the key.
                             //If not, warning message appears.
                             KeyCode::Char('o') => {
+                                //In visual mode, this is disabled.
+                                if state.v_start.is_some() {
+                                    continue;
+                                }
                                 if let Ok(item) = state.get_item() {
                                     match item.file_type {
                                         FileType::File => {
@@ -397,8 +533,12 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                             }
 
-                            //Go to the parent directory if exists.
+                            //Go to the parent directory if exists
                             KeyCode::Char('h') | KeyCode::Left => {
+                                //In visual mode, this is disabled.
+                                if state.v_start.is_some() {
+                                    continue;
+                                }
                                 let pre = state.current_dir.clone();
 
                                 match pre.parent() {
@@ -413,8 +553,13 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                             }
 
-                            //Unpack archive file. Fails if it is not an archive file or any of supported types.
+                            //Unpack archive file. Fails if it is not any of supported types
                             KeyCode::Char('e') => {
+                                //In visual mode, this is disabled.
+                                //TODO! Enable this in visual mode.
+                                if state.v_start.is_some() {
+                                    continue;
+                                }
                                 print_info("Unpacking...", state.layout.y);
                                 screen.flush()?;
                                 let start = Instant::now();
@@ -428,11 +573,14 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 print_info(format!("Unpacked. [{}]", duration), state.layout.y);
                             }
 
-                            //Jumps to the directory that matches the keyword (zoxide required).
+                            //Jumps to the directory that matches the keyword (zoxide required)
                             KeyCode::Char('z') => {
-                                delete_cursor();
-                                to_info_line();
-                                clear_current_line();
+                                //In visual mode, this is disabled.
+                                if state.v_start.is_some() {
+                                    continue;
+                                }
+                                delete_pointer();
+                                go_to_info_line_and_reset();
                                 print!("z");
                                 show_cursor();
 
@@ -445,7 +593,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     if let Event::Key(KeyEvent { code, .. }) = event::read()? {
                                         match code {
                                             KeyCode::Esc => {
-                                                go_to_and_rest_info();
+                                                go_to_info_line_and_reset();
                                                 hide_cursor();
                                                 state.move_cursor(state.layout.y);
                                                 break 'zoxide;
@@ -471,7 +619,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                             KeyCode::Backspace => {
                                                 if current_pos == initial_pos + 1 {
-                                                    go_to_and_rest_info();
+                                                    go_to_info_line_and_reset();
                                                     hide_cursor();
                                                     state.move_cursor(state.layout.y);
                                                     break 'zoxide;
@@ -492,88 +640,76 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 let commands = command
                                                     .split_whitespace()
                                                     .collect::<Vec<&str>>();
-                                                if commands[0] == "z" {
-                                                    if commands.len() > 2 {
-                                                        //Invalid argument.
-                                                        print_warning(
-                                                            "Invalid argument for zoxide.",
-                                                            state.layout.y,
-                                                        );
-                                                        state.move_cursor(state.layout.y);
-                                                        break 'zoxide;
-                                                    } else if commands.len() == 1 {
-                                                        //go to the home directory
-                                                        let home_dir = dirs::home_dir()
-                                                            .ok_or_else(|| {
-                                                                FxError::Dirs(
-                                                                    "Cannot read home dir."
-                                                                        .to_string(),
-                                                                )
-                                                            })?;
-                                                        if let Err(e) =
-                                                            state.chdir(&home_dir, Move::Jump)
-                                                        {
-                                                            print_warning(e, state.layout.y);
-                                                        }
-                                                        break 'zoxide;
-                                                    } else if let Ok(output) =
-                                                        std::process::Command::new("zoxide")
-                                                            .args(["query", commands[1]])
-                                                            .output()
-                                                    {
-                                                        let output = output.stdout;
-                                                        if output.is_empty() {
-                                                            print_warning(
-                                                        "Keyword does not match the database.",
+                                                if commands.len() > 2 {
+                                                    //Invalid argument.
+                                                    print_warning(
+                                                        "Invalid argument for zoxide.",
                                                         state.layout.y,
                                                     );
-                                                            break 'zoxide;
-                                                        } else {
-                                                            let target_dir =
-                                                                std::str::from_utf8(&output);
-                                                            match target_dir {
-                                                                Err(e) => {
-                                                                    print_warning(
-                                                                        e,
-                                                                        state.layout.y,
-                                                                    );
-                                                                    break 'zoxide;
-                                                                }
-                                                                Ok(target_dir) => {
-                                                                    hide_cursor();
-                                                                    state.layout.nums.reset();
-                                                                    let target_path = PathBuf::from(
-                                                                        target_dir.trim(),
-                                                                    );
-                                                                    std::env::set_current_dir(
-                                                                        &target_path,
-                                                                    )?;
-                                                                    state.current_dir =
-                                                                        if cfg!(not(windows)) {
-                                                                            target_path
-                                                                                .canonicalize()?
-                                                                        } else {
-                                                                            target_path
-                                                                        };
-                                                                    state.reload(BEGINNING_ROW)?;
-                                                                    break 'zoxide;
-                                                                }
-                                                            }
-                                                        }
-                                                    } else {
+                                                    state.move_cursor(state.layout.y);
+                                                    break 'zoxide;
+                                                } else if commands.len() == 1 {
+                                                    //go to the home directory
+                                                    let home_dir =
+                                                        dirs::home_dir().ok_or_else(|| {
+                                                            FxError::Dirs(
+                                                                "Cannot read home dir.".to_string(),
+                                                            )
+                                                        })?;
+                                                    if let Err(e) =
+                                                        state.chdir(&home_dir, Move::Jump)
+                                                    {
+                                                        print_warning(e, state.layout.y);
+                                                    }
+                                                    break 'zoxide;
+                                                } else if let Ok(output) =
+                                                    std::process::Command::new("zoxide")
+                                                        .args(["query", commands[1]])
+                                                        .output()
+                                                {
+                                                    let output = output.stdout;
+                                                    if output.is_empty() {
                                                         print_warning(
-                                                            "zoxide not installed?",
+                                                            "Keyword does not match the database.",
                                                             state.layout.y,
                                                         );
                                                         break 'zoxide;
+                                                    } else {
+                                                        let target_dir =
+                                                            std::str::from_utf8(&output);
+                                                        match target_dir {
+                                                            Err(e) => {
+                                                                print_warning(e, state.layout.y);
+                                                                break 'zoxide;
+                                                            }
+                                                            Ok(target_dir) => {
+                                                                hide_cursor();
+                                                                state.layout.nums.reset();
+                                                                let target_path = PathBuf::from(
+                                                                    target_dir.trim(),
+                                                                );
+                                                                std::env::set_current_dir(
+                                                                    &target_path,
+                                                                )?;
+                                                                state.current_dir =
+                                                                    if cfg!(not(windows)) {
+                                                                        target_path
+                                                                            .canonicalize()?
+                                                                    } else {
+                                                                        target_path
+                                                                    };
+                                                                state.reload(BEGINNING_ROW)?;
+                                                                break 'zoxide;
+                                                            }
+                                                        }
                                                     }
+                                                } else {
+                                                    print_warning(
+                                                        "zoxide not installed?",
+                                                        state.layout.y,
+                                                    );
+                                                    break 'zoxide;
                                                 }
-                                                //  else {
-                                                //     go_to_and_rest_info();
-                                                //     hide_cursor();
-                                                //     state.move_cursor(state.layout.y);
-                                                //     break 'zoxide;
-                                                // }
                                             }
 
                                             KeyCode::Char(c) => {
@@ -593,241 +729,30 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                             }
 
-                            //select mode
+                            //switch to linewise visual mode
                             KeyCode::Char('V') => {
+                                //If in visual mode, return to normal mode.
+                                if state.v_start.is_some() {
+                                    state.reset_selection();
+                                    state.redraw(state.layout.y);
+                                    continue;
+                                }
                                 if len == 0 {
                                     continue;
                                 }
                                 let mut item = state.get_item_mut()?;
                                 item.selected = true;
-
                                 state.redraw(state.layout.y);
-                                screen.flush()?;
-
-                                let start_pos = state.layout.nums.index;
-
-                                loop {
-                                    if let Event::Key(KeyEvent { code, .. }) = event::read()? {
-                                        match code {
-                                            KeyCode::Char('j') | KeyCode::Down => {
-                                                if len == 0 || state.layout.nums.index == len - 1 {
-                                                    continue;
-                                                } else if state.layout.y
-                                                    >= state.layout.terminal_row - 4
-                                                    && len
-                                                        > (state.layout.terminal_row
-                                                            - BEGINNING_ROW)
-                                                            as usize
-                                                            - 1
-                                                {
-                                                    if state.layout.nums.index >= start_pos {
-                                                        state.layout.nums.go_down();
-                                                        state.layout.nums.inc_skip();
-                                                        let mut item = state.get_item_mut()?;
-                                                        item.selected = true;
-                                                        state.redraw(state.layout.y);
-                                                    } else {
-                                                        let mut item = state.get_item_mut()?;
-                                                        item.selected = false;
-                                                        state.layout.nums.go_down();
-                                                        state.layout.nums.inc_skip();
-                                                        state.redraw(state.layout.y);
-                                                    }
-                                                } else if state.layout.nums.index >= start_pos {
-                                                    state.layout.nums.go_down();
-                                                    let mut item = state.get_item_mut()?;
-                                                    item.selected = true;
-                                                    state.redraw(state.layout.y + 1);
-                                                } else {
-                                                    let mut item = state.get_item_mut()?;
-                                                    item.selected = false;
-                                                    state.layout.nums.go_down();
-                                                    state.redraw(state.layout.y + 1);
-                                                }
-                                            }
-
-                                            KeyCode::Char('k') | KeyCode::Up => {
-                                                if state.layout.nums.index == 0 {
-                                                    continue;
-                                                } else if state.layout.y <= BEGINNING_ROW + 3
-                                                    && state.layout.nums.skip != 0
-                                                {
-                                                    if state.layout.nums.index > start_pos {
-                                                        let mut item = state.get_item_mut()?;
-                                                        item.selected = false;
-                                                        state.layout.nums.go_up();
-                                                        state.layout.nums.dec_skip();
-                                                        state.redraw(state.layout.y);
-                                                    } else {
-                                                        state.layout.nums.go_up();
-                                                        state.layout.nums.dec_skip();
-                                                        let mut item = state.get_item_mut()?;
-                                                        item.selected = true;
-                                                        state.redraw(state.layout.y);
-                                                    }
-                                                } else if state.layout.nums.index > start_pos {
-                                                    let mut item = state.get_item_mut()?;
-                                                    item.selected = false;
-                                                    state.layout.nums.go_up();
-                                                    state.redraw(state.layout.y - 1);
-                                                } else {
-                                                    state.layout.nums.go_up();
-                                                    let mut item = state.get_item_mut()?;
-                                                    item.selected = true;
-                                                    state.redraw(state.layout.y - 1);
-                                                }
-                                            }
-
-                                            KeyCode::Char('g') => {
-                                                if state.layout.nums.index == 0 {
-                                                    continue;
-                                                } else {
-                                                    to_info_line();
-                                                    clear_current_line();
-                                                    print!("g");
-                                                    show_cursor();
-                                                    screen.flush()?;
-
-                                                    if let Event::Key(KeyEvent { code, .. }) =
-                                                        event::read()?
-                                                    {
-                                                        match code {
-                                                            KeyCode::Char('g') => {
-                                                                hide_cursor();
-                                                                state.select_from_top(start_pos);
-                                                                state.layout.nums.reset();
-                                                                state.redraw(BEGINNING_ROW);
-                                                            }
-
-                                                            _ => {
-                                                                go_to_and_rest_info();
-                                                                hide_cursor();
-                                                                state.move_cursor(state.layout.y);
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-
-                                            KeyCode::Char('G') => {
-                                                if len
-                                                    > (state.layout.terminal_row - BEGINNING_ROW)
-                                                        as usize
-                                                {
-                                                    state.select_to_bottom(start_pos);
-                                                    state.layout.nums.skip = (len as u16)
-                                                        + BEGINNING_ROW
-                                                        - state.layout.terminal_row;
-                                                    state.layout.nums.go_bottom(len - 1);
-                                                    state.redraw(state.layout.terminal_row - 1);
-                                                } else {
-                                                    state.select_to_bottom(start_pos);
-                                                    state.layout.nums.go_bottom(len - 1);
-                                                    state.redraw(len as u16 + BEGINNING_ROW - 1);
-                                                }
-                                            }
-
-                                            KeyCode::Char('d') => {
-                                                print_info("DELETE: Processing...", state.layout.y);
-                                                let start = Instant::now();
-                                                screen.flush()?;
-
-                                                state.registered.clear();
-                                                let cloned = state.list.clone();
-                                                let selected: Vec<ItemInfo> = cloned
-                                                    .into_iter()
-                                                    .filter(|item| item.selected)
-                                                    .collect();
-                                                let total = selected.len();
-
-                                                if let Err(e) =
-                                                    state.remove_and_yank(&selected, true)
-                                                {
-                                                    state.reset_selection();
-                                                    state.redraw(state.layout.y);
-                                                    print_warning(e, state.layout.y);
-                                                    break;
-                                                }
-
-                                                state.update_list()?;
-                                                let new_len = state.list.len();
-                                                state.clear_and_show_headline();
-
-                                                let duration = duration_to_string(start.elapsed());
-                                                let delete_message: String = {
-                                                    if total == 1 {
-                                                        format!("1 item deleted [{}]", duration)
-                                                    } else {
-                                                        let mut count = total.to_string();
-                                                        let _ = write!(
-                                                            count,
-                                                            " items deleted [{}]",
-                                                            duration
-                                                        );
-                                                        count
-                                                    }
-                                                };
-                                                print_info(delete_message, state.layout.y);
-                                                delete_cursor();
-
-                                                if new_len == 0 {
-                                                    state.layout.nums.reset();
-                                                    state.list_up();
-                                                    state.move_cursor(BEGINNING_ROW);
-                                                } else if state.is_out_of_bounds() {
-                                                    if state.layout.nums.skip as usize >= new_len {
-                                                        state.layout.nums.skip =
-                                                            (new_len - 1) as u16;
-                                                        state.layout.nums.index =
-                                                            state.list.len() - 1;
-                                                        state.list_up();
-                                                        state.move_cursor(BEGINNING_ROW);
-                                                    } else {
-                                                        state.layout.nums.index =
-                                                            state.list.len() - 1;
-                                                        state.list_up();
-                                                        state.move_cursor(
-                                                            (state.list.len() as u16)
-                                                                - state.layout.nums.skip
-                                                                + BEGINNING_ROW
-                                                                - 1,
-                                                        );
-                                                    }
-                                                } else {
-                                                    state.list_up();
-                                                    state.move_cursor(state.layout.y);
-                                                }
-                                                break;
-                                            }
-
-                                            KeyCode::Char('y') => {
-                                                state.yank_item(true);
-                                                state.reset_selection();
-                                                state.list_up();
-                                                let mut yank_message: String =
-                                                    state.registered.len().to_string();
-                                                yank_message.push_str(" items yanked");
-                                                print_info(yank_message, state.layout.y);
-                                                break;
-                                            }
-
-                                            KeyCode::Esc => {
-                                                state.reset_selection();
-                                                state.redraw(state.layout.y);
-                                                break;
-                                            }
-
-                                            _ => {
-                                                continue;
-                                            }
-                                        }
-                                    }
-                                    screen.flush()?;
-                                }
+                                state.v_start = Some(state.layout.nums.index);
+                                continue;
                             }
 
-                            //toggle sortkey
+                            //Toggle sortkey
                             KeyCode::Char('t') => {
+                                //In visual mode, this is disabled.
+                                if state.v_start.is_some() {
+                                    continue;
+                                }
                                 match state.layout.sort_by {
                                     SortKey::Name => {
                                         state.layout.sort_by = SortKey::Time;
@@ -840,8 +765,12 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 state.reorder(BEGINNING_ROW);
                             }
 
-                            //Show/hide hidden items.
+                            //Show or hide hidden items
                             KeyCode::Backspace => {
+                                //In visual mode, this is disabled.
+                                if state.v_start.is_some() {
+                                    continue;
+                                }
                                 match state.layout.show_hidden {
                                     true => {
                                         state.list.retain(|x| !x.is_hidden);
@@ -856,33 +785,22 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 state.redraw(BEGINNING_ROW);
                             }
 
-                            //Toggle whether to show preview.
+                            //Toggle whether to show preview. Also hide registers.
                             KeyCode::Char('v') => {
-                                state.layout.preview = !state.layout.preview;
-                                if state.layout.preview {
-                                    match state.layout.split {
-                                        Split::Vertical => {
-                                            let new_column = state.layout.terminal_column >> 1;
-                                            let new_row = state.layout.terminal_row;
-                                            state.refresh(new_column, new_row, state.layout.y)?;
-                                        }
-                                        Split::Horizontal => {
-                                            let new_row = state.layout.terminal_row >> 1;
-                                            let new_column = state.layout.terminal_column;
-                                            state.refresh(new_column, new_row, state.layout.y)?;
-                                        }
-                                    }
+                                if state.layout.is_preview() || state.layout.is_reg() {
+                                    state.layout.reset_side();
                                 } else {
-                                    let (new_column, new_row) = terminal_size()?;
-                                    state.refresh(new_column, new_row, state.layout.y)?;
+                                    state.layout.show_preview();
                                 }
+                                let (new_column, new_row) = state.layout.update_column_and_row()?;
+                                state.refresh(new_column, new_row, state.layout.y)?;
                             }
 
-                            //Toggle vertical <-> horizontal split.
+                            //Toggle vertical <-> horizontal split
                             KeyCode::Char('s') => match state.layout.split {
                                 Split::Vertical => {
                                     state.layout.split = Split::Horizontal;
-                                    if state.layout.preview {
+                                    if state.layout.is_preview() || state.layout.is_reg() {
                                         let (new_column, mut new_row) = terminal_size()?;
                                         new_row /= 2;
                                         state.refresh(new_column, new_row, state.layout.y)?;
@@ -890,7 +808,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                                 Split::Horizontal => {
                                     state.layout.split = Split::Vertical;
-                                    if state.layout.preview {
+                                    if state.layout.is_preview() || state.layout.is_reg() {
                                         let (mut new_column, new_row) = terminal_size()?;
                                         new_column /= 2;
                                         state.refresh(new_column, new_row, state.layout.y)?;
@@ -900,54 +818,48 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                             //delete
                             KeyCode::Char('d') => {
-                                if len == 0 {
+                                //If read-only, deleting is disabled.
+                                if state.is_ro {
+                                    print_warning(
+                                        "Cannot delete item in this directory.",
+                                        state.layout.y,
+                                    );
                                     continue;
+                                }
+                                if let Some(_start_pos) = state.v_start {
+                                    //visual mode
+                                    if let Err(e) = state.delete_in_visual(None, false, &mut screen)
+                                    {
+                                        state.reset_selection();
+                                        state.redraw(state.layout.y);
+                                        print_warning(e, state.layout.y);
+                                        continue;
+                                    }
                                 } else {
-                                    to_info_line();
-                                    clear_current_line();
-                                    print!("d");
-                                    show_cursor();
-                                    screen.flush()?;
+                                    //normal mode
+                                    if len == 0 {
+                                        continue;
+                                    } else {
+                                        go_to_info_line_and_reset();
+                                        print!("d");
+                                        show_cursor();
+                                        screen.flush()?;
 
-                                    if let Event::Key(KeyEvent { code, .. }) = event::read()? {
-                                        match code {
-                                            KeyCode::Char('d') => {
-                                                hide_cursor();
-                                                print_info("DELETE: Processing...", state.layout.y);
-                                                screen.flush()?;
-                                                let start = Instant::now();
-
-                                                let target = state.get_item()?.clone();
-                                                let target = vec![target];
-
-                                                if let Err(e) = state.remove_and_yank(&target, true)
-                                                {
-                                                    print_warning(e, state.layout.y);
-                                                    continue;
+                                        if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                                            match code {
+                                                KeyCode::Char('d') => {
+                                                    if let Err(e) =
+                                                        state.delete(None, false, &mut screen)
+                                                    {
+                                                        print_warning(e, state.layout.y);
+                                                        continue;
+                                                    }
                                                 }
-
-                                                state.clear_and_show_headline();
-                                                state.update_list()?;
-                                                state.list_up();
-                                                state.layout.y = if state.list.is_empty() {
-                                                    BEGINNING_ROW
-                                                } else if state.layout.nums.index == len - 1 {
-                                                    state.layout.nums.go_up();
-                                                    state.layout.y - 1
-                                                } else {
-                                                    state.layout.y
-                                                };
-                                                let duration = duration_to_string(start.elapsed());
-                                                print_info(
-                                                    format!("1 item deleted [{}]", duration),
-                                                    state.layout.y,
-                                                );
-                                                state.move_cursor(state.layout.y);
-                                            }
-                                            _ => {
-                                                go_to_and_rest_info();
-                                                hide_cursor();
-                                                state.move_cursor(state.layout.y);
+                                                _ => {
+                                                    go_to_info_line_and_reset();
+                                                    hide_cursor();
+                                                    state.move_cursor(state.layout.y);
+                                                }
                                             }
                                         }
                                     }
@@ -956,63 +868,74 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                             //yank
                             KeyCode::Char('y') => {
-                                if len == 0 {
-                                    continue;
-                                }
-                                to_info_line();
-                                clear_current_line();
-                                print!("y");
-                                show_cursor();
-                                screen.flush()?;
+                                if let Some(_start_pos) = state.v_start {
+                                    //visual mode
+                                    let items: Vec<ItemBuffer> = state
+                                        .list
+                                        .iter()
+                                        .filter(|item| item.selected)
+                                        .map(ItemBuffer::new)
+                                        .collect();
+                                    let item_len = state.registers.yank_item(&items, None, false);
+                                    state.reset_selection();
+                                    state.list_up();
+                                    let mut yank_message: String = item_len.to_string();
+                                    yank_message.push_str(" items yanked");
+                                    print_info(yank_message, state.layout.y);
+                                } else {
+                                    //normal mode
+                                    if len == 0 {
+                                        continue;
+                                    }
+                                    go_to_info_line_and_reset();
+                                    print!("y");
+                                    show_cursor();
+                                    screen.flush()?;
 
-                                if let Event::Key(KeyEvent { code, .. }) = event::read()? {
-                                    match code {
-                                        KeyCode::Char('y') => {
-                                            state.yank_item(false);
-                                            go_to_and_rest_info();
-                                            hide_cursor();
-                                            print_info("1 item yanked", state.layout.y);
-                                        }
+                                    if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                                        match code {
+                                            KeyCode::Char('y') => {
+                                                if let Ok(item) = state.get_item() {
+                                                    state.registers.yank_item(
+                                                        &[ItemBuffer::new(item)],
+                                                        None,
+                                                        false,
+                                                    );
+                                                    go_to_info_line_and_reset();
+                                                    hide_cursor();
+                                                    print_info("1 item yanked.", state.layout.y);
+                                                }
+                                            }
 
-                                        _ => {
-                                            go_to_and_rest_info();
-                                            hide_cursor();
-                                            state.move_cursor(state.layout.y);
+                                            _ => {
+                                                go_to_info_line_and_reset();
+                                                hide_cursor();
+                                            }
                                         }
                                     }
                                 }
+                                state.move_cursor(state.layout.y);
                             }
 
                             //put
                             KeyCode::Char('p') => {
-                                if state.registered.is_empty() {
+                                //In visual mode, this is disabled.
+                                if state.v_start.is_some() {
                                     continue;
                                 }
-                                print_info("PUT: Processing...", state.layout.y);
-                                screen.flush()?;
-                                let start = Instant::now();
-
-                                let targets = state.registered.clone();
-                                if let Err(e) = state.put_items(&targets, None) {
+                                if let Err(e) =
+                                    state.put(state.registers.unnamed.clone(), &mut screen)
+                                {
                                     print_warning(e, state.layout.y);
-                                    continue;
                                 }
-
-                                state.reload(state.layout.y)?;
-
-                                let duration = duration_to_string(start.elapsed());
-                                let registered_len = state.registered.len();
-                                let mut put_message = registered_len.to_string();
-                                if registered_len == 1 {
-                                    let _ = write!(put_message, " item inserted [{}]", duration);
-                                } else {
-                                    let _ = write!(put_message, " items inserted [{}]", duration);
-                                }
-                                print_info(put_message, state.layout.y);
                             }
 
                             //rename
                             KeyCode::Char('c') => {
+                                //In visual mode, this is disabled.
+                                if state.v_start.is_some() {
+                                    continue;
+                                }
                                 if len == 0 {
                                     continue;
                                 }
@@ -1056,7 +979,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
 
                                             KeyCode::Esc => {
-                                                go_to_and_rest_info();
+                                                go_to_info_line_and_reset();
                                                 hide_cursor();
                                                 state.move_cursor(state.layout.y);
                                                 break;
@@ -1100,8 +1023,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     current_char_pos += 1;
                                                     current_pos += to_be_added as u16;
 
-                                                    to_info_line();
-                                                    clear_current_line();
+                                                    go_to_info_line_and_reset();
                                                     print!(
                                                         "New name: {}",
                                                         &rename.iter().collect::<String>(),
@@ -1122,8 +1044,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     current_char_pos -= 1;
                                                     current_pos -= to_be_removed as u16;
 
-                                                    to_info_line();
-                                                    clear_current_line();
+                                                    go_to_info_line_and_reset();
                                                     print!(
                                                         "New name: {}",
                                                         &rename.iter().collect::<String>(),
@@ -1139,15 +1060,19 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                             }
 
-                            //search mode
+                            //Search mode
                             KeyCode::Char('/') => {
+                                //In visual mode, this is disabled.
+                                //TODO! Enable this in visual mode.
+                                if state.v_start.is_some() {
+                                    continue;
+                                }
                                 if len == 0 {
                                     continue;
                                 }
-                                delete_cursor();
+                                delete_pointer();
                                 show_cursor();
-                                to_info_line();
-                                clear_current_line();
+                                go_to_info_line_and_reset();
                                 print!("/");
                                 screen.flush()?;
 
@@ -1161,7 +1086,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     if let Event::Key(KeyEvent { code, .. }) = event::read()? {
                                         match code {
                                             KeyCode::Enter => {
-                                                go_to_and_rest_info();
+                                                go_to_info_line_and_reset();
                                                 state.keyword = Some(keyword.iter().collect());
                                                 state.move_cursor(state.layout.y);
                                                 break;
@@ -1221,8 +1146,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                             state.redraw(state.layout.y);
                                                         }
                                                     }
-                                                    to_info_line();
-                                                    clear_current_line();
+                                                    go_to_info_line_and_reset();
                                                     print!("/{}", key.clone());
                                                     move_to(current_pos as u16, 2);
                                                 }
@@ -1254,8 +1178,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     }
                                                 }
 
-                                                to_info_line();
-                                                clear_current_line();
+                                                go_to_info_line_and_reset();
                                                 print!("/{}", key.clone());
                                                 move_to(current_pos as u16, 2);
                                             }
@@ -1268,61 +1191,71 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 hide_cursor();
                             }
 
-                            //Search forward.
-                            KeyCode::Char('n') => match &state.keyword {
-                                None => {
+                            //Search forward
+                            KeyCode::Char('n') => {
+                                //In visual mode, this is disabled.
+                                if state.v_start.is_some() {
                                     continue;
                                 }
-                                Some(keyword) => {
-                                    let next = state
-                                        .list
-                                        .iter()
-                                        .skip(state.layout.nums.index + 1)
-                                        .position(|x| x.file_name.contains(keyword));
-                                    match next {
-                                        None => {
-                                            continue;
-                                        }
-                                        Some(i) => {
-                                            let i = i + state.layout.nums.index + 1;
-                                            state.layout.nums.skip = i as u16;
-                                            state.layout.nums.index = i;
-                                            state.redraw(BEGINNING_ROW);
+                                match &state.keyword {
+                                    None => {
+                                        continue;
+                                    }
+                                    Some(keyword) => {
+                                        let next = state
+                                            .list
+                                            .iter()
+                                            .skip(state.layout.nums.index + 1)
+                                            .position(|x| x.file_name.contains(keyword));
+                                        match next {
+                                            None => {
+                                                continue;
+                                            }
+                                            Some(i) => {
+                                                let i = i + state.layout.nums.index + 1;
+                                                state.layout.nums.skip = i as u16;
+                                                state.layout.nums.index = i;
+                                                state.redraw(BEGINNING_ROW);
+                                            }
                                         }
                                     }
                                 }
-                            },
+                            }
 
-                            //Search backward.
-                            KeyCode::Char('N') => match &state.keyword {
-                                None => {
+                            //Search backward
+                            KeyCode::Char('N') => {
+                                //In visual mode, this is disabled.
+                                if state.v_start.is_some() {
                                     continue;
                                 }
-                                Some(keyword) => {
-                                    let previous = state
-                                        .list
-                                        .iter()
-                                        .take(state.layout.nums.index)
-                                        .rposition(|x| x.file_name.contains(keyword));
-                                    match previous {
-                                        None => {
-                                            continue;
-                                        }
-                                        Some(i) => {
-                                            state.layout.nums.skip = i as u16;
-                                            state.layout.nums.index = i;
-                                            state.redraw(BEGINNING_ROW);
+                                match &state.keyword {
+                                    None => {
+                                        continue;
+                                    }
+                                    Some(keyword) => {
+                                        let previous = state
+                                            .list
+                                            .iter()
+                                            .take(state.layout.nums.index)
+                                            .rposition(|x| x.file_name.contains(keyword));
+                                        match previous {
+                                            None => {
+                                                continue;
+                                            }
+                                            Some(i) => {
+                                                state.layout.nums.skip = i as u16;
+                                                state.layout.nums.index = i;
+                                                state.redraw(BEGINNING_ROW);
+                                            }
                                         }
                                     }
                                 }
-                            },
+                            }
 
-                            //shell mode
-                            KeyCode::Char(':') => {
-                                delete_cursor();
-                                to_info_line();
-                                clear_current_line();
-                                print!(":");
+                            //Tinker with registers
+                            KeyCode::Char('"') => {
+                                go_to_info_line_and_reset();
+                                print!("\"");
                                 show_cursor();
                                 screen.flush()?;
 
@@ -1333,7 +1266,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     if let Event::Key(KeyEvent { code, .. }) = event::read()? {
                                         match code {
                                             KeyCode::Esc => {
-                                                go_to_and_rest_info();
+                                                go_to_info_line_and_reset();
                                                 hide_cursor();
                                                 state.move_cursor(state.layout.y);
                                                 break 'command;
@@ -1359,7 +1292,378 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                             KeyCode::Backspace => {
                                                 if current_pos == INITIAL_POS_SHELL {
-                                                    go_to_and_rest_info();
+                                                    go_to_info_line_and_reset();
+                                                    hide_cursor();
+                                                    state.move_cursor(state.layout.y);
+                                                    break 'command;
+                                                } else {
+                                                    command.remove(
+                                                        (current_pos - INITIAL_POS_SHELL - 1)
+                                                            .into(),
+                                                    );
+                                                    current_pos -= 1;
+
+                                                    clear_current_line();
+                                                    to_info_line();
+                                                    print!(
+                                                        "\"{}",
+                                                        &command.iter().collect::<String>()
+                                                    );
+                                                    move_to(current_pos, 2);
+                                                }
+                                            }
+
+                                            KeyCode::Char(c) => {
+                                                command.insert(
+                                                    (current_pos - INITIAL_POS_SHELL).into(),
+                                                    c,
+                                                );
+                                                if ((state.v_start.is_some() || c == 'p')
+                                                    && command.len() == 2)
+                                                    || (state.v_start.is_none()
+                                                        && command.len() == 3)
+                                                {
+                                                    if !command[0].is_ascii_alphanumeric() {
+                                                        print_warning(
+                                                            "Input not supported.",
+                                                            state.layout.y,
+                                                        );
+                                                        break 'command;
+                                                    }
+                                                    let action: String =
+                                                        command[1..].iter().collect();
+                                                    match action.as_str() {
+                                                        //put
+                                                        "p" => {
+                                                            //In read-only directory, put disabled
+                                                            if state.is_ro {
+                                                                go_to_info_line_and_reset();
+                                                                print_warning(
+                                        "Cannot put item in this directory.",
+                                        state.layout.y,
+                                    );
+                                                                hide_cursor();
+                                                                state.move_cursor(state.layout.y);
+                                                                break 'command;
+                                                            }
+                                                            if state.v_start.is_some() {
+                                                                clear_current_line();
+                                                                hide_cursor();
+                                                                state.move_cursor(state.layout.y);
+                                                                break 'command;
+                                                            }
+                                                            let target = match command[0] {
+                                                                '0' => Some(&state.registers.zero),
+                                                                '1'..='9' => {
+                                                                    state.registers.numbered.get(
+                                                                        command[0]
+                                                                            .to_digit(10)
+                                                                            .unwrap()
+                                                                            as usize
+                                                                            - 1,
+                                                                    )
+                                                                }
+                                                                'a'..='z' => state
+                                                                    .registers
+                                                                    .named
+                                                                    .get(&command[0]),
+                                                                _ => None,
+                                                            };
+
+                                                            if let Some(target) = target {
+                                                                let target = target.clone();
+                                                                if let Err(e) =
+                                                                    state.put(target, &mut screen)
+                                                                {
+                                                                    print_warning(
+                                                                        e,
+                                                                        state.layout.y,
+                                                                    );
+                                                                    break 'command;
+                                                                }
+                                                            } else {
+                                                                print_warning(
+                                                                    "Register not found.",
+                                                                    state.layout.y,
+                                                                );
+                                                            }
+                                                            state.move_cursor(state.layout.y);
+                                                            break 'command;
+                                                        }
+                                                        //yank (normal mode)
+                                                        "yy" => {
+                                                            if state.v_start.is_some() {
+                                                                state.move_cursor(state.layout.y);
+                                                                break 'command;
+                                                            }
+                                                            if command[0].is_ascii_lowercase() {
+                                                                if let Ok(item) = state.get_item() {
+                                                                    state.registers.yank_item(
+                                                                        &[ItemBuffer::new(item)],
+                                                                        Some(command[0]),
+                                                                        false,
+                                                                    );
+                                                                }
+                                                            } else if command[0]
+                                                                .is_ascii_uppercase()
+                                                            {
+                                                                if let Ok(item) = state.get_item() {
+                                                                    state.registers.yank_item(
+                                                                        &[ItemBuffer::new(item)],
+                                                                        Some(
+                                                                            command[0]
+                                                                                .to_ascii_lowercase(
+                                                                                ),
+                                                                        ),
+                                                                        true,
+                                                                    );
+                                                                }
+                                                            } else {
+                                                                state.move_cursor(state.layout.y);
+                                                                break 'command;
+                                                            }
+                                                            go_to_info_line_and_reset();
+                                                            hide_cursor();
+                                                            print_info(
+                                                                "1 item yanked.",
+                                                                state.layout.y,
+                                                            );
+                                                            state.move_cursor(state.layout.y);
+                                                            break 'command;
+                                                        }
+                                                        //yank (visual mode)
+                                                        "y" => {
+                                                            if state.v_start.is_none() {
+                                                                state.move_cursor(state.layout.y);
+                                                                break 'command;
+                                                            }
+                                                            let items: Vec<ItemBuffer> = state
+                                                                .list
+                                                                .iter()
+                                                                .filter(|item| item.selected)
+                                                                .map(ItemBuffer::new)
+                                                                .collect();
+                                                            let item_len: usize;
+                                                            if command[0].is_ascii_lowercase() {
+                                                                item_len =
+                                                                    state.registers.yank_item(
+                                                                        &items,
+                                                                        Some(command[0]),
+                                                                        false,
+                                                                    );
+                                                            } else if command[0]
+                                                                .is_ascii_uppercase()
+                                                            {
+                                                                item_len =
+                                                                    state.registers.yank_item(
+                                                                        &items,
+                                                                        Some(
+                                                                            command[0]
+                                                                                .to_ascii_lowercase(
+                                                                                ),
+                                                                        ),
+                                                                        true,
+                                                                    );
+                                                            } else {
+                                                                state.move_cursor(state.layout.y);
+                                                                break 'command;
+                                                            }
+                                                            state.reset_selection();
+                                                            state.list_up();
+                                                            let mut yank_message: String =
+                                                                item_len.to_string();
+                                                            yank_message.push_str(" items yanked");
+                                                            print_info(
+                                                                yank_message,
+                                                                state.layout.y,
+                                                            );
+                                                            state.move_cursor(state.layout.y);
+                                                            break 'command;
+                                                        }
+
+                                                        //delete (normal mode)
+                                                        "dd" => {
+                                                            //In read-only directory, delete
+                                                            //disabled
+                                                            if state.is_ro {
+                                                                go_to_info_line_and_reset();
+                                                                print_warning(
+                                        "Cannot delete item in this directory.",
+                                        state.layout.y,
+                                    );
+                                                                hide_cursor();
+                                                                state.move_cursor(state.layout.y);
+                                                                break 'command;
+                                                            }
+                                                            if state.v_start.is_some() {
+                                                                state.move_cursor(state.layout.y);
+                                                                break 'command;
+                                                            }
+                                                            if command[0].is_ascii_lowercase() {
+                                                                if let Err(e) = state.delete(
+                                                                    Some(command[0]),
+                                                                    false,
+                                                                    &mut screen,
+                                                                ) {
+                                                                    print_warning(
+                                                                        e,
+                                                                        state.layout.y,
+                                                                    );
+                                                                    break 'command;
+                                                                }
+                                                            } else if command[0]
+                                                                .is_ascii_uppercase()
+                                                            {
+                                                                if let Err(e) = state.delete(
+                                                                    Some(
+                                                                        command[0]
+                                                                            .to_ascii_lowercase(),
+                                                                    ),
+                                                                    true,
+                                                                    &mut screen,
+                                                                ) {
+                                                                    print_warning(
+                                                                        e,
+                                                                        state.layout.y,
+                                                                    );
+                                                                    break 'command;
+                                                                }
+                                                            }
+                                                            state.move_cursor(state.layout.y);
+                                                            break 'command;
+                                                        }
+                                                        //delete (visual mode)
+                                                        "d" => {
+                                                            //In read-only directory, delete
+                                                            //disabled
+                                                            if state.is_ro {
+                                                                go_to_info_line_and_reset();
+                                                                print_warning(
+                                        "Cannot delete item in this directory.",
+                                        state.layout.y,
+                                    );
+                                                                hide_cursor();
+                                                                state.move_cursor(state.layout.y);
+                                                                break 'command;
+                                                            }
+                                                            if state.v_start.is_none() {
+                                                                state.move_cursor(state.layout.y);
+                                                                break 'command;
+                                                            }
+                                                            if command[0].is_ascii_lowercase() {
+                                                                if let Err(e) = state
+                                                                    .delete_in_visual(
+                                                                        Some(command[0]),
+                                                                        false,
+                                                                        &mut screen,
+                                                                    )
+                                                                {
+                                                                    state.reset_selection();
+                                                                    state.redraw(state.layout.y);
+                                                                    print_warning(
+                                                                        e,
+                                                                        state.layout.y,
+                                                                    );
+                                                                    break 'command;
+                                                                }
+                                                            } else if command[0]
+                                                                .is_ascii_uppercase()
+                                                            {
+                                                                if let Err(e) = state
+                                                                    .delete_in_visual(
+                                                                        Some(
+                                                                            command[0]
+                                                                                .to_ascii_lowercase(
+                                                                                ),
+                                                                        ),
+                                                                        true,
+                                                                        &mut screen,
+                                                                    )
+                                                                {
+                                                                    state.reset_selection();
+                                                                    state.redraw(state.layout.y);
+                                                                    print_warning(
+                                                                        e,
+                                                                        state.layout.y,
+                                                                    );
+                                                                    break 'command;
+                                                                }
+                                                            }
+                                                            state.move_cursor(state.layout.y);
+                                                            break 'command;
+                                                        }
+                                                        _ => {
+                                                            clear_current_line();
+                                                            hide_cursor();
+                                                            state.move_cursor(state.layout.y);
+                                                            break 'command;
+                                                        }
+                                                    }
+                                                } else {
+                                                    current_pos += 1;
+                                                    clear_current_line();
+                                                    to_info_line();
+                                                    print!(
+                                                        "\"{}",
+                                                        &command.iter().collect::<String>(),
+                                                    );
+                                                    move_to(current_pos, 2);
+                                                }
+                                            }
+
+                                            _ => continue,
+                                        }
+                                        screen.flush()?;
+                                    }
+                                }
+                            }
+
+                            //shell mode
+                            KeyCode::Char(':') => {
+                                //In visual mode, this is disabled.
+                                if state.v_start.is_some() {
+                                    continue;
+                                }
+                                delete_pointer();
+                                go_to_info_line_and_reset();
+                                print!(":");
+                                show_cursor();
+                                screen.flush()?;
+
+                                let mut command: Vec<char> = Vec::new();
+
+                                let mut current_pos = INITIAL_POS_SHELL;
+                                'command: loop {
+                                    if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                                        match code {
+                                            KeyCode::Esc => {
+                                                go_to_info_line_and_reset();
+                                                hide_cursor();
+                                                state.move_cursor(state.layout.y);
+                                                break 'command;
+                                            }
+
+                                            KeyCode::Left => {
+                                                if current_pos == INITIAL_POS_SHELL {
+                                                    continue;
+                                                };
+                                                current_pos -= 1;
+                                                move_left(1);
+                                            }
+
+                                            KeyCode::Right => {
+                                                if current_pos as usize
+                                                    == command.len() + INITIAL_POS_SHELL as usize
+                                                {
+                                                    continue;
+                                                };
+                                                current_pos += 1;
+                                                move_right(1);
+                                            }
+
+                                            KeyCode::Backspace => {
+                                                if current_pos == INITIAL_POS_SHELL {
+                                                    go_to_info_line_and_reset();
                                                     hide_cursor();
                                                     state.move_cursor(state.layout.y);
                                                     break 'command;
@@ -1399,7 +1703,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 let commands: Vec<&str> =
                                                     commands.split_whitespace().collect();
                                                 if commands.is_empty() {
-                                                    go_to_and_rest_info();
+                                                    go_to_info_line_and_reset();
                                                     state.move_cursor(state.layout.y);
                                                     break;
                                                 }
@@ -1435,6 +1739,30 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                         state.show_help(&screen)?;
                                                         state.redraw(state.layout.y);
                                                         break 'command;
+                                                    } else if command == "reg" {
+                                                        //:reg - Show registers
+                                                        if state.layout.is_preview() {
+                                                            state.layout.show_reg();
+                                                            state.redraw(state.layout.y);
+                                                        } else if state.layout.is_reg() {
+                                                            go_to_info_line_and_reset();
+                                                            hide_cursor();
+                                                            state.move_cursor(state.layout.y);
+                                                        } else {
+                                                            state.layout.show_reg();
+                                                            let (new_column, new_row) = state
+                                                                .layout
+                                                                .update_column_and_row()?;
+                                                            state.refresh(
+                                                                new_column,
+                                                                new_row,
+                                                                state.layout.y,
+                                                            )?;
+                                                            go_to_info_line_and_reset();
+                                                            hide_cursor();
+                                                            state.move_cursor(state.layout.y);
+                                                        }
+                                                        break 'command;
                                                     } else if command == "trash" {
                                                         //move to trash dir
                                                         state.layout.nums.reset();
@@ -1452,69 +1780,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     }
                                                 }
 
-                                                //zoxide jump
-                                                if command == "z" && commands.len() == 2 {
-                                                    //Change directory using zoxide
-                                                    if let Ok(output) =
-                                                        std::process::Command::new("zoxide")
-                                                            .args(["query", commands[1].trim()])
-                                                            .output()
-                                                    {
-                                                        let output = output.stdout;
-                                                        if output.is_empty() {
-                                                            print_warning(
-                                                        "Keyword does not match the database.",
-                                                        state.layout.y,
-                                                    );
-                                                            break 'command;
-                                                        } else {
-                                                            let target_dir =
-                                                                std::str::from_utf8(&output);
-                                                            match target_dir {
-                                                                Err(e) => {
-                                                                    print_warning(
-                                                                        e,
-                                                                        state.layout.y,
-                                                                    );
-                                                                    break 'command;
-                                                                }
-                                                                Ok(target_dir) => {
-                                                                    state.layout.nums.reset();
-                                                                    let target_path = PathBuf::from(
-                                                                        target_dir.trim(),
-                                                                    );
-                                                                    if let Err(e) = set_current_dir(
-                                                                        target_path.clone(),
-                                                                    ) {
-                                                                        print_warning(
-                                                                            e,
-                                                                            state.layout.y,
-                                                                        );
-                                                                        break 'command;
-                                                                    }
-                                                                    if let Err(e) = state.chdir(
-                                                                        &target_path,
-                                                                        Move::Jump,
-                                                                    ) {
-                                                                        print_warning(
-                                                                            e,
-                                                                            state.layout.y,
-                                                                        );
-                                                                    }
-                                                                    break 'command;
-                                                                }
-                                                            }
-                                                        }
-                                                    } else {
-                                                        print_warning(
-                                                            "zoxide not installed?",
-                                                            state.layout.y,
-                                                        );
-                                                        break 'command;
-                                                    }
-                                                }
-
-                                                //Execute the command as it is
+                                                //Execute command as is
                                                 execute!(screen, EnterAlternateScreen)?;
                                                 if std::env::set_current_dir(&state.current_dir)
                                                     .is_err()
@@ -1555,6 +1821,10 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                             //undo
                             KeyCode::Char('u') => {
+                                //In visual mode, this is disabled.
+                                if state.v_start.is_some() {
+                                    continue;
+                                }
                                 let op_len = state.operations.op_list.len();
                                 if op_len <= state.operations.pos {
                                     print_info("No operations left.", state.layout.y);
@@ -1586,44 +1856,68 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                             }
 
-                            //redo
-                            KeyCode::Char('r') if modifiers == KeyModifiers::CONTROL => {
-                                let op_len = state.operations.op_list.len();
-                                if op_len == 0
-                                    || state.operations.pos == 0
-                                    || op_len < state.operations.pos
-                                {
-                                    print_info("No operations left.", state.layout.y);
-                                    continue;
-                                }
-                                if let Some(op) =
-                                    state.operations.op_list.get(op_len - state.operations.pos)
-                                {
-                                    let op = op.clone();
-                                    if let Err(e) = state.redo(&op) {
-                                        print_warning(e, state.layout.y);
-                                        continue;
-                                    }
+                            //Add new temp file or directory.
+                            //It has to feel like more "modal", so I comment this out for now.
+                            // KeyCode::Char('a') => {
+                            //     to_info_line();
+                            //     clear_current_line();
+                            //     print!("a");
+                            //     show_cursor();
+                            //     screen.flush()?;
 
-                                    let new_len = state.list.len();
-                                    if new_len == 0 {
-                                        state.layout.nums.reset();
-                                        state.move_cursor(BEGINNING_ROW);
-                                    } else if state.layout.nums.index > new_len - 1 {
-                                        let new_y = state.layout.y
-                                            - (state.layout.nums.index - (new_len - 1)) as u16;
-                                        state.layout.nums.index = new_len - 1;
-                                        state.move_cursor(new_y)
-                                    } else {
-                                        state.move_cursor(state.layout.y);
-                                    }
-                                }
-                            }
+                            //     if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                            //         match code {
+                            //             //Add new file
+                            //             KeyCode::Char('f') => {
+                            //                 hide_cursor();
+                            //                 match state.create_temp(false) {
+                            //                     Err(e) => {
+                            //                         print_warning(e, state.layout.y);
+                            //                         continue;
+                            //                     }
+                            //                     Ok(p) => {
+                            //                         state.reload(state.layout.y)?;
+                            //                         print_info(
+                            //                             format!("New file {} added.", p.display()),
+                            //                             state.layout.y,
+                            //                         );
+                            //                     }
+                            //                 }
+                            //             }
+                            //             //Add new directory
+                            //             KeyCode::Char('d') => {
+                            //                 hide_cursor();
+                            //                 match state.create_temp(true) {
+                            //                     Err(e) => {
+                            //                         print_warning(e, state.layout.y);
+                            //                         continue;
+                            //                     }
+                            //                     Ok(p) => {
+                            //                         state.reload(state.layout.y)?;
+                            //                         print_info(
+                            //                             format!("New dir {} added.", p.display()),
+                            //                             state.layout.y,
+                            //                         );
+                            //                     }
+                            //                 }
+                            //             }
+                            //             _ => {
+                            //                 go_to_and_rest_info();
+                            //                 hide_cursor();
+                            //                 state.move_cursor(state.layout.y);
+                            //             }
+                            //         }
+                            //     }
+                            // }
 
                             //exit by ZZ
                             KeyCode::Char('Z') => {
-                                delete_cursor();
-                                go_to_and_rest_info();
+                                //In visual mode, this is disabled.
+                                if state.v_start.is_some() {
+                                    continue;
+                                }
+                                delete_pointer();
+                                go_to_info_line_and_reset();
                                 print!("Z");
                                 show_cursor();
                                 screen.flush()?;
@@ -1646,7 +1940,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         }
 
                                         _ => {
-                                            go_to_and_rest_info();
+                                            go_to_info_line_and_reset();
                                             hide_cursor();
                                             state.move_cursor(state.layout.y);
                                         }
@@ -1665,13 +1959,17 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                         continue;
                     }
                 }
-                //If you use kitty, you must clear the screen by the escape sequence or the previewed image remains.
-                if state.layout.is_kitty && state.layout.preview {
-                    print!("{}", CLRSCR);
-                    state.clear_and_show_headline();
-                    state.list_up();
-                    state.move_cursor(state.layout.y);
-                    screen.flush()?;
+                //If you use kitty, clear the screen by the escape sequence or the previewed image remains.
+                if state.layout.is_kitty && state.layout.is_preview() {
+                    if let Ok(item) = state.get_item() {
+                        if item.preview_type == Some(PreviewType::Image) {
+                            print!("{}", CLRSCR);
+                            state.clear_and_show_headline();
+                            state.list_up();
+                            state.move_cursor(state.layout.y);
+                            screen.flush()?;
+                        }
+                    }
                 }
             }
             Event::Resize(column, row) => {
@@ -1685,7 +1983,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                     panic!("Error: Too small terminal size (less than 4 rows). Please restart.");
                 };
 
-                if state.layout.preview {
+                if state.layout.is_preview() || state.layout.is_reg() {
                     let new_column = match state.layout.split {
                         Split::Vertical => column >> 1,
                         Split::Horizontal => column,
@@ -1727,21 +2025,4 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
     info!("===FINISH===");
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn zoxide_test() {
-        let output = std::process::Command::new("zoxide")
-            .args(["query", "felix"])
-            .output()
-            .unwrap();
-        let stdout = std::str::from_utf8(&output.stdout).unwrap().trim();
-        println!("{stdout}");
-        let path = PathBuf::from(stdout);
-        println!("{:?}", path.canonicalize());
-    }
 }

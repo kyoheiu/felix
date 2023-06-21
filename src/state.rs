@@ -3,7 +3,7 @@ use super::errors::FxError;
 use super::functions::*;
 use super::help::HELP;
 use super::layout::*;
-use super::magic_image::is_supported_image_type;
+use super::magic_image;
 use super::magic_packed;
 use super::nums::*;
 use super::op::*;
@@ -14,24 +14,32 @@ use chrono::prelude::*;
 use crossterm::event::{Event, KeyCode, KeyEvent};
 use crossterm::style::Stylize;
 use log::{error, info};
+use std::collections::VecDeque;
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::ffi::OsStr;
+use std::fmt::Write as _;
 use std::fs;
 use std::io::Stdout;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, ExitStatus, Stdio};
+use std::time::Instant;
 use std::time::UNIX_EPOCH;
 use syntect::highlighting::{Theme, ThemeSet};
 
 #[cfg(target_family = "unix")]
+use nix::sys::stat::Mode;
+#[cfg(target_family = "unix")]
+use nix::unistd::{Gid, Uid};
+#[cfg(target_family = "unix")]
+use std::os::unix::fs::MetadataExt;
+#[cfg(target_family = "unix")]
 use std::os::unix::fs::PermissionsExt;
 
-pub const FELIX: &str = "felix";
 pub const BEGINNING_ROW: u16 = 3;
 pub const EMPTY_WARNING: &str = "Are you sure to empty the trash directory? (if yes: y)";
-const TIME_PREFIX: usize = 11;
+const BASE32: &[u8; 32] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
 #[derive(Debug)]
 pub struct State {
@@ -41,12 +49,134 @@ pub struct State {
     pub lwd_file: Option<PathBuf>,
     pub default: String,
     pub commands: Option<BTreeMap<String, String>>,
-    pub registered: Vec<ItemInfo>,
+    pub registers: Registers,
     pub operations: Operation,
     pub c_memo: Vec<StateMemo>,
     pub p_memo: Vec<StateMemo>,
     pub keyword: Option<String>,
     pub layout: Layout,
+    pub v_start: Option<usize>,
+    pub is_ro: bool,
+}
+
+#[derive(Debug)]
+pub struct Registers {
+    pub unnamed: Vec<ItemBuffer>,
+    pub zero: Vec<ItemBuffer>,
+    pub numbered: VecDeque<Vec<ItemBuffer>>,
+    pub named: BTreeMap<char, Vec<ItemBuffer>>,
+}
+
+impl Registers {
+    /// Append ItemBuffer to named register.
+    pub fn append_item(&mut self, items: &[ItemBuffer], reg: char) -> usize {
+        let v = self.named.get(&reg);
+        match v {
+            Some(v) => {
+                let mut v = v.clone();
+                v.append(&mut items.to_vec());
+                self.named.insert(reg, v.to_vec());
+            }
+            None => {
+                self.named.insert(reg, items.to_vec());
+            }
+        }
+
+        items.len()
+    }
+
+    /// Register selected items to unnamed and zero registers.
+    /// Also register to named when needed.
+    pub fn yank_item(&mut self, items: &[ItemBuffer], reg: Option<char>, append: bool) -> usize {
+        self.unnamed = items.to_vec();
+        match reg {
+            None => {
+                self.zero = items.to_vec();
+            }
+            Some(c) => {
+                if append {
+                    self.append_item(items, c);
+                } else {
+                    self.named.insert(c, items.to_vec());
+                }
+            }
+        }
+        items.len()
+    }
+
+    /// Return Vec<String> that contains item names in the register.
+    pub fn prepare_reg(&self, width: u16) -> Vec<String> {
+        let mut s = String::new();
+
+        //registers.unnamed
+        let mut unnamed = "\"\"".to_string();
+        if !self.unnamed.is_empty() {
+            for b in self.unnamed.iter() {
+                unnamed.push(' ');
+                unnamed.push_str(&b.file_name);
+            }
+            unnamed.push('\n');
+            s.push_str(&unnamed);
+        }
+
+        //registers.zero
+        let mut zero = "\"0".to_string();
+        if !self.zero.is_empty() {
+            for b in self.zero.iter() {
+                zero.push(' ');
+                zero.push_str(&b.file_name);
+            }
+            zero.push('\n');
+            s.push_str(&zero);
+        }
+
+        //registers.numbered
+        for i in 1..=9 {
+            if let Some(reg) = self.numbered.get(i - 1) {
+                let mut numbered = "\"".to_string();
+                numbered.push_str(&i.to_string());
+                for b in reg {
+                    numbered.push(' ');
+                    numbered.push_str(&b.file_name);
+                }
+                numbered.push('\n');
+                s.push_str(&numbered);
+            }
+        }
+
+        //registers.named
+        for (c, b) in self.named.iter() {
+            let mut named = "\"".to_string();
+            named.push(*c);
+            for buffer in b {
+                named.push(' ');
+                named.push_str(&buffer.file_name);
+            }
+            named.push('\n');
+            s.push_str(&named);
+        }
+
+        s.pop();
+        split_lines_including_wide_char(&s, width.into())
+    }
+}
+
+/// To avoid cost copying ItemInfo, use ItemBuffer when tinkering with register.
+#[derive(Debug, Clone)]
+pub struct ItemBuffer {
+    pub file_type: FileType,
+    pub file_name: String,
+    pub file_path: std::path::PathBuf,
+}
+
+impl ItemBuffer {
+    pub fn new(item: &ItemInfo) -> Self {
+        ItemBuffer {
+            file_type: item.file_type,
+            file_name: item.file_name.clone(),
+            file_path: item.file_path.clone(),
+        }
+    }
 }
 
 #[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -82,31 +212,19 @@ impl Default for FileType {
 
 impl State {
     /// Initialize the state of the app.
-    pub fn new(p: &std::path::Path, session_path: &std::path::Path) -> Result<Self, FxError> {
-        let config = match read_config(p) {
+    pub fn new(session_path: &std::path::Path) -> Result<Self, FxError> {
+        //Read config file.
+        //Use default configuration if the file does not exist or cannot be read.
+        let config = read_config_or_default();
+        let config = match config {
             Ok(c) => c,
             Err(e) => {
-                eprintln!("Cannot read the config file properly.\nError: {}\nDo you want to use the default config? [press Enter to continue]", e);
-                enter_raw_mode();
-                loop {
-                    match crossterm::event::read()? {
-                        Event::Key(KeyEvent { code, .. }) => match code {
-                            KeyCode::Enter => break,
-                            _ => {
-                                leave_raw_mode();
-                                return Err(FxError::Yaml("Exit the app.".to_owned()));
-                            }
-                        },
-                        _ => {
-                            continue;
-                        }
-                    }
-                }
-                leave_raw_mode();
+                eprintln!("Cannot read the config file properly.\nError: {}\nfelix launches with default configuration.", e);
                 Config::default()
             }
         };
-        let session = read_session(session_path)?;
+
+        let session = read_session(session_path);
         let (original_column, original_row) = terminal_size()?;
 
         // Return error if terminal size may cause panic
@@ -129,7 +247,12 @@ impl State {
 
         Ok(State {
             list: Vec::new(),
-            registered: Vec::new(),
+            registers: Registers {
+                unnamed: vec![],
+                zero: vec![],
+                numbered: VecDeque::new(),
+                named: BTreeMap::new(),
+            },
             operations: Operation {
                 pos: 0,
                 op_list: Vec::new(),
@@ -155,7 +278,11 @@ impl State {
                 },
                 sort_by: session.sort_by,
                 show_hidden: session.show_hidden,
-                preview: session.preview.unwrap_or(false),
+                side: if session.preview.unwrap_or(false) {
+                    Side::Preview
+                } else {
+                    Side::None
+                },
                 split,
                 preview_start: match split {
                     Split::Vertical => (0, 0),
@@ -174,17 +301,19 @@ impl State {
             c_memo: Vec::new(),
             p_memo: Vec::new(),
             keyword: None,
+            v_start: None,
+            is_ro: false,
         })
     }
 
-    /// Select an item that the cursor points to.
+    /// Select item that the cursor points to.
     pub fn get_item(&self) -> Result<&ItemInfo, FxError> {
         self.list
             .get(self.layout.nums.index)
             .ok_or(FxError::GetItem)
     }
 
-    /// Select an item that the cursor points to, as mut.
+    /// Select item that the cursor points to, as mut.
     pub fn get_item_mut(&mut self) -> Result<&mut ItemInfo, FxError> {
         self.list
             .get_mut(self.layout.nums.index)
@@ -337,105 +466,199 @@ impl State {
         }
     }
 
+    /// Delete item.
+    pub fn delete(
+        &mut self,
+        reg: Option<char>,
+        append: bool,
+        screen: &mut Stdout,
+    ) -> Result<(), FxError> {
+        hide_cursor();
+        print_info("DELETE: Processing...", self.layout.y);
+        screen.flush()?;
+        let start = Instant::now();
+
+        let target = self.get_item()?;
+        let target = vec![ItemBuffer::new(target)];
+
+        match self.move_to_trash(&target, true) {
+            Err(e) => {
+                return Err(e);
+            }
+            Ok((src, dest)) => {
+                self.yank_after_delete(&src, &dest, reg, append)?;
+            }
+        }
+
+        self.clear_and_show_headline();
+        self.update_list()?;
+        self.list_up();
+        self.layout.y = if self.list.is_empty() {
+            BEGINNING_ROW
+        } else if self.layout.nums.index == self.list.len() {
+            self.layout.nums.go_up();
+            self.layout.y - 1
+        } else {
+            self.layout.y
+        };
+        let duration = duration_to_string(start.elapsed());
+        print_info(format!("1 item deleted. [{}]", duration), self.layout.y);
+        self.move_cursor(self.layout.y);
+        Ok(())
+    }
+
+    /// Delete items in visual mode.
+    pub fn delete_in_visual(
+        &mut self,
+        reg: Option<char>,
+        append: bool,
+        screen: &mut Stdout,
+    ) -> Result<(), FxError> {
+        print_info("DELETE: Processing...", self.layout.y);
+        let start = Instant::now();
+        screen.flush()?;
+
+        let selected: Vec<ItemBuffer> = self
+            .list
+            .iter()
+            .filter(|item| item.selected)
+            .map(ItemBuffer::new)
+            .collect();
+        let total: usize = match self.move_to_trash(&selected, true) {
+            Err(e) => {
+                return Err(e);
+            }
+            Ok((src, dest)) => self.yank_after_delete(&src, &dest, reg, append)?,
+        };
+
+        self.update_list()?;
+        let new_len = self.list.len();
+        self.clear_and_show_headline();
+
+        let duration = duration_to_string(start.elapsed());
+        let delete_message: String = {
+            if total == 1 {
+                format!("1 item deleted [{}]", duration)
+            } else {
+                let mut count = total.to_string();
+                let _ = write!(count, " items deleted [{}]", duration);
+                count
+            }
+        };
+        print_info(delete_message, self.layout.y);
+        delete_pointer();
+
+        self.reset_selection();
+        if new_len == 0 {
+            self.layout.nums.reset();
+            self.list_up();
+            self.move_cursor(BEGINNING_ROW);
+        } else if self.is_out_of_bounds() {
+            if self.layout.nums.skip as usize >= new_len {
+                self.layout.nums.skip = (new_len - 1) as u16;
+                self.layout.nums.index = self.list.len() - 1;
+                self.list_up();
+                self.move_cursor(BEGINNING_ROW);
+            } else {
+                self.layout.nums.index = self.list.len() - 1;
+                self.list_up();
+                self.move_cursor(
+                    (self.list.len() as u16) - self.layout.nums.skip + BEGINNING_ROW - 1,
+                );
+            }
+        } else {
+            self.list_up();
+            self.move_cursor(self.layout.y);
+        }
+        Ok(())
+    }
+
     /// Move items from the current directory to trash directory.
     /// This does not actually delete items.
-    /// If you'd like to delete, use `:empty` after this, or just `:rm`.
-    pub fn remove_and_yank(&mut self, targets: &[ItemInfo], new_op: bool) -> Result<(), FxError> {
+    /// If you'd like to delete, use `:empty` after this.
+    fn move_to_trash(
+        &mut self,
+        src: &[ItemBuffer],
+        new_op: bool,
+    ) -> Result<(Vec<ItemBuffer>, Vec<ItemBuffer>), FxError> {
         if self.current_dir == self.trash_dir {
             return Err(FxError::Io(
                 "Use `:empty` to delete item in the trash dir.".to_string(),
             ));
         }
 
-        self.registered.clear();
-        let total_selected = targets.len();
-        let mut trash_vec = Vec::new();
-        for (i, item) in targets.iter().enumerate() {
-            let item = item.clone();
-
-            delete_cursor();
+        let total_selected = src.len();
+        let mut dest = Vec::new();
+        for (i, item) in src.iter().enumerate() {
+            delete_pointer();
             to_info_line();
             clear_current_line();
             print!("{}", display_count(i, total_selected));
 
             match item.file_type {
-                FileType::Directory => match self.remove_and_yank_dir(item.clone(), new_op) {
+                FileType::Directory => match self.remove_dir(item, new_op) {
                     Err(e) => {
                         return Err(e);
                     }
-                    Ok(path) => trash_vec.push(path),
+                    Ok(path) => dest.push(path),
                 },
-                FileType::File | FileType::Symlink => {
-                    match self.remove_and_yank_file(item.clone(), new_op) {
-                        Err(e) => {
-                            return Err(e);
-                        }
-                        Ok(path) => {
-                            if let Some(p) = path {
-                                trash_vec.push(p);
-                            }
+                FileType::File | FileType::Symlink => match self.remove_file(item, new_op) {
+                    Err(e) => {
+                        return Err(e);
+                    }
+                    Ok(path) => {
+                        if let Some(p) = path {
+                            dest.push(p);
                         }
                     }
-                }
+                },
             }
         }
-        if new_op && !trash_vec.is_empty() {
+
+        Ok((src.to_vec(), dest))
+    }
+
+    /// Add dest to register, and item infomation to operation
+    fn yank_after_delete(
+        &mut self,
+        src: &[ItemBuffer],
+        dest: &[ItemBuffer],
+        reg: Option<char>,
+        append: bool,
+    ) -> Result<usize, FxError> {
+        if !dest.is_empty() {
+            //save to unnamed reg
+            self.registers.unnamed = dest.to_vec();
+            //If numbered registers is full, pop_back first
+            if self.registers.numbered.len() == 9 {
+                self.registers.numbered.pop_back();
+            }
+            //save to "1
+            self.registers.numbered.push_front(dest.to_vec());
+
+            if let Some(reg) = reg {
+                if append {
+                    self.registers.append_item(dest, reg);
+                } else {
+                    self.registers.named.insert(reg, dest.to_vec());
+                }
+            }
+
+            //Update operations value
             self.operations.branch();
             //push deleted item information to operations
             self.operations.push(OpKind::Delete(DeletedFiles {
-                trash: trash_vec,
-                original: targets.to_vec(),
+                trash: dest.to_vec(),
+                original: src.to_vec(),
                 dir: self.current_dir.clone(),
             }));
         }
 
-        Ok(())
-    }
-
-    /// Move single file to trash directory.
-    fn remove_and_yank_file(
-        &mut self,
-        item: ItemInfo,
-        new_op: bool,
-    ) -> Result<Option<PathBuf>, FxError> {
-        //prepare from and to for copy
-        let from = &item.file_path;
-        let mut to = PathBuf::new();
-
-        if item.file_type == FileType::Symlink && !from.exists() {
-            match std::fs::remove_file(from) {
-                Ok(_) => Ok(None),
-                Err(_) => Err(FxError::RemoveItem(from.to_owned())),
-            }
-        } else {
-            let name = &item.file_name;
-            let mut rename = Local::now().timestamp().to_string();
-            rename.push('_');
-            rename.push_str(name);
-
-            if new_op {
-                to = self.trash_dir.join(&rename);
-
-                //copy
-                if std::fs::copy(from, &to).is_err() {
-                    return Err(FxError::PutItem(from.to_owned()));
-                }
-
-                self.push_to_registered(&item, to.clone(), rename);
-            }
-
-            //remove original
-            if std::fs::remove_file(from).is_err() {
-                return Err(FxError::RemoveItem(from.to_owned()));
-            }
-
-            Ok(Some(to))
-        }
+        Ok(dest.len())
     }
 
     /// Move single directory recursively to trash directory.
-    fn remove_and_yank_dir(&mut self, item: ItemInfo, new_op: bool) -> Result<PathBuf, FxError> {
-        let mut trash_name = String::new();
+    fn remove_dir(&mut self, item: &ItemBuffer, new_op: bool) -> Result<ItemBuffer, FxError> {
         let mut base: usize = 0;
         let mut trash_path: std::path::PathBuf = PathBuf::new();
         let mut target: PathBuf;
@@ -463,7 +686,7 @@ impl State {
                 if i == 0 {
                     base = entry_path.iter().count();
 
-                    trash_name = chrono::Local::now().timestamp().to_string();
+                    let mut trash_name = chrono::Local::now().timestamp().to_string();
                     trash_name.push('_');
                     let file_name = entry.file_name().to_str();
                     if file_name.is_none() {
@@ -499,47 +722,99 @@ impl State {
                     }
                 }
             }
-
-            self.push_to_registered(&item, trash_path.clone(), trash_name);
         }
 
         //remove original
         if std::fs::remove_dir_all(&item.file_path).is_err() {
-            return Err(FxError::RemoveItem(item.file_path));
+            return Err(FxError::RemoveItem(item.file_path.clone()));
         }
 
-        Ok(trash_path)
+        Ok(ItemBuffer {
+            file_type: item.file_type,
+            file_name: item.file_name.clone(),
+            file_path: trash_path,
+        })
     }
 
-    /// Register removed items to the registry.
-    fn push_to_registered(&mut self, item: &ItemInfo, file_path: PathBuf, file_name: String) {
-        let mut buf = item.clone();
-        buf.file_path = file_path;
-        buf.file_name = file_name;
-        buf.selected = false;
-        self.registered.push(buf);
-    }
-
-    /// Register selected items to the registry.
-    pub fn yank_item(&mut self, selected: bool) {
-        self.registered.clear();
-        if selected {
-            for item in self.list.iter_mut().filter(|item| item.selected) {
-                self.registered.push(item.clone());
-            }
-        } else if let Ok(item) = self.get_item() {
-            let item = item.clone();
-            self.registered.push(item);
-        }
-    }
-
-    /// Put items in registry to the current directory or target directory.
-    /// Only Redo command uses target directory.
-    pub fn put_items(
+    /// Move single file to trash directory.
+    fn remove_file(
         &mut self,
-        targets: &[ItemInfo],
+        item: &ItemBuffer,
+        new_op: bool,
+    ) -> Result<Option<ItemBuffer>, FxError> {
+        //prepare from and to for copy
+        let from = &item.file_path;
+        let mut to = PathBuf::new();
+
+        if item.file_type == FileType::Symlink && !from.exists() {
+            match std::fs::remove_file(from) {
+                Ok(_) => Ok(None),
+                Err(_) => Err(FxError::RemoveItem(from.to_owned())),
+            }
+        } else {
+            let mut rename = Local::now().timestamp().to_string();
+            rename.push('_');
+            rename.push_str(&item.file_name);
+
+            if new_op {
+                to = self.trash_dir.join(&rename);
+
+                //copy
+                if std::fs::copy(from, &to).is_err() {
+                    return Err(FxError::PutItem(from.to_owned()));
+                }
+            }
+
+            //remove original
+            if std::fs::remove_file(from).is_err() {
+                return Err(FxError::RemoveItem(from.to_owned()));
+            }
+
+            Ok(Some(ItemBuffer {
+                file_type: item.file_type,
+                file_name: item.file_name.clone(),
+                file_path: to,
+            }))
+        }
+    }
+
+    /// Put.
+    pub fn put(&mut self, reg: Vec<ItemBuffer>, screen: &mut Stdout) -> Result<(), FxError> {
+        //If read-only, putting is disabled.
+        if self.is_ro {
+            print_warning("Cannot put into this directory.", self.layout.y);
+            return Ok(());
+        }
+        if reg.is_empty() {
+            return Ok(());
+        }
+        print_info("PUT: Processing...", self.layout.y);
+        screen.flush()?;
+        let start = Instant::now();
+
+        let total = self.put_item(&reg, None)?;
+
+        self.reload(self.layout.y)?;
+
+        let duration = duration_to_string(start.elapsed());
+        let mut put_message = total.to_string();
+        if total == 1 {
+            let _ = write!(put_message, " item inserted. [{}]", duration);
+        } else {
+            let _ = write!(put_message, " items inserted. [{}]", duration);
+        }
+        print_info(put_message, self.layout.y);
+        Ok(())
+    }
+
+    /// Put items in the register to the current directory or target directory.
+    /// Return the total number of put items.
+    /// Only Redo command uses target directory.
+    fn put_item(
+        &mut self,
+        targets: &[ItemBuffer],
         target_dir: Option<PathBuf>,
-    ) -> Result<(), FxError> {
+    ) -> Result<usize, FxError> {
         //make HashSet<String> of file_name
         let mut name_set = BTreeSet::new();
         match &target_dir {
@@ -566,7 +841,7 @@ impl State {
 
         let total_selected = targets.len();
         for (i, item) in targets.iter().enumerate() {
-            delete_cursor();
+            delete_pointer();
             to_info_line();
             clear_current_line();
             print!("{}", display_count(i, total_selected));
@@ -589,61 +864,39 @@ impl State {
             //push put item information to operations
             self.operations.push(OpKind::Put(PutFiles {
                 original: targets.to_owned(),
-                put: put_v,
+                put: put_v.clone(),
                 dir: self.current_dir.clone(),
             }));
         }
 
-        Ok(())
+        Ok(put_v.len())
     }
 
     /// Put single item to current or target directory.
     fn put_file(
         &mut self,
-        item: &ItemInfo,
+        item: &ItemBuffer,
         target_dir: &Option<PathBuf>,
         name_set: &mut BTreeSet<String>,
     ) -> Result<PathBuf, FxError> {
         match target_dir {
             None => {
-                if item.file_path.parent() == Some(&self.trash_dir) {
-                    let rename: String = item.file_name.chars().skip(TIME_PREFIX).collect();
-                    let rename = rename_file(&rename, name_set);
-                    let to = &self.current_dir.join(&rename);
-                    if std::fs::copy(&item.file_path, to).is_err() {
-                        return Err(FxError::PutItem(item.file_path.clone()));
-                    }
-                    name_set.insert(rename);
-                    Ok(to.to_path_buf())
-                } else {
-                    let rename = rename_file(&item.file_name, name_set);
-                    let to = &self.current_dir.join(&rename);
-                    if std::fs::copy(&item.file_path, to).is_err() {
-                        return Err(FxError::PutItem(item.file_path.clone()));
-                    }
-                    name_set.insert(rename);
-                    Ok(to.to_path_buf())
+                let rename = rename_file(&item.file_name, name_set);
+                let to = &self.current_dir.join(&rename);
+                if std::fs::copy(&item.file_path, to).is_err() {
+                    return Err(FxError::PutItem(item.file_path.clone()));
                 }
+                name_set.insert(rename);
+                Ok(to.to_path_buf())
             }
             Some(path) => {
-                if item.file_path.parent() == Some(&self.trash_dir) {
-                    let rename: String = item.file_name.chars().skip(TIME_PREFIX).collect();
-                    let rename = rename_file(&rename, name_set);
-                    let to = path.join(&rename);
-                    if std::fs::copy(&item.file_path, to.clone()).is_err() {
-                        return Err(FxError::PutItem(item.file_path.clone()));
-                    }
-                    name_set.insert(rename);
-                    Ok(to)
-                } else {
-                    let rename = rename_file(&item.file_name, name_set);
-                    let to = &path.join(&rename);
-                    if std::fs::copy(&item.file_path, to).is_err() {
-                        return Err(FxError::PutItem(item.file_path.clone()));
-                    }
-                    name_set.insert(rename);
-                    Ok(to.to_path_buf())
+                let rename = rename_file(&item.file_name, name_set);
+                let to = &path.join(&rename);
+                if std::fs::copy(&item.file_path, to).is_err() {
+                    return Err(FxError::PutItem(item.file_path.clone()));
                 }
+                name_set.insert(rename);
+                Ok(to.to_path_buf())
             }
         }
     }
@@ -651,13 +904,13 @@ impl State {
     /// Put single directory recursively to current or target directory.
     fn put_dir(
         &mut self,
-        buf: &ItemInfo,
+        item: &ItemBuffer,
         target_dir: &Option<PathBuf>,
         name_set: &mut BTreeSet<String>,
     ) -> Result<PathBuf, FxError> {
         let mut base: usize = 0;
         let mut target: PathBuf = PathBuf::new();
-        let original_path = &buf.file_path;
+        let original_path = &item.file_path;
 
         let len = walkdir::WalkDir::new(original_path).into_iter().count();
         let unit = len / 5;
@@ -678,22 +931,12 @@ impl State {
             if i == 0 {
                 base = entry_path.iter().count();
 
-                if original_path.parent() == Some(&self.trash_dir) {
-                    let rename: String = buf.file_name.chars().skip(TIME_PREFIX).collect();
-                    target = match &target_dir {
-                        None => self.current_dir.join(&rename),
-                        Some(path) => path.join(&rename),
-                    };
-                    let rename = rename_dir(&rename, name_set);
-                    name_set.insert(rename);
-                } else {
-                    let rename = rename_dir(&buf.file_name, name_set);
-                    target = match &target_dir {
-                        None => self.current_dir.join(&rename),
-                        Some(path) => path.join(&rename),
-                    };
-                    name_set.insert(rename);
-                }
+                let rename = rename_dir(&item.file_name, name_set);
+                target = match &target_dir {
+                    None => self.current_dir.join(&rename),
+                    Some(path) => path.join(&rename),
+                };
+                name_set.insert(rename);
                 std::fs::create_dir(&target)?;
                 continue;
             } else {
@@ -717,7 +960,7 @@ impl State {
         Ok(target)
     }
 
-    /// Undo operations (put/delete/rename).
+    /// Undo operations (put/delete/rename)
     pub fn undo(&mut self, op: &OpKind) -> Result<(), FxError> {
         match op {
             OpKind::Rename(op) => {
@@ -743,8 +986,7 @@ impl State {
                 print_info("UNDONE: PUT", BEGINNING_ROW);
             }
             OpKind::Delete(op) => {
-                let targets = trash_to_info(&self.trash_dir, &op.trash)?;
-                self.put_items(&targets, Some(op.dir.clone()))?;
+                self.put_item(&op.trash, Some(op.dir.clone()))?;
                 self.operations.pos += 1;
                 self.update_list()?;
                 self.clear_and_show_headline();
@@ -768,7 +1010,7 @@ impl State {
                 print_info("REDONE: RENAME", BEGINNING_ROW);
             }
             OpKind::Put(op) => {
-                self.put_items(&op.original, Some(op.dir.clone()))?;
+                self.put_item(&op.original, Some(op.dir.clone()))?;
                 self.operations.pos -= 1;
                 self.update_list()?;
                 self.clear_and_show_headline();
@@ -776,7 +1018,7 @@ impl State {
                 print_info("REDONE: PUT", BEGINNING_ROW);
             }
             OpKind::Delete(op) => {
-                self.remove_and_yank(&op.original, false)?;
+                self.move_to_trash(&op.original, false)?;
                 self.operations.pos -= 1;
                 self.update_list()?;
                 self.clear_and_show_headline();
@@ -816,12 +1058,13 @@ impl State {
             Split::Vertical => (column + 2, BEGINNING_ROW),
             Split::Horizontal => (1, row + 2),
         };
-        self.layout.preview_space = match self.layout.preview {
-            true => match self.layout.split {
+        self.layout.preview_space = if self.layout.is_preview() || self.layout.is_reg() {
+            match self.layout.split {
                 Split::Vertical => (original_column - column - 1, row - BEGINNING_ROW),
                 Split::Horizontal => (column, original_row - row - 1),
-            },
-            false => (0, 0),
+            }
+        } else {
+            (0, 0)
         };
         self.layout.name_max_len = name_max;
         self.layout.time_start_pos = time_start;
@@ -842,9 +1085,9 @@ impl State {
 
         let mut header_space = (self.layout.terminal_column - 1) as usize;
 
-        //Show current directory path.
-        //crossterm's Stylize cannot be applied to PathBuf,
-        //current directory does not have any text attribute for now.
+        // Show current directory path.
+        // crossterm's Stylize cannot be applied to PathBuf,
+        // current directory does not have any text attribute for now.
         let current_dir = self.current_dir.display().to_string();
         if current_dir.bytes().len() >= header_space {
             let current_dir = shorten_str_including_wide_char(&current_dir, header_space);
@@ -857,6 +1100,14 @@ impl State {
             print!(" {}", current_dir);
             reset_color();
             header_space -= current_dir.len();
+        }
+
+        // If without the write permission, print [RO].
+        if self.is_ro && header_space > 5 {
+            set_color(&TermColor::ForeGround(&Colorname::Red));
+            print!(" [RO]");
+            reset_color();
+            header_space -= 5;
         }
 
         //If .git directory exists, get the branch information and print it.
@@ -995,7 +1246,7 @@ impl State {
         self.move_cursor(y);
     }
 
-    /// Change the order of the list not reading all the items.
+    /// Change the order of the list without re-reading all the items.
     fn change_order(&mut self) {
         let mut dir_v = Vec::new();
         let mut file_v = Vec::new();
@@ -1035,8 +1286,10 @@ impl State {
         for mut item in self.list.iter_mut() {
             item.selected = false;
         }
+        self.v_start = None;
     }
 
+    /// Highlight matched items.
     pub fn highlight_matches(&mut self, keyword: &str) {
         for item in self.list.iter_mut() {
             if item.file_name.contains(keyword) {
@@ -1069,7 +1322,34 @@ impl State {
         }
     }
 
-    //Show help
+    /// Creates temp file for directory. Works like touch, but with randomized suffix
+    #[allow(dead_code)]
+    pub fn create_temp(&mut self, is_dir: bool) -> Result<PathBuf, FxError> {
+        let mut new_name = self.current_dir.join(".tmp");
+        if new_name.exists() {
+            let mut nanos = std::time::SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .subsec_nanos();
+            let encoded: &mut [u8] = &mut [0, 0, 0, 0, 0];
+            for i in 0..5 {
+                let v = (nanos & 0x1f) as usize;
+                encoded[4 - i] = BASE32[v];
+                nanos >>= 5;
+            }
+            new_name = self
+                .current_dir
+                .join(format!(".tmp_{}", String::from_utf8(encoded.to_vec())?))
+        }
+        if is_dir {
+            std::fs::create_dir(new_name.clone())?;
+        } else {
+            std::fs::File::create(new_name.clone())?;
+        }
+        Ok(new_name)
+    }
+
+    /// Show help
     pub fn show_help(&self, mut screen: &Stdout) -> Result<(), FxError> {
         clear_all();
         move_to(1, 1);
@@ -1110,7 +1390,7 @@ impl State {
         Ok(())
     }
 
-    //Empty the trash dir
+    /// Empty the trash dir.
     pub fn empty_trash(&mut self, mut screen: &Stdout) -> Result<(), FxError> {
         print_warning(EMPTY_WARNING, self.layout.y);
         screen.flush()?;
@@ -1132,13 +1412,13 @@ impl State {
                     if self.current_dir == self.trash_dir {
                         self.reload(BEGINNING_ROW)?;
                     }
-                    go_to_and_rest_info();
+                    go_to_info_line_and_reset();
                     print_info("Trash dir emptied", self.layout.y);
                     self.move_cursor(self.layout.y);
                     screen.flush()?;
                 }
                 _ => {
-                    go_to_and_rest_info();
+                    go_to_info_line_and_reset();
                     self.move_cursor(self.layout.y);
                 }
             }
@@ -1146,8 +1426,13 @@ impl State {
         Ok(())
     }
 
+    /// Change directory.
     pub fn chdir(&mut self, p: &std::path::Path, mv: Move) -> Result<(), FxError> {
         std::env::set_current_dir(p)?;
+        self.is_ro = match has_write_permission(p) {
+            Ok(b) => !b,
+            Err(_) => false,
+        };
         match mv {
             Move::Up => {
                 // Push current state to c_memo
@@ -1240,15 +1525,15 @@ impl State {
                 self.reload(BEGINNING_ROW)?;
             }
         }
+        self.v_start = None;
         Ok(())
     }
 
     /// Change the cursor position, and print item information at the bottom.
-    /// If preview is enabled, print text preview, contents of the directory or image preview on the right half of the terminal
-    /// (To preview image, you must install chafa. See help).
+    /// If preview is enabled, print text preview, contents of the directory or image preview.
     pub fn move_cursor(&mut self, y: u16) {
         // If preview is enabled, set the preview type, read the content (if text type) and reset the scroll.
-        if self.layout.preview {
+        if self.layout.is_preview() {
             if let Ok(item) = self.get_item_mut() {
                 if item.preview_type.is_none() {
                     set_preview_type(item);
@@ -1257,30 +1542,35 @@ impl State {
             }
         }
 
-        if let Ok(item) = self.get_item() {
-            delete_cursor();
+        delete_pointer();
 
-            //Print item information at the bottom
-            self.print_footer(item);
-
-            //Print preview if preview is on
-            if self.layout.preview {
-                self.layout.print_preview(item, y);
-            }
+        if self.layout.is_reg() {
+            //Print registers by :reg
+            let reg = self.registers.prepare_reg(self.layout.preview_space.0);
+            self.layout.print_reg(&reg);
         }
+
+        let item = self.get_item().ok();
+        //Print item information at the bottom
+        self.print_footer(item);
+        if self.layout.is_preview() {
+            //Print preview if preview is on
+            self.layout.print_preview(item, y);
+        }
+
         move_to(1, y);
         print_pointer();
-        move_left(1);
 
         //Store cursor position when cursor moves
         self.layout.y = y;
     }
 
-    pub fn to_status_bar(&self) {
+    fn to_status_bar(&self) {
         move_to(1, self.layout.terminal_row);
     }
 
-    pub fn clear_status_line(&self) {
+    /// Clear status line.
+    fn clear_status_line(&self) {
         self.to_status_bar();
         clear_current_line();
         reset_color();
@@ -1292,7 +1582,7 @@ impl State {
     }
 
     /// Print item information at the bottom of the terminal.
-    fn print_footer(&self, item: &ItemInfo) {
+    fn print_footer(&self, item: Option<&ItemInfo>) {
         self.clear_status_line();
 
         if let Some(keyword) = &self.keyword {
@@ -1321,10 +1611,13 @@ impl State {
             return;
         }
 
-        let footer = self.make_footer(item);
-        print!("{}", footer.negative());
+        if let Some(item) = item {
+            let footer = self.make_footer(item);
+            print!("{}", footer.negative());
+        }
     }
 
+    /// Return footer string.
     fn make_footer(&self, item: &ItemInfo) -> String {
         match &item.file_ext {
             Some(ext) => {
@@ -1378,6 +1671,7 @@ impl State {
         }
     }
 
+    /// Scroll down previewed text.
     pub fn scroll_down_preview(&mut self, y: u16) {
         if let Ok(item) = self.get_item_mut() {
             item.preview_scroll += 1;
@@ -1385,6 +1679,7 @@ impl State {
         }
     }
 
+    /// Scroll up previewed text.
     pub fn scroll_up_preview(&mut self, y: u16) {
         if let Ok(item) = self.get_item_mut() {
             if item.preview_scroll != 0 {
@@ -1394,21 +1689,19 @@ impl State {
         }
     }
 
+    /// Scroll preview.
     fn scroll_preview(&self, y: u16) {
-        if let Ok(item) = self.get_item() {
-            self.layout.print_preview(item, y);
-            move_to(1, y);
-            print_pointer();
-            move_left(1);
-        }
+        self.layout.print_preview(self.get_item().ok(), y);
+        move_to(1, y);
+        print_pointer();
     }
 
-    /// Store the sort key and whether to show hidden items to session file.
+    /// Save the sort key and whether to show hidden items to session file.
     pub fn write_session(&self, session_path: PathBuf) -> Result<(), FxError> {
         let session = Session {
             sort_by: self.layout.sort_by.clone(),
             show_hidden: self.layout.show_hidden,
-            preview: Some(self.layout.preview),
+            preview: Some(self.layout.is_preview()),
             split: Some(self.layout.split),
         };
         let serialized = serde_yaml::to_string(&session)?;
@@ -1416,7 +1709,7 @@ impl State {
         Ok(())
     }
 
-    /// Unpack/unarchive a file.
+    /// Unpack or unarchive a file.
     pub fn unpack(&self) -> Result<(), FxError> {
         let item = self.get_item()?;
         let p = item.file_path.clone();
@@ -1434,6 +1727,7 @@ impl State {
         Ok(())
     }
 
+    /// Check if the cursor is out of bounds.
     pub fn is_out_of_bounds(&self) -> bool {
         let current = self.layout.nums.skip + self.layout.y - BEGINNING_ROW + 1;
         current as usize > self.list.len()
@@ -1542,23 +1836,29 @@ fn read_item(entry: fs::DirEntry) -> ItemInfo {
 }
 
 /// Generate item information from trash directory, in order to use when redoing.
-pub fn trash_to_info(trash_dir: &PathBuf, vec: &[PathBuf]) -> Result<Vec<ItemInfo>, FxError> {
-    let total = vec.len();
-    let mut count = 0;
-    let mut result = Vec::new();
-    for entry in fs::read_dir(trash_dir)? {
-        let entry = entry?;
-        if vec.contains(&entry.path()) {
-            result.push(read_item(entry));
-            count += 1;
-            if count == total {
-                break;
-            }
-        }
-    }
-    Ok(result)
-}
+// pub fn sellect_buffer(trash_dir: &PathBuf, vec: &[ItemBuffer]) -> Result<Vec<ItemBuffer>, FxError> {
+//     let total = vec.len();
+//     let mut count = 0;
+//     let mut result = Vec::new();
+//     for entry in fs::read_dir(trash_dir)? {
+//         let entry = entry?;
+//         if vec
+//             .iter()
+//             .map(|x| x.file_path.clone())
+//             .collect::<Vec<PathBuf>>()
+//             .contains(&entry.path())
+//         {
+//             result.push(ItemBuffer::new(&read_item(entry)));
+//             count += 1;
+//             if count == total {
+//                 break;
+//             }
+//         }
+//     }
+//     Ok(result)
+// }
 
+/// Check if chafa is installed.
 fn check_chafa() -> bool {
     std::process::Command::new("chafa")
         .arg("--help")
@@ -1566,7 +1866,7 @@ fn check_chafa() -> bool {
         .is_ok()
 }
 
-// Check if the terminal is Kitty or not
+/// Check if the terminal is Kitty or not
 fn check_kitty_support() -> bool {
     if let Ok(term) = std::env::var("TERM") {
         term.contains("kitty")
@@ -1575,6 +1875,7 @@ fn check_kitty_support() -> bool {
     }
 }
 
+/// Set content type from ItemInfo.
 fn set_preview_content_type(item: &mut ItemInfo) {
     if item.file_size > MAX_SIZE_TO_PREVIEW {
         item.preview_type = Some(PreviewType::TooBigSize);
@@ -1609,10 +1910,12 @@ fn set_preview_type(item: &mut ItemInfo) {
     }
 }
 
+/// Check if item is supported image type.
 fn is_supported_image(item: &ItemInfo) -> bool {
-    is_supported_image_type(&item.file_path)
+    magic_image::is_supported_image_type(&item.file_path)
 }
 
+/// Set highlighting theme.
 fn set_theme(config: &Config) -> Theme {
     match &config.theme_path {
         Some(p) => match ThemeSet::get_theme(p) {
@@ -1629,6 +1932,7 @@ fn set_theme(config: &Config) -> Theme {
     }
 }
 
+/// Choose highlighting theme according to config.
 fn choose_theme(dt: &DefaultTheme) -> Theme {
     let defaults = ThemeSet::load_defaults();
     match dt {
@@ -1642,12 +1946,67 @@ fn choose_theme(dt: &DefaultTheme) -> Theme {
     }
 }
 
+// Check if the current process has the write permission to a path.
+// Currently available in unix only.
+// TODO: Use this function to determine if deleting items can be done in the first place?
+#[cfg(target_family = "unix")]
+pub fn has_write_permission(path: &std::path::Path) -> Result<bool, FxError> {
+    let metadata = std::fs::metadata(path)?;
+    let mode = metadata.mode();
+    if mode == 0 {
+        Ok(false)
+    } else {
+        let euid = Uid::effective();
+        if euid.is_root() {
+            Ok(true)
+        } else {
+            let uid = metadata.uid();
+            let gid = metadata.gid();
+
+            if uid == euid.as_raw() {
+                Ok(mode & (Mode::S_IWUSR.bits() as u32) != 0)
+            } else if gid == Gid::effective().as_raw() || in_groups(gid) {
+                Ok(mode & (Mode::S_IWGRP.bits() as u32) != 0)
+            } else {
+                Ok(mode & (Mode::S_IWOTH.bits() as u32) != 0)
+            }
+        }
+    }
+}
+
+// Currently on non-unix OS, this always returns true.
+#[cfg(not(target_family = "unix"))]
+pub fn has_write_permission(_path: &std::path::Path) -> Result<bool, FxError> {
+    Ok(true)
+}
+
+#[cfg(all(target_family = "unix", not(target_os = "macos")))]
+fn in_groups(gid: u32) -> bool {
+    if let Ok(groups) = nix::unistd::getgroups() {
+        for group in groups {
+            if group.as_raw() == gid {
+                return true;
+            } else {
+                continue;
+            }
+        }
+        false
+    } else {
+        false
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn in_groups(_gid: u32) -> bool {
+    false
+}
+
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     use devtimer::run_benchmark;
     use rayon::prelude::{IntoParallelIterator, ParallelIterator};
-
-    use super::*;
 
     fn bench_update1() -> Result<(), FxError> {
         let mut dir_v = Vec::new();
@@ -1682,6 +2041,25 @@ mod tests {
         }
 
         Ok(())
+    }
+
+    #[test]
+    fn test_has_write_permission() {
+        // chmod to 444 and check if it's read-only
+        let p = std::path::PathBuf::from("./testfiles/permission_test");
+        let _status = std::process::Command::new("chmod")
+            .args(["444", "./testfiles/permission_test"])
+            .status()
+            .unwrap();
+        assert!(!has_write_permission(p.as_path()).unwrap());
+        let _status = std::process::Command::new("chmod")
+            .args(["755", "./testfiles/permission_test"])
+            .status()
+            .unwrap();
+
+        // Test the home directory, which should pass
+        let home_dir = dirs::home_dir().unwrap();
+        assert!(has_write_permission(&home_dir).unwrap());
     }
 
     #[test]
