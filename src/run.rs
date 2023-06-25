@@ -1931,12 +1931,18 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         KeyCode::Char('Z') => {
                                             //To communicate with the calling shell function for
                                             //subsequent use by cd
-                                            match state.lwd_file.to_owned() {
-                                                Some(path) => std::fs::write(path, state.current_dir.to_str().unwrap())?,
-                                                _ => Err(FxError::MissingEnvVariable("SHELL_PID".to_owned()))?,
+                                            if let Some(path) = state.lwd_file.to_owned() {
+                                                std::fs::write(
+                                                    path,
+                                                    state.current_dir.to_str().unwrap(),
+                                                )?;
+                                                break 'main;
+                                            } else {
+                                                print_warning(
+                                                    "The env variable 'SHELL_PID' is not set. Most probably shell integration is not configured!",
+                                                    state.layout.y,
+                                                );
                                             }
-
-                                            break 'main;
                                         }
 
                                         _ => {
