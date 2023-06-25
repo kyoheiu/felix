@@ -19,7 +19,6 @@ pub enum FxError {
     Log(String),
     Unpack(String),
     Panic,
-    MissingEnvVariable(String),
     #[cfg(any(target_os = "linux", target_os = "netbsd"))]
     Nix(String),
 }
@@ -46,7 +45,6 @@ impl std::fmt::Display for FxError {
             FxError::Log(s) => s.to_owned(),
             FxError::Unpack(s) => s.to_owned(),
             FxError::Panic => "Error: felix panicked".to_owned(),
-            FxError::MissingEnvVariable(s) => format!("Error: Missing required env variable -> {:?}", s),
             #[cfg(any(target_os = "linux", target_os = "netbsd"))]
             FxError::Nix(s) => s.to_owned(),
         };
