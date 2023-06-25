@@ -102,23 +102,44 @@ cargo install --path .
 
 In order for the shortcut `ZZ` to work, you need to add the following to your `.bashrc` or `.zshrc`
 or an equivalent depending on your (POSIX) shell:
+
 ```sh
+# begin felix
+eval "$(
+  if [ -n "$XDG_RUNTIME_DIR" ]; then
+    runtime_dir="$XDG_RUNTIME_DIR/felix"
+  elif [ -n "$TMPDIR" ]; then
+    runtime_dir="$TMPDIR/felix"
+  else
+    runtime_dir=/tmp/felix
+  fi
+  mkdir -p "$runtime_dir"
+
+  case "$(uname)" in
+  Linux)
+    cleanup_lwd='find "$RUNTIME_DIR" -type f -and \( -mmin +$(echo 1/60 | bc -l) -or -name $$ \) -delete'
+    ;;
+  Darwin)
+    cleanup_lwd='find "$RUNTIME_DIR" -type f -and \( -mtime +1s -or -name $$ \) -delete'
+    ;;
+  *) ;;
+  esac
+
+  cat << EOF
 fx() {
-  SHELL_PID=$$ command fx
-  cd "$(
-    set -e
-    if [ -n "$XDG_RUNTIME_DIR" ]; then
-      local runtime_dir="$XDG_RUNTIME_DIR/felix"
-    elif [ -n "$TMPDIR" ]; then
-      local runtime_dir="$TMPDIR/felix"
-    else
-      local runtime_dir=/tmp/felix
-    fi
-    cat "$runtime_dir/$$"
-    # Clean up the current and any leftover lwd files
-    find "$runtime_dir" -type f -and \( -mtime +1s -or -name $$ \) -delete
-  )"
+  local RUNTIME_DIR="$runtime_dir"
+  SHELL_PID=\$\$ command fx "\$@"
+
+  if [ -f "\$RUNTIME_DIR/\$\$" ]; then
+    cd "\$(cat "\$RUNTIME_DIR/\$\$")"
+  fi
+
+  # Finally, clean up current and leftover lwd files
+  $cleanup_lwd
 }
+EOF
+)"
+# end felix
 ```
 
 In addition, you can use felix more conveniently by installing these two apps:
@@ -216,11 +237,13 @@ Install `chafa` and you can preview images without any configuration.
 ## Configuration
 
 ### Config file
-If any config file is not found, or found one is broken, felix launches with the default configuration, without creating new one.  
-Note that the default editor is `$EDITOR`, so if you've not set it, opening a file will fail.  
+
+If any config file is not found, or found one is broken, felix launches with the default configuration, without creating new one.
+Note that the default editor is `$EDITOR`, so if you've not set it, opening a file will fail.
 You can find default config file (`config.yaml`) in this repository.
 
 ### Trash directory and log file
+
 Contrary to the config file, these directory and file will be automatically created.
 
 ### Linux
