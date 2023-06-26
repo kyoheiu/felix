@@ -222,8 +222,9 @@ Esc               :Return to the normal mode.
 :trash            :Go to the trash directory.
 :empty            :Empty the trash directory.
 :h                :Show help.
-:ZZ               :cd to current directory and Exit.
-:q / ZQ           :Exit.
+:q                :Exit.
+ZZ                :Exit without cd to last working directory (if `match_vim_exit_behavior` is `false`).
+ZQ                :cd into the last directory and exit (if `match_vim_exit_behavior` is `false`).
 ```
 
 <a id="preview"></a>

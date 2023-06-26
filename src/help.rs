@@ -7,7 +7,7 @@ A simple TUI file manager with vim-like keymapping.
 `fx <directory path>` => Show items in the path.
 Both relative and absolute path available.
 
-## Options 
+## Options
 `-h` | `--help`    => Print help.
 `-l` | `--log` => Launch the app, automatically generating a log file.
 
@@ -57,7 +57,9 @@ Esc               :Return to the normal mode.
 :trash            :Go to the trash directory.
 :empty            :Empty the trash directory.
 :h                :Show help.
-:q / ZZ           :Exit.
+:q                :Exit.
+ZZ                :Exit without cd to last working directory (if `match_vim_exit_behavior` is `false`).
+ZQ                :cd into the last directory and exit (if `match_vim_exit_behavior` is `false`).
 
 ## Preview feature
 By default, text files and directories can be previewed.
