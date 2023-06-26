@@ -8,8 +8,9 @@ A simple TUI file manager with vim-like keymapping.
 Both relative and absolute path available.
 
 ## Options
-`-h` | `--help`    => Print help.
-`-l` | `--log` => Launch the app, automatically generating a log file.
+`--help` | `-h`   => Print help.
+`--log`  | `-l`   => Launch the app, automatically generating a log file.
+`--init`          => Returns a shell script that can be sourced for shell integration.
 
 ## Manual
 j / Down          :Go down.

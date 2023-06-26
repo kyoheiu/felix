@@ -100,47 +100,13 @@ cargo install --path .
 
 ## Integrations
 
-In order for the keybinding `ZZ` to work, you need to add the following to your `.bashrc` or `.zshrc`
-or an equivalent depending on your (POSIX) shell:
+To be able to export your last working directory to the calling shell after exiting from `fx`,
+*-- using the default `ZQ` keybinding --*, you need to add the following to your `.bashrc` or
+`.zshrc` or an equivalent depending on your (POSIX) shell.
+Assuming the `fx` binary can be found in your `PATH`:
 
 ```sh
-# begin felix
-eval "$(
-  if [ -n "$XDG_RUNTIME_DIR" ]; then
-    runtime_dir="$XDG_RUNTIME_DIR/felix"
-  elif [ -n "$TMPDIR" ]; then
-    runtime_dir="$TMPDIR/felix"
-  else
-    runtime_dir=/tmp/felix
-  fi
-  mkdir -p "$runtime_dir"
-
-  # Option differences between BSD and GNU find implementations
-  case "$(uname)" in
-  Linux)
-    file_age_option='-mmin +$(echo 1/60 | bc -l)'
-    ;;
-  Darwin)
-    file_age_option='-mtime +1s'
-    ;;
-  *) ;;
-  esac
-
-  cat << EOF
-fx() {
-  local RUNTIME_DIR="$runtime_dir"
-  SHELL_PID=\$\$ command fx "\$@"
-
-  if [ -f "\$RUNTIME_DIR/\$\$" ]; then
-    cd "\$(cat "\$RUNTIME_DIR/\$\$")"
-  fi
-
-  # Finally, clean up current and leftover lwd files
-  find "\$RUNTIME_DIR" -type f -and \( $file_age_option -or -name \$\$ \) -delete
-}
-EOF
-)"
-# end felix
+source <(command fx --init)
 ```
 
 In addition, you can use felix more conveniently by installing these two apps:
@@ -168,8 +134,9 @@ Both relative and absolute path available.
 ### Options
 
 ```
-`-h` | `--help` => Print help.
-`-l` | `--log` => Launch the app, automatically generating a log file in `{data_local_dir}/felix/log`.
+`--help` | `-h` => Print help.
+`--log`  | `-l` => Launch the app, automatically generating a log file in `{data_local_dir}/felix/log`.
+`--init`        => Returns a shell script that can be sourced for shell integration.
 ```
 
 <a id="key-manual"></a>
