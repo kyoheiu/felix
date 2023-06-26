@@ -100,7 +100,7 @@ cargo install --path .
 
 ## Integrations
 
-In order for the shortcut `ZZ` to work, you need to add the following to your `.bashrc` or `.zshrc`
+In order for the keybinding `ZZ` to work, you need to add the following to your `.bashrc` or `.zshrc`
 or an equivalent depending on your (POSIX) shell:
 
 ```sh
@@ -115,12 +115,13 @@ eval "$(
   fi
   mkdir -p "$runtime_dir"
 
+  # Option differences between BSD and GNU find implementations
   case "$(uname)" in
   Linux)
-    cleanup_lwd='find "$RUNTIME_DIR" -type f -and \( -mmin +$(echo 1/60 | bc -l) -or -name $$ \) -delete'
+    file_age_option='-mmin +$(echo 1/60 | bc -l)'
     ;;
   Darwin)
-    cleanup_lwd='find "$RUNTIME_DIR" -type f -and \( -mtime +1s -or -name $$ \) -delete'
+    file_age_option='-mtime +1s'
     ;;
   *) ;;
   esac
@@ -135,7 +136,7 @@ fx() {
   fi
 
   # Finally, clean up current and leftover lwd files
-  $cleanup_lwd
+  find "\$RUNTIME_DIR" -type f -and \( $file_age_option -or -name \$\$ \) -delete
 }
 EOF
 )"

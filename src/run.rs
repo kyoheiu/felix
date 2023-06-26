@@ -43,7 +43,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         ));
     }
 
-    let parent_pid = env::var("SHELL_PID").ok();
+    let shell_pid: Option<String> = env::var("SHELL_PID").ok();
 
     //Prepare config and data local path.
     let config_dir_path = {
@@ -85,10 +85,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     }
 
     //Path of the file used to store lwd (Last Working Directory) at the end of the session.
-    let lwd_file_path = match parent_pid {
-        Some(parent_pid) => Some(runtime_path.join(parent_pid)),
-        _ => None,
-    };
+    let lwd_file_path = shell_pid.and_then(|basename| Some(runtime_path.join(basename)));
 
     let trash_dir_path = {
         let mut path = data_local_path.clone();
@@ -145,6 +142,29 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     }
 
     result.ok().unwrap()
+}
+
+/// For subsequent use by cd in the parent shell
+fn export_lwd(state: &State) -> Result<(), ()> {
+    if let Some(lwd_file) = &state.lwd_file {
+        print_warning("here", state.layout.y);
+        std::fs::write(lwd_file, state.current_dir.to_str().unwrap()).or_else(|_| {
+            print_warning(
+                format!(
+                    "Couldn't write the LWD to file {0}!",
+                    lwd_file.as_path().to_string_lossy()
+                ),
+                state.layout.y,
+            );
+            Err(())
+        })
+    } else {
+        print_warning(
+            "The env variable 'SHELL_PID' is not set. Most probably, shell integration is not configured!",
+            state.layout.y,
+        );
+        return Err(());
+    }
 }
 
 /// Run the app. (Containing the main loop)
@@ -1924,23 +1944,18 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 if let Event::Key(KeyEvent { code, .. }) = event::read()? {
                                     match code {
                                         KeyCode::Char('Q') => {
-                                            break 'main;
+                                            if state.match_vim_exit_behavior
+                                                || export_lwd(&state).is_ok()
+                                            {
+                                                break 'main;
+                                            }
                                         }
 
                                         KeyCode::Char('Z') => {
-                                            //To communicate with the calling shell function for
-                                            //subsequent use by cd
-                                            if let Some(path) = state.lwd_file.to_owned() {
-                                                std::fs::write(
-                                                    path,
-                                                    state.current_dir.to_str().unwrap(),
-                                                )?;
+                                            if !state.match_vim_exit_behavior
+                                                || export_lwd(&state).is_ok()
+                                            {
                                                 break 'main;
-                                            } else {
-                                                print_warning(
-                                                    "The env variable 'SHELL_PID' is not set. Most probably shell integration is not configured!",
-                                                    state.layout.y,
-                                                );
                                             }
                                         }
 

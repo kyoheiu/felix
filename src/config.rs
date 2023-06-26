@@ -16,6 +16,11 @@ const CONFIG_EXAMPLE: &str = r###"
 # default: nvim
 
 # (Optional)
+# Whether to match the behavior of vim exit keybindings
+# i.e. `ZQ` exits without cd to LWD (Last Working Directory) while `ZZ` cd to LWD
+# match_vim_exit_behavior: false
+
+# (Optional)
 # key (the command you want to use when opening files): [values] (extensions)
 # In the key, You can use arguments.
 # exec:
@@ -49,7 +54,7 @@ syntax_highlight: true
 
 # The foreground color of directory, file and symlink.
 # Pick one of the following:
-#     Black           // 0 
+#     Black           // 0
 #     Red             // 1
 #     Green           // 2
 #     Yellow          // 3
@@ -77,6 +82,7 @@ color:
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config {
     pub default: Option<String>,
+    pub match_vim_exit_behavior: Option<bool>,
     pub exec: Option<BTreeMap<String, Vec<String>>>,
     pub color: ConfigColor,
     pub syntax_highlight: Option<bool>,
@@ -128,6 +134,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             default: Default::default(),
+            match_vim_exit_behavior: Default::default(),
             exec: Default::default(),
             color: ConfigColor {
                 dir_fg: Colorname::LightCyan,
