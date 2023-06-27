@@ -190,8 +190,10 @@ Esc               :Return to the normal mode.
 :empty            :Empty the trash directory.
 :h                :Show help.
 :q                :Exit.
-ZZ                :Exit without cd to last working directory (if `match_vim_exit_behavior` is `false`).
-ZQ                :cd into the last directory and exit (if `match_vim_exit_behavior` is `false`).
+ZZ                :Exit without cd to last working directory (if `match_vim_exit_behavior`
+                   is `false`).
+ZQ                :cd into the last working directory and exit (if `match_vim_exit_behavior`
+                   is `false`).
 ```
 
 <a id="preview"></a>
