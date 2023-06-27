@@ -7,7 +7,6 @@ pub const INTEGRATION_CODE: &str = r###"# To be eval'ed in the calling shell
     else
       runtime_dir=/tmp/felix
     fi
-    mkdir -p "$runtime_dir"
 
     # Option differences between BSD and GNU find implementations
     case "$(uname)" in

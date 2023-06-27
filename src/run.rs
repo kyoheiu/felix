@@ -147,7 +147,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 /// For subsequent use by cd in the parent shell
 fn export_lwd(state: &State) -> Result<(), ()> {
     if let Some(lwd_file) = &state.lwd_file {
-        print_warning("here", state.layout.y);
         std::fs::write(lwd_file, state.current_dir.to_str().unwrap()).or_else(|_| {
             print_warning(
                 format!(
