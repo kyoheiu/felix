@@ -8,17 +8,10 @@ pub const INTEGRATION_CODE: &str = r###"# To be eval'ed in the calling shell
       runtime_dir=/tmp/felix
     fi
 
+    mkdir -p "$runtime_dir"
+
     # Clean up leftover LWD files
-    # Option differences between BSD and GNU find implementations
-    case "$(uname)" in
-    Linux)
-      find "$runtime_dir" -type f -and -mmin +0.02 -delete
-      ;;
-    Darwin)
-      find "$runtime_dir" -type f -and -mtime +1s -delete
-      ;;
-    *) ;;
-    esac
+    find "$runtime_dir" -type f -and -mmin +1 -delete
 
     cat << EOF
 fx() {
