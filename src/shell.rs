@@ -11,7 +11,7 @@ pub const INTEGRATION_CODE: &str = r###"# To be eval'ed in the calling shell
     # Option differences between BSD and GNU find implementations
     case "$(uname)" in
     Linux)
-      file_age_option='-mmin +$(echo 1/60 | bc -l)'
+      file_age_option='-mmin +0.02'
       ;;
     Darwin)
       file_age_option='-mtime +1s'
