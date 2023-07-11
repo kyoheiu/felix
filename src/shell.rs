@@ -8,13 +8,14 @@ pub const INTEGRATION_CODE: &str = r###"# To be eval'ed in the calling shell
       runtime_dir=/tmp/felix
     fi
 
+    # Clean up leftover LWD files
     # Option differences between BSD and GNU find implementations
     case "$(uname)" in
     Linux)
-      file_age_option='-mmin +0.02'
+      find "$runtime_dir" -type f -and -mmin +0.02 -delete
       ;;
     Darwin)
-      file_age_option='-mtime +1s'
+      find "$runtime_dir" -type f -and -mtime +1s -delete
       ;;
     *) ;;
     esac
@@ -26,10 +27,8 @@ fx() {
 
   if [ -f "\$RUNTIME_DIR/\$\$" ]; then
     cd "\$(cat "\$RUNTIME_DIR/\$\$")"
+    rm "\$RUNTIME_DIR/\$\$"
   fi
-
-  # Finally, clean up current and leftover lwd files
-  find "\$RUNTIME_DIR" -type f -and \( $file_age_option -or -name \$\$ \) -delete
 }
 EOF
   )"
