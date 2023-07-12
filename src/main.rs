@@ -2,6 +2,7 @@ mod config;
 mod errors;
 mod functions;
 mod help;
+mod shell;
 mod layout;
 mod magic_image;
 mod magic_packed;
@@ -38,6 +39,9 @@ fn main() -> Result<(), errors::FxError> {
                 ) {
                     eprintln!("{}", e);
                 }
+            }
+            "--init" => {
+                print!("{}", shell::INTEGRATION_CODE);
             }
             _ => {
                 if let Err(e) = run::run(PathBuf::from(&args[1]), false) {

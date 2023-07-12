@@ -4,6 +4,11 @@
 # default: nvim
 
 # (Optional)
+# Whether to match the behavior of vim exit keybindings
+# i.e. `ZQ` exits without cd to LWD (Last Working Directory) while `ZZ` cd to LWD
+# match_vim_exit_behavior: false
+
+# (Optional)
 # key (the command you want to use when opening file): [values] (extensions)
 # In the key, You can use arguments.
 # exec:

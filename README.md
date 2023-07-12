@@ -100,6 +100,15 @@ cargo install --path .
 
 ## Integrations
 
+To be able to export your last working directory to the calling shell after exiting from `fx`,
+*-- using the default `ZQ` keybinding --*, you need to add the following to your `.bashrc` or
+`.zshrc` or an equivalent depending on your (POSIX) shell.
+Assuming the `fx` binary can be found in your `PATH`:
+
+```sh
+source <(command fx --init)
+```
+
 In addition, you can use felix more conveniently by installing these two apps:
 
 - [zoxide](https://github.com/ajeetdsouza/zoxide): A smarter `cd` command, which
@@ -125,8 +134,9 @@ Both relative and absolute path available.
 ### Options
 
 ```
-`-h` | `--help` => Print help.
-`-l` | `--log` => Launch the app, automatically generating a log file in `{data_local_dir}/felix/log`.
+`--help` | `-h` => Print help.
+`--log`  | `-l` => Launch the app, automatically generating a log file in `{data_local_dir}/felix/log`.
+`--init`        => Returns a shell script that can be sourced for shell integration.
 ```
 
 <a id="key-manual"></a>
@@ -179,7 +189,11 @@ Esc               :Return to the normal mode.
 :trash            :Go to the trash directory.
 :empty            :Empty the trash directory.
 :h                :Show help.
-:q / ZZ           :Exit.
+:q                :Exit.
+ZZ                :Exit without cd to last working directory (if `match_vim_exit_behavior`
+                   is `false`).
+ZQ                :cd into the last working directory and exit (if `match_vim_exit_behavior`
+                   is `false`).
 ```
 
 <a id="preview"></a>
@@ -194,11 +208,13 @@ Install `chafa` and you can preview images without any configuration.
 ## Configuration
 
 ### Config file
-If any config file is not found, or found one is broken, felix launches with the default configuration, without creating new one.  
-Note that the default editor is `$EDITOR`, so if you've not set it, opening a file will fail.  
+
+If any config file is not found, or found one is broken, felix launches with the default configuration, without creating new one.
+Note that the default editor is `$EDITOR`, so if you've not set it, opening a file will fail.
 You can find default config file (`config.yaml`) in this repository.
 
 ### Trash directory and log file
+
 Contrary to the config file, these directory and file will be automatically created.
 
 ### Linux

@@ -14,6 +14,7 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::execute;
 use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
 use log::{error, info};
+use std::env;
 use std::io::{stdout, Write};
 use std::panic;
 use std::path::PathBuf;
@@ -42,6 +43,15 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         ));
     }
 
+    let shell_pid: Option<String> = env::var("SHELL_PID").ok();
+
+    //Prepare config and data local path.
+    let config_dir_path = {
+        let mut path = dirs::config_dir()
+            .ok_or_else(|| FxError::Dirs("Cannot read the config directory.".to_string()))?;
+        path.push(FELIX);
+        path
+    };
     //Prepare data local and trash dir path.
     let data_local_path = {
         let mut path = dirs::data_local_dir()
@@ -49,9 +59,33 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         path.push(FELIX);
         path
     };
+    let runtime_path = {
+        let mut path = {
+            #[cfg(not(target_os = "macos"))]
+            let path = dirs::runtime_dir()
+                .or_else(|| Some(env::temp_dir()))
+                .ok_or_else(|| FxError::Dirs("Cannot read the runtime directory.".to_string()))?;
+
+            #[cfg(target_os = "macos")]
+            let path = env::temp_dir();
+
+            path
+        };
+        path.push(FELIX);
+        path
+    };
+    if !config_dir_path.exists() {
+        std::fs::create_dir_all(&config_dir_path)?;
+    }
     if !data_local_path.exists() {
         std::fs::create_dir_all(&data_local_path)?;
     }
+    if !runtime_path.exists() {
+        std::fs::create_dir_all(&runtime_path)?;
+    }
+
+    //Path of the file used to store lwd (Last Working Directory) at the end of the session.
+    let lwd_file_path = shell_pid.and_then(|basename| Some(runtime_path.join(basename)));
 
     let trash_dir_path = {
         let mut path = data_local_path.clone();
@@ -77,6 +111,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     //Initialize app state. Inside State::new(), config file is read or created.
     let mut state = State::new(&session_path)?;
     state.trash_dir = trash_dir_path;
+    state.lwd_file = lwd_file_path;
     state.current_dir = if cfg!(not(windows)) {
         // If executed this on windows, "//?" will be inserted at the beginning of the path.
         arg.canonicalize()?
@@ -107,6 +142,28 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     }
 
     result.ok().unwrap()
+}
+
+/// For subsequent use by cd in the parent shell
+fn export_lwd(state: &State) -> Result<(), ()> {
+    if let Some(lwd_file) = &state.lwd_file {
+        std::fs::write(lwd_file, state.current_dir.to_str().unwrap()).or_else(|_| {
+            print_warning(
+                format!(
+                    "Couldn't write the LWD to file {0}!",
+                    lwd_file.as_path().to_string_lossy()
+                ),
+                state.layout.y,
+            );
+            Err(())
+        })
+    } else {
+        print_warning(
+            "The env variable 'SHELL_PID' is not set. Most probably, shell integration is not configured!",
+            state.layout.y,
+        );
+        return Err(());
+    }
 }
 
 /// Run the app. (Containing the main loop)
@@ -1885,8 +1942,20 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                 if let Event::Key(KeyEvent { code, .. }) = event::read()? {
                                     match code {
+                                        KeyCode::Char('Q') => {
+                                            if state.match_vim_exit_behavior
+                                                || export_lwd(&state).is_ok()
+                                            {
+                                                break 'main;
+                                            }
+                                        }
+
                                         KeyCode::Char('Z') => {
-                                            break 'main;
+                                            if !state.match_vim_exit_behavior
+                                                || export_lwd(&state).is_ok()
+                                            {
+                                                break 'main;
+                                            }
                                         }
 
                                         _ => {
