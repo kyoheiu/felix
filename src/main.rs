@@ -2,7 +2,6 @@ mod config;
 mod errors;
 mod functions;
 mod help;
-mod shell;
 mod layout;
 mod magic_image;
 mod magic_packed;
@@ -10,6 +9,7 @@ mod nums;
 mod op;
 mod run;
 mod session;
+mod shell;
 mod state;
 mod term;
 
