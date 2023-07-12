@@ -4,8 +4,10 @@
 # default: nvim
 
 # (Optional)
-# Whether to match the behavior of vim exit keybindings
-# i.e. `ZQ` exits without cd to LWD (Last Working Directory) while `ZZ` cd to LWD
+# Whether to match the behavior of Vim's exit keybindings.
+# false -> `ZZ` exits without `cd` to LWD(Last Working Directory) While `ZQ` to LWD
+# true  -> vice versa
+# If not set, will default to false.
 # match_vim_exit_behavior: false
 
 # (Optional)
