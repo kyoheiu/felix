@@ -8,6 +8,12 @@
 
 - Create temp file or directory by `af` or `ad` respectively. This feature has to feel like more "modal", so for now I comment out this feature.
 
+## v2.5.0 (2023-07-13)
+
+### Added
+
+- Ability to exit to LWD (last workind directory): See Integrations for details.
+
 ## v2.4.1 (2023-06-21)
 
 ### Changed
