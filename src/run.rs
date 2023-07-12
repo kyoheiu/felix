@@ -159,7 +159,7 @@ fn export_lwd(state: &State) -> Result<(), ()> {
         })
     } else {
         print_warning(
-            "The env variable 'SHELL_PID' is not set. Most probably, shell integration is not configured!",
+            "Shell integration may not be configured.",
             state.layout.y,
         );
         return Err(());
