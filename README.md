@@ -26,6 +26,12 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 
 ## New release
 
+## v2.5.0 (2023-07-13)
+
+### Added
+
+- Ability to exit to LWD (last workind directory): See Integrations for details.
+
 ## v2.4.1 (2023-06-21)
 
 ### Changed
@@ -42,15 +48,6 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 ### Removed
 
 - `:z` - Use `z` instead.
-
-## v2.3.0 (2023-05-26)
-
-### Changed
-
-- Add extra config file path for macOS: `/Users/$USER/.config/felix/config.yaml` will be read after `$HOME/Library/Application Support/felix/config.yaml`.
-- If config file is not found, or found one is broken, felix launches with the default configuration, without creating new one.
-- If the current directory is read-only, `dd`, `Vd` and `p` is disabled in the first place.
-- Bump up MSRV to 1.65.
 
 For more details, see `CHANGELOG.md`.
 
@@ -100,15 +97,19 @@ cargo install --path .
 
 ## Integrations
 
-To be able to export your last working directory to the calling shell after exiting from `fx`,
-*-- using the default `ZQ` keybinding --*, you need to add the following to your `.bashrc` or
-`.zshrc` or an equivalent depending on your (POSIX) shell.
-Assuming the `fx` binary can be found in your `PATH`:
+### Exit to last working directory (LWD)
+To export your LWD to the calling shell after exiting from `fx`,
+add the following to your `.bashrc` or
+`.zshrc` or an equivalent depending on your (POSIX) shell.  
+***Assuming the `fx` binary can be found in your `PATH`.***
 
 ```sh
 source <(command fx --init)
 ```
 
+*If this is not set, exiting to LWD will fail and show the error message.*
+
+### Others
 In addition, you can use felix more conveniently by installing these two apps:
 
 - [zoxide](https://github.com/ajeetdsouza/zoxide): A smarter `cd` command, which
@@ -190,18 +191,18 @@ Esc               :Return to the normal mode.
 :empty            :Empty the trash directory.
 :h                :Show help.
 :q                :Exit.
-ZZ                :Exit without cd to last working directory (if `match_vim_exit_behavior`
-                   is `false`).
-ZQ                :cd into the last working directory and exit (if `match_vim_exit_behavior`
-                   is `false`).
+ZZ                :Exit without cd to last working directory
+                  (if `match_vim_exit_behavior` is `false`).
+ZQ                :cd into the last working directory and exit
+                  (if shell setting is ready and `match_vim_exit_behavior is `false`).
 ```
 
 <a id="preview"></a>
 
 ## Preview feature
 
-By default, text files and directories can be previewed.\
-Install `chafa` and you can preview images without any configuration.
+By default, text files and directories can be previewed by pressing `v`.\
+Install `chafa` and you can preview images as well.
 
 <a id="configuration"></a>
 
