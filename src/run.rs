@@ -147,7 +147,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 /// For subsequent use by cd in the parent shell
 fn export_lwd(state: &State) -> Result<(), ()> {
     if let Some(lwd_file) = &state.lwd_file {
-        std::fs::write(lwd_file, state.current_dir.to_str().unwrap()).or_else(|_| {
+        std::fs::write(lwd_file, state.current_dir.to_str().unwrap()).map_err(|_| {
             print_warning(
                 format!(
                     "Couldn't write the LWD to file {0}!",
@@ -155,14 +155,10 @@ fn export_lwd(state: &State) -> Result<(), ()> {
                 ),
                 state.layout.y,
             );
-            Err(())
         })
     } else {
-        print_warning(
-            "Shell integration may not be configured.",
-            state.layout.y,
-        );
-        return Err(());
+        print_warning("Shell integration may not be configured.", state.layout.y);
+        Err(())
     }
 }
 
