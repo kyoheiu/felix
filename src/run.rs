@@ -1792,6 +1792,32 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                         state.empty_trash(&screen)?;
                                                         break 'command;
                                                     }
+                                                } else if commands.len() == 2 && command == "cd" {
+                                                    if let Ok(target) =
+                                                        std::path::Path::new(commands[1])
+                                                            .canonicalize()
+                                                    {
+                                                        if target.exists() {
+                                                            if let Err(e) =
+                                                                state.chdir(&target, Move::Jump)
+                                                            {
+                                                                print_warning(e, state.layout.y);
+                                                            }
+                                                            break 'command;
+                                                        } else {
+                                                            print_warning(
+                                                                "Path does not exist.",
+                                                                state.layout.y,
+                                                            );
+                                                            break 'command;
+                                                        }
+                                                    } else {
+                                                        print_warning(
+                                                            "Path does not exist.",
+                                                            state.layout.y,
+                                                        );
+                                                        break 'command;
+                                                    }
                                                 }
 
                                                 //Execute command as is
