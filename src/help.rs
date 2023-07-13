@@ -10,7 +10,7 @@ Both relative and absolute path available.
 ## Options
 `--help` | `-h`   => Print help.
 `--log`  | `-l`   => Launch the app, automatically generating a log file.
-`--init`          => Returns a shell script that can be sourced for shell integration.
+`--init`          => Returns a shell script that can be sourcedfor                                for shell integration.
 
 ## Manual
 j / Down          :Go down.
@@ -20,7 +20,8 @@ l / Right / Enter :Open item or change directory.
 gg                :Go to the top.
 G                 :Go to the bottom.
 z + Enter         :Go to the home directory.
-z <keyword>       :Jump to a directory that matches the keyword. (zoxide required)
+z <keyword>       :Jump to a directory that matches the keyword.
+                   (zoxide required)
 o                 :Open item in a new window.
 e                 :Unpack archive/compressed file.
 dd                :Delete and yank item.
@@ -42,7 +43,7 @@ V                 :Switch to the linewise visual mode.
 u                 :Undo put/delete/rename.
 Ctrl + r          :Redo put/delete/rename.
 v                 :Toggle whether to show the preview.
-s                 :Toggle between vertical / horizontal split in the preview mode.
+s                 :Toggle between vertical / horizontal splitin                                 in the preview mode.
 Alt + j / Down    :Scroll down the preview text.
 Alt + k / Up      :Scroll up the preview text.
 backspace         :Toggle whether to show hidden items.
@@ -59,8 +60,10 @@ Esc               :Return to the normal mode.
 :empty            :Empty the trash directory.
 :h                :Show help.
 :q                :Exit.
-ZZ                :Exit without cd to last working directory (if `match_vim_exit_behavior` is `false`).
-ZQ                :cd into the last directory and exit (if `match_vim_exit_behavior` is `false`).
+ZZ                :Exit without cd to last working directory
+                   (if `match_vim_exit_behavior` is `false`).
+ZQ                :cd into the last directory and Exit
+                   (if `match_vim_exit_behavior` is `false`).
 
 ## Preview feature
 By default, text files and directories can be previewed.
