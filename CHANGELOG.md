@@ -12,7 +12,7 @@
 
 ### Added
 
-- Ability to exit to LWD (last workind directory): See Integrations for details.
+- Ability to exit to LWD (last working directory): See Integrations for details.
 
 ## v2.4.1 (2023-06-21)
 
