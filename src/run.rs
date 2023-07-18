@@ -1832,8 +1832,14 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     );
                                                     break 'command;
                                                 }
-                                                if std::process::Command::new(command)
-                                                    .args(&commands[1..])
+                                                let sh = std::env::var("SHELL");
+                                                if sh.is_err() {
+                                                    print_warning("Cannot detect shell.", state.layout.y);
+                                                    break 'command;
+                                                }
+                                                if std::process::Command::new(&sh.unwrap())
+                                                    .arg("-c")
+                                                    .arg(&commands.join(" "))
                                                     .status()
                                                     .is_err()
                                                 {
