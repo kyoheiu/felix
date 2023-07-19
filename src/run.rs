@@ -1832,24 +1832,35 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     );
                                                     break 'command;
                                                 }
-                                                let sh = std::env::var("SHELL");
-                                                if sh.is_err() {
-                                                    print_warning("Cannot detect shell.", state.layout.y);
-                                                    break 'command;
-                                                }
-                                                if std::process::Command::new(&sh.unwrap())
-                                                    .arg("-c")
-                                                    .arg(&commands.join(" "))
-                                                    .status()
-                                                    .is_err()
-                                                {
-                                                    execute!(screen, EnterAlternateScreen)?;
-                                                    state.redraw(state.layout.y);
-                                                    print_warning(
-                                                        "Cannot execute command",
-                                                        state.layout.y,
-                                                    );
-                                                    break 'command;
+                                                if let Ok(sh) = std::env::var("SHELL") {
+                                                    if std::process::Command::new(&sh)
+                                                        .arg("-c")
+                                                        .arg(&commands.join(" "))
+                                                        .status()
+                                                        .is_err()
+                                                    {
+                                                        execute!(screen, EnterAlternateScreen)?;
+                                                        state.redraw(state.layout.y);
+                                                        print_warning(
+                                                            "Cannot execute command",
+                                                            state.layout.y,
+                                                        );
+                                                        break 'command;
+                                                    }
+                                                } else {
+                                                    if std::process::Command::new(command)
+                                                        .args(&commands[1..])
+                                                        .status()
+                                                        .is_err()
+                                                    {
+                                                        execute!(screen, EnterAlternateScreen)?;
+                                                        state.redraw(state.layout.y);
+                                                        print_warning(
+                                                            "Cannot execute command",
+                                                            state.layout.y,
+                                                        );
+                                                        break 'command;
+                                                    }
                                                 }
                                                 execute!(screen, EnterAlternateScreen)?;
                                                 hide_cursor();
