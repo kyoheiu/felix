@@ -85,7 +85,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     }
 
     //Path of the file used to store lwd (Last Working Directory) at the end of the session.
-    let lwd_file_path = shell_pid.and_then(|basename| Some(runtime_path.join(basename)));
+    let lwd_file_path = shell_pid.map(|basename| runtime_path.join(basename));
 
     let trash_dir_path = {
         let mut path = data_local_path.clone();
