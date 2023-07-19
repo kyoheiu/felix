@@ -1213,6 +1213,11 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 if let Some(to_be_added) =
                                                     unicode_width::UnicodeWidthChar::width(c)
                                                 {
+                                                    if current_pos + to_be_added as u16
+                                                        > state.layout.terminal_column
+                                                    {
+                                                        continue;
+                                                    }
                                                     keyword.insert(current_char_pos, c);
                                                     current_char_pos += 1;
                                                     current_pos += to_be_added as u16;
@@ -1765,6 +1770,11 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 if let Some(to_be_added) =
                                                     unicode_width::UnicodeWidthChar::width(c)
                                                 {
+                                                    if current_pos + to_be_added as u16
+                                                        > state.layout.terminal_column
+                                                    {
+                                                        continue;
+                                                    }
                                                     command.insert(current_char_pos, c);
                                                     current_char_pos += 1;
                                                     current_pos += to_be_added as u16;
