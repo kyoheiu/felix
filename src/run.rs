@@ -1708,6 +1708,38 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         code, modifiers, ..
                                     }) = event::read()?
                                     {
+                                        // Ctrl + r to put the item name in register
+                                        if modifiers == KeyModifiers::CONTROL
+                                            && code == KeyCode::Char('r')
+                                        {
+                                            let reg = state.registers.zero.clone();
+                                            if !reg.is_empty() {
+                                                let to_be_put = reg
+                                                    .iter()
+                                                    .map(|x| x.file_name.clone())
+                                                    .collect::<Vec<String>>()
+                                                    .join(" ");
+                                                for c in to_be_put.chars() {
+                                                    if let Some(to_be_added) =
+                                                        unicode_width::UnicodeWidthChar::width(c)
+                                                    {
+                                                        if current_pos + to_be_added as u16
+                                                            > state.layout.terminal_row
+                                                        {
+                                                            continue;
+                                                        }
+                                                        command.insert(current_char_pos, c);
+                                                        current_char_pos += 1;
+                                                        current_pos += to_be_added as u16;
+                                                    }
+                                                }
+                                                go_to_info_line_and_reset();
+                                                print!(":{}", &command.iter().collect::<String>(),);
+                                                move_to(current_pos, 2);
+                                            }
+                                            screen.flush()?;
+                                            continue;
+                                        }
                                         match code {
                                             KeyCode::Esc => {
                                                 go_to_info_line_and_reset();
