@@ -1042,7 +1042,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
 
                                             KeyCode::Right => {
-                                                if current_char_pos as usize == rename.len() {
+                                                if current_char_pos == rename.len() {
                                                     continue;
                                                 };
                                                 if let Some(to_be_skipped) =
