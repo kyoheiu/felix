@@ -1686,15 +1686,38 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         if modifiers == KeyModifiers::CONTROL
                                             && code == KeyCode::Char('r')
                                         {
-                                            let reg = state.registers.zero.clone();
-                                            if !reg.is_empty() {
-                                                let to_be_put = reg
-                                                    .iter()
-                                                    .map(|x| x.file_name.clone())
-                                                    .collect::<Vec<String>>()
-                                                    .join(" ");
-                                                for c in to_be_put.chars() {
-                                                    if let Some(to_be_added) =
+                                            if let Event::Key(KeyEvent { code, .. }) =
+                                                event::read()?
+                                            {
+                                                let reg = if let Some(reg_type) = convert_code(code)
+                                                {
+                                                    match reg_type {
+                                                        RegisterType::Unnamed => {
+                                                            Some(&state.registers.unnamed)
+                                                        }
+                                                        RegisterType::Zero => {
+                                                            Some(&state.registers.zero)
+                                                        }
+                                                        RegisterType::Numbered(n) => {
+                                                            state.registers.numbered.get(n)
+                                                        }
+                                                        RegisterType::Named(c) => {
+                                                            state.registers.named.get(&c)
+                                                        }
+                                                    }
+                                                } else {
+                                                    None
+                                                };
+
+                                                if let Some(reg) = reg {
+                                                    if !reg.is_empty() {
+                                                        let to_be_put = reg
+                                                            .iter()
+                                                            .map(|x| x.file_name.clone())
+                                                            .collect::<Vec<String>>()
+                                                            .join(" ");
+                                                        for c in to_be_put.chars() {
+                                                            if let Some(to_be_added) =
                                                         unicode_width::UnicodeWidthChar::width(c)
                                                     {
                                                         if current_pos + to_be_added as u16
@@ -1706,14 +1729,24 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                         current_char_pos += 1;
                                                         current_pos += to_be_added as u16;
                                                     }
+                                                        }
+                                                        go_to_info_line_and_reset();
+                                                        print!(
+                                                            ":{}",
+                                                            &command.iter().collect::<String>(),
+                                                        );
+                                                        move_to(current_pos, 2);
+                                                        screen.flush()?;
+                                                        continue;
+                                                    } else {
+                                                        continue;
+                                                    }
+                                                } else {
+                                                    continue;
                                                 }
-                                                go_to_info_line_and_reset();
-                                                print!(":{}", &command.iter().collect::<String>(),);
-                                                move_to(current_pos, 2);
                                             }
-                                            screen.flush()?;
-                                            continue;
                                         }
+
                                         match code {
                                             KeyCode::Esc => {
                                                 go_to_info_line_and_reset();
