@@ -1948,6 +1948,16 @@ fn choose_theme(dt: &DefaultTheme) -> Theme {
     }
 }
 
+/// Convert Register to String to paste in commandline
+pub fn convert_buffer_to_string(v: Option<&Vec<ItemBuffer>>) -> Option<String> {
+    v.map(|v| {
+        v.iter()
+            .map(|x| x.file_name.clone())
+            .collect::<Vec<String>>()
+            .join(" ")
+    })
+}
+
 // Check if the current process has the write permission to a path.
 // Currently available in unix only.
 // TODO: Use this function to determine if deleting items can be done in the first place?

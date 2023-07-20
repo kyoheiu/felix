@@ -1692,18 +1692,27 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 let reg = if let Some(reg_type) = convert_code(code)
                                                 {
                                                     match reg_type {
-                                                        RegisterType::Unnamed => {
-                                                            Some(&state.registers.unnamed)
+                                                        Insert::Unnamed => {
+                                                            convert_buffer_to_string(Some(
+                                                                &state.registers.unnamed,
+                                                            ))
                                                         }
-                                                        RegisterType::Zero => {
-                                                            Some(&state.registers.zero)
+                                                        Insert::Zero => convert_buffer_to_string(
+                                                            Some(&state.registers.zero),
+                                                        ),
+                                                        Insert::Numbered(n) => {
+                                                            convert_buffer_to_string(
+                                                                state.registers.numbered.get(n),
+                                                            )
                                                         }
-                                                        RegisterType::Numbered(n) => {
-                                                            state.registers.numbered.get(n)
+                                                        Insert::Named(c) => {
+                                                            convert_buffer_to_string(
+                                                                state.registers.named.get(&c),
+                                                            )
                                                         }
-                                                        RegisterType::Named(c) => {
-                                                            state.registers.named.get(&c)
-                                                        }
+                                                        Insert::CurrentDir => Some(
+                                                            state.current_dir.display().to_string(),
+                                                        ),
                                                     }
                                                 } else {
                                                     None
@@ -1711,12 +1720,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                                 if let Some(reg) = reg {
                                                     if !reg.is_empty() {
-                                                        let to_be_put = reg
-                                                            .iter()
-                                                            .map(|x| x.file_name.clone())
-                                                            .collect::<Vec<String>>()
-                                                            .join(" ");
-                                                        for c in to_be_put.chars() {
+                                                        for c in reg.chars() {
                                                             if let Some(to_be_added) =
                                                         unicode_width::UnicodeWidthChar::width(c)
                                                     {

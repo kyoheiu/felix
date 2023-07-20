@@ -151,22 +151,25 @@ pub fn reset_color() {
     print!("{}", ResetColor);
 }
 
-pub enum RegisterType {
+pub enum Insert {
     Unnamed,
     Zero,
     Numbered(usize),
     Named(char),
+    CurrentDir,
 }
 
-pub fn convert_code(code: KeyCode) -> Option<RegisterType> {
+pub fn convert_code(code: KeyCode) -> Option<Insert> {
     match code {
-        KeyCode::Char('"') => Some(RegisterType::Unnamed),
-        KeyCode::Char('0') => Some(RegisterType::Zero),
+        KeyCode::Char('"') => Some(Insert::Unnamed),
+        KeyCode::Char('0') => Some(Insert::Zero),
         KeyCode::Char(c) => {
             if c.is_ascii_digit() {
-                Some(RegisterType::Numbered(c.to_digit(10).unwrap() as usize))
+                Some(Insert::Numbered(c.to_digit(10).unwrap() as usize))
             } else if c.is_ascii_alphabetic() {
-                Some(RegisterType::Named(c.to_ascii_lowercase()))
+                Some(Insert::Named(c.to_ascii_lowercase()))
+            } else if c == '%' {
+                Some(Insert::CurrentDir)
             } else {
                 None
             }
