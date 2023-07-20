@@ -48,7 +48,6 @@ pub struct State {
     pub trash_dir: PathBuf,
     pub lwd_file: Option<PathBuf>,
     pub match_vim_exit_behavior: bool,
-    pub clipboard: Option<String>,
     pub default: String,
     pub commands: Option<BTreeMap<String, String>>,
     pub registers: Registers,
@@ -263,7 +262,6 @@ impl State {
             trash_dir: PathBuf::new(),
             lwd_file: None,
             match_vim_exit_behavior: config.match_vim_exit_behavior.unwrap_or_default(),
-            clipboard: config.clipboard,
             default: config
                 .default
                 .unwrap_or_else(|| env::var("EDITOR").unwrap_or_default()),

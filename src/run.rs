@@ -236,33 +236,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                             }
                         }
-                        // copy item name to clipboard
-                        KeyCode::Char('c') => {
-                            if let Ok(item) = state.get_item() {
-                                if let Some(ref clipboard) = state.clipboard {
-                                    if std::process::Command::new(clipboard)
-                                        .arg(&item.file_name)
-                                        .status()
-                                        .is_err()
-                                    {
-                                        print_warning(
-                                            "Failed to copy to clipboard.",
-                                            state.layout.y,
-                                        );
-                                    } else {
-                                        print_info(
-                                            format!(
-                                                "Copied item name to clipboard: '{}'",
-                                                &item.file_name
-                                            ),
-                                            state.layout.y,
-                                        );
-                                    }
-                                } else {
-                                    print_warning("Clipboard tool not found.", state.layout.y);
-                                }
-                            }
-                        }
+
                         //Other commands are disabled when Ctrl is pressed.
                         _ => {
                             continue;

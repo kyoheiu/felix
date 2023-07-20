@@ -30,11 +30,6 @@ const CONFIG_EXAMPLE: &str = r###"
 #   [jpg, jpeg, png, gif, svg, hdr]
 
 # (Optional)
-# Clipboard tool to copy item name
-# e.g. `wl-copy` or `xsel`
-# clipboard: wl-copy
-
-# (Optional)
 # Whether to use syntax highlighting in the preview mode.
 # If not set, will default to false.
 syntax_highlight: true
@@ -89,7 +84,6 @@ pub struct Config {
     pub default: Option<String>,
     pub match_vim_exit_behavior: Option<bool>,
     pub exec: Option<BTreeMap<String, Vec<String>>>,
-    pub clipboard: Option<String>,
     pub color: ConfigColor,
     pub syntax_highlight: Option<bool>,
     pub default_theme: Option<DefaultTheme>,
@@ -142,7 +136,6 @@ impl Default for Config {
             default: Default::default(),
             match_vim_exit_behavior: Default::default(),
             exec: Default::default(),
-            clipboard: Default::default(),
             color: ConfigColor {
                 dir_fg: Colorname::LightCyan,
                 file_fg: Colorname::LightWhite,
