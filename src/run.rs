@@ -1698,7 +1698,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                         unicode_width::UnicodeWidthChar::width(c)
                                                     {
                                                         if current_pos + to_be_added as u16
-                                                            > state.layout.terminal_row
+                                                            > state.layout.terminal_column
                                                         {
                                                             continue;
                                                         }
