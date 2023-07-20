@@ -2,6 +2,7 @@ use super::config::Colorname;
 use super::errors::FxError;
 
 use crossterm::cursor::{Hide, MoveLeft, MoveRight, MoveTo, Show};
+use crossterm::event::KeyCode;
 use crossterm::style::{Color, ResetColor, SetBackgroundColor, SetForegroundColor};
 use crossterm::terminal::Clear;
 
@@ -148,4 +149,28 @@ pub fn set_color(c: &TermColor) {
 
 pub fn reset_color() {
     print!("{}", ResetColor);
+}
+
+pub enum RegisterType {
+    Unnamed,
+    Zero,
+    Numbered(usize),
+    Named(char),
+}
+
+pub fn convert_code(code: KeyCode) -> Option<RegisterType> {
+    match code {
+        KeyCode::Char('"') => Some(RegisterType::Unnamed),
+        KeyCode::Char('0') => Some(RegisterType::Zero),
+        KeyCode::Char(c) => {
+            if c.is_ascii_digit() {
+                Some(RegisterType::Numbered(c.to_digit(10).unwrap() as usize))
+            } else if c.is_ascii_alphabetic() {
+                Some(RegisterType::Named(c.to_ascii_lowercase()))
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
 }
