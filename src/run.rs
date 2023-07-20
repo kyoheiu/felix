@@ -1702,7 +1702,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                         ),
                                                         Insert::Numbered(n) => {
                                                             convert_buffer_to_string(
-                                                                state.registers.numbered.get(n),
+                                                                state.registers.numbered.get(n - 1),
                                                             )
                                                         }
                                                         Insert::Named(c) => {
