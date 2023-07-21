@@ -1034,7 +1034,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 if let Some(to_be_added) =
                                                     unicode_width::UnicodeWidthChar::width(c)
                                                 {
-                                                    rename.insert((current_char_pos).into(), c);
+                                                    rename.insert(current_char_pos, c);
                                                     current_char_pos += 1;
                                                     current_pos += to_be_added as u16;
 
@@ -1052,7 +1052,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     continue;
                                                 };
                                                 let removed =
-                                                    rename.remove((current_char_pos - 1).into());
+                                                    rename.remove(current_char_pos - 1);
                                                 if let Some(to_be_removed) =
                                                     unicode_width::UnicodeWidthChar::width(removed)
                                                 {
@@ -1968,21 +1968,20 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                         );
                                                         break 'command;
                                                     }
-                                                } else {
-                                                    if std::process::Command::new(command)
-                                                        .args(&commands[1..])
-                                                        .status()
-                                                        .is_err()
-                                                    {
-                                                        execute!(screen, EnterAlternateScreen)?;
-                                                        state.redraw(state.layout.y);
-                                                        print_warning(
-                                                            "Cannot execute command",
-                                                            state.layout.y,
-                                                        );
-                                                        break 'command;
-                                                    }
+                                                } else if std::process::Command::new(command)
+                                                    .args(&commands[1..])
+                                                    .status()
+                                                    .is_err()
+                                                {
+                                                    execute!(screen, EnterAlternateScreen)?;
+                                                    state.redraw(state.layout.y);
+                                                    print_warning(
+                                                        "Cannot execute command",
+                                                        state.layout.y,
+                                                    );
+                                                    break 'command;
                                                 }
+
                                                 execute!(screen, EnterAlternateScreen)?;
                                                 hide_cursor();
                                                 info!("SHELL: {:?}", commands);
