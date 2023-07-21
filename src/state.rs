@@ -1550,6 +1550,24 @@ impl State {
         Ok(())
     }
 
+    /// For subsequent use by cd in the parent shell
+    pub fn export_lwd(&self) -> Result<(), ()> {
+        if let Some(lwd_file) = &self.lwd_file {
+            std::fs::write(lwd_file, self.current_dir.to_str().unwrap()).map_err(|_| {
+                print_warning(
+                    format!(
+                        "Couldn't write the LWD to file {0}!",
+                        lwd_file.as_path().to_string_lossy()
+                    ),
+                    self.layout.y,
+                );
+            })
+        } else {
+            print_warning("Shell integration may not be configured.", self.layout.y);
+            Err(())
+        }
+    }
+
     /// Change the cursor position, and print item information at the bottom.
     /// If preview is enabled, print text preview, contents of the directory or image preview.
     pub fn move_cursor(&mut self, y: u16) {
