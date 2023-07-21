@@ -1682,45 +1682,43 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         code, modifiers, ..
                                     }) = event::read()?
                                     {
-                                        // Ctrl + r to put the item name in register
+                                        // <C-r> to put the item name(s) in register
                                         if modifiers == KeyModifiers::CONTROL
                                             && code == KeyCode::Char('r')
                                         {
                                             if let Event::Key(KeyEvent { code, .. }) =
                                                 event::read()?
                                             {
-                                                let reg = if let Some(reg_type) = convert_code(code)
-                                                {
-                                                    match reg_type {
-                                                        Insert::Unnamed => {
-                                                            convert_buffer_to_string(Some(
-                                                                &state.registers.unnamed,
-                                                            ))
-                                                        }
-                                                        Insert::Zero => convert_buffer_to_string(
-                                                            Some(&state.registers.zero),
-                                                        ),
-                                                        Insert::Numbered(n) => {
-                                                            convert_buffer_to_string(
-                                                                state.registers.numbered.get(n - 1),
-                                                            )
-                                                        }
-                                                        Insert::Named(c) => {
-                                                            convert_buffer_to_string(
-                                                                state.registers.named.get(&c),
-                                                            )
-                                                        }
-                                                        Insert::CurrentDir => Some(
-                                                            state.current_dir.display().to_string(),
-                                                        ),
+                                                let reg = match code {
+                                                    KeyCode::Char('"') => {
+                                                        Some(&state.registers.unnamed)
                                                     }
-                                                } else {
-                                                    None
+                                                    KeyCode::Char('0') => {
+                                                        Some(&state.registers.zero)
+                                                    }
+                                                    KeyCode::Char(c) => {
+                                                        if c.is_ascii_digit() {
+                                                            state.registers.numbered.get(
+                                                                c.to_digit(10).unwrap() as usize
+                                                                    - 1,
+                                                            )
+                                                        } else if c.is_ascii_alphabetic() {
+                                                            state.registers.named.get(&c)
+                                                        } else {
+                                                            None
+                                                        }
+                                                    }
+                                                    _ => None,
                                                 };
 
                                                 if let Some(reg) = reg {
                                                     if !reg.is_empty() {
-                                                        for c in reg.chars() {
+                                                        let to_be_inserted = reg
+                                                            .iter()
+                                                            .map(|x| x.file_name.clone())
+                                                            .collect::<Vec<String>>()
+                                                            .join(" ");
+                                                        for c in to_be_inserted.chars() {
                                                             if let Some(to_be_added) =
                                                         unicode_width::UnicodeWidthChar::width(c)
                                                     {
