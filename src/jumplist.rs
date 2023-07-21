@@ -12,9 +12,9 @@ impl JumpList {
             for _i in 0..self.pos {
                 self.list.pop_front();
             }
+            self.pos = 0;
         }
         self.list.push_front(p.to_path_buf());
-        self.pos = 0;
     }
 
     pub fn get_backward(&self) -> Option<PathBuf> {
@@ -26,7 +26,9 @@ impl JumpList {
     }
 
     pub fn pos_backward(&mut self) {
-        self.pos += 1;
+        if self.pos < self.list.len() {
+            self.pos += 1;
+        }
     }
 
     pub fn get_forward(&self) -> Option<PathBuf> {
@@ -38,7 +40,9 @@ impl JumpList {
     }
 
     pub fn pos_forward(&mut self) {
-        self.pos -= 1;
+        if self.pos > 0 {
+            self.pos -= 1;
+        }
     }
 
     pub fn remove_backward(&mut self) {
