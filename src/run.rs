@@ -254,7 +254,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                             }
                         }
 
-                        //Other commands are disabled when Ctrl is pressed.
+                        //Other commands are disabled when Ctrl is pressed,
+                        //except <C-i> (equivalent to Tab).
                         _ => {
                             continue;
                         }
