@@ -26,6 +26,15 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 
 ## New release
 
+## v2.6.0 (2023-07-22)
+
+### Added
+
+- Allow `<C-r>` in command line: Paste item name(s) in register. e.g. `<C-r>"` pastes item name in unnamed register.
+- Allow wild card in command line: e.g. `:zip test *.md` works now.
+- Ability to `cd` {absolute/relative path}.
+- Ability to jump backward / forward (`<C-o>`, `<C-i>` respectively)
+
 ## v2.5.0 (2023-07-13)
 
 ### Added
@@ -153,6 +162,8 @@ gg                :Go to the top.
 G                 :Go to the bottom.
 z + Enter         :Go to the home directory.
 z <keyword>       :Jump to a directory that matches the keyword. (zoxide required)
+<C-o>             :Jump backward.
+<C-i>             :Jump forward.
 o                 :Open item in a new window.
 e                 :Unpack archive/compressed file.
 dd                :Delete and yank item.
@@ -172,20 +183,22 @@ V                 :Switch to the linewise visual mode.
   - "Ay           :In the visual mode, append items to register a.
   - "Ad           :In the visual mode, delete and append items to register a.
 u                 :Undo put/delete/rename.
-Ctrl + r          :Redo put/delete/rename.
+<C-r>             :Redo put/delete/rename.
 v                 :Toggle whether to show the preview.
 s                 :Toggle between vertical / horizontal split in the preview mode.
 Alt + j / Down    :Scroll down the preview text.
 Alt + k / Up      :Scroll up the preview text.
 backspace         :Toggle whether to show hidden items.
 t                 :Toggle the sort order (name <-> modified time).
-:                 :Switch to the shell mode.
+:                 :Switch to the command line.
+  - <C-r>a        :In the command line, paste item name in register a.
 c                 :Switch to the rename mode.
 /                 :Search items by a keyword.
 n                 :Go forward to the item that matches the keyword.
 N                 :Go backward to the item that matches the keyword.
 Esc               :Return to the normal mode.
 :cd               :Go to the home directory.
+:cd <path>        :Go to the path.
 :e                :Reload the current directory.
 :trash            :Go to the trash directory.
 :empty            :Empty the trash directory.

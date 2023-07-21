@@ -1671,7 +1671,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                             }
 
-                            //shell mode
+                            //command line
                             KeyCode::Char(':') => {
                                 //In visual mode, this is disabled.
                                 if state.v_start.is_some() {
