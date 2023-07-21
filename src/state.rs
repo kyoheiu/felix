@@ -2,6 +2,7 @@ use super::config::*;
 use super::errors::FxError;
 use super::functions::*;
 use super::help::HELP;
+use super::jumplist::*;
 use super::layout::*;
 use super::magic_image;
 use super::magic_packed;
@@ -52,6 +53,7 @@ pub struct State {
     pub commands: Option<BTreeMap<String, String>>,
     pub registers: Registers,
     pub operations: Operation,
+    pub jumplist: JumpList,
     pub c_memo: Vec<StateMemo>,
     pub p_memo: Vec<StateMemo>,
     pub keyword: Option<String>,
@@ -300,6 +302,7 @@ impl State {
                 has_chafa,
                 is_kitty,
             },
+            jumplist: JumpList::default(),
             c_memo: Vec::new(),
             p_memo: Vec::new(),
             keyword: None,
@@ -1431,12 +1434,16 @@ impl State {
     /// Change directory.
     pub fn chdir(&mut self, p: &std::path::Path, mv: Move) -> Result<(), FxError> {
         std::env::set_current_dir(p)?;
+
         self.is_ro = match has_write_permission(p) {
             Ok(b) => !b,
             Err(_) => false,
         };
         match mv {
             Move::Up => {
+                // Add the new directory path to jumplist
+                self.jumplist.add(p);
+
                 // Push current state to c_memo
                 let cursor_memo = StateMemo {
                     path: self.current_dir.clone(),
@@ -1457,6 +1464,7 @@ impl State {
                     None => {
                         let pre = self.current_dir.clone();
                         self.current_dir = p.to_owned();
+                        self.keyword = None;
                         self.update_list()?;
                         match pre.file_name() {
                             Some(name) => {
@@ -1468,7 +1476,6 @@ impl State {
                                         file_name == name
                                     })
                                     .unwrap_or(0);
-                                self.keyword = None;
                                 if new_pos < 3 {
                                     self.layout.nums.skip = 0;
                                     self.layout.nums.index = new_pos;
@@ -1480,8 +1487,6 @@ impl State {
                                 }
                             }
                             None => {
-                                self.current_dir = p.to_owned();
-                                self.keyword = None;
                                 self.layout.nums.reset();
                                 self.redraw(BEGINNING_ROW);
                             }
@@ -1490,6 +1495,9 @@ impl State {
                 }
             }
             Move::Down => {
+                // Add the new directory path to jumplist
+                self.jumplist.add(p);
+
                 // Push current state to p_memo
                 let cursor_memo = StateMemo {
                     path: self.current_dir.clone(),
@@ -1519,10 +1527,21 @@ impl State {
                 }
             }
             Move::Jump => {
+                // Add the new directory path to jumplist
+                self.jumplist.add(p);
+
                 self.current_dir = p.to_owned();
+                self.keyword = None;
                 self.p_memo = Vec::new();
                 self.c_memo = Vec::new();
+                self.layout.nums.reset();
+                self.reload(BEGINNING_ROW)?;
+            }
+            Move::List => {
+                self.current_dir = p.to_owned();
                 self.keyword = None;
+                self.p_memo = Vec::new();
+                self.c_memo = Vec::new();
                 self.layout.nums.reset();
                 self.reload(BEGINNING_ROW)?;
             }

@@ -15,6 +15,7 @@ pub enum Move {
     Up,
     Down,
     Jump,
+    List,
 }
 
 impl Num {

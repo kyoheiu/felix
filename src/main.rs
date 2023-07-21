@@ -2,6 +2,7 @@ mod config;
 mod errors;
 mod functions;
 mod help;
+mod jumplist;
 mod layout;
 mod magic_image;
 mod magic_packed;

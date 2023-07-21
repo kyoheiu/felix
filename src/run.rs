@@ -118,6 +118,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     } else {
         arg
     };
+    state.jumplist.add(&state.current_dir);
     state.is_ro = match has_write_permission(&state.current_dir) {
         Ok(b) => !b,
         Err(_) => false,
@@ -233,6 +234,22 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     state.move_cursor(new_y)
                                 } else {
                                     state.move_cursor(state.layout.y);
+                                }
+                            }
+                        }
+
+                        // jump backward
+                        KeyCode::Char('o') => {
+                            if let Some(path_to_jump_to) = state.jumplist.get_backward() {
+                                if path_to_jump_to.exists() {
+                                    state.chdir(&path_to_jump_to, Move::List)?;
+                                    state.jumplist.pos_backward();
+                                } else {
+                                    print_warning(
+                                        "Directory backward not found: Removed from jumplist.",
+                                        state.layout.y,
+                                    );
+                                    state.jumplist.remove_backward();
                                 }
                             }
                         }
@@ -568,6 +585,22 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                             }
 
+                            // jump forward
+                            KeyCode::Tab => {
+                                if let Some(path_to_jump_to) = state.jumplist.get_forward() {
+                                    if path_to_jump_to.exists() {
+                                        state.chdir(&path_to_jump_to, Move::List)?;
+                                    } else {
+                                        print_warning(
+                                            "Directory forward not found: Removed from jumplist.",
+                                            state.layout.y,
+                                        );
+                                        state.jumplist.remove_forward();
+                                    }
+                                    state.jumplist.pos_forward();
+                                }
+                            }
+
                             //Unpack archive file. Fails if it is not any of supported types
                             KeyCode::Char('e') => {
                                 //In visual mode, this is disabled.
@@ -703,17 +736,14 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                 let target_path = PathBuf::from(
                                                                     target_dir.trim(),
                                                                 );
-                                                                std::env::set_current_dir(
-                                                                    &target_path,
-                                                                )?;
-                                                                state.current_dir =
-                                                                    if cfg!(not(windows)) {
-                                                                        target_path
-                                                                            .canonicalize()?
-                                                                    } else {
-                                                                        target_path
-                                                                    };
-                                                                state.reload(BEGINNING_ROW)?;
+                                                                if let Err(e) = state
+                                                                    .chdir(&target_path, Move::Jump)
+                                                                {
+                                                                    print_warning(
+                                                                        e,
+                                                                        state.layout.y,
+                                                                    );
+                                                                }
                                                                 break 'zoxide;
                                                             }
                                                         }
@@ -1051,8 +1081,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 if current_char_pos == 0 {
                                                     continue;
                                                 };
-                                                let removed =
-                                                    rename.remove(current_char_pos - 1);
+                                                let removed = rename.remove(current_char_pos - 1);
                                                 if let Some(to_be_removed) =
                                                     unicode_width::UnicodeWidthChar::width(removed)
                                                 {
