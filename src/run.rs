@@ -25,7 +25,7 @@ const SESSION_FILE: &str = ".session";
 /// Where the item list starts to scroll.
 const SCROLL_POINT: u16 = 3;
 const CLRSCR: &str = "\x1B[2J";
-const INITIAL_POS_SEARCH: usize = 3;
+const INITIAL_POS_SEARCH: u16 = 3;
 const INITIAL_POS_SHELL: u16 = 3;
 
 /// Launch the app. If initialization goes wrong, return error.
@@ -85,7 +85,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     }
 
     //Path of the file used to store lwd (Last Working Directory) at the end of the session.
-    let lwd_file_path = shell_pid.and_then(|basename| Some(runtime_path.join(basename)));
+    let lwd_file_path = shell_pid.map(|basename| runtime_path.join(basename));
 
     let trash_dir_path = {
         let mut path = data_local_path.clone();
@@ -236,6 +236,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                             }
                         }
+
                         //Other commands are disabled when Ctrl is pressed.
                         _ => {
                             continue;
@@ -1015,7 +1016,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
 
                                             KeyCode::Right => {
-                                                if current_char_pos as usize == rename.len() {
+                                                if current_char_pos == rename.len() {
                                                     continue;
                                                 };
                                                 if let Some(to_be_skipped) =
@@ -1033,7 +1034,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 if let Some(to_be_added) =
                                                     unicode_width::UnicodeWidthChar::width(c)
                                                 {
-                                                    rename.insert((current_char_pos).into(), c);
+                                                    rename.insert(current_char_pos, c);
                                                     current_char_pos += 1;
                                                     current_pos += to_be_added as u16;
 
@@ -1051,7 +1052,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     continue;
                                                 };
                                                 let removed =
-                                                    rename.remove((current_char_pos - 1).into());
+                                                    rename.remove(current_char_pos - 1);
                                                 if let Some(to_be_removed) =
                                                     unicode_width::UnicodeWidthChar::width(removed)
                                                 {
@@ -1094,9 +1095,11 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 let original_y = state.layout.y;
                                 let mut keyword: Vec<char> = Vec::new();
 
+                                // express position in terminal
                                 let mut current_pos = INITIAL_POS_SEARCH;
+                                // express position in Vec<Char>
+                                let mut current_char_pos = 0;
                                 loop {
-                                    let keyword_len = keyword.len();
                                     if let Event::Key(KeyEvent { code, .. }) = event::read()? {
                                         match code {
                                             KeyCode::Enter => {
@@ -1113,31 +1116,45 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
 
                                             KeyCode::Left => {
-                                                if current_pos == INITIAL_POS_SEARCH {
+                                                if current_char_pos == 0 {
                                                     continue;
+                                                };
+                                                if let Some(to_be_skipped) =
+                                                    unicode_width::UnicodeWidthChar::width(
+                                                        keyword[current_char_pos - 1],
+                                                    )
+                                                {
+                                                    current_char_pos -= 1;
+                                                    current_pos -= to_be_skipped as u16;
+                                                    move_left(to_be_skipped as u16);
                                                 }
-                                                current_pos -= 1;
-                                                move_left(1);
                                             }
 
                                             KeyCode::Right => {
-                                                if current_pos == keyword_len + INITIAL_POS_SEARCH {
+                                                if current_char_pos == keyword.len() {
                                                     continue;
+                                                };
+                                                if let Some(to_be_skipped) =
+                                                    unicode_width::UnicodeWidthChar::width(
+                                                        keyword[current_char_pos],
+                                                    )
+                                                {
+                                                    current_char_pos += 1;
+                                                    current_pos += to_be_skipped as u16;
+                                                    move_right(to_be_skipped as u16);
                                                 }
-                                                current_pos += 1;
-                                                move_right(1);
                                             }
 
                                             KeyCode::Backspace => {
-                                                if current_pos == INITIAL_POS_SEARCH {
-                                                    hide_cursor();
-                                                    state.redraw(state.layout.y);
-                                                    break;
-                                                } else {
-                                                    keyword.remove(
-                                                        current_pos - INITIAL_POS_SEARCH - 1,
-                                                    );
-                                                    current_pos -= 1;
+                                                if current_char_pos == 0 {
+                                                    continue;
+                                                };
+                                                let removed = keyword.remove(current_char_pos - 1);
+                                                if let Some(to_be_removed) =
+                                                    unicode_width::UnicodeWidthChar::width(removed)
+                                                {
+                                                    current_char_pos -= 1;
+                                                    current_pos -= to_be_removed as u16;
 
                                                     let key = &keyword.iter().collect::<String>();
 
@@ -1162,39 +1179,49 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     }
                                                     go_to_info_line_and_reset();
                                                     print!("/{}", key.clone());
-                                                    move_to(current_pos as u16, 2);
+                                                    move_to(current_pos, 2);
                                                 }
                                             }
 
                                             KeyCode::Char(c) => {
-                                                keyword.insert(current_pos - INITIAL_POS_SEARCH, c);
-                                                current_pos += 1;
-
-                                                let key = &keyword.iter().collect::<String>();
-
-                                                let target = state
-                                                    .list
-                                                    .iter()
-                                                    .position(|x| x.file_name.contains(key));
-
-                                                match target {
-                                                    Some(i) => {
-                                                        state.layout.nums.skip = i as u16;
-                                                        state.layout.nums.index = i;
-                                                        state.highlight_matches(key);
-                                                        state.redraw(BEGINNING_ROW);
+                                                if let Some(to_be_added) =
+                                                    unicode_width::UnicodeWidthChar::width(c)
+                                                {
+                                                    if current_pos + to_be_added as u16
+                                                        > state.layout.terminal_column
+                                                    {
+                                                        continue;
                                                     }
-                                                    None => {
-                                                        state.highlight_matches(key);
-                                                        state.layout.nums = original_nums;
-                                                        state.layout.y = original_y;
-                                                        state.redraw(state.layout.y);
+                                                    keyword.insert(current_char_pos, c);
+                                                    current_char_pos += 1;
+                                                    current_pos += to_be_added as u16;
+
+                                                    let key = &keyword.iter().collect::<String>();
+
+                                                    let target = state
+                                                        .list
+                                                        .iter()
+                                                        .position(|x| x.file_name.contains(key));
+
+                                                    match target {
+                                                        Some(i) => {
+                                                            state.layout.nums.skip = i as u16;
+                                                            state.layout.nums.index = i;
+                                                            state.highlight_matches(key);
+                                                            state.redraw(BEGINNING_ROW);
+                                                        }
+                                                        None => {
+                                                            state.highlight_matches(key);
+                                                            state.layout.nums = original_nums;
+                                                            state.layout.y = original_y;
+                                                            state.redraw(state.layout.y);
+                                                        }
                                                     }
+
+                                                    go_to_info_line_and_reset();
+                                                    print!("/{}", key.clone());
+                                                    move_to(current_pos, 2);
                                                 }
-
-                                                go_to_info_line_and_reset();
-                                                print!("/{}", key.clone());
-                                                move_to(current_pos as u16, 2);
                                             }
 
                                             _ => continue,
@@ -1646,9 +1673,82 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                 let mut command: Vec<char> = Vec::new();
 
+                                // express position in terminal
                                 let mut current_pos = INITIAL_POS_SHELL;
+                                // express position in Vec<Char>
+                                let mut current_char_pos = 0;
                                 'command: loop {
-                                    if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                                    if let Event::Key(KeyEvent {
+                                        code, modifiers, ..
+                                    }) = event::read()?
+                                    {
+                                        // <C-r> to put the item name(s) in register
+                                        if modifiers == KeyModifiers::CONTROL
+                                            && code == KeyCode::Char('r')
+                                        {
+                                            if let Event::Key(KeyEvent { code, .. }) =
+                                                event::read()?
+                                            {
+                                                let reg = match code {
+                                                    KeyCode::Char('"') => {
+                                                        Some(&state.registers.unnamed)
+                                                    }
+                                                    KeyCode::Char('0') => {
+                                                        Some(&state.registers.zero)
+                                                    }
+                                                    KeyCode::Char(c) => {
+                                                        if c.is_ascii_digit() {
+                                                            state.registers.numbered.get(
+                                                                c.to_digit(10).unwrap() as usize
+                                                                    - 1,
+                                                            )
+                                                        } else if c.is_ascii_alphabetic() {
+                                                            state.registers.named.get(&c)
+                                                        } else {
+                                                            None
+                                                        }
+                                                    }
+                                                    _ => None,
+                                                };
+
+                                                if let Some(reg) = reg {
+                                                    if !reg.is_empty() {
+                                                        let to_be_inserted = reg
+                                                            .iter()
+                                                            .map(|x| x.file_name.clone())
+                                                            .collect::<Vec<String>>()
+                                                            .join(" ");
+                                                        for c in to_be_inserted.chars() {
+                                                            if let Some(to_be_added) =
+                                                        unicode_width::UnicodeWidthChar::width(c)
+                                                    {
+                                                        if current_pos + to_be_added as u16
+                                                            > state.layout.terminal_column
+                                                        {
+                                                            continue;
+                                                        }
+                                                        command.insert(current_char_pos, c);
+                                                        current_char_pos += 1;
+                                                        current_pos += to_be_added as u16;
+                                                    }
+                                                        }
+                                                        go_to_info_line_and_reset();
+                                                        print!(
+                                                            ":{}",
+                                                            &command.iter().collect::<String>(),
+                                                        );
+                                                        move_to(current_pos, 2);
+                                                        screen.flush()?;
+                                                        continue;
+                                                    } else {
+                                                        continue;
+                                                    }
+                                                } else {
+                                                    continue;
+                                                }
+                                            }
+                                        }
+
                                         match code {
                                             KeyCode::Esc => {
                                                 go_to_info_line_and_reset();
@@ -1658,56 +1758,75 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
 
                                             KeyCode::Left => {
-                                                if current_pos == INITIAL_POS_SHELL {
+                                                if current_char_pos == 0 {
                                                     continue;
                                                 };
-                                                current_pos -= 1;
-                                                move_left(1);
+                                                if let Some(to_be_skipped) =
+                                                    unicode_width::UnicodeWidthChar::width(
+                                                        command[current_char_pos - 1],
+                                                    )
+                                                {
+                                                    current_char_pos -= 1;
+                                                    current_pos -= to_be_skipped as u16;
+                                                    move_left(to_be_skipped as u16);
+                                                }
                                             }
 
                                             KeyCode::Right => {
-                                                if current_pos as usize
-                                                    == command.len() + INITIAL_POS_SHELL as usize
-                                                {
+                                                if current_char_pos == command.len() {
                                                     continue;
                                                 };
-                                                current_pos += 1;
-                                                move_right(1);
+                                                if let Some(to_be_skipped) =
+                                                    unicode_width::UnicodeWidthChar::width(
+                                                        command[current_char_pos],
+                                                    )
+                                                {
+                                                    current_char_pos += 1;
+                                                    current_pos += to_be_skipped as u16;
+                                                    move_right(to_be_skipped as u16);
+                                                }
                                             }
 
                                             KeyCode::Backspace => {
-                                                if current_pos == INITIAL_POS_SHELL {
-                                                    go_to_info_line_and_reset();
-                                                    hide_cursor();
-                                                    state.move_cursor(state.layout.y);
-                                                    break 'command;
-                                                } else {
-                                                    command.remove(
-                                                        (current_pos - INITIAL_POS_SHELL - 1)
-                                                            .into(),
-                                                    );
-                                                    current_pos -= 1;
+                                                if current_char_pos == 0 {
+                                                    continue;
+                                                };
+                                                let removed = command.remove(current_char_pos - 1);
+                                                if let Some(to_be_removed) =
+                                                    unicode_width::UnicodeWidthChar::width(removed)
+                                                {
+                                                    current_char_pos -= 1;
+                                                    current_pos -= to_be_removed as u16;
 
-                                                    clear_current_line();
-                                                    to_info_line();
+                                                    go_to_info_line_and_reset();
                                                     print!(
                                                         ":{}",
-                                                        &command.iter().collect::<String>()
+                                                        &command.iter().collect::<String>(),
                                                     );
                                                     move_to(current_pos, 2);
                                                 }
                                             }
 
                                             KeyCode::Char(c) => {
-                                                command.insert(
-                                                    (current_pos - INITIAL_POS_SHELL).into(),
-                                                    c,
-                                                );
-                                                current_pos += 1;
-                                                clear_current_line();
-                                                to_info_line();
-                                                print!(":{}", &command.iter().collect::<String>(),);
-                                                move_to(current_pos, 2);
+                                                if let Some(to_be_added) =
+                                                    unicode_width::UnicodeWidthChar::width(c)
+                                                {
+                                                    if current_pos + to_be_added as u16
+                                                        > state.layout.terminal_column
+                                                    {
+                                                        continue;
+                                                    }
+                                                    command.insert(current_char_pos, c);
+                                                    current_char_pos += 1;
+                                                    current_pos += to_be_added as u16;
+
+                                                    go_to_info_line_and_reset();
+                                                    print!(
+                                                        ":{}",
+                                                        &command.iter().collect::<String>(),
+                                                    );
+                                                    move_to(current_pos, 2);
+                                                }
                                             }
 
                                             KeyCode::Enter => {
@@ -1832,7 +1951,22 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     );
                                                     break 'command;
                                                 }
-                                                if std::process::Command::new(command)
+                                                if let Ok(sh) = std::env::var("SHELL") {
+                                                    if std::process::Command::new(&sh)
+                                                        .arg("-c")
+                                                        .arg(&commands.join(" "))
+                                                        .status()
+                                                        .is_err()
+                                                    {
+                                                        execute!(screen, EnterAlternateScreen)?;
+                                                        state.redraw(state.layout.y);
+                                                        print_warning(
+                                                            "Cannot execute command",
+                                                            state.layout.y,
+                                                        );
+                                                        break 'command;
+                                                    }
+                                                } else if std::process::Command::new(command)
                                                     .args(&commands[1..])
                                                     .status()
                                                     .is_err()
@@ -1845,6 +1979,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     );
                                                     break 'command;
                                                 }
+
                                                 execute!(screen, EnterAlternateScreen)?;
                                                 hide_cursor();
                                                 info!("SHELL: {:?}", commands);
