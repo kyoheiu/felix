@@ -145,24 +145,6 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     result.ok().unwrap()
 }
 
-/// For subsequent use by cd in the parent shell
-fn export_lwd(state: &State) -> Result<(), ()> {
-    if let Some(lwd_file) = &state.lwd_file {
-        std::fs::write(lwd_file, state.current_dir.to_str().unwrap()).map_err(|_| {
-            print_warning(
-                format!(
-                    "Couldn't write the LWD to file {0}!",
-                    lwd_file.as_path().to_string_lossy()
-                ),
-                state.layout.y,
-            );
-        })
-    } else {
-        print_warning("Shell integration may not be configured.", state.layout.y);
-        Err(())
-    }
-}
-
 /// Run the app. (Containing the main loop)
 fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
     //Enter the alternate screen with crossterm
@@ -2131,7 +2113,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     match code {
                                         KeyCode::Char('Q') => {
                                             if state.match_vim_exit_behavior
-                                                || export_lwd(&state).is_ok()
+                                                || state.export_lwd().is_ok()
                                             {
                                                 break 'main;
                                             }
@@ -2139,7 +2121,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                         KeyCode::Char('Z') => {
                                             if !state.match_vim_exit_behavior
-                                                || export_lwd(&state).is_ok()
+                                                || state.export_lwd().is_ok()
                                             {
                                                 break 'main;
                                             }
