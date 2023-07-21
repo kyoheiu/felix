@@ -6,6 +6,10 @@
 
 ### Added
 
+- Allow `<C-r>` in command line: Paste item name(s) in register. e.g. `<C-r>"` pastes item name in unnamed register.
+- Allow wild card in command line: e.g. `:zip test *.md` works now.
+- Ability to `cd` {absolute/relative path}.
+- Ability to jump backward / forward (`<C-o>`, `<C-i>` respectively)
 - Create temp file or directory by `af` or `ad` respectively. This feature has to feel like more "modal", so for now I comment out this feature.
 
 ## v2.5.0 (2023-07-13)

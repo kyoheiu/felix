@@ -127,10 +127,7 @@ impl Layout {
 
     /// Print preview according to the preview type.
     pub fn print_preview(&self, item: Option<&ItemInfo>, y: u16) {
-        if item.is_none() {
-            return;
-        } else {
-            let item = item.unwrap();
+        if let Some(item) = item {
             match self.split {
                 Split::Vertical => {
                     //At least print the item name
