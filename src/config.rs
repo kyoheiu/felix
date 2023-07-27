@@ -189,7 +189,12 @@ pub fn read_config_or_default() -> Result<Config, FxError> {
             another.push(CONFIG_FILE_ANOTHER_EXT);
             (config_path, another)
         };
-        vec![config_file_path1, config_file_path2, alt_config_file_path1, alt_config_file_path2]
+        vec![
+            config_file_path1,
+            config_file_path2,
+            alt_config_file_path1,
+            alt_config_file_path2,
+        ]
     } else {
         vec![config_file_path1, config_file_path2]
     };
