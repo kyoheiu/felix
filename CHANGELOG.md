@@ -6,6 +6,7 @@
 
 ### Added
 
+- Allow `config.yml` ext in addition to `config.yaml` for the configuration.
 - Create temp file or directory by `af` or `ad` respectively. This feature has to feel like more "modal", so for now I comment out this feature.
 
 ## v2.6.0 (2023-07-22)

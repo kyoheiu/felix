@@ -231,6 +231,8 @@ If any config file is not found, or found one is broken, felix launches with the
 Note that the default editor is `$EDITOR`, so if you've not set it, opening a file will fail.
 You can find default config file (`config.yaml`) in this repository.
 
+*Both `config.yaml` and `config.yml` works. from v2.6.1.*
+
 ### Trash directory and log file
 
 Contrary to the config file, these directory and file will be automatically created.
@@ -238,7 +240,7 @@ Contrary to the config file, these directory and file will be automatically crea
 ### Linux
 
 ```
-config file     : $XDG_CONFIG_HOME/felix/config.yaml
+config file     : $XDG_CONFIG_HOME/felix/config.yaml(config.yml)
 trash directory : $XDG_DATA_HOME/felix/Trash
 log files       : $XDG_DATA_HOME/felix/log
 ```
@@ -247,8 +249,8 @@ log files       : $XDG_DATA_HOME/felix/log
 
 On macOS, felix looks for the config file in the following locations:
 
-1. `$HOME/Library/Application Support/felix/config.yaml`
-2. `$HOME/.config/felix/config.yaml`
+1. `$HOME/Library/Application Support/felix/config.yaml(config.yml)`
+2. `$HOME/.config/felix/config.yaml(config.yml)`
 
 ```
 trash directory : $HOME/Library/Application Support/felix/Trash
@@ -258,7 +260,7 @@ log files       : $HOME/Library/Application Support/felix/log
 ### Windows
 
 ```
-config file     : $PROFILE\AppData\Roaming\felix\config.yaml
+config file     : $PROFILE\AppData\Roaming\felix\config.yaml(config.yml)
 trash directory : $PROFILE\AppData\Local\felix\Trash
 log files       : $PROFILE\AppData\Local\felix\log
 ```
