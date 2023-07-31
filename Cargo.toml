@@ -27,7 +27,7 @@ log = "0.4.16"
 simplelog = "0.12.0"
 content_inspector = "0.2.4"
 crossterm = "0.25.0"
-syntect = {version = "5.0.0", git = "https://github.com/kyoheiu/syntect"}
+syntect = "5.1.0"
 serde_yaml = "0.9.14"
 zip = "0.6.4"
 tar = "0.4.38"
