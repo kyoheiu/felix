@@ -1288,7 +1288,7 @@ impl State {
 
     /// Reset all item's selected state and exit the select mode.
     pub fn reset_selection(&mut self) {
-        for mut item in self.list.iter_mut() {
+        for item in self.list.iter_mut() {
             item.selected = false;
         }
         self.v_start = None;
