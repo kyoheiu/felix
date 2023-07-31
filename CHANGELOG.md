@@ -6,8 +6,14 @@
 
 ### Added
 
-- Allow `config.yml` ext in addition to `config.yaml` for the configuration.
 - Create temp file or directory by `af` or `ad` respectively. This feature has to feel like more "modal", so for now I comment out this feature.
+
+## v2.7.0 (2023-08-01)
+
+### Changed
+
+- Update syntect version to v5.1.0. This fixes the handling of multibyte chars in the preview area.
+- Allow file name `config.yml` in addition to `config.yaml` for the configuration.
 
 ## v2.6.0 (2023-07-22)
 
