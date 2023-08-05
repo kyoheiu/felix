@@ -1,6 +1,5 @@
 [![crates.io](https://img.shields.io/crates/v/felix)](https://crates.io/crates/felix)
 ![arch linux](https://img.shields.io/archlinux/v/extra/x86_64/felix-rs)
-![MSRV](https://img.shields.io/badge/MSRV-1.65.0-orange)
 
 # _felix_
 
@@ -25,6 +24,15 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 <a id="new-release"></a>
 
 ## New release
+
+## v2.7.0 (2023-08-05)
+
+### Changed
+
+- Minimal supported rust version is now 1.67.1
+- Upgrade dependencies.
+- Update syntect version to v5.1.0. This fixes the handling of multibyte chars in the preview area.
+- Allow file name `config.yml` in addition to `config.yaml` for the configuration.
 
 ## v2.6.0 (2023-07-22)
 
@@ -81,16 +89,16 @@ report any problems._
 
 | package    | installation command  | notes                                                                                                                                       |
 | ---------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| crates.io  | `cargo install felix` | Minimum Supported rustc Version: **1.65.0**                                                                                                 |
+| crates.io  | `cargo install felix` | Minimum Supported rustc Version: **1.67.1**                                                                                                 |
 | Arch Linux | `pacman -S felix-rs`  | The binary name is `felix` if you install via pacman. Alias `fx='felix'` if you want, as this document (and other installations) uses `fx`. |
 | NetBSD     | `pkgin install felix` |                                                                                                                                             |
 
 ### From this repository
 
 - Make sure that `gcc` is installed.
-- MSRV(Minimum Supported rustc Version): **1.65.0**
+- MSRV(Minimum Supported rustc Version): **1.67.1**
 
-Update Rust if rustc < 1.65:
+Update Rust if rustc < 1.67.1:
 
 ```
 rustup update
@@ -154,60 +162,64 @@ Both relative and absolute path available.
 ### Key manual
 
 ```
-j / Down          :Go down.
-k / Up            :Go up.
-h / Left          :Go to the parent directory if exists.
-l / Right / Enter :Open item or change directory.
-gg                :Go to the top.
-G                 :Go to the bottom.
-z + Enter         :Go to the home directory.
-z <keyword>       :Jump to a directory that matches the keyword. (zoxide required)
-<C-o>             :Jump backward.
-<C-i>             :Jump forward.
-o                 :Open item in a new window.
-e                 :Unpack archive/compressed file.
-dd                :Delete and yank item.
-yy                :Yank item.
-p                 :Put yanked item(s) in the current directory.
-:reg              :Show registers. To hide it, press v.
-"ayy              :Yank item to register a.
-"add              :Delete and yank item to register a.
-"Ayy              :Append item to register a.
-"Add              :Delete and append item to register a.
-"ap               :Put item(s) from register a.
-V                 :Switch to the linewise visual mode.
-  - y             :In the visual mode, yank selected item(s).
-  - d             :In the visual mode, delete and yank selected item(s).
-  - "ay           :In the visual mode, yank items to register a.
-  - "ad           :In the visual mode, delete and yank items to register a.
-  - "Ay           :In the visual mode, append items to register a.
-  - "Ad           :In the visual mode, delete and append items to register a.
-u                 :Undo put/delete/rename.
-<C-r>             :Redo put/delete/rename.
-v                 :Toggle whether to show the preview.
-s                 :Toggle between vertical / horizontal split in the preview mode.
-Alt + j / Down    :Scroll down the preview text.
-Alt + k / Up      :Scroll up the preview text.
-backspace         :Toggle whether to show hidden items.
-t                 :Toggle the sort order (name <-> modified time).
-:                 :Switch to the command line.
-  - <C-r>a        :In the command line, paste item name in register a.
-c                 :Switch to the rename mode.
-/                 :Search items by a keyword.
-n                 :Go forward to the item that matches the keyword.
-N                 :Go backward to the item that matches the keyword.
-Esc               :Return to the normal mode.
-:cd               :Go to the home directory.
-:cd <path>        :Go to the path.
-:e                :Reload the current directory.
-:trash            :Go to the trash directory.
-:empty            :Empty the trash directory.
-:h                :Show help.
-:q                :Exit.
-ZZ                :Exit without cd to last working directory
-                  (if `match_vim_exit_behavior` is `false`).
-ZQ                :cd into the last working directory and exit
-                  (if shell setting is ready and `match_vim_exit_behavior is `false`).
+j / <Down>         :Go down.
+k / <Up>           :Go up.
+h / <Left>         :Go to the parent directory if exists.
+l / <Right> / <CR> :Open item or change directory.
+gg                 :Go to the top.
+G                  :Go to the bottom.
+z<CR>              :Go to the home directory.
+z{keyword}<CR>     :Jump to a directory that matches the keyword.
+                    (zoxide required)
+<C-o>              :Jump backward.
+<C-i>              :Jump forward.
+o                  :Open item in a new window.
+e                  :Unpack archive/compressed file.
+dd                 :Delete and yank item.
+yy                 :Yank item.
+p                  :Put yanked item(s) from register zero
+                    in the current directory.
+:reg               :Show registers. To hide it, press v.
+"ayy               :Yank item to register a.
+"add               :Delete and yank item to register a.
+"Ayy               :Append item to register a.
+"Add               :Delete and append item to register a.
+"ap                :Put item(s) from register a.
+V                  :Switch to the linewise visual mode.
+  - y              :In the visual mode, yank selected item(s).
+  - d              :In the visual mode, delete and yank selected item(s).
+  - "ay            :In the visual mode, yank items to register a.
+  - "ad            :In the visual mode, delete and yank items to register a.
+  - "Ay            :In the visual mode, append items to register a.
+  - "Ad            :In the visual mode, delete and append items to register a.
+u                  :Undo put/delete/rename.
+<C-r>              :Redo put/delete/rename.
+v                  :Toggle whether to show the preview.
+s                  :Toggle between vertical / horizontal split in the preview mode.
+<Alt-j>
+ / <Alt-<Down>>    :Scroll down the preview text.
+<Alt-k> / 
+ / <Alt-<Up>>      :Scroll up the preview text.
+<BS>               :Toggle whether to show hidden items.
+t                  :Toggle the sort order (name <-> modified time).
+:                  :Switch to the command line.
+  - <C-r>a         :In the command line, paste item name in register a.
+c                  :Switch to the rename mode.
+/                  :Search items by a keyword.
+n                  :Go forward to the item that matches the keyword.
+N                  :Go backward to the item that matches the keyword.
+<Esc>              :Return to the normal mode.
+:cd<CR>            :Go to the home directory.
+:cd{path}<CR>      :Go to the path.
+:e<CR>             :Reload the current directory.
+:trash<CR>         :Go to the trash directory.
+:empty<CR>         :Empty the trash directory.
+:h<CR>             :Show help.
+:q<CR>             :Exit.
+ZZ                 :Exit without cd to last working directory
+                    (if `match_vim_exit_behavior` is `false`).
+ZQ                 :cd into the last working directory and exit
+                    (if shell setting is ready and `match_vim_exit_behavior is `false`).
 ```
 
 <a id="preview"></a>
@@ -227,6 +239,8 @@ If any config file is not found, or found one is broken, felix launches with the
 Note that the default editor is `$EDITOR`, so if you've not set it, opening a file will fail.
 You can find default config file (`config.yaml`) in this repository.
 
+*Both `config.yaml` and `config.yml` works. from v2.6.1.*
+
 ### Trash directory and log file
 
 Contrary to the config file, these directory and file will be automatically created.
@@ -234,7 +248,7 @@ Contrary to the config file, these directory and file will be automatically crea
 ### Linux
 
 ```
-config file     : $XDG_CONFIG_HOME/felix/config.yaml
+config file     : $XDG_CONFIG_HOME/felix/config.yaml(config.yml)
 trash directory : $XDG_DATA_HOME/felix/Trash
 log files       : $XDG_DATA_HOME/felix/log
 ```
@@ -243,8 +257,8 @@ log files       : $XDG_DATA_HOME/felix/log
 
 On macOS, felix looks for the config file in the following locations:
 
-1. `$HOME/Library/Application Support/felix/config.yaml`
-2. `$HOME/.config/felix/config.yaml`
+1. `$HOME/Library/Application Support/felix/config.yaml(config.yml)`
+2. `$HOME/.config/felix/config.yaml(config.yml)`
 
 ```
 trash directory : $HOME/Library/Application Support/felix/Trash
@@ -254,7 +268,7 @@ log files       : $HOME/Library/Application Support/felix/log
 ### Windows
 
 ```
-config file     : $PROFILE\AppData\Roaming\felix\config.yaml
+config file     : $PROFILE\AppData\Roaming\felix\config.yaml(config.yml)
 trash directory : $PROFILE\AppData\Local\felix\Trash
 log files       : $PROFILE\AppData\Local\felix\log
 ```

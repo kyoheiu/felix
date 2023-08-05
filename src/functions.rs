@@ -200,11 +200,11 @@ pub fn list_up_contents(path: &Path, width: u16) -> Result<String, FxError> {
     Ok(result)
 }
 
-/// Format texts to print. Used when printing help or text preview.
+/// Format texts to print.
 pub fn format_txt(txt: &str, width: u16, is_help: bool) -> Vec<String> {
     let mut v = split_lines_including_wide_char(txt, width.into());
     if is_help {
-        v.push("Press Enter to go back.".to_owned());
+        v.push("Press <CR> to go back.".to_owned());
     }
     v
 }
@@ -257,7 +257,8 @@ pub fn convert_to_permissions(permissions: u32) -> String {
     permissions.chars().rev().collect()
 }
 
-/// Shorten &str to specific width. With unicode_width, even if the string includes wide chars, it's properly split, using full width of the terminal.
+/// Shorten &str to specific width. With unicode_width, even if the string includes wide chars,
+/// it'd be properly split, using full width of the terminal.
 pub fn shorten_str_including_wide_char(s: &str, i: usize) -> String {
     let mut result = "".to_owned();
     for c in s.chars() {
@@ -273,6 +274,7 @@ pub fn shorten_str_including_wide_char(s: &str, i: usize) -> String {
     result
 }
 
+/// Wrap texts.
 pub fn split_lines_including_wide_char(s: &str, width: usize) -> Vec<String> {
     let mut result = vec![];
     let mut new_line = "".to_owned();
@@ -359,5 +361,89 @@ mod tests {
             "Ｈｅｌｌｏ, ｗ".to_owned(),
             shorten_str_including_wide_char(teststr, 15)
         );
+    }
+
+    #[test]
+    fn test_format_txt1() {
+        let sample = r#"Rust is a multi-paradigm, general-purpose programming language that emphasizes performance, type safety, and concurrency. It enforces memory safety—ensuring that all references point to valid memory—without requiring the use of a garbage collector or reference counting present in other memory-safe languages. To simultaneously enforce memory safety and prevent concurrent data races, its "borrow checker" tracks the object lifetime of all references in a program during compilation. Rust borrows ideas from functional programming, including static types, immutability, higher-order functions, and algebraic data types. It is popularized for systems programming."#;
+        let formatted = format_txt(sample, 20, false);
+        assert_eq!(formatted[0], "Rust is a multi-para".to_string());
+    }
+
+    #[test]
+    fn test_format_txt2() {
+        let sample = r#"東京都心は、かつての江戸にあたり、
+江戸幕府成立以来、日本の政治・行政の実質的な中心地であった。
+1868年に平安京から江戸に皇居や太政官などの首都機能が移動したとされ（東京奠都）、
+その後江戸を東京府と改称、名目的にも首都となった。大日本帝国期には帝都とも呼ばれる。
+太平洋戦争中の1943年に東京府と東京市が統合されて、改めて東京都が首都となった。"#;
+        let formatted = format_txt(sample, 20, false);
+        assert_eq!(formatted[0], "東京都心は、かつての".to_string());
+    }
+
+    #[test]
+    fn test_format_txt_bwrap1() {
+        let sample = r#"Rust is a multi-paradigm, general-purpose programming language that emphasizes performance, type safety, and concurrency. It enforces memory safety—ensuring that all references point to valid memory—without requiring the use of a garbage collector or reference counting present in other memory-safe languages. To simultaneously enforce memory safety and prevent concurrent data races, its "borrow checker" tracks the object lifetime of all references in a program during compilation. Rust borrows ideas from functional programming, including static types, immutability, higher-order functions, and algebraic data types. It is popularized for systems programming."#;
+        let formatted = bwrap::wrap_maybrk!(sample, 20);
+        let formatted = formatted.lines().collect::<Vec<&str>>();
+        assert_eq!(formatted[0], "Rust is a multi-para".to_string());
+    }
+
+    #[test]
+    fn test_format_txt_bwrap2() {
+        let sample = r#"東京都心は、かつての江戸にあたり、
+江戸幕府成立以来、日本の政治・行政の実質的な中心地であった。
+1868年に平安京から江戸に皇居や太政官などの首都機能が移動したとされ（東京奠都）、
+その後江戸を東京府と改称、名目的にも首都となった。大日本帝国期には帝都とも呼ばれる。
+太平洋戦争中の1943年に東京府と東京市が統合されて、改めて東京都が首都となった。"#;
+        let formatted = bwrap::wrap_maybrk!(sample, 20);
+        let formatted = formatted.lines().collect::<Vec<&str>>();
+        assert_eq!(formatted[0], "東京都心は、かつての".to_string());
+    }
+
+    #[test]
+    fn bench_format_txt1() {
+        let sample = r#"Rust is a multi-paradigm, general-purpose programming language that emphasizes performance, type safety, and concurrency. It enforces memory safety—ensuring that all references point to valid memory—without requiring the use of a garbage collector or reference counting present in other memory-safe languages. To simultaneously enforce memory safety and prevent concurrent data races, its "borrow checker" tracks the object lifetime of all references in a program during compilation. Rust borrows ideas from functional programming, including static types, immutability, higher-order functions, and algebraic data types. It is popularized for systems programming."#;
+        for _i in 0..5000 {
+            let formatted = format_txt(sample, 20, false);
+            assert_eq!(formatted[0], "Rust is a multi-para".to_string());
+        }
+    }
+
+    #[test]
+    fn bench_format_txt2() {
+        let sample = r#"東京都心は、かつての江戸にあたり、
+江戸幕府成立以来、日本の政治・行政の実質的な中心地であった。
+1868年に平安京から江戸に皇居や太政官などの首都機能が移動したとされ（東京奠都）、
+その後江戸を東京府と改称、名目的にも首都となった。大日本帝国期には帝都とも呼ばれる。
+太平洋戦争中の1943年に東京府と東京市が統合されて、改めて東京都が首都となった。"#;
+        for _i in 0..5000 {
+            let formatted = format_txt(sample, 20, false);
+            assert_eq!(formatted[0], "東京都心は、かつての".to_string());
+        }
+    }
+
+    #[test]
+    fn bench_format_txt_bwrap1() {
+        let sample = r#"Rust is a multi-paradigm, general-purpose programming language that emphasizes performance, type safety, and concurrency. It enforces memory safety—ensuring that all references point to valid memory—without requiring the use of a garbage collector or reference counting present in other memory-safe languages. To simultaneously enforce memory safety and prevent concurrent data races, its "borrow checker" tracks the object lifetime of all references in a program during compilation. Rust borrows ideas from functional programming, including static types, immutability, higher-order functions, and algebraic data types. It is popularized for systems programming."#;
+        for _i in 0..5000 {
+            let formatted = bwrap::wrap_maybrk!(sample, 20);
+            let formatted = formatted.lines().map(|x| x.to_owned()).collect::<Vec<String>>();
+            assert_eq!(formatted[0], "Rust is a multi-para".to_string());
+        }
+    }
+
+    #[test]
+    fn bench_format_txt_bwrap2() {
+        let sample = r#"東京都心は、かつての江戸にあたり、
+江戸幕府成立以来、日本の政治・行政の実質的な中心地であった。
+1868年に平安京から江戸に皇居や太政官などの首都機能が移動したとされ（東京奠都）、
+その後江戸を東京府と改称、名目的にも首都となった。大日本帝国期には帝都とも呼ばれる。
+太平洋戦争中の1943年に東京府と東京市が統合されて、改めて東京都が首都となった。"#;
+        for _i in 0..5000 {
+            let formatted = bwrap::wrap_maybrk!(sample, 20);
+            let formatted = formatted.lines().map(|x| x.to_owned()).collect::<Vec<String>>();
+            assert_eq!(formatted[0], "東京都心は、かつての".to_string());
+        }
     }
 }

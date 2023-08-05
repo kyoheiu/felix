@@ -283,11 +283,11 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         if state.layout.nums.index >= start_pos {
                                             state.layout.nums.go_down();
                                             state.layout.nums.inc_skip();
-                                            let mut item = state.get_item_mut()?;
+                                            let item = state.get_item_mut()?;
                                             item.selected = true;
                                             state.redraw(state.layout.y);
                                         } else {
-                                            let mut item = state.get_item_mut()?;
+                                            let item = state.get_item_mut()?;
                                             item.selected = false;
                                             state.layout.nums.go_down();
                                             state.layout.nums.inc_skip();
@@ -295,11 +295,11 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         }
                                     } else if state.layout.nums.index >= start_pos {
                                         state.layout.nums.go_down();
-                                        let mut item = state.get_item_mut()?;
+                                        let item = state.get_item_mut()?;
                                         item.selected = true;
                                         state.redraw(state.layout.y + 1);
                                     } else {
-                                        let mut item = state.get_item_mut()?;
+                                        let item = state.get_item_mut()?;
                                         item.selected = false;
                                         state.layout.nums.go_down();
                                         state.redraw(state.layout.y + 1);
@@ -334,7 +334,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         && state.layout.nums.skip != 0
                                     {
                                         if state.layout.nums.index > start_pos {
-                                            let mut item = state.get_item_mut()?;
+                                            let item = state.get_item_mut()?;
                                             item.selected = false;
                                             state.layout.nums.go_up();
                                             state.layout.nums.dec_skip();
@@ -342,18 +342,18 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         } else {
                                             state.layout.nums.go_up();
                                             state.layout.nums.dec_skip();
-                                            let mut item = state.get_item_mut()?;
+                                            let item = state.get_item_mut()?;
                                             item.selected = true;
                                             state.redraw(state.layout.y);
                                         }
                                     } else if state.layout.nums.index > start_pos {
-                                        let mut item = state.get_item_mut()?;
+                                        let item = state.get_item_mut()?;
                                         item.selected = false;
                                         state.layout.nums.go_up();
                                         state.redraw(state.layout.y - 1);
                                     } else {
                                         state.layout.nums.go_up();
-                                        let mut item = state.get_item_mut()?;
+                                        let item = state.get_item_mut()?;
                                         item.selected = true;
                                         state.redraw(state.layout.y - 1);
                                     }
@@ -768,7 +768,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 if len == 0 {
                                     continue;
                                 }
-                                let mut item = state.get_item_mut()?;
+                                let item = state.get_item_mut()?;
                                 item.selected = true;
                                 state.redraw(state.layout.y);
                                 state.v_start = Some(state.layout.nums.index);

@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 
 pub const FELIX: &str = "felix";
 const CONFIG_FILE: &str = "config.yaml";
+const CONFIG_FILE_ANOTHER_EXT: &str = "config.yml";
 
 #[allow(dead_code)]
 const CONFIG_EXAMPLE: &str = r###"
@@ -160,33 +161,42 @@ fn read_config_from_str(s: &str) -> Result<Config, FxError> {
 
 pub fn read_config_or_default() -> Result<Config, FxError> {
     //First, declare default config file path.
-    let config_file_path = {
+    let (config_file_path1, config_file_path2) = {
         let mut config_path = {
             let mut path = dirs::config_dir()
                 .ok_or_else(|| FxError::Dirs("Cannot read the config directory.".to_string()))?;
             path.push(FELIX);
             path
         };
+        let mut another = config_path.clone();
         config_path.push(CONFIG_FILE);
-        config_path
+        another.push(CONFIG_FILE_ANOTHER_EXT);
+        (config_path, another)
     };
 
     //On macOS, felix looks for 2 paths:
-    //First `$HOME/Library/Application Support/felix/config.yaml`,
+    //First `$HOME/Library/Application Support/felix/config.yaml(yml)`,
     //and if it fails,
-    //`$HOME/.config/felix/config.yaml`.
+    //`$HOME/.config/felix/config.yaml(yml)`.
     let config_file_paths = if cfg!(target_os = "macos") {
-        let alt_config_file_path = {
-            let mut path = dirs::home_dir()
+        let (alt_config_file_path1, alt_config_file_path2) = {
+            let mut config_path = dirs::home_dir()
                 .ok_or_else(|| FxError::Dirs("Cannot read the home directory.".to_string()))?;
-            path.push(".config");
-            path.push("FELIX");
-            path.push(CONFIG_FILE);
-            path
+            config_path.push(".config");
+            config_path.push("FELIX");
+            let mut another = config_path.clone();
+            config_path.push(CONFIG_FILE);
+            another.push(CONFIG_FILE_ANOTHER_EXT);
+            (config_path, another)
         };
-        vec![config_file_path, alt_config_file_path]
+        vec![
+            config_file_path1,
+            config_file_path2,
+            alt_config_file_path1,
+            alt_config_file_path2,
+        ]
     } else {
-        vec![config_file_path]
+        vec![config_file_path1, config_file_path2]
     };
 
     let mut config_file: Option<PathBuf> = None;
