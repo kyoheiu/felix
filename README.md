@@ -1,6 +1,5 @@
 [![crates.io](https://img.shields.io/crates/v/felix)](https://crates.io/crates/felix)
 ![arch linux](https://img.shields.io/archlinux/v/extra/x86_64/felix-rs)
-![MSRV](https://img.shields.io/badge/MSRV-1.65.0-orange)
 
 # _felix_
 
@@ -26,10 +25,12 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 
 ## New release
 
-## v2.7.0 (2023-08-01)
+## v2.7.0 (2023-08-05)
 
 ### Changed
 
+- Minimal supported rust version is now 1.67.1
+- Upgrade dependencies.
 - Update syntect version to v5.1.0. This fixes the handling of multibyte chars in the preview area.
 - Allow file name `config.yml` in addition to `config.yaml` for the configuration.
 
@@ -88,16 +89,16 @@ report any problems._
 
 | package    | installation command  | notes                                                                                                                                       |
 | ---------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| crates.io  | `cargo install felix` | Minimum Supported rustc Version: **1.65.0**                                                                                                 |
+| crates.io  | `cargo install felix` | Minimum Supported rustc Version: **1.67.1**                                                                                                 |
 | Arch Linux | `pacman -S felix-rs`  | The binary name is `felix` if you install via pacman. Alias `fx='felix'` if you want, as this document (and other installations) uses `fx`. |
 | NetBSD     | `pkgin install felix` |                                                                                                                                             |
 
 ### From this repository
 
 - Make sure that `gcc` is installed.
-- MSRV(Minimum Supported rustc Version): **1.65.0**
+- MSRV(Minimum Supported rustc Version): **1.67.1**
 
-Update Rust if rustc < 1.65:
+Update Rust if rustc < 1.67.1:
 
 ```
 rustup update
