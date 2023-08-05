@@ -239,7 +239,7 @@ If any config file is not found, or found one is broken, felix launches with the
 Note that the default editor is `$EDITOR`, so if you've not set it, opening a file will fail.
 You can find default config file (`config.yaml`) in this repository.
 
-*Both `config.yaml` and `config.yml` works. from v2.6.1.*
+*Both `config.yaml` and `config.yml` work from v2.7.0*
 
 ### Trash directory and log file
 
