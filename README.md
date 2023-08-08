@@ -185,7 +185,7 @@ p                  :Put yanked item(s) from register zero
 "Ayy               :Append item to register a.
 "Add               :Delete and append item to register a.
 "ap                :Put item(s) from register a.
-V                  :Switch to the linewise visual mode.
+V (uppercase)      :Switch to the linewise visual mode.
   - y              :In the visual mode, yank selected item(s).
   - d              :In the visual mode, delete and yank selected item(s).
   - "ay            :In the visual mode, yank items to register a.
@@ -194,7 +194,7 @@ V                  :Switch to the linewise visual mode.
   - "Ad            :In the visual mode, delete and append items to register a.
 u                  :Undo put/delete/rename.
 <C-r>              :Redo put/delete/rename.
-v                  :Toggle whether to show the preview.
+v (lowercase)      :Toggle whether to show the preview.
 s                  :Toggle between vertical / horizontal split in the preview mode.
 <Alt-j>
  / <Alt-<Down>>    :Scroll down the preview text.
