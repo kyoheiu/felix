@@ -606,6 +606,11 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                             //Jumps to the directory that matches the keyword (zoxide required)
                             KeyCode::Char('z') => {
+                                //If zoxide is not found, show error message.
+                                if !state.has_zoxide {
+                                    print_warning("zoxide not found.", state.layout.y);
+                                    continue;
+                                }
                                 //In visual mode, this is disabled.
                                 if state.v_start.is_some() {
                                     continue;
@@ -733,7 +738,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     }
                                                 } else {
                                                     print_warning(
-                                                        "zoxide not installed?",
+                                                        "Failed to execute zoxide",
                                                         state.layout.y,
                                                     );
                                                     break 'zoxide;

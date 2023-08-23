@@ -48,6 +48,7 @@ pub struct State {
     pub trash_dir: PathBuf,
     pub lwd_file: Option<PathBuf>,
     pub match_vim_exit_behavior: bool,
+    pub has_zoxide: bool,
     pub default: String,
     pub commands: Option<BTreeMap<String, String>>,
     pub registers: Registers,
@@ -244,6 +245,7 @@ impl State {
         let split = session.split.unwrap_or(Split::Vertical);
 
         let has_chafa = check_chafa();
+        let has_zoxide = check_zoxide();
         let is_kitty = check_kitty_support();
 
         Ok(State {
@@ -262,6 +264,7 @@ impl State {
             trash_dir: PathBuf::new(),
             lwd_file: None,
             match_vim_exit_behavior: config.match_vim_exit_behavior.unwrap_or_default(),
+            has_zoxide,
             default: config
                 .default
                 .unwrap_or_else(|| env::var("EDITOR").unwrap_or_default()),
@@ -1895,6 +1898,14 @@ fn read_item(entry: fs::DirEntry) -> ItemInfo {
 /// Check if chafa is installed.
 fn check_chafa() -> bool {
     std::process::Command::new("chafa")
+        .arg("--help")
+        .output()
+        .is_ok()
+}
+
+/// Check if zoxide is installed.
+fn check_zoxide() -> bool {
+    std::process::Command::new("zoxide")
         .arg("--help")
         .output()
         .is_ok()
