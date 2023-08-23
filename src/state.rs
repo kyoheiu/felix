@@ -27,7 +27,6 @@ use std::path::PathBuf;
 use std::process::{Command, ExitStatus, Stdio};
 use std::time::Instant;
 use std::time::UNIX_EPOCH;
-use syntect::highlighting::{Theme, ThemeSet};
 
 #[cfg(target_family = "unix")]
 use nix::sys::stat::Mode;
@@ -242,7 +241,6 @@ impl State {
 
         let (time_start, name_max) = make_layout(original_column);
 
-        let ts = set_theme(&config);
         let split = session.split.unwrap_or(Split::Vertical);
 
         let has_chafa = check_chafa();
@@ -296,9 +294,6 @@ impl State {
                     Split::Vertical => (0, 0),
                     Split::Horizontal => (0, 0),
                 },
-                syntax_highlight: config.syntax_highlight.unwrap_or(false),
-                syntax_set: syntect::parsing::SyntaxSet::load_defaults_newlines(),
-                theme: ts,
                 has_chafa,
                 is_kitty,
             },
@@ -1952,37 +1947,6 @@ fn set_preview_type(item: &mut ItemInfo) {
 /// Check if item is supported image type.
 fn is_supported_image(item: &ItemInfo) -> bool {
     magic_image::is_supported_image_type(&item.file_path)
-}
-
-/// Set highlighting theme.
-fn set_theme(config: &Config) -> Theme {
-    match &config.theme_path {
-        Some(p) => match ThemeSet::get_theme(p) {
-            Ok(theme) => theme,
-            Err(_) => match &config.default_theme {
-                Some(dt) => choose_theme(dt),
-                None => ThemeSet::load_defaults().themes["base16-ocean.dark"].clone(),
-            },
-        },
-        None => match &config.default_theme {
-            Some(dt) => choose_theme(dt),
-            None => ThemeSet::load_defaults().themes["base16-ocean.dark"].clone(),
-        },
-    }
-}
-
-/// Choose highlighting theme according to config.
-fn choose_theme(dt: &DefaultTheme) -> Theme {
-    let defaults = ThemeSet::load_defaults();
-    match dt {
-        DefaultTheme::Base16OceanDark => defaults.themes["base16-ocean.dark"].clone(),
-        DefaultTheme::Base16EightiesDark => defaults.themes["base16-eighties.dark"].clone(),
-        DefaultTheme::Base16MochaDark => defaults.themes["base16-mocha.dark"].clone(),
-        DefaultTheme::Base16OceanLight => defaults.themes["base16-ocean.light"].clone(),
-        DefaultTheme::InspiredGitHub => defaults.themes["InspiredGitHub"].clone(),
-        DefaultTheme::SolarizedDark => defaults.themes["Solarized (dark)"].clone(),
-        DefaultTheme::SolarizedLight => defaults.themes["Solarized (light)"].clone(),
-    }
 }
 
 // Check if the current process has the write permission to a path.

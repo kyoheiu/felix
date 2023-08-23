@@ -30,29 +30,6 @@ const CONFIG_EXAMPLE: &str = r###"
 #  'feh -.':
 #   [jpg, jpeg, png, gif, svg, hdr]
 
-# (Optional)
-# Whether to use syntax highlighting in the preview mode.
-# If not set, will default to false.
-syntax_highlight: true
-
-# (Optional)
-# Default theme for syntax highlighting.
-# Pick one from the following:
-#    Base16OceanDark
-#    Base16EightiesDark
-#    Base16MochaDark
-#    Base16OceanLight
-#    InspiredGitHub
-#    SolarizedDark
-#    SolarizedLight
-# If not set, will default to \"Base16OceanDark\".
-# default_theme: Base16OceanDark
-
-# (Optional)
-# Path to .tmtheme file for the syntax highlighting.
-# If not set, default_theme will be used.
-# theme_path: \"/home/kyohei/.config/felix/monokai.tmtheme\"
-
 # The foreground color of directory, file and symlink.
 # Pick one of the following:
 #     Black           // 0
@@ -86,9 +63,6 @@ pub struct Config {
     pub match_vim_exit_behavior: Option<bool>,
     pub exec: Option<BTreeMap<String, Vec<String>>>,
     pub color: ConfigColor,
-    pub syntax_highlight: Option<bool>,
-    pub default_theme: Option<DefaultTheme>,
-    pub theme_path: Option<PathBuf>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -142,9 +116,6 @@ impl Default for Config {
                 file_fg: Colorname::LightWhite,
                 symlink_fg: Colorname::LightYellow,
             },
-            syntax_highlight: Default::default(),
-            default_theme: Default::default(),
-            theme_path: Default::default(),
         }
     }
 }
