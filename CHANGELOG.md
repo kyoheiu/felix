@@ -8,6 +8,9 @@
 
 - Create temp file or directory by `af` or `ad` respectively. This feature has to feel like more "modal", so for now I comment out this feature.
 
+### Removed
+- Remove syntect and syntax highlighting in the preview area. This will improve build time and start-up time.
+
 ## v2.7.0 (2023-08-05)
 
 ### Changed
