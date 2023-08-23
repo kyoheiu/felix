@@ -1544,6 +1544,18 @@ impl State {
                 self.reload(BEGINNING_ROW)?;
             }
         }
+        //if zoxide is installed, add the target or increment its rank.
+        if self.has_zoxide {
+            if let Some(p) = p.as_os_str().to_str() {
+                if std::process::Command::new("zoxide")
+                    .args(["add", p])
+                    .output()
+                    .is_err()
+                {
+                    print_warning("Failed to `zoxide add`.", self.layout.y);
+                }
+            }
+        }
         self.v_start = None;
         Ok(())
     }
