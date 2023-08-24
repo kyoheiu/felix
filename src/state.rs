@@ -220,17 +220,12 @@ pub struct ItemInfo {
     pub permissions: Option<u32>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Default, Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum FileType {
     Directory,
+    #[default]
     File,
     Symlink,
-}
-
-impl Default for FileType {
-    fn default() -> Self {
-        FileType::File
-    }
 }
 
 impl State {
