@@ -4,12 +4,20 @@
 
 ## Unreleased
 
-### Added
+## v2.8.0 (2023-08-25)
 
-- Create temp file or directory by `af` or `ad` respectively. This feature has to feel like more "modal", so for now I comment out this feature.
+### Added
+- `i{file name}<CR>` to create new file, and `I{dir name}<CR>` to create new directory.
+- If zoxide is installed, whenever changing directory inside felix, `zoxide add` will be executed to add the directory or increment its rank in the zoxide database.
+  - For this, State now has a new field `has_zoxide`, which is checked at startup.
+
+### Changed
+- config's `color` is now optional: By this, all config fields are optional.
+  - Remove warning message when you launch felix without the config file.
+- When opening file by default editor is failed, felix displays more accurate warning: `$EDITOR may not be set, or config file may be invalid.`.
 
 ### Removed
-- Remove syntect and syntax highlighting in the preview area. This will improve build time and start-up time.
+- Remove syntect and syntax highlighting in the preview area. This will improve build and start-up times, and resolve the handling of wide chars such as CJK.
 
 ## v2.7.0 (2023-08-05)
 
