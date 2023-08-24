@@ -762,6 +762,188 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                             }
 
+                            //insert mode
+                            KeyCode::Char('i') | KeyCode::Char('I') => {
+                                //In visual mode, this is disabled.
+                                if state.v_start.is_some() {
+                                    continue;
+                                }
+                                let is_dir = code == KeyCode::Char('I');
+                                delete_pointer();
+                                go_to_info_line_and_reset();
+                                // No need to place sign of the insert mode
+                                print!(" ");
+                                show_cursor();
+                                screen.flush()?;
+
+                                let mut new_name: Vec<char> = Vec::new();
+
+                                // express position in terminal
+                                let mut current_pos = INITIAL_POS_SHELL;
+                                // express position in Vec<Char>
+                                let mut current_char_pos = 0;
+                                'insert: loop {
+                                    if let Event::Key(KeyEvent {
+                                        code, modifiers, ..
+                                    }) = event::read()?
+                                    {
+                                        // <C-r> to put the item name(s) from register
+                                        if modifiers == KeyModifiers::CONTROL
+                                            && code == KeyCode::Char('r')
+                                        {
+                                            if let Event::Key(KeyEvent { code, .. }) =
+                                                event::read()?
+                                            {
+                                                if let Some(reg) = state.registers.check_reg(&code)
+                                                {
+                                                    if !reg.is_empty() {
+                                                        let to_be_inserted = reg
+                                                            .iter()
+                                                            .map(|x| x.file_name.clone())
+                                                            .collect::<Vec<String>>()
+                                                            .join(" ");
+                                                        for c in to_be_inserted.chars() {
+                                                            if let Some(to_be_added) =
+                                                        unicode_width::UnicodeWidthChar::width(c)
+                                                    {
+                                                        if current_pos + to_be_added as u16
+                                                            > state.layout.terminal_column
+                                                        {
+                                                            continue;
+                                                        }
+                                                        new_name.insert(current_char_pos, c);
+                                                        current_char_pos += 1;
+                                                        current_pos += to_be_added as u16;
+                                                    }
+                                                        }
+                                                        go_to_info_line_and_reset();
+                                                        print!(
+                                                            " {}",
+                                                            &new_name.iter().collect::<String>(),
+                                                        );
+                                                        move_to(current_pos, 2);
+                                                        screen.flush()?;
+                                                        continue;
+                                                    } else {
+                                                        continue;
+                                                    }
+                                                } else {
+                                                    continue;
+                                                }
+                                            }
+                                        }
+
+                                        match code {
+                                            KeyCode::Esc => {
+                                                go_to_info_line_and_reset();
+                                                hide_cursor();
+                                                state.move_cursor(state.layout.y);
+                                                break 'insert;
+                                            }
+
+                                            KeyCode::Left => {
+                                                if current_char_pos == 0 {
+                                                    continue;
+                                                };
+                                                if let Some(to_be_skipped) =
+                                                    unicode_width::UnicodeWidthChar::width(
+                                                        new_name[current_char_pos - 1],
+                                                    )
+                                                {
+                                                    current_char_pos -= 1;
+                                                    current_pos -= to_be_skipped as u16;
+                                                    move_left(to_be_skipped as u16);
+                                                }
+                                            }
+
+                                            KeyCode::Right => {
+                                                if current_char_pos == new_name.len() {
+                                                    continue;
+                                                };
+                                                if let Some(to_be_skipped) =
+                                                    unicode_width::UnicodeWidthChar::width(
+                                                        new_name[current_char_pos],
+                                                    )
+                                                {
+                                                    current_char_pos += 1;
+                                                    current_pos += to_be_skipped as u16;
+                                                    move_right(to_be_skipped as u16);
+                                                }
+                                            }
+
+                                            KeyCode::Backspace => {
+                                                if current_char_pos == 0 {
+                                                    continue;
+                                                };
+                                                let removed = new_name.remove(current_char_pos - 1);
+                                                if let Some(to_be_removed) =
+                                                    unicode_width::UnicodeWidthChar::width(removed)
+                                                {
+                                                    current_char_pos -= 1;
+                                                    current_pos -= to_be_removed as u16;
+
+                                                    go_to_info_line_and_reset();
+                                                    print!(
+                                                        " {}",
+                                                        &new_name.iter().collect::<String>(),
+                                                    );
+                                                    move_to(current_pos, 2);
+                                                }
+                                            }
+
+                                            KeyCode::Char(c) => {
+                                                if let Some(to_be_added) =
+                                                    unicode_width::UnicodeWidthChar::width(c)
+                                                {
+                                                    if current_pos + to_be_added as u16
+                                                        > state.layout.terminal_column
+                                                    {
+                                                        continue;
+                                                    }
+                                                    new_name.insert(current_char_pos, c);
+                                                    current_char_pos += 1;
+                                                    current_pos += to_be_added as u16;
+
+                                                    go_to_info_line_and_reset();
+                                                    print!(
+                                                        " {}",
+                                                        &new_name.iter().collect::<String>(),
+                                                    );
+                                                    move_to(current_pos, 2);
+                                                }
+                                            }
+
+                                            KeyCode::Enter => {
+                                                hide_cursor();
+                                                //Set the command and argument(s).
+                                                let new_name: String = new_name.iter().collect();
+                                                if is_dir {
+                                                    if let Err(e) = std::fs::create_dir(
+                                                        &state.current_dir.join(new_name),
+                                                    ) {
+                                                        print_warning(e, state.layout.y);
+                                                        break 'insert;
+                                                    }
+                                                } else if let Err(e) = std::fs::File::options()
+                                                    .read(true)
+                                                    .write(true)
+                                                    .create_new(true)
+                                                    .open(&state.current_dir.join(new_name))
+                                                {
+                                                    print_warning(e, state.layout.y);
+                                                    break 'insert;
+                                                }
+                                                state.reload(state.layout.y)?;
+                                                break 'insert;
+                                            }
+
+                                            _ => continue,
+                                        }
+                                        screen.flush()?;
+                                    }
+                                }
+                            }
+
                             //switch to linewise visual mode
                             KeyCode::Char('V') => {
                                 //If in visual mode, return to normal mode.
