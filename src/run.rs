@@ -1502,14 +1502,14 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 let mut command: Vec<char> = Vec::new();
 
                                 let mut current_pos = INITIAL_POS_SHELL;
-                                'command: loop {
+                                'reg: loop {
                                     if let Event::Key(KeyEvent { code, .. }) = event::read()? {
                                         match code {
                                             KeyCode::Esc => {
                                                 go_to_info_line_and_reset();
                                                 hide_cursor();
                                                 state.move_cursor(state.layout.y);
-                                                break 'command;
+                                                break 'reg;
                                             }
 
                                             KeyCode::Left => {
@@ -1535,7 +1535,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     go_to_info_line_and_reset();
                                                     hide_cursor();
                                                     state.move_cursor(state.layout.y);
-                                                    break 'command;
+                                                    break 'reg;
                                                 } else {
                                                     command.remove(
                                                         (current_pos - INITIAL_POS_SHELL - 1)
@@ -1568,7 +1568,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                             "Input not supported.",
                                                             state.layout.y,
                                                         );
-                                                        break 'command;
+                                                        break 'reg;
                                                     }
                                                     let action: String =
                                                         command[1..].iter().collect();
@@ -1584,13 +1584,13 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     );
                                                                 hide_cursor();
                                                                 state.move_cursor(state.layout.y);
-                                                                break 'command;
+                                                                break 'reg;
                                                             }
                                                             if state.v_start.is_some() {
                                                                 clear_current_line();
                                                                 hide_cursor();
                                                                 state.move_cursor(state.layout.y);
-                                                                break 'command;
+                                                                break 'reg;
                                                             }
                                                             let target = match command[0] {
                                                                 '0' => Some(&state.registers.zero),
@@ -1619,7 +1619,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                         e,
                                                                         state.layout.y,
                                                                     );
-                                                                    break 'command;
+                                                                    break 'reg;
                                                                 }
                                                             } else {
                                                                 print_warning(
@@ -1628,13 +1628,13 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                 );
                                                             }
                                                             state.move_cursor(state.layout.y);
-                                                            break 'command;
+                                                            break 'reg;
                                                         }
                                                         //yank (normal mode)
                                                         "yy" => {
                                                             if state.v_start.is_some() {
                                                                 state.move_cursor(state.layout.y);
-                                                                break 'command;
+                                                                break 'reg;
                                                             }
                                                             if command[0].is_ascii_lowercase() {
                                                                 if let Ok(item) = state.get_item() {
@@ -1660,7 +1660,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                 }
                                                             } else {
                                                                 state.move_cursor(state.layout.y);
-                                                                break 'command;
+                                                                break 'reg;
                                                             }
                                                             go_to_info_line_and_reset();
                                                             hide_cursor();
@@ -1669,13 +1669,13 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                 state.layout.y,
                                                             );
                                                             state.move_cursor(state.layout.y);
-                                                            break 'command;
+                                                            break 'reg;
                                                         }
                                                         //yank (visual mode)
                                                         "y" => {
                                                             if state.v_start.is_none() {
                                                                 state.move_cursor(state.layout.y);
-                                                                break 'command;
+                                                                break 'reg;
                                                             }
                                                             let items: Vec<ItemBuffer> = state
                                                                 .list
@@ -1706,7 +1706,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                     );
                                                             } else {
                                                                 state.move_cursor(state.layout.y);
-                                                                break 'command;
+                                                                break 'reg;
                                                             }
                                                             state.reset_selection();
                                                             state.list_up();
@@ -1718,7 +1718,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                 state.layout.y,
                                                             );
                                                             state.move_cursor(state.layout.y);
-                                                            break 'command;
+                                                            break 'reg;
                                                         }
 
                                                         //delete (normal mode)
@@ -1733,11 +1733,11 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     );
                                                                 hide_cursor();
                                                                 state.move_cursor(state.layout.y);
-                                                                break 'command;
+                                                                break 'reg;
                                                             }
                                                             if state.v_start.is_some() {
                                                                 state.move_cursor(state.layout.y);
-                                                                break 'command;
+                                                                break 'reg;
                                                             }
                                                             if command[0].is_ascii_lowercase() {
                                                                 if let Err(e) = state.delete(
@@ -1749,7 +1749,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                         e,
                                                                         state.layout.y,
                                                                     );
-                                                                    break 'command;
+                                                                    break 'reg;
                                                                 }
                                                             } else if command[0]
                                                                 .is_ascii_uppercase()
@@ -1766,11 +1766,11 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                         e,
                                                                         state.layout.y,
                                                                     );
-                                                                    break 'command;
+                                                                    break 'reg;
                                                                 }
                                                             }
                                                             state.move_cursor(state.layout.y);
-                                                            break 'command;
+                                                            break 'reg;
                                                         }
                                                         //delete (visual mode)
                                                         "d" => {
@@ -1784,11 +1784,11 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     );
                                                                 hide_cursor();
                                                                 state.move_cursor(state.layout.y);
-                                                                break 'command;
+                                                                break 'reg;
                                                             }
                                                             if state.v_start.is_none() {
                                                                 state.move_cursor(state.layout.y);
-                                                                break 'command;
+                                                                break 'reg;
                                                             }
                                                             if command[0].is_ascii_lowercase() {
                                                                 if let Err(e) = state
@@ -1804,7 +1804,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                         e,
                                                                         state.layout.y,
                                                                     );
-                                                                    break 'command;
+                                                                    break 'reg;
                                                                 }
                                                             } else if command[0]
                                                                 .is_ascii_uppercase()
@@ -1826,17 +1826,17 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                         e,
                                                                         state.layout.y,
                                                                     );
-                                                                    break 'command;
+                                                                    break 'reg;
                                                                 }
                                                             }
                                                             state.move_cursor(state.layout.y);
-                                                            break 'command;
+                                                            break 'reg;
                                                         }
                                                         _ => {
                                                             clear_current_line();
                                                             hide_cursor();
                                                             state.move_cursor(state.layout.y);
-                                                            break 'command;
+                                                            break 'reg;
                                                         }
                                                     }
                                                 } else {
