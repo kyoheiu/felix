@@ -2209,60 +2209,6 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                             }
 
-                            //Add new temp file or directory.
-                            //It has to feel like more "modal", so I comment this out for now.
-                            // KeyCode::Char('a') => {
-                            //     to_info_line();
-                            //     clear_current_line();
-                            //     print!("a");
-                            //     show_cursor();
-                            //     screen.flush()?;
-
-                            //     if let Event::Key(KeyEvent { code, .. }) = event::read()? {
-                            //         match code {
-                            //             //Add new file
-                            //             KeyCode::Char('f') => {
-                            //                 hide_cursor();
-                            //                 match state.create_temp(false) {
-                            //                     Err(e) => {
-                            //                         print_warning(e, state.layout.y);
-                            //                         continue;
-                            //                     }
-                            //                     Ok(p) => {
-                            //                         state.reload(state.layout.y)?;
-                            //                         print_info(
-                            //                             format!("New file {} added.", p.display()),
-                            //                             state.layout.y,
-                            //                         );
-                            //                     }
-                            //                 }
-                            //             }
-                            //             //Add new directory
-                            //             KeyCode::Char('d') => {
-                            //                 hide_cursor();
-                            //                 match state.create_temp(true) {
-                            //                     Err(e) => {
-                            //                         print_warning(e, state.layout.y);
-                            //                         continue;
-                            //                     }
-                            //                     Ok(p) => {
-                            //                         state.reload(state.layout.y)?;
-                            //                         print_info(
-                            //                             format!("New dir {} added.", p.display()),
-                            //                             state.layout.y,
-                            //                         );
-                            //                     }
-                            //                 }
-                            //             }
-                            //             _ => {
-                            //                 go_to_and_rest_info();
-                            //                 hide_cursor();
-                            //                 state.move_cursor(state.layout.y);
-                            //             }
-                            //         }
-                            //     }
-                            // }
-
                             //exit by ZZ
                             KeyCode::Char('Z') => {
                                 //In visual mode, this is disabled.
