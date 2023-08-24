@@ -11,17 +11,14 @@ const CONFIG_FILE_ANOTHER_EXT: &str = "config.yml";
 
 #[allow(dead_code)]
 const CONFIG_EXAMPLE: &str = r###"
-# (Optional)
 # Default exec command when open files.
 # If not set, will default to $EDITOR.
 # default: nvim
 
-# (Optional)
 # Whether to match the behavior of vim exit keybindings
 # i.e. `ZQ` exits without cd to LWD (Last Working Directory) while `ZZ` cd to LWD
 # match_vim_exit_behavior: false
 
-# (Optional)
 # key (the command you want to use when opening files): [values] (extensions)
 # In the key, You can use arguments.
 # exec:
@@ -50,11 +47,11 @@ const CONFIG_EXAMPLE: &str = r###"
 #     LightWhite      // 15
 #     Rgb(u8, u8, u8)
 #     AnsiValue(u8)
-# For more details, see https://docs.rs/termion/1.5.6/termion/color/index.html
-color:
-  dir_fg: LightCyan
-  file_fg: LightWhite
-  symlink_fg: LightYellow
+# Default to LightCyan(dir), LightWhite(file), and LightYellow(symlink).
+# color:
+#   dir_fg: LightCyan
+#   file_fg: LightWhite
+#   symlink_fg: LightYellow
 "###;
 
 #[derive(Deserialize, Debug, Clone)]
@@ -62,7 +59,7 @@ pub struct Config {
     pub default: Option<String>,
     pub match_vim_exit_behavior: Option<bool>,
     pub exec: Option<BTreeMap<String, Vec<String>>>,
-    pub color: ConfigColor,
+    pub color: Option<ConfigColor>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -70,6 +67,16 @@ pub struct ConfigColor {
     pub dir_fg: Colorname,
     pub file_fg: Colorname,
     pub symlink_fg: Colorname,
+}
+
+impl Default for ConfigColor {
+    fn default() -> Self {
+        Self {
+            dir_fg: Colorname::LightCyan,
+            file_fg: Colorname::LightWhite,
+            symlink_fg: Colorname::LightYellow,
+        }
+    }
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -94,28 +101,13 @@ pub enum Colorname {
     AnsiValue(u8),
 }
 
-#[derive(Deserialize, Debug, Clone)]
-pub enum DefaultTheme {
-    Base16OceanDark,
-    Base16EightiesDark,
-    Base16MochaDark,
-    Base16OceanLight,
-    InspiredGitHub,
-    SolarizedDark,
-    SolarizedLight,
-}
-
 impl Default for Config {
     fn default() -> Self {
         Self {
             default: Default::default(),
             match_vim_exit_behavior: Default::default(),
             exec: Default::default(),
-            color: ConfigColor {
-                dir_fg: Colorname::LightCyan,
-                file_fg: Colorname::LightWhite,
-                symlink_fg: Colorname::LightYellow,
-            },
+            color: Some(Default::default()),
         }
     }
 }
@@ -181,7 +173,6 @@ pub fn read_config_or_default() -> Result<Config, FxError> {
     if let Some(config_file) = config_file {
         read_config(&config_file)
     } else {
-        println!("Config file not found: felix launches with default configuration.");
         Ok(Config::default())
     }
 }

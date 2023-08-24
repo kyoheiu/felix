@@ -257,6 +257,8 @@ impl State {
 
         let (time_start, name_max) = make_layout(original_column);
 
+        let color = config.color.unwrap_or_default();
+
         let split = session.split.unwrap_or(Split::Vertical);
 
         let has_chafa = check_chafa();
@@ -292,9 +294,9 @@ impl State {
                 name_max_len: name_max,
                 time_start_pos: time_start,
                 colors: ConfigColor {
-                    dir_fg: config.color.dir_fg,
-                    file_fg: config.color.file_fg,
-                    symlink_fg: config.color.symlink_fg,
+                    dir_fg: color.dir_fg,
+                    file_fg: color.file_fg,
+                    symlink_fg: color.symlink_fg,
                 },
                 sort_by: session.sort_by,
                 show_hidden: session.show_hidden,

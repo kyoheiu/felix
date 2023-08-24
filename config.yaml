@@ -1,16 +1,13 @@
-# (Optional)
 # Default exec command when opening file.
 # If not set, will default to $EDITOR.
 # default: nvim
 
-# (Optional)
 # Whether to match the behavior of Vim's exit keybindings.
 # false -> `ZZ` exits without `cd` to LWD(Last Working Directory) While `ZQ` to LWD
 # true  -> vice versa
 # If not set, will default to false.
 # match_vim_exit_behavior: false
 
-# (Optional)
 # key (the command you want to use when opening file): [values] (extensions)
 # In the key, You can use arguments.
 # exec:
@@ -18,29 +15,6 @@
 #     [pdf]
 #  'feh -.':
 #   [jpg, jpeg, png, gif, svg, hdr]
-
-# (Optional)
-# Whether to use syntax highlighting in the preview mode.
-# If not set, will default to false.
-# syntax_highlight: true
-
-# (Optional)
-# Default theme for syntax highlighting.
-# Pick one from the following:
-#    Base16OceanDark
-#    Base16EightiesDark
-#    Base16MochaDark
-#    Base16OceanLight
-#    InspiredGitHub
-#    SolarizedDark
-#    SolarizedLight
-# If not set, will default to "Base16OceanDark".
-# default_theme: Base16EightiesDark
-
-# (Optional)
-# Path to .tmtheme file for the syntax highlighting.
-# If not set, default_theme will be used.
-# theme_path: "/home/kyohei/.config/felix/monokai.tmtheme"
 
 # The foreground color of directory, file and symlink.
 # Pick one of the following:
@@ -62,8 +36,8 @@
 #     LightWhite       // 15
 #     Rgb(u8, u8, u8)
 #     AnsiValue(u8)
-# For more details, see https://docs.rs/termion/1.5.6/termion/color/index.html
-color:
-  dir_fg: LightCyan
-  file_fg: LightWhite
-  symlink_fg: LightYellow
+# Default to LightCyan(dir), LightWhite(file), and LightYellow(symlink).
+# color:
+#   dir_fg: LightCyan
+#   file_fg: LightWhite
+#   symlink_fg: LightYellow
