@@ -354,12 +354,12 @@ impl State {
             None => default
                 .arg(path)
                 .status()
-                .map_err(|e| FxError::OpenItem(e.to_string())),
+                .map_err(|_| FxError::DefaultEditor),
             Some(map) => match extension {
                 None => default
                     .arg(path)
                     .status()
-                    .map_err(|e| FxError::OpenItem(e.to_string())),
+                    .map_err(|_| FxError::DefaultEditor),
                 Some(extension) => match map.get(extension) {
                     Some(command) => {
                         let command: Vec<&str> = command.split_ascii_whitespace().collect();
@@ -382,7 +382,7 @@ impl State {
                     None => default
                         .arg(path)
                         .status()
-                        .map_err(|e| FxError::OpenItem(e.to_string())),
+                        .map_err(|_| FxError::DefaultEditor),
                 },
             },
         }
