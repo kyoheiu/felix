@@ -107,6 +107,26 @@ impl Registers {
         items.len()
     }
 
+    /// Return Vec<ItemBuffer> from registers according to the KeyCode, if exists.
+    pub fn check_reg(&self, code: &KeyCode) -> Option<Vec<ItemBuffer>> {
+        match code {
+            KeyCode::Char('"') => Some(self.unnamed.clone()),
+            KeyCode::Char('0') => Some(self.zero.clone()),
+            KeyCode::Char(c) => {
+                if c.is_ascii_digit() {
+                    self.numbered
+                        .get(c.to_digit(10).unwrap() as usize - 1)
+                        .cloned()
+                } else if c.is_ascii_alphabetic() {
+                    self.named.get(c).cloned()
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
     /// Return Vec<String> that contains item names in the register.
     pub fn prepare_reg(&self, width: u16) -> Vec<String> {
         let mut s = String::new();

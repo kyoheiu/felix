@@ -1706,29 +1706,9 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             if let Event::Key(KeyEvent { code, .. }) =
                                                 event::read()?
                                             {
-                                                let reg = match code {
-                                                    KeyCode::Char('"') => {
-                                                        Some(&state.registers.unnamed)
-                                                    }
-                                                    KeyCode::Char('0') => {
-                                                        Some(&state.registers.zero)
-                                                    }
-                                                    KeyCode::Char(c) => {
-                                                        if c.is_ascii_digit() {
-                                                            state.registers.numbered.get(
-                                                                c.to_digit(10).unwrap() as usize
-                                                                    - 1,
-                                                            )
-                                                        } else if c.is_ascii_alphabetic() {
-                                                            state.registers.named.get(&c)
-                                                        } else {
-                                                            None
-                                                        }
-                                                    }
-                                                    _ => None,
-                                                };
-
-                                                if let Some(reg) = reg {
+                                                if let Some(reg) =
+                                                    state.registers.retrieve_reg(&code)
+                                                {
                                                     if !reg.is_empty() {
                                                         let to_be_inserted = reg
                                                             .iter()
