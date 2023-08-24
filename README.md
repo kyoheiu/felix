@@ -25,6 +25,21 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 
 ## New release
 
+## v2.8.0 (2023-08-25)
+
+### Added
+- `i{file name}<CR>` to create new file, and `I{dir name}<CR>` to create new directory.
+- If zoxide is installed, whenever changing directory inside felix, `zoxide add` will be executed to add the directory or increment its rank in the zoxide database.
+  - For this, State now has a new field `has_zoxide`, which is checked at startup.
+
+### Changed
+- config's `color` is now optional: By this, all config fields are optional.
+  - Remove warning message when you launch felix without the config file.
+- When opening file by default editor is failed, felix displays more accurate warning: `$EDITOR may not be set, or config file may be invalid.`.
+
+### Removed
+- Remove syntect and syntax highlighting in the preview area. This will improve build and start-up times, and resolve the handling of wide chars such as CJK.
+
 ## v2.7.0 (2023-08-05)
 
 ### Changed
@@ -48,23 +63,6 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 ### Added
 
 - Ability to exit to LWD (last working directory): See Integrations for details.
-
-## v2.4.1 (2023-06-21)
-
-### Changed
-
-- Show status bar and registers even if current directory does not contain any item.
-
-## v2.4.0 (2023-06-14)
-
-### Added
-
-- Add registers (unnamed, zero, numbered, named): Now you can view registers by `:reg`, and add items to registers by usual vim command (prefixed by `"`). See the key manual for more details.
-- Refactor unpacking command: `e` unpacks / decompresses gz(Gzip), tar.gz, xz(lzma), tar.xz, zst(Zstandard), tar.zst, tar, and zip file format and formats based on it.
-
-### Removed
-
-- `:z` - Use `z` instead.
 
 For more details, see `CHANGELOG.md`.
 
@@ -173,6 +171,8 @@ z{keyword}<CR>     :Jump to a directory that matches the keyword.
                     (zoxide required)
 <C-o>              :Jump backward.
 <C-i>              :Jump forward.
+i{file name}<CR>   :Create a new empty file.
+I{dir name}<CR>    :Create a new empty directory.
 o                  :Open item in a new window.
 e                  :Unpack archive/compressed file.
 dd                 :Delete and yank item.
