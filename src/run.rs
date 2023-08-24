@@ -1888,8 +1888,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             if let Event::Key(KeyEvent { code, .. }) =
                                                 event::read()?
                                             {
-                                                if let Some(reg) =
-                                                    state.registers.check_reg(&code)
+                                                if let Some(reg) = state.registers.check_reg(&code)
                                                 {
                                                     if !reg.is_empty() {
                                                         let to_be_inserted = reg
