@@ -17,7 +17,7 @@
 - When opening file by default editor is failed, felix displays more accurate warning: `$EDITOR may not be set, or config file may be invalid.`.
 
 ### Removed
-- Remove syntect and syntax highlighting in the preview area. This will improve build and start-up times, and resolve the handling of wide chars such as CJK.
+- Remove `syntect` and syntax highlighting in the preview area. This will improve build and start-up times, and resolve the handling of wide chars such as CJK.
 
 ## v2.7.0 (2023-08-05)
 
