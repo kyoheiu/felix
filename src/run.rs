@@ -606,6 +606,11 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                             //Jumps to the directory that matches the keyword (zoxide required)
                             KeyCode::Char('z') => {
+                                //If zoxide is not found, show error message.
+                                if !state.has_zoxide {
+                                    print_warning("zoxide not found.", state.layout.y);
+                                    continue;
+                                }
                                 //In visual mode, this is disabled.
                                 if state.v_start.is_some() {
                                     continue;
@@ -733,7 +738,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     }
                                                 } else {
                                                     print_warning(
-                                                        "zoxide not installed?",
+                                                        "Failed to execute zoxide",
                                                         state.layout.y,
                                                     );
                                                     break 'zoxide;
@@ -748,6 +753,188 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 to_info_line();
                                                 print!("{}", &command.iter().collect::<String>(),);
                                                 move_to(current_pos, 2);
+                                            }
+
+                                            _ => continue,
+                                        }
+                                        screen.flush()?;
+                                    }
+                                }
+                            }
+
+                            //insert mode
+                            KeyCode::Char('i') | KeyCode::Char('I') => {
+                                //In visual mode, this is disabled.
+                                if state.v_start.is_some() {
+                                    continue;
+                                }
+                                let is_dir = code == KeyCode::Char('I');
+                                delete_pointer();
+                                go_to_info_line_and_reset();
+                                // No need to place sign of the insert mode
+                                print!(" ");
+                                show_cursor();
+                                screen.flush()?;
+
+                                let mut new_name: Vec<char> = Vec::new();
+
+                                // express position in terminal
+                                let mut current_pos = INITIAL_POS_SHELL;
+                                // express position in Vec<Char>
+                                let mut current_char_pos = 0;
+                                'insert: loop {
+                                    if let Event::Key(KeyEvent {
+                                        code, modifiers, ..
+                                    }) = event::read()?
+                                    {
+                                        // <C-r> to put the item name(s) from register
+                                        if modifiers == KeyModifiers::CONTROL
+                                            && code == KeyCode::Char('r')
+                                        {
+                                            if let Event::Key(KeyEvent { code, .. }) =
+                                                event::read()?
+                                            {
+                                                if let Some(reg) = state.registers.check_reg(&code)
+                                                {
+                                                    if !reg.is_empty() {
+                                                        let to_be_inserted = reg
+                                                            .iter()
+                                                            .map(|x| x.file_name.clone())
+                                                            .collect::<Vec<String>>()
+                                                            .join(" ");
+                                                        for c in to_be_inserted.chars() {
+                                                            if let Some(to_be_added) =
+                                                        unicode_width::UnicodeWidthChar::width(c)
+                                                    {
+                                                        if current_pos + to_be_added as u16
+                                                            > state.layout.terminal_column
+                                                        {
+                                                            continue;
+                                                        }
+                                                        new_name.insert(current_char_pos, c);
+                                                        current_char_pos += 1;
+                                                        current_pos += to_be_added as u16;
+                                                    }
+                                                        }
+                                                        go_to_info_line_and_reset();
+                                                        print!(
+                                                            " {}",
+                                                            &new_name.iter().collect::<String>(),
+                                                        );
+                                                        move_to(current_pos, 2);
+                                                        screen.flush()?;
+                                                        continue;
+                                                    } else {
+                                                        continue;
+                                                    }
+                                                } else {
+                                                    continue;
+                                                }
+                                            }
+                                        }
+
+                                        match code {
+                                            KeyCode::Esc => {
+                                                go_to_info_line_and_reset();
+                                                hide_cursor();
+                                                state.move_cursor(state.layout.y);
+                                                break 'insert;
+                                            }
+
+                                            KeyCode::Left => {
+                                                if current_char_pos == 0 {
+                                                    continue;
+                                                };
+                                                if let Some(to_be_skipped) =
+                                                    unicode_width::UnicodeWidthChar::width(
+                                                        new_name[current_char_pos - 1],
+                                                    )
+                                                {
+                                                    current_char_pos -= 1;
+                                                    current_pos -= to_be_skipped as u16;
+                                                    move_left(to_be_skipped as u16);
+                                                }
+                                            }
+
+                                            KeyCode::Right => {
+                                                if current_char_pos == new_name.len() {
+                                                    continue;
+                                                };
+                                                if let Some(to_be_skipped) =
+                                                    unicode_width::UnicodeWidthChar::width(
+                                                        new_name[current_char_pos],
+                                                    )
+                                                {
+                                                    current_char_pos += 1;
+                                                    current_pos += to_be_skipped as u16;
+                                                    move_right(to_be_skipped as u16);
+                                                }
+                                            }
+
+                                            KeyCode::Backspace => {
+                                                if current_char_pos == 0 {
+                                                    continue;
+                                                };
+                                                let removed = new_name.remove(current_char_pos - 1);
+                                                if let Some(to_be_removed) =
+                                                    unicode_width::UnicodeWidthChar::width(removed)
+                                                {
+                                                    current_char_pos -= 1;
+                                                    current_pos -= to_be_removed as u16;
+
+                                                    go_to_info_line_and_reset();
+                                                    print!(
+                                                        " {}",
+                                                        &new_name.iter().collect::<String>(),
+                                                    );
+                                                    move_to(current_pos, 2);
+                                                }
+                                            }
+
+                                            KeyCode::Char(c) => {
+                                                if let Some(to_be_added) =
+                                                    unicode_width::UnicodeWidthChar::width(c)
+                                                {
+                                                    if current_pos + to_be_added as u16
+                                                        > state.layout.terminal_column
+                                                    {
+                                                        continue;
+                                                    }
+                                                    new_name.insert(current_char_pos, c);
+                                                    current_char_pos += 1;
+                                                    current_pos += to_be_added as u16;
+
+                                                    go_to_info_line_and_reset();
+                                                    print!(
+                                                        " {}",
+                                                        &new_name.iter().collect::<String>(),
+                                                    );
+                                                    move_to(current_pos, 2);
+                                                }
+                                            }
+
+                                            KeyCode::Enter => {
+                                                hide_cursor();
+                                                //Set the command and argument(s).
+                                                let new_name: String = new_name.iter().collect();
+                                                if is_dir {
+                                                    if let Err(e) = std::fs::create_dir(
+                                                        &state.current_dir.join(new_name),
+                                                    ) {
+                                                        print_warning(e, state.layout.y);
+                                                        break 'insert;
+                                                    }
+                                                } else if let Err(e) = std::fs::File::options()
+                                                    .read(true)
+                                                    .write(true)
+                                                    .create_new(true)
+                                                    .open(&state.current_dir.join(new_name))
+                                                {
+                                                    print_warning(e, state.layout.y);
+                                                    break 'insert;
+                                                }
+                                                state.reload(state.layout.y)?;
+                                                break 'insert;
                                             }
 
                                             _ => continue,
@@ -1315,14 +1502,14 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 let mut command: Vec<char> = Vec::new();
 
                                 let mut current_pos = INITIAL_POS_SHELL;
-                                'command: loop {
+                                'reg: loop {
                                     if let Event::Key(KeyEvent { code, .. }) = event::read()? {
                                         match code {
                                             KeyCode::Esc => {
                                                 go_to_info_line_and_reset();
                                                 hide_cursor();
                                                 state.move_cursor(state.layout.y);
-                                                break 'command;
+                                                break 'reg;
                                             }
 
                                             KeyCode::Left => {
@@ -1348,7 +1535,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     go_to_info_line_and_reset();
                                                     hide_cursor();
                                                     state.move_cursor(state.layout.y);
-                                                    break 'command;
+                                                    break 'reg;
                                                 } else {
                                                     command.remove(
                                                         (current_pos - INITIAL_POS_SHELL - 1)
@@ -1381,7 +1568,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                             "Input not supported.",
                                                             state.layout.y,
                                                         );
-                                                        break 'command;
+                                                        break 'reg;
                                                     }
                                                     let action: String =
                                                         command[1..].iter().collect();
@@ -1397,13 +1584,13 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     );
                                                                 hide_cursor();
                                                                 state.move_cursor(state.layout.y);
-                                                                break 'command;
+                                                                break 'reg;
                                                             }
                                                             if state.v_start.is_some() {
                                                                 clear_current_line();
                                                                 hide_cursor();
                                                                 state.move_cursor(state.layout.y);
-                                                                break 'command;
+                                                                break 'reg;
                                                             }
                                                             let target = match command[0] {
                                                                 '0' => Some(&state.registers.zero),
@@ -1432,7 +1619,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                         e,
                                                                         state.layout.y,
                                                                     );
-                                                                    break 'command;
+                                                                    break 'reg;
                                                                 }
                                                             } else {
                                                                 print_warning(
@@ -1441,13 +1628,13 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                 );
                                                             }
                                                             state.move_cursor(state.layout.y);
-                                                            break 'command;
+                                                            break 'reg;
                                                         }
                                                         //yank (normal mode)
                                                         "yy" => {
                                                             if state.v_start.is_some() {
                                                                 state.move_cursor(state.layout.y);
-                                                                break 'command;
+                                                                break 'reg;
                                                             }
                                                             if command[0].is_ascii_lowercase() {
                                                                 if let Ok(item) = state.get_item() {
@@ -1473,7 +1660,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                 }
                                                             } else {
                                                                 state.move_cursor(state.layout.y);
-                                                                break 'command;
+                                                                break 'reg;
                                                             }
                                                             go_to_info_line_and_reset();
                                                             hide_cursor();
@@ -1482,13 +1669,13 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                 state.layout.y,
                                                             );
                                                             state.move_cursor(state.layout.y);
-                                                            break 'command;
+                                                            break 'reg;
                                                         }
                                                         //yank (visual mode)
                                                         "y" => {
                                                             if state.v_start.is_none() {
                                                                 state.move_cursor(state.layout.y);
-                                                                break 'command;
+                                                                break 'reg;
                                                             }
                                                             let items: Vec<ItemBuffer> = state
                                                                 .list
@@ -1519,7 +1706,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                     );
                                                             } else {
                                                                 state.move_cursor(state.layout.y);
-                                                                break 'command;
+                                                                break 'reg;
                                                             }
                                                             state.reset_selection();
                                                             state.list_up();
@@ -1531,7 +1718,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                 state.layout.y,
                                                             );
                                                             state.move_cursor(state.layout.y);
-                                                            break 'command;
+                                                            break 'reg;
                                                         }
 
                                                         //delete (normal mode)
@@ -1546,11 +1733,11 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     );
                                                                 hide_cursor();
                                                                 state.move_cursor(state.layout.y);
-                                                                break 'command;
+                                                                break 'reg;
                                                             }
                                                             if state.v_start.is_some() {
                                                                 state.move_cursor(state.layout.y);
-                                                                break 'command;
+                                                                break 'reg;
                                                             }
                                                             if command[0].is_ascii_lowercase() {
                                                                 if let Err(e) = state.delete(
@@ -1562,7 +1749,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                         e,
                                                                         state.layout.y,
                                                                     );
-                                                                    break 'command;
+                                                                    break 'reg;
                                                                 }
                                                             } else if command[0]
                                                                 .is_ascii_uppercase()
@@ -1579,11 +1766,11 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                         e,
                                                                         state.layout.y,
                                                                     );
-                                                                    break 'command;
+                                                                    break 'reg;
                                                                 }
                                                             }
                                                             state.move_cursor(state.layout.y);
-                                                            break 'command;
+                                                            break 'reg;
                                                         }
                                                         //delete (visual mode)
                                                         "d" => {
@@ -1597,11 +1784,11 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     );
                                                                 hide_cursor();
                                                                 state.move_cursor(state.layout.y);
-                                                                break 'command;
+                                                                break 'reg;
                                                             }
                                                             if state.v_start.is_none() {
                                                                 state.move_cursor(state.layout.y);
-                                                                break 'command;
+                                                                break 'reg;
                                                             }
                                                             if command[0].is_ascii_lowercase() {
                                                                 if let Err(e) = state
@@ -1617,7 +1804,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                         e,
                                                                         state.layout.y,
                                                                     );
-                                                                    break 'command;
+                                                                    break 'reg;
                                                                 }
                                                             } else if command[0]
                                                                 .is_ascii_uppercase()
@@ -1639,17 +1826,17 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                         e,
                                                                         state.layout.y,
                                                                     );
-                                                                    break 'command;
+                                                                    break 'reg;
                                                                 }
                                                             }
                                                             state.move_cursor(state.layout.y);
-                                                            break 'command;
+                                                            break 'reg;
                                                         }
                                                         _ => {
                                                             clear_current_line();
                                                             hide_cursor();
                                                             state.move_cursor(state.layout.y);
-                                                            break 'command;
+                                                            break 'reg;
                                                         }
                                                     }
                                                 } else {
@@ -1701,29 +1888,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             if let Event::Key(KeyEvent { code, .. }) =
                                                 event::read()?
                                             {
-                                                let reg = match code {
-                                                    KeyCode::Char('"') => {
-                                                        Some(&state.registers.unnamed)
-                                                    }
-                                                    KeyCode::Char('0') => {
-                                                        Some(&state.registers.zero)
-                                                    }
-                                                    KeyCode::Char(c) => {
-                                                        if c.is_ascii_digit() {
-                                                            state.registers.numbered.get(
-                                                                c.to_digit(10).unwrap() as usize
-                                                                    - 1,
-                                                            )
-                                                        } else if c.is_ascii_alphabetic() {
-                                                            state.registers.named.get(&c)
-                                                        } else {
-                                                            None
-                                                        }
-                                                    }
-                                                    _ => None,
-                                                };
-
-                                                if let Some(reg) = reg {
+                                                if let Some(reg) = state.registers.check_reg(&code)
+                                                {
                                                     if !reg.is_empty() {
                                                         let to_be_inserted = reg
                                                             .iter()
@@ -2042,60 +2208,6 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     }
                                 }
                             }
-
-                            //Add new temp file or directory.
-                            //It has to feel like more "modal", so I comment this out for now.
-                            // KeyCode::Char('a') => {
-                            //     to_info_line();
-                            //     clear_current_line();
-                            //     print!("a");
-                            //     show_cursor();
-                            //     screen.flush()?;
-
-                            //     if let Event::Key(KeyEvent { code, .. }) = event::read()? {
-                            //         match code {
-                            //             //Add new file
-                            //             KeyCode::Char('f') => {
-                            //                 hide_cursor();
-                            //                 match state.create_temp(false) {
-                            //                     Err(e) => {
-                            //                         print_warning(e, state.layout.y);
-                            //                         continue;
-                            //                     }
-                            //                     Ok(p) => {
-                            //                         state.reload(state.layout.y)?;
-                            //                         print_info(
-                            //                             format!("New file {} added.", p.display()),
-                            //                             state.layout.y,
-                            //                         );
-                            //                     }
-                            //                 }
-                            //             }
-                            //             //Add new directory
-                            //             KeyCode::Char('d') => {
-                            //                 hide_cursor();
-                            //                 match state.create_temp(true) {
-                            //                     Err(e) => {
-                            //                         print_warning(e, state.layout.y);
-                            //                         continue;
-                            //                     }
-                            //                     Ok(p) => {
-                            //                         state.reload(state.layout.y)?;
-                            //                         print_info(
-                            //                             format!("New dir {} added.", p.display()),
-                            //                             state.layout.y,
-                            //                         );
-                            //                     }
-                            //                 }
-                            //             }
-                            //             _ => {
-                            //                 go_to_and_rest_info();
-                            //                 hide_cursor();
-                            //                 state.move_cursor(state.layout.y);
-                            //             }
-                            //         }
-                            //     }
-                            // }
 
                             //exit by ZZ
                             KeyCode::Char('Z') => {

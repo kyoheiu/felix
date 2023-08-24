@@ -7,10 +7,6 @@ use super::state::{ItemInfo, BEGINNING_ROW};
 use super::term::*;
 
 use serde::{Deserialize, Serialize};
-use syntect::easy::HighlightLines;
-use syntect::highlighting::Theme;
-use syntect::parsing::SyntaxSet;
-use syntect::util::{as_24_bit_terminal_escaped, split_at, LinesWithEndings};
 
 pub const MAX_SIZE_TO_PREVIEW: u64 = 1_000_000_000;
 pub const CHAFA_WARNING: &str =
@@ -35,9 +31,6 @@ pub struct Layout {
     pub split: Split,
     pub preview_start: (u16, u16),
     pub preview_space: (u16, u16),
-    pub syntax_highlight: bool,
-    pub syntax_set: SyntaxSet,
-    pub theme: Theme,
     pub has_chafa: bool,
     pub is_kitty: bool,
 }
@@ -167,16 +160,7 @@ impl Layout {
                     }
                 }
                 Some(PreviewType::Text) => {
-                    if self.syntax_highlight {
-                        match self.preview_text_with_highlight(item) {
-                            Ok(_) => {}
-                            Err(e) => {
-                                print!("{}", e);
-                            }
-                        }
-                    } else {
-                        self.preview_text(item);
-                    }
+                    self.preview_text(item);
                 }
                 Some(PreviewType::Binary) => {
                     print!("(Binary file)");
@@ -208,40 +192,6 @@ impl Layout {
                 false,
             );
         }
-    }
-
-    /// Preview text with syntax highlighting.
-    fn preview_text_with_highlight(&self, item: &ItemInfo) -> Result<(), FxError> {
-        if let Ok(Some(syntax)) = self.syntax_set.find_syntax_for_file(item.file_path.clone()) {
-            let mut h = HighlightLines::new(syntax, &self.theme);
-            if let Some(content) = &item.content {
-                move_to(self.preview_start.0, BEGINNING_ROW);
-                let mut result = vec![];
-                for (index, line) in LinesWithEndings::from(content).enumerate() {
-                    let count = line.len() / self.preview_space.0 as usize;
-                    let mut range = h.highlight_line(line, &self.syntax_set)?;
-                    for _ in 0..=count + 1 {
-                        let ranges = split_at(&range, (self.preview_space.0) as usize);
-                        if !ranges.0.is_empty() {
-                            result.push(ranges.0);
-                        }
-                        range = ranges.1;
-                    }
-                    if index > self.preview_space.1 as usize + item.preview_scroll {
-                        break;
-                    }
-                }
-                let result: Vec<String> = result
-                    .iter()
-                    .map(|x| as_24_bit_terminal_escaped(x, false))
-                    .collect();
-                self.print_txt_in_preview_area(item, &result, true);
-            } else {
-            }
-        } else {
-            self.preview_text(item);
-        }
-        Ok(())
     }
 
     fn preview_directory(&self, item: &ItemInfo) {

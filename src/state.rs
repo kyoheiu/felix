@@ -27,7 +27,6 @@ use std::path::PathBuf;
 use std::process::{Command, ExitStatus, Stdio};
 use std::time::Instant;
 use std::time::UNIX_EPOCH;
-use syntect::highlighting::{Theme, ThemeSet};
 
 #[cfg(target_family = "unix")]
 use nix::sys::stat::Mode;
@@ -49,6 +48,7 @@ pub struct State {
     pub trash_dir: PathBuf,
     pub lwd_file: Option<PathBuf>,
     pub match_vim_exit_behavior: bool,
+    pub has_zoxide: bool,
     pub default: String,
     pub commands: Option<BTreeMap<String, String>>,
     pub registers: Registers,
@@ -105,6 +105,26 @@ impl Registers {
             }
         }
         items.len()
+    }
+
+    /// Return Vec<ItemBuffer> from registers according to the KeyCode, if exists.
+    pub fn check_reg(&self, code: &KeyCode) -> Option<Vec<ItemBuffer>> {
+        match code {
+            KeyCode::Char('"') => Some(self.unnamed.clone()),
+            KeyCode::Char('0') => Some(self.zero.clone()),
+            KeyCode::Char(c) => {
+                if c.is_ascii_digit() {
+                    self.numbered
+                        .get(c.to_digit(10).unwrap() as usize - 1)
+                        .cloned()
+                } else if c.is_ascii_alphabetic() {
+                    self.named.get(c).cloned()
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
     }
 
     /// Return Vec<String> that contains item names in the register.
@@ -200,17 +220,12 @@ pub struct ItemInfo {
     pub permissions: Option<u32>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Default, Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum FileType {
     Directory,
+    #[default]
     File,
     Symlink,
-}
-
-impl Default for FileType {
-    fn default() -> Self {
-        FileType::File
-    }
 }
 
 impl State {
@@ -242,10 +257,12 @@ impl State {
 
         let (time_start, name_max) = make_layout(original_column);
 
-        let ts = set_theme(&config);
+        let color = config.color.unwrap_or_default();
+
         let split = session.split.unwrap_or(Split::Vertical);
 
         let has_chafa = check_chafa();
+        let has_zoxide = check_zoxide();
         let is_kitty = check_kitty_support();
 
         Ok(State {
@@ -264,6 +281,7 @@ impl State {
             trash_dir: PathBuf::new(),
             lwd_file: None,
             match_vim_exit_behavior: config.match_vim_exit_behavior.unwrap_or_default(),
+            has_zoxide,
             default: config
                 .default
                 .unwrap_or_else(|| env::var("EDITOR").unwrap_or_default()),
@@ -276,9 +294,9 @@ impl State {
                 name_max_len: name_max,
                 time_start_pos: time_start,
                 colors: ConfigColor {
-                    dir_fg: config.color.dir_fg,
-                    file_fg: config.color.file_fg,
-                    symlink_fg: config.color.symlink_fg,
+                    dir_fg: color.dir_fg,
+                    file_fg: color.file_fg,
+                    symlink_fg: color.symlink_fg,
                 },
                 sort_by: session.sort_by,
                 show_hidden: session.show_hidden,
@@ -296,9 +314,6 @@ impl State {
                     Split::Vertical => (0, 0),
                     Split::Horizontal => (0, 0),
                 },
-                syntax_highlight: config.syntax_highlight.unwrap_or(false),
-                syntax_set: syntect::parsing::SyntaxSet::load_defaults_newlines(),
-                theme: ts,
                 has_chafa,
                 is_kitty,
             },
@@ -339,12 +354,12 @@ impl State {
             None => default
                 .arg(path)
                 .status()
-                .map_err(|e| FxError::OpenItem(e.to_string())),
+                .map_err(|_| FxError::DefaultEditor),
             Some(map) => match extension {
                 None => default
                     .arg(path)
                     .status()
-                    .map_err(|e| FxError::OpenItem(e.to_string())),
+                    .map_err(|_| FxError::DefaultEditor),
                 Some(extension) => match map.get(extension) {
                     Some(command) => {
                         let command: Vec<&str> = command.split_ascii_whitespace().collect();
@@ -367,7 +382,7 @@ impl State {
                     None => default
                         .arg(path)
                         .status()
-                        .map_err(|e| FxError::OpenItem(e.to_string())),
+                        .map_err(|_| FxError::DefaultEditor),
                 },
             },
         }
@@ -1546,6 +1561,18 @@ impl State {
                 self.reload(BEGINNING_ROW)?;
             }
         }
+        //if zoxide is installed, add the target or increment its rank.
+        if self.has_zoxide {
+            if let Some(p) = p.as_os_str().to_str() {
+                if std::process::Command::new("zoxide")
+                    .args(["add", p])
+                    .output()
+                    .is_err()
+                {
+                    print_warning("Failed to `zoxide add`.", self.layout.y);
+                }
+            }
+        }
         self.v_start = None;
         Ok(())
     }
@@ -1905,6 +1932,14 @@ fn check_chafa() -> bool {
         .is_ok()
 }
 
+/// Check if zoxide is installed.
+fn check_zoxide() -> bool {
+    std::process::Command::new("zoxide")
+        .arg("--help")
+        .output()
+        .is_ok()
+}
+
 /// Check if the terminal is Kitty or not
 fn check_kitty_support() -> bool {
     if let Ok(term) = std::env::var("TERM") {
@@ -1954,37 +1989,6 @@ fn is_supported_image(item: &ItemInfo) -> bool {
     magic_image::is_supported_image_type(&item.file_path)
 }
 
-/// Set highlighting theme.
-fn set_theme(config: &Config) -> Theme {
-    match &config.theme_path {
-        Some(p) => match ThemeSet::get_theme(p) {
-            Ok(theme) => theme,
-            Err(_) => match &config.default_theme {
-                Some(dt) => choose_theme(dt),
-                None => ThemeSet::load_defaults().themes["base16-ocean.dark"].clone(),
-            },
-        },
-        None => match &config.default_theme {
-            Some(dt) => choose_theme(dt),
-            None => ThemeSet::load_defaults().themes["base16-ocean.dark"].clone(),
-        },
-    }
-}
-
-/// Choose highlighting theme according to config.
-fn choose_theme(dt: &DefaultTheme) -> Theme {
-    let defaults = ThemeSet::load_defaults();
-    match dt {
-        DefaultTheme::Base16OceanDark => defaults.themes["base16-ocean.dark"].clone(),
-        DefaultTheme::Base16EightiesDark => defaults.themes["base16-eighties.dark"].clone(),
-        DefaultTheme::Base16MochaDark => defaults.themes["base16-mocha.dark"].clone(),
-        DefaultTheme::Base16OceanLight => defaults.themes["base16-ocean.light"].clone(),
-        DefaultTheme::InspiredGitHub => defaults.themes["InspiredGitHub"].clone(),
-        DefaultTheme::SolarizedDark => defaults.themes["Solarized (dark)"].clone(),
-        DefaultTheme::SolarizedLight => defaults.themes["Solarized (light)"].clone(),
-    }
-}
-
 // Check if the current process has the write permission to a path.
 // Currently available in unix only.
 // TODO: Use this function to determine if deleting items can be done in the first place?
@@ -2003,11 +2007,11 @@ pub fn has_write_permission(path: &std::path::Path) -> Result<bool, FxError> {
             let gid = metadata.gid();
 
             if uid == euid.as_raw() {
-                Ok(mode & (Mode::S_IWUSR.bits() as u32) != 0)
+                Ok((mode & Mode::S_IWUSR.bits() as u32) != 0)
             } else if gid == Gid::effective().as_raw() || in_groups(gid) {
-                Ok(mode & (Mode::S_IWGRP.bits() as u32) != 0)
+                Ok((mode & Mode::S_IWGRP.bits() as u32) != 0)
             } else {
-                Ok(mode & (Mode::S_IWOTH.bits() as u32) != 0)
+                Ok((mode & Mode::S_IWOTH.bits() as u32) != 0)
             }
         }
     }

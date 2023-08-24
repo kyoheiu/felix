@@ -428,7 +428,10 @@ mod tests {
         let sample = r#"Rust is a multi-paradigm, general-purpose programming language that emphasizes performance, type safety, and concurrency. It enforces memory safety—ensuring that all references point to valid memory—without requiring the use of a garbage collector or reference counting present in other memory-safe languages. To simultaneously enforce memory safety and prevent concurrent data races, its "borrow checker" tracks the object lifetime of all references in a program during compilation. Rust borrows ideas from functional programming, including static types, immutability, higher-order functions, and algebraic data types. It is popularized for systems programming."#;
         for _i in 0..5000 {
             let formatted = bwrap::wrap_maybrk!(sample, 20);
-            let formatted = formatted.lines().map(|x| x.to_owned()).collect::<Vec<String>>();
+            let formatted = formatted
+                .lines()
+                .map(|x| x.to_owned())
+                .collect::<Vec<String>>();
             assert_eq!(formatted[0], "Rust is a multi-para".to_string());
         }
     }
@@ -442,7 +445,10 @@ mod tests {
 太平洋戦争中の1943年に東京府と東京市が統合されて、改めて東京都が首都となった。"#;
         for _i in 0..5000 {
             let formatted = bwrap::wrap_maybrk!(sample, 20);
-            let formatted = formatted.lines().map(|x| x.to_owned()).collect::<Vec<String>>();
+            let formatted = formatted
+                .lines()
+                .map(|x| x.to_owned())
+                .collect::<Vec<String>>();
             assert_eq!(formatted[0], "東京都心は、かつての".to_string());
         }
     }

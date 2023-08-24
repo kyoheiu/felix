@@ -1,5 +1,5 @@
 /// Help text.
-pub const HELP: &str = r###"# felix v2.7.0
+pub const HELP: &str = r###"# felix v2.8.0
 A simple TUI file manager with vim-like keymapping.
 
 ## Usage
@@ -25,6 +25,8 @@ z{keyword}<CR>     :Jump to a directory that matches the keyword.
                     (zoxide required)
 <C-o>              :Jump backward.
 <C-i>              :Jump forward.
+i{file name}<CR>   :Create a new empty file.
+I{dir name}<CR>    :Create a new empty directory.
 o                  :Open item in a new window.
 e                  :Unpack archive/compressed file.
 dd                 :Delete and yank item.
@@ -79,22 +81,25 @@ To preview images, you need to install chafa (>= v1.10.0).
 Please see https://hpjansson.org/chafa/
 
 ## Configuration
+
+*Both `config.yaml` and `config.yml` work.*
+
 ### Linux
-config file    : $XDG_CONFIG_HOME/felix/config.yaml
+config file    : $XDG_CONFIG_HOME/felix/config.yaml(config.yml)
 trash directory: $XDG_DATA_HOME/felix/trash
 log files      : $XDG_DATA_HOME/felix/log
 
 ### macOS
 On macOS, felix looks for the config file in the following locations:
 
-1. `$HOME/Library/Application Support/felix/config.yaml`
+1. `$HOME/Library/Application Support/felix/config.yaml(config.yml)`
 2. `$HOME/.config/felix/config.yaml`
 
 trash directory: $HOME/Library/Application Support/felix/trash
 log files      : $HOME/Library/Application Support/felix/log
 
 ### Windows
-config file     : $PROFILE\\AppData\\Roaming\\felix\\config.yaml
+config file     : $PROFILE\\AppData\\Roaming\\felix\\config.yaml(config.yml)
 trash directory : $PROFILE\\AppData\\Local\\felix\\trash
 log files       : $PROFILE\\AppData\\Local\\felix\\log
 

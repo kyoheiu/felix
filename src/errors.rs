@@ -9,10 +9,10 @@ pub enum FxError {
     GetItem,
     OpenItem(String),
     OpenNewWindow(String),
+    DefaultEditor,
     Yaml(String),
     WalkDir(String),
     Encode,
-    Syntect(String),
     PutItem(PathBuf),
     RemoveItem(PathBuf),
     TooSmallWindowSize,
@@ -35,10 +35,10 @@ impl std::fmt::Display for FxError {
             FxError::GetItem => "Error: Cannot get item info".to_owned(),
             FxError::OpenItem(s) => s.to_owned(),
             FxError::OpenNewWindow(s) => s.to_owned(),
+            FxError::DefaultEditor => "$EDITOR may not be set, or config file may be invalid.".to_owned(),
             FxError::Yaml(s) => s.to_owned(),
             FxError::WalkDir(s) => s.to_owned(),
             FxError::Encode => "Error: Incorrect encoding".to_owned(),
-            FxError::Syntect(s) => s.to_owned(),
             FxError::PutItem(s) => format!("Error: Cannot copy -> {:?}", s),
             FxError::RemoveItem(s) => format!("Error: Cannot remove -> {:?}", s),
             FxError::TooSmallWindowSize => "Error: Too small window size".to_owned(),
@@ -60,12 +60,6 @@ impl From<std::io::Error> for FxError {
 impl From<serde_yaml::Error> for FxError {
     fn from(err: serde_yaml::Error) -> Self {
         FxError::Yaml(err.to_string())
-    }
-}
-
-impl From<syntect::Error> for FxError {
-    fn from(err: syntect::Error) -> Self {
-        FxError::Syntect(err.to_string())
     }
 }
 
