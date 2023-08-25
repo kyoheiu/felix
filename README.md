@@ -220,7 +220,7 @@ N                  :Go backward to the item that matches the keyword.
 :empty<CR>         :Empty the trash directory.
 :h<CR>             :Show help.
 :q<CR>             :Exit.
-:{command}         :Execute a command e.g. :mkdir new_dir
+:{command}         :Execute a command e.g. :zip test *.md
 <Esc>              :Return to the normal mode.
 ZZ                 :Exit without cd to last working directory
                     (if `match_vim_exit_behavior` is `false`).
