@@ -18,14 +18,14 @@ jobs:
     - uses: actions/checkout@v3
     - name: Install
       run: |
-        cargo install --path .
+        cargo install --locked --path .
   macos-install:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v3
     - name: Install
       run: |
-        cargo install --path .
+        cargo install --locked --path .
   archlinux-install:
     runs-on: ubuntu-latest
     container:
@@ -38,7 +38,7 @@ jobs:
         pacman -S rustup --noconfirm
         rustup install stable
         rustup default stable
-        cargo install --path .
+        cargo install --locked --path .
   windows-install:
     runs-on: windows-latest
     steps:
@@ -51,4 +51,4 @@ jobs:
           default: true
           override: true
       - name: Install
-        run: cargo install --path .
+        run: cargo install --locked --path .
