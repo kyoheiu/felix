@@ -1,5 +1,5 @@
 /// Help text.
-pub const HELP: &str = r###"# felix v2.8.0
+pub const HELP: &str = r###"# felix v2.8.1
 A simple TUI file manager with vim-like keymapping.
 
 ## Usage
@@ -21,7 +21,7 @@ l / <Right> / <CR> :Open item or change directory.
 gg                 :Go to the top.
 G                  :Go to the bottom.
 z<CR>              :Go to the home directory.
-z{keyword}<CR>     :Jump to a directory that matches the keyword.
+z {keyword}<CR>    :Jump to a directory that matches the keyword.
                     (zoxide required)
 <C-o>              :Jump backward.
 <C-i>              :Jump forward.
@@ -52,24 +52,25 @@ v                  :Toggle whether to show the preview.
 s                  :Toggle between vertical / horizontal split in the preview mode.
 <Alt-j>
  / <Alt-<Down>>    :Scroll down the preview text.
-<Alt-k> / 
+<Alt-k> 
  / <Alt-<Up>>      :Scroll up the preview text.
 <BS>               :Toggle whether to show hidden items.
 t                  :Toggle the sort order (name <-> modified time).
-:                  :Switch to the command line.
-  - <C-r>a         :In the command line, paste item name in register a.
 c                  :Switch to the rename mode.
-/                  :Search items by a keyword.
+/{keyword}         :Search items by a keyword.
 n                  :Go forward to the item that matches the keyword.
 N                  :Go backward to the item that matches the keyword.
-<Esc>              :Return to the normal mode.
+:                  :Switch to the command line.
+  - <C-r>a         :In the command line, paste item name in register a.
 :cd<CR>            :Go to the home directory.
-:cd{path}<CR>      :Go to the path.
+:cd {path}<CR>     :Go to the path.
 :e<CR>             :Reload the current directory.
 :trash<CR>         :Go to the trash directory.
 :empty<CR>         :Empty the trash directory.
 :h<CR>             :Show help.
 :q<CR>             :Exit.
+:{command}         :Execute a command e.g. :mkdir new_dir
+<Esc>              :Return to the normal mode.
 ZZ                 :Exit without cd to last working directory
                     (if `match_vim_exit_behavior` is `false`).
 ZQ                 :cd into the last working directory and exit

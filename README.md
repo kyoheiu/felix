@@ -3,6 +3,8 @@
 
 # _felix_
 
+![screenshot](screenshots/screenshot.png)
+
 A tui file manager with Vim-like key mapping, written in Rust.\
 Fast, simple, and easy to configure & use.
 
@@ -19,18 +21,21 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 - [Preview feature](#preview)
 - [Configuration](#configuration)
 
-![sample](screenshots/sample.gif)
-
 <a id="new-release"></a>
 
 ## New release
+
+## v2.8.1 (2023-08-25)
+
+### Fixed
+- Fix help text.
 
 ## v2.8.0 (2023-08-25)
 
 ### Added
 - `i{file name}<CR>` to create new file, and `I{dir name}<CR>` to create new directory.
 - If zoxide is installed, whenever changing directory inside felix, `zoxide add` will be executed to add the directory or increment its rank in the zoxide database.
-  - For this, State now has a new field `has_zoxide`, which is checked at startup.
+  - For this, `State` now has a new field `has_zoxide`, which is checked at startup.
 
 ### Changed
 - config's `color` is now optional: By this, all config fields are optional.
@@ -167,7 +172,7 @@ l / <Right> / <CR> :Open item or change directory.
 gg                 :Go to the top.
 G                  :Go to the bottom.
 z<CR>              :Go to the home directory.
-z{keyword}<CR>     :Jump to a directory that matches the keyword.
+z {keyword}<CR>    :Jump to a directory that matches the keyword.
                     (zoxide required)
 <C-o>              :Jump backward.
 <C-i>              :Jump forward.
@@ -198,24 +203,25 @@ v (lowercase)      :Toggle whether to show the preview.
 s                  :Toggle between vertical / horizontal split in the preview mode.
 <Alt-j>
  / <Alt-<Down>>    :Scroll down the preview text.
-<Alt-k> / 
+<Alt-k> 
  / <Alt-<Up>>      :Scroll up the preview text.
 <BS>               :Toggle whether to show hidden items.
 t                  :Toggle the sort order (name <-> modified time).
-:                  :Switch to the command line.
-  - <C-r>a         :In the command line, paste item name in register a.
 c                  :Switch to the rename mode.
-/                  :Search items by a keyword.
+/{keyword}         :Search items by a keyword.
 n                  :Go forward to the item that matches the keyword.
 N                  :Go backward to the item that matches the keyword.
-<Esc>              :Return to the normal mode.
+:                  :Switch to the command line.
+  - <C-r>a         :In the command line, paste item name in register a.
 :cd<CR>            :Go to the home directory.
-:cd{path}<CR>      :Go to the path.
+:cd {path}<CR>     :Go to the path.
 :e<CR>             :Reload the current directory.
 :trash<CR>         :Go to the trash directory.
 :empty<CR>         :Empty the trash directory.
 :h<CR>             :Show help.
 :q<CR>             :Exit.
+:{command}         :Execute a command e.g. :mkdir new_dir
+<Esc>              :Return to the normal mode.
 ZZ                 :Exit without cd to last working directory
                     (if `match_vim_exit_behavior` is `false`).
 ZQ                 :cd into the last working directory and exit
