@@ -4,6 +4,11 @@
 
 ## Unreleased
 
+## v2.8.1 (2023-08-25)
+
+### Fixed
+- Fix help text.
+
 ## v2.8.0 (2023-08-25)
 
 ### Added
