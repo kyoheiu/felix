@@ -35,7 +35,9 @@ impl std::fmt::Display for FxError {
             FxError::GetItem => "Error: Cannot get item info".to_owned(),
             FxError::OpenItem(s) => s.to_owned(),
             FxError::OpenNewWindow(s) => s.to_owned(),
-            FxError::DefaultEditor => "$EDITOR may not be set, or config file may be invalid.".to_owned(),
+            FxError::DefaultEditor => {
+                "$EDITOR may not be set, or config file may be invalid.".to_owned()
+            }
             FxError::Yaml(s) => s.to_owned(),
             FxError::WalkDir(s) => s.to_owned(),
             FxError::Encode => "Error: Incorrect encoding".to_owned(),
