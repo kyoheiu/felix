@@ -1131,18 +1131,14 @@ impl State {
         }
 
         //If .git directory exists, get the branch information and print it.
-        let git = self.current_dir.join(".git");
-        if git.exists() {
-            let head = git.join("HEAD");
-            if let Ok(head) = std::fs::read(head) {
-                let branch: Vec<u8> = head.into_iter().skip(16).collect();
-                if let Ok(branch) = std::str::from_utf8(&branch) {
+        if let Ok(repo) = git2::Repository::open(&self.current_dir) {
+            if let Ok(head) = repo.head() {
+                if let Some(branch) = head.shorthand() {
                     if branch.len() + 4 <= header_space {
                         print!(" on ",);
                         set_color(&TermColor::ForeGround(&Colorname::LightMagenta));
                         print!("{}", branch.trim().bold());
                         reset_color();
-                    } else {
                     }
                 }
             }
