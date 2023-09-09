@@ -34,6 +34,7 @@ flate2 = "1.0.26"
 lzma-rs = "0.3.0"
 zstd = "0.12.4"
 unicode-width = "0.1.10"
+git2 = {version = "0.18.0", default-features = false }
 
 [dev-dependencies]
 bwrap = { version = "1.3.0", features = ["use_std"] }
