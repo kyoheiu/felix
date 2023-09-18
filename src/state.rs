@@ -218,6 +218,7 @@ pub struct ItemInfo {
     pub preview_scroll: usize,
     pub content: Option<String>,
     pub permissions: Option<u32>,
+    pub is_dirty: bool,
 }
 
 #[derive(Default, Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -1130,7 +1131,7 @@ impl State {
             header_space -= 5;
         }
 
-        //If .git directory exists, get the branch information and print it.
+        //If git repository exists, get the branch information and print it.
         if let Ok(repo) = git2::Repository::open(&self.current_dir) {
             if let Ok(head) = repo.head() {
                 if let Some(branch) = head.shorthand() {
@@ -1156,11 +1157,15 @@ impl State {
             file_name
         };
         let time = format_time(&item.modified);
-        let color = match item.file_type {
+        let mut color = match item.file_type {
             FileType::Directory => &self.layout.colors.dir_fg,
             FileType::File => &self.layout.colors.file_fg,
             FileType::Symlink => &self.layout.colors.symlink_fg,
         };
+        if item.is_dirty {
+            color = &Colorname::Red;
+        }
+
         if self.layout.terminal_column < PROPER_WIDTH {
             if item.selected {
                 set_color(&TermColor::ForeGround(color));
@@ -1223,9 +1228,38 @@ impl State {
         let mut dir_v = Vec::new();
         let mut file_v = Vec::new();
 
+        // If git repository exists, get information of changed/untracked files.
+        let mut dirty_paths = BTreeSet::new();
+        if let Ok(repo) = git2::Repository::discover(&self.current_dir) {
+            let mut opts = git2::DiffOptions::new();
+            opts.include_untracked(true);
+            if let Ok(diff) = repo.diff_index_to_workdir(None, Some(&mut opts)) {
+                let mut root = repo.path().to_path_buf();
+                root.pop();
+                diff.foreach(
+                    &mut |x, _| {
+                        if let Some(new_file) = x.new_file().path() {
+                            let dirty_path = root.join(new_file);
+                            for ancestor in dirty_path.ancestors() {
+                                dirty_paths.insert(ancestor.to_owned());
+                            }
+                        }
+                        true
+                    },
+                    None,
+                    None,
+                    None,
+                )
+                .unwrap();
+            }
+        }
+
         for entry in fs::read_dir(&self.current_dir)? {
             let e = entry?;
-            let entry = read_item(e);
+            let mut entry = read_item(e);
+            if dirty_paths.contains(&entry.file_path) {
+                entry.is_dirty = true;
+            }
             match entry.file_type {
                 FileType::Directory => dir_v.push(entry),
                 FileType::File | FileType::Symlink => file_v.push(entry),
@@ -1876,6 +1910,7 @@ fn read_item(entry: fs::DirEntry) -> ItemInfo {
                 preview_scroll: 0,
                 content: None,
                 permissions,
+                is_dirty: false,
             }
         }
         Err(_) => ItemInfo {
@@ -1893,6 +1928,7 @@ fn read_item(entry: fs::DirEntry) -> ItemInfo {
             preview_scroll: 0,
             content: None,
             permissions: None,
+            is_dirty: false,
         },
     }
 }
