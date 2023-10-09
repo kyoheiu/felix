@@ -1233,14 +1233,19 @@ impl State {
         let mut dirty_paths = BTreeSet::new();
         if let Ok(repo) = git2::Repository::discover(&self.current_dir) {
             let mut opts = git2::DiffOptions::new();
+            // When detecting dirty files, includes untracked files.
             opts.include_untracked(true);
             if let Ok(diff) = repo.diff_index_to_workdir(None, Some(&mut opts)) {
+                // Current directory does not always point to the root (e.g. in the child dir),
+                // so uses repo.path() and pop() here.
                 let mut root = repo.path().to_path_buf();
                 root.pop();
                 diff.foreach(
                     &mut |x, _| {
                         if let Some(new_file) = x.new_file().path() {
                             let dirty_path = root.join(new_file);
+                            // Changes color of ancestors to show a directory may contain
+                            // dirty files.
                             for ancestor in dirty_path.ancestors() {
                                 dirty_paths.insert(ancestor.to_owned());
                             }
@@ -1252,6 +1257,7 @@ impl State {
                     None,
                 )
                 .unwrap();
+                // Ignores error to continue the update_list process.
             }
         }
 
