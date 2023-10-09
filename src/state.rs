@@ -298,6 +298,7 @@ impl State {
                     dir_fg: color.dir_fg,
                     file_fg: color.file_fg,
                     symlink_fg: color.symlink_fg,
+                    dirty_fg: color.dirty_fg,
                 },
                 sort_by: session.sort_by,
                 show_hidden: session.show_hidden,
@@ -1163,7 +1164,7 @@ impl State {
             FileType::Symlink => &self.layout.colors.symlink_fg,
         };
         if item.is_dirty {
-            color = &Colorname::Red;
+            color = &self.layout.colors.dirty_fg;
         }
 
         if self.layout.terminal_column < PROPER_WIDTH {
