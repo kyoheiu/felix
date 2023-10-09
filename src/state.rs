@@ -1113,12 +1113,12 @@ impl State {
         let current_dir = self.current_dir.display().to_string();
         if current_dir.bytes().len() >= header_space {
             let current_dir = shorten_str_including_wide_char(&current_dir, header_space);
-            set_color(&TermColor::ForeGround(&Colorname::Cyan));
+            set_color_current_dir();
             print!(" {}", current_dir);
             reset_color();
             return;
         } else {
-            set_color(&TermColor::ForeGround(&Colorname::Cyan));
+            set_color_current_dir();
             print!(" {}", current_dir);
             reset_color();
             header_space -= current_dir.len();
@@ -1126,7 +1126,7 @@ impl State {
 
         // If without the write permission, print [RO].
         if self.is_ro && header_space > 5 {
-            set_color(&TermColor::ForeGround(&Colorname::Red));
+            set_color_read_only();
             print!(" [RO]");
             reset_color();
             header_space -= 5;
@@ -1138,7 +1138,7 @@ impl State {
                 if let Some(branch) = head.shorthand() {
                     if branch.len() + 4 <= header_space {
                         print!(" on ",);
-                        set_color(&TermColor::ForeGround(&Colorname::LightMagenta));
+                        set_color_git_repo();
                         print!("{}", branch.trim().bold());
                         reset_color();
                     }
