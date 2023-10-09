@@ -1256,8 +1256,8 @@ impl State {
                     None,
                     None,
                 )
-                .unwrap();
                 // Ignores error to continue the update_list process.
+                .unwrap_or(());
             }
         }
 
