@@ -1343,33 +1343,21 @@ impl State {
     /// Highlight matched items.
     pub fn highlight_matches(&mut self, keyword: &str) {
         for item in self.list.iter_mut() {
-            if item.file_name.contains(keyword) {
-                item.matches = true;
-            } else {
-                item.matches = false;
-            }
+            item.matches = item.file_name.contains(keyword);
         }
     }
 
     /// Select items from the top to current position.
     pub fn select_from_top(&mut self, start_pos: usize) {
         for (i, item) in self.list.iter_mut().enumerate() {
-            if i <= start_pos {
-                item.selected = true;
-            } else {
-                item.selected = false;
-            }
+            item.selected = i <= start_pos;
         }
     }
 
     /// Select items from the current position to bottom.
     pub fn select_to_bottom(&mut self, start_pos: usize) {
         for (i, item) in self.list.iter_mut().enumerate() {
-            if i < start_pos {
-                item.selected = false;
-            } else {
-                item.selected = true;
-            }
+            item.selected = i >= start_pos;
         }
     }
 
