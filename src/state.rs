@@ -901,26 +901,16 @@ impl State {
         target_dir: &Option<PathBuf>,
         name_set: &mut BTreeSet<String>,
     ) -> Result<PathBuf, FxError> {
-        match target_dir {
-            None => {
-                let rename = rename_file(&item.file_name, name_set);
-                let to = &self.current_dir.join(&rename);
-                if std::fs::copy(&item.file_path, to).is_err() {
-                    return Err(FxError::PutItem(item.file_path.clone()));
-                }
-                name_set.insert(rename);
-                Ok(to.to_path_buf())
-            }
-            Some(path) => {
-                let rename = rename_file(&item.file_name, name_set);
-                let to = &path.join(&rename);
-                if std::fs::copy(&item.file_path, to).is_err() {
-                    return Err(FxError::PutItem(item.file_path.clone()));
-                }
-                name_set.insert(rename);
-                Ok(to.to_path_buf())
-            }
+        let rename = rename_file(&item.file_name, name_set);
+        let to = match target_dir {
+            None => self.current_dir.join(&rename),
+            Some(path) => path.join(&rename),
+        };
+        if std::fs::copy(&item.file_path, &to).is_err() {
+            return Err(FxError::PutItem(item.file_path.clone()));
         }
+        name_set.insert(rename);
+        Ok(to.to_path_buf())
     }
 
     /// Put single directory recursively to current or target directory.
