@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+### Added
+- Change color of untracked/changed files or directories containing such files. Default color is Red(1). You can change it in the config file.
+  - For this, `git2` is added.
+
 ## v2.8.1 (2023-08-25)
 
 ### Fixed
