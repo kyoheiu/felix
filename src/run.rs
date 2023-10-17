@@ -10,7 +10,7 @@ use super::state::*;
 use super::term::*;
 
 use crossterm::cursor::RestorePosition;
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use crossterm::execute;
 use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
 use log::{error, info};
@@ -179,7 +179,11 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
         match event::read()? {
             Event::Key(KeyEvent {
-                code, modifiers, ..
+                code,
+                modifiers,
+                // Explicitly ignore the key release events for Windows.
+                kind: KeyEventKind::Press,
+                ..
             }) => {
                 match modifiers {
                     KeyModifiers::CONTROL => match code {
