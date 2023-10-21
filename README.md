@@ -8,7 +8,7 @@
 A tui file manager with Vim-like key mapping, written in Rust.\
 Fast, simple, and easy to configure & use.
 
-For an overview of this app, take a look at this README, especially
+For the overview of this app, take a look at this README, especially
 [key manual](#key-manual).\
 For more detailed document, visit https://kyoheiu.dev/felix.
 
@@ -24,6 +24,15 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 <a id="new-release"></a>
 
 ## New release
+
+## v2.9.0 (2023-10-22)
+
+### Added
+- Change color of untracked/changed files or directories containing such files. Default color is Red(1). You can change it in the config file.
+  - Add `git2`.
+  
+### Fixed
+- Explicitly ignore the key release events for Windows.
 
 ## v2.8.1 (2023-08-25)
 
@@ -44,30 +53,6 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 
 ### Removed
 - Remove `syntect` and syntax highlighting in the preview area. This will improve build and start-up times, and resolve the handling of wide chars such as CJK.
-
-## v2.7.0 (2023-08-05)
-
-### Changed
-
-- Minimal supported rust version is now 1.67.1
-- Upgrade dependencies.
-- Update syntect version to v5.1.0. This fixes the handling of multibyte chars in the preview area.
-- Allow file name `config.yml` in addition to `config.yaml` for the configuration.
-
-## v2.6.0 (2023-07-22)
-
-### Added
-
-- Allow `<C-r>` in command line: Paste item name(s) in register. e.g. `<C-r>"` pastes item name in unnamed register.
-- Allow wild card in command line: e.g. `:zip test *.md` works now.
-- Ability to `cd` {absolute/relative path}.
-- Ability to jump backward / forward (`<C-o>`, `<C-i>` respectively)
-
-## v2.5.0 (2023-07-13)
-
-### Added
-
-- Ability to exit to LWD (last working directory): See Integrations for details.
 
 For more details, see `CHANGELOG.md`.
 
