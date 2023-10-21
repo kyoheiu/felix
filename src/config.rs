@@ -47,11 +47,12 @@ const CONFIG_EXAMPLE: &str = r###"
 #     LightWhite      // 15
 #     Rgb(u8, u8, u8)
 #     AnsiValue(u8)
-# Default to LightCyan(dir), LightWhite(file), and LightYellow(symlink).
+# Default to LightCyan(dir), LightWhite(file), LightYellow(symlink) and Red(changed/untracked files in git repositories).
 # color:
 #   dir_fg: LightCyan
 #   file_fg: LightWhite
 #   symlink_fg: LightYellow
+#   dirty_fg: Red
 "###;
 
 #[derive(Deserialize, Debug, Clone)]
@@ -67,6 +68,7 @@ pub struct ConfigColor {
     pub dir_fg: Colorname,
     pub file_fg: Colorname,
     pub symlink_fg: Colorname,
+    pub dirty_fg: Colorname,
 }
 
 impl Default for ConfigColor {
@@ -75,6 +77,7 @@ impl Default for ConfigColor {
             dir_fg: Colorname::LightCyan,
             file_fg: Colorname::LightWhite,
             symlink_fg: Colorname::LightYellow,
+            dirty_fg: Colorname::Red,
         }
     }
 }

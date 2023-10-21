@@ -146,6 +146,18 @@ pub fn set_color(c: &TermColor) {
     }
 }
 
+pub fn set_color_current_dir() {
+    set_color(&TermColor::ForeGround(&Colorname::Cyan));
+}
+
+pub fn set_color_read_only() {
+    set_color(&TermColor::ForeGround(&Colorname::Red));
+}
+
+pub fn set_color_git_repo() {
+    set_color(&TermColor::ForeGround(&Colorname::LightMagenta));
+}
+
 pub fn reset_color() {
     print!("{}", ResetColor);
 }

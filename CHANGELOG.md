@@ -4,6 +4,15 @@
 
 ## Unreleased
 
+## v2.9.0 (2023-10-22)
+
+### Added
+- Change color of untracked/changed files or directories containing such files. Default color is Red(1). You can change it in the config file.
+  - Add `git2`.
+  
+### Fixed
+- Explicitly ignore the key release events for Windows.
+
 ## v2.8.1 (2023-08-25)
 
 ### Fixed

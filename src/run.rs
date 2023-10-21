@@ -10,7 +10,7 @@ use super::state::*;
 use super::term::*;
 
 use crossterm::cursor::RestorePosition;
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use crossterm::execute;
 use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
 use log::{error, info};
@@ -25,8 +25,8 @@ const SESSION_FILE: &str = ".session";
 /// Where the item list starts to scroll.
 const SCROLL_POINT: u16 = 3;
 const CLRSCR: &str = "\x1B[2J";
-const INITIAL_POS_SEARCH: u16 = 3;
-const INITIAL_POS_SHELL: u16 = 3;
+const INITIAL_POS_COMMAND_LINE: u16 = 3;
+const INITIAL_POS_Z: u16 = 2;
 
 /// Launch the app. If initialization goes wrong, return error.
 pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
@@ -179,7 +179,11 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
         match event::read()? {
             Event::Key(KeyEvent {
-                code, modifiers, ..
+                code,
+                modifiers,
+                // Explicitly ignore the key release events for Windows.
+                kind: KeyEventKind::Press,
+                ..
             }) => {
                 match modifiers {
                     KeyModifiers::CONTROL => match code {
@@ -623,7 +627,6 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 let mut command: Vec<char> = vec!['z'];
                                 screen.flush()?;
 
-                                let initial_pos = 2;
                                 let mut current_pos = 3;
                                 'zoxide: loop {
                                     if let Event::Key(KeyEvent { code, .. }) = event::read()? {
@@ -636,7 +639,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
 
                                             KeyCode::Left => {
-                                                if current_pos == initial_pos {
+                                                if current_pos == INITIAL_POS_Z {
                                                     continue;
                                                 };
                                                 current_pos -= 1;
@@ -645,7 +648,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                             KeyCode::Right => {
                                                 if current_pos as usize
-                                                    == command.len() + initial_pos as usize
+                                                    == command.len() + INITIAL_POS_Z as usize
                                                 {
                                                     continue;
                                                 };
@@ -654,14 +657,15 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
 
                                             KeyCode::Backspace => {
-                                                if current_pos == initial_pos + 1 {
+                                                if current_pos == INITIAL_POS_Z + 1 {
                                                     go_to_info_line_and_reset();
                                                     hide_cursor();
                                                     state.move_cursor(state.layout.y);
                                                     break 'zoxide;
                                                 };
-                                                command
-                                                    .remove((current_pos - initial_pos - 1).into());
+                                                command.remove(
+                                                    (current_pos - INITIAL_POS_Z - 1).into(),
+                                                );
                                                 current_pos -= 1;
 
                                                 clear_current_line();
@@ -746,8 +750,10 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
 
                                             KeyCode::Char(c) => {
-                                                command
-                                                    .insert((current_pos - initial_pos).into(), c);
+                                                command.insert(
+                                                    (current_pos - INITIAL_POS_Z).into(),
+                                                    c,
+                                                );
                                                 current_pos += 1;
                                                 clear_current_line();
                                                 to_info_line();
@@ -779,7 +785,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 let mut new_name: Vec<char> = Vec::new();
 
                                 // express position in terminal
-                                let mut current_pos = INITIAL_POS_SHELL;
+                                let mut current_pos = INITIAL_POS_COMMAND_LINE;
                                 // express position in Vec<Char>
                                 let mut current_char_pos = 0;
                                 'insert: loop {
@@ -1295,7 +1301,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 let mut keyword: Vec<char> = Vec::new();
 
                                 // express position in terminal
-                                let mut current_pos = INITIAL_POS_SEARCH;
+                                let mut current_pos = INITIAL_POS_COMMAND_LINE;
                                 // express position in Vec<Char>
                                 let mut current_char_pos = 0;
                                 loop {
@@ -1501,7 +1507,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                 let mut command: Vec<char> = Vec::new();
 
-                                let mut current_pos = INITIAL_POS_SHELL;
+                                let mut current_pos = INITIAL_POS_COMMAND_LINE;
                                 'reg: loop {
                                     if let Event::Key(KeyEvent { code, .. }) = event::read()? {
                                         match code {
@@ -1513,7 +1519,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
 
                                             KeyCode::Left => {
-                                                if current_pos == INITIAL_POS_SHELL {
+                                                if current_pos == INITIAL_POS_COMMAND_LINE {
                                                     continue;
                                                 };
                                                 current_pos -= 1;
@@ -1522,7 +1528,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                             KeyCode::Right => {
                                                 if current_pos as usize
-                                                    == command.len() + INITIAL_POS_SHELL as usize
+                                                    == command.len()
+                                                        + INITIAL_POS_COMMAND_LINE as usize
                                                 {
                                                     continue;
                                                 };
@@ -1531,15 +1538,17 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
 
                                             KeyCode::Backspace => {
-                                                if current_pos == INITIAL_POS_SHELL {
+                                                if current_pos == INITIAL_POS_COMMAND_LINE {
                                                     go_to_info_line_and_reset();
                                                     hide_cursor();
                                                     state.move_cursor(state.layout.y);
                                                     break 'reg;
                                                 } else {
                                                     command.remove(
-                                                        (current_pos - INITIAL_POS_SHELL - 1)
-                                                            .into(),
+                                                        (current_pos
+                                                            - INITIAL_POS_COMMAND_LINE
+                                                            - 1)
+                                                        .into(),
                                                     );
                                                     current_pos -= 1;
 
@@ -1555,7 +1564,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                             KeyCode::Char(c) => {
                                                 command.insert(
-                                                    (current_pos - INITIAL_POS_SHELL).into(),
+                                                    (current_pos - INITIAL_POS_COMMAND_LINE).into(),
                                                     c,
                                                 );
                                                 if ((state.v_start.is_some() || c == 'p')
@@ -1873,7 +1882,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 let mut command: Vec<char> = Vec::new();
 
                                 // express position in terminal
-                                let mut current_pos = INITIAL_POS_SHELL;
+                                let mut current_pos = INITIAL_POS_COMMAND_LINE;
                                 // express position in Vec<Char>
                                 let mut current_char_pos = 0;
                                 'command: loop {
