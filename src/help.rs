@@ -1,5 +1,8 @@
 /// Help text.
-pub const HELP: &str = r###"# felix v2.9.0
+pub const HELP: &str = concat!(
+    "# felix v",
+    env!("CARGO_PKG_VERSION"),
+    r###"
 A simple TUI file manager with vim-like keymapping.
 
 ## Usage
@@ -105,4 +108,5 @@ trash directory : $PROFILE\\AppData\\Local\\felix\\trash
 log files       : $PROFILE\\AppData\\Local\\felix\\log
 
 For more details, visit https://github.com/kyoheiu/felix
-"###;
+"###
+);
