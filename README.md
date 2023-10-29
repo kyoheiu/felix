@@ -264,4 +264,15 @@ trash directory : $PROFILE\AppData\Local\felix\Trash
 log files       : $PROFILE\AppData\Local\felix\log
 ```
 
+### About `Rgb` and `AnsiValue`
+You can configure these colors like this:
+```
+color:
+  dir_fg: LightCyan
+  file_fg: !AnsiValue 120
+  symlink_fg: LightYellow
+  dirty_fg: !Rgb [124, 30, 40]
+```
+cf: https://docs.rs/serde_yaml/latest/serde_yaml/#using-serde-derive
+
 For more details, visit https://kyoheiu.dev/felix.
