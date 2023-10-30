@@ -186,11 +186,7 @@ impl Layout {
 
     fn preview_text(&self, item: &ItemInfo) {
         if let Some(content) = &item.content {
-            self.print_txt_in_preview_area(
-                item,
-                &format_txt(content, self.preview_space.0, false),
-                false,
-            );
+            self.print_txt_in_preview_area(item, &format_txt(content, self.preview_space.0, false));
         }
     }
 
@@ -203,17 +199,11 @@ impl Layout {
             self.print_txt_in_preview_area(
                 item,
                 &format_txt(&contents, self.preview_space.0, false),
-                false,
             );
         }
     }
 
-    fn print_txt_in_preview_area(
-        &self,
-        item: &ItemInfo,
-        content: &[String],
-        syntex_highlight: bool,
-    ) {
+    fn print_txt_in_preview_area(&self, item: &ItemInfo, content: &[String]) {
         match self.split {
             Split::Vertical => {
                 for (i, line) in content.iter().enumerate() {
@@ -223,12 +213,8 @@ impl Layout {
                     let sum = (i - item.preview_scroll) as u16;
                     let row = self.preview_start.1 + sum;
                     move_to(self.preview_start.0, row);
-                    if syntex_highlight {
-                        print!("{}", line);
-                    } else {
-                        set_color(&TermColor::ForeGround(&Colorname::LightBlack));
-                        print!("{}", line);
-                    }
+                    set_color(&TermColor::ForeGround(&Colorname::LightBlack));
+                    print!("{}", line);
                     if sum == self.preview_space.1 - 1 {
                         break;
                     }
@@ -242,12 +228,8 @@ impl Layout {
                     let sum = (i - item.preview_scroll) as u16;
                     let row = self.preview_start.1 + sum;
                     move_to(1, row);
-                    if syntex_highlight {
-                        print!("{}", line);
-                    } else {
-                        set_color(&TermColor::ForeGround(&Colorname::LightBlack));
-                        print!("{}", line);
-                    }
+                    set_color(&TermColor::ForeGround(&Colorname::LightBlack));
+                    print!("{}", line);
                     if row == self.terminal_row + self.preview_space.1 {
                         break;
                     }
