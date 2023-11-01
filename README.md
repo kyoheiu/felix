@@ -25,6 +25,11 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 
 ## New release
 
+## v2.10.1 (2023-11-02)
+
+### Fixed
+- Convert tab to 4 spaces when using bat to preview text files.
+
 ## v2.10.0 (2023-11-01)
 
 ### Added
