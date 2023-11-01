@@ -262,6 +262,7 @@ impl State {
 
         let split = session.split.unwrap_or(Split::Vertical);
 
+        let has_bat = check_bat();
         let has_chafa = check_chafa();
         let has_zoxide = check_zoxide();
         let is_kitty = check_kitty_support();
@@ -316,6 +317,7 @@ impl State {
                     Split::Vertical => (0, 0),
                     Split::Horizontal => (0, 0),
                 },
+                has_bat,
                 has_chafa,
                 is_kitty,
             },
@@ -1940,6 +1942,14 @@ fn read_item(entry: fs::DirEntry) -> ItemInfo {
 //     }
 //     Ok(result)
 // }
+
+/// Check if bat is installed.
+fn check_bat() -> bool {
+    std::process::Command::new("bat")
+        .arg("--help")
+        .output()
+        .is_ok()
+}
 
 /// Check if chafa is installed.
 fn check_chafa() -> bool {

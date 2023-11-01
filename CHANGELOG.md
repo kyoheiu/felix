@@ -4,6 +4,13 @@
 
 ## Unreleased
 
+## v2.10.0 (2023-11-01)
+
+### Added
+- `bat` integration: If `bat` installed, felix automatically adds syntax highlighting to the text preview.
+  - Add `has_bat` field to `State`.
+  - Add `FxError::InvalidPath` to handle invalid unicode in file path.
+
 ## v2.9.0 (2023-10-22)
 
 ### Added

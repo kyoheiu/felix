@@ -32,6 +32,7 @@ pub struct Layout {
     pub preview_start: (u16, u16),
     pub preview_space: (u16, u16),
     pub has_chafa: bool,
+    pub has_bat: bool,
     pub is_kitty: bool,
 }
 
@@ -145,7 +146,7 @@ impl Layout {
                 }
                 Some(PreviewType::Image) => {
                     if self.has_chafa {
-                        if let Err(e) = self.preview_image(item, y) {
+                        if let Err(e) = self.preview_image(item) {
                             print_warning(e, y);
                         }
                     } else {
@@ -160,7 +161,9 @@ impl Layout {
                     }
                 }
                 Some(PreviewType::Text) => {
-                    self.preview_text(item);
+                    if let Err(e) = self.preview_text(item) {
+                        print_warning(e, y);
+                    }
                 }
                 Some(PreviewType::Binary) => {
                     print!("(Binary file)");
@@ -184,14 +187,35 @@ impl Layout {
         print!("{}", file_name);
     }
 
-    fn preview_text(&self, item: &ItemInfo) {
+    fn preview_text(&self, item: &ItemInfo) -> Result<(), FxError> {
         if let Some(content) = &item.content {
-            self.print_txt_in_preview_area(
-                item,
-                &format_txt(content, self.preview_space.0, false),
-                false,
-            );
+            if !self.has_bat {
+                self.print_txt_in_preview_area(
+                    item,
+                    &format_txt(content, self.preview_space.0, false),
+                );
+            } else {
+                let path = item.file_path.to_str().ok_or(FxError::InvalidPath)?;
+                let output = std::process::Command::new("bat")
+                    .args([
+                        path,
+                        "-fpP",
+                        "--wrap",
+                        "character",
+                        "--terminal-width",
+                        &format!("{}", self.preview_space.0),
+                    ])
+                    .output()?
+                    .stdout;
+                let content = String::from_utf8(output)?;
+                let content = content
+                    .split('\n')
+                    .map(|x| x.to_owned())
+                    .collect::<Vec<String>>();
+                self.print_txt_in_preview_area(item, &content);
+            }
         }
+        Ok(())
     }
 
     fn preview_directory(&self, item: &ItemInfo) {
@@ -203,17 +227,11 @@ impl Layout {
             self.print_txt_in_preview_area(
                 item,
                 &format_txt(&contents, self.preview_space.0, false),
-                false,
             );
         }
     }
 
-    fn print_txt_in_preview_area(
-        &self,
-        item: &ItemInfo,
-        content: &[String],
-        syntex_highlight: bool,
-    ) {
+    fn print_txt_in_preview_area(&self, item: &ItemInfo, content: &[String]) {
         match self.split {
             Split::Vertical => {
                 for (i, line) in content.iter().enumerate() {
@@ -223,12 +241,8 @@ impl Layout {
                     let sum = (i - item.preview_scroll) as u16;
                     let row = self.preview_start.1 + sum;
                     move_to(self.preview_start.0, row);
-                    if syntex_highlight {
-                        print!("{}", line);
-                    } else {
-                        set_color(&TermColor::ForeGround(&Colorname::LightBlack));
-                        print!("{}", line);
-                    }
+                    set_color(&TermColor::ForeGround(&Colorname::LightBlack));
+                    print!("{}", line);
                     if sum == self.preview_space.1 - 1 {
                         break;
                     }
@@ -242,12 +256,8 @@ impl Layout {
                     let sum = (i - item.preview_scroll) as u16;
                     let row = self.preview_start.1 + sum;
                     move_to(1, row);
-                    if syntex_highlight {
-                        print!("{}", line);
-                    } else {
-                        set_color(&TermColor::ForeGround(&Colorname::LightBlack));
-                        print!("{}", line);
-                    }
+                    set_color(&TermColor::ForeGround(&Colorname::LightBlack));
+                    print!("{}", line);
                     if row == self.terminal_row + self.preview_space.1 {
                         break;
                     }
@@ -258,7 +268,7 @@ impl Layout {
     }
 
     /// Print text preview on the right half of the terminal (Experimental).
-    fn preview_image(&self, item: &ItemInfo, y: u16) -> Result<(), FxError> {
+    fn preview_image(&self, item: &ItemInfo) -> Result<(), FxError> {
         let wxh = match self.split {
             Split::Vertical => {
                 format!("--size={}x{}", self.preview_space.0, self.preview_space.1)
@@ -272,14 +282,9 @@ impl Layout {
             }
         };
 
-        let file_path = item.file_path.to_str();
-        if file_path.is_none() {
-            print_warning("Cannot read the file path correctly.", y);
-            return Ok(());
-        }
-
+        let file_path = item.file_path.to_str().ok_or(FxError::InvalidPath)?;
         let output = std::process::Command::new("chafa")
-            .args(["--animate=false", &wxh, file_path.unwrap()])
+            .args(["--animate=false", &wxh, file_path])
             .output()?
             .stdout;
         let output = String::from_utf8(output)?;

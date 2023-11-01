@@ -18,6 +18,7 @@ pub enum FxError {
     TooSmallWindowSize,
     Log(String),
     Unpack(String),
+    InvalidPath,
     Panic,
     #[cfg(any(target_os = "linux", target_os = "netbsd"))]
     Nix(String),
@@ -29,7 +30,7 @@ impl std::fmt::Display for FxError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let printable = match self {
             FxError::Arg(s) => s.to_owned(),
-            FxError::TerminalSizeDetection => "Error: Cannot detect terminal size.".to_owned(),
+            FxError::TerminalSizeDetection => "Error: Cannot detect terminal size".to_owned(),
             FxError::Io(s) => s.to_owned(),
             FxError::Dirs(s) => s.to_owned(),
             FxError::GetItem => "Error: Cannot get item info".to_owned(),
@@ -46,6 +47,7 @@ impl std::fmt::Display for FxError {
             FxError::TooSmallWindowSize => "Error: Too small window size".to_owned(),
             FxError::Log(s) => s.to_owned(),
             FxError::Unpack(s) => s.to_owned(),
+            FxError::InvalidPath => "Error: Path may contain invalid unicode".to_owned(),
             FxError::Panic => "Error: felix panicked".to_owned(),
             #[cfg(any(target_os = "linux", target_os = "netbsd"))]
             FxError::Nix(s) => s.to_owned(),
