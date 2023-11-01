@@ -200,6 +200,8 @@ impl Layout {
                     .args([
                         path,
                         "-fpP",
+                        "--tabs",
+                        "4",
                         "--wrap",
                         "character",
                         "--terminal-width",
