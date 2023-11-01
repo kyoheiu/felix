@@ -255,14 +255,9 @@ impl Layout {
             }
         };
 
-        let file_path = item.file_path.to_str();
-        if file_path.is_none() {
-            print_warning("Cannot read the file path correctly.", y);
-            return Ok(());
-        }
-
+        let file_path = item.file_path.to_str().ok_or(FxError::InvalidPath)?;
         let output = std::process::Command::new("chafa")
-            .args(["--animate=false", &wxh, file_path.unwrap()])
+            .args(["--animate=false", &wxh, file_path])
             .output()?
             .stdout;
         let output = String::from_utf8(output)?;
