@@ -146,7 +146,7 @@ impl Layout {
                 }
                 Some(PreviewType::Image) => {
                     if self.has_chafa {
-                        if let Err(e) = self.preview_image(item, y) {
+                        if let Err(e) = self.preview_image(item) {
                             print_warning(e, y);
                         }
                     } else {
@@ -268,7 +268,7 @@ impl Layout {
     }
 
     /// Print text preview on the right half of the terminal (Experimental).
-    fn preview_image(&self, item: &ItemInfo, y: u16) -> Result<(), FxError> {
+    fn preview_image(&self, item: &ItemInfo) -> Result<(), FxError> {
         let wxh = match self.split {
             Split::Vertical => {
                 format!("--size={}x{}", self.preview_space.0, self.preview_space.1)
