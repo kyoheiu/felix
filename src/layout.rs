@@ -161,7 +161,9 @@ impl Layout {
                     }
                 }
                 Some(PreviewType::Text) => {
-                    self.preview_text(item);
+                    if let Err(e) = self.preview_text(item) {
+                        print_warning(e, y);
+                    }
                 }
                 Some(PreviewType::Binary) => {
                     print!("(Binary file)");
@@ -185,10 +187,35 @@ impl Layout {
         print!("{}", file_name);
     }
 
-    fn preview_text(&self, item: &ItemInfo) {
+    fn preview_text(&self, item: &ItemInfo) -> Result<(), FxError> {
         if let Some(content) = &item.content {
-            self.print_txt_in_preview_area(item, &format_txt(content, self.preview_space.0, false));
+            if !self.has_bat {
+                self.print_txt_in_preview_area(
+                    item,
+                    &format_txt(content, self.preview_space.0, false),
+                );
+            } else {
+                let path = item.file_path.to_str().ok_or(FxError::InvalidPath)?;
+                let output = std::process::Command::new("bat")
+                    .args([
+                        path,
+                        "-fpP",
+                        "--wrap",
+                        "character",
+                        "--terminal-width",
+                        &format!("{}", self.preview_space.0),
+                    ])
+                    .output()?
+                    .stdout;
+                let content = String::from_utf8(output)?;
+                let content = content
+                    .split('\n')
+                    .map(|x| x.to_owned())
+                    .collect::<Vec<String>>();
+                self.print_txt_in_preview_area(item, &content);
+            }
         }
+        Ok(())
     }
 
     fn preview_directory(&self, item: &ItemInfo) {
