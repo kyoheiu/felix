@@ -32,6 +32,7 @@ pub struct Layout {
     pub preview_start: (u16, u16),
     pub preview_space: (u16, u16),
     pub has_chafa: bool,
+    pub has_bat: bool,
     pub is_kitty: bool,
 }
 
