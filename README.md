@@ -25,6 +25,13 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 
 ## New release
 
+## v2.10.0 (2023-11-01)
+
+### Added
+- `bat` integration: If `bat` installed, felix automatically adds syntax highlighting to the text preview.
+  - Add `has_bat` field to `State`.
+  - Add `FxError::InvalidPath` to handle invalid unicode in file path.
+
 ## v2.9.0 (2023-10-22)
 
 ### Added
@@ -115,13 +122,14 @@ source <(command fx --init)
 *If this is not set, exiting to LWD will fail and show the error message.*
 
 ### Others
-In addition, you can use felix more conveniently by installing these two apps:
+In addition, you can use felix more conveniently by installing these apps:
 
 - [zoxide](https://github.com/ajeetdsouza/zoxide): A smarter `cd` command, which
   enables you to jump to a directory that matches the keyword in felix.
 - [chafa](https://hpjansson.org/chafa/): Terminal graphics for the 21st century,
   by which you can preview images in felix. _**chafa must be v1.10.0 or
   later.**_
+- [bat](https://github.com/sharkdp/bat): A *cat(1)* clone. Add syntax highlighting to the text preview with bat.
 
 These apps do not need any configuration to use with felix!
 
