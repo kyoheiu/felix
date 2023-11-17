@@ -1317,7 +1317,10 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 // express position in Vec<Char>
                                 let mut current_char_pos = 0;
                                 loop {
-                                    if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                                    if let Event::Key(KeyEvent {
+                                        code, modifiers, ..
+                                    }) = event::read()?
+                                    {
                                         match code {
                                             KeyCode::Enter => {
                                                 go_to_info_line_and_reset();
@@ -1362,7 +1365,9 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                             }
 
-                                            KeyCode::Backspace => {
+                                            KeyCode::Backspace | KeyCode::Char('h')
+                                                if modifiers == KeyModifiers::CONTROL =>
+                                            {
                                                 if current_char_pos == 0 {
                                                     continue;
                                                 };
