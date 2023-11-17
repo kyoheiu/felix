@@ -882,7 +882,9 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                             }
 
-                                            KeyCode::Backspace => {
+                                            KeyCode::Backspace | KeyCode::Char('h')
+                                                if modifiers == KeyModifiers::CONTROL =>
+                                            {
                                                 if current_char_pos == 0 {
                                                     continue;
                                                 };
