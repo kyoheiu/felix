@@ -629,7 +629,10 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                 let mut current_pos = 3;
                                 'zoxide: loop {
-                                    if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                                    if let Event::Key(KeyEvent {
+                                        code, modifiers, ..
+                                    }) = event::read()?
+                                    {
                                         match code {
                                             KeyCode::Esc => {
                                                 go_to_info_line_and_reset();
@@ -656,7 +659,9 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 move_right(1);
                                             }
 
-                                            KeyCode::Backspace => {
+                                            KeyCode::Backspace | KeyCode::Char('h')
+                                                if modifiers == KeyModifiers::CONTROL =>
+                                            {
                                                 if current_pos == INITIAL_POS_Z + 1 {
                                                     go_to_info_line_and_reset();
                                                     hide_cursor();
