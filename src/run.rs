@@ -1178,7 +1178,10 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 let (mut current_pos, _) = cursor_pos()?;
                                 let mut current_char_pos = rename.len();
                                 loop {
-                                    if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                                    if let Event::Key(KeyEvent {
+                                        code, modifiers, ..
+                                    }) = event::read()?
+                                    {
                                         match code {
                                             //rename item
                                             KeyCode::Enter => {
@@ -1243,13 +1246,18 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                             }
 
-                                            KeyCode::Char(c) => {
-                                                if let Some(to_be_added) =
-                                                    unicode_width::UnicodeWidthChar::width(c)
+                                            KeyCode::Backspace | KeyCode::Char('h')
+                                                if modifiers == KeyModifiers::CONTROL =>
+                                            {
+                                                if current_char_pos == 0 {
+                                                    continue;
+                                                };
+                                                let removed = rename.remove(current_char_pos - 1);
+                                                if let Some(to_be_removed) =
+                                                    unicode_width::UnicodeWidthChar::width(removed)
                                                 {
-                                                    rename.insert(current_char_pos, c);
-                                                    current_char_pos += 1;
-                                                    current_pos += to_be_added as u16;
+                                                    current_char_pos -= 1;
+                                                    current_pos -= to_be_removed as u16;
 
                                                     go_to_info_line_and_reset();
                                                     print!(
@@ -1260,16 +1268,13 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                             }
 
-                                            KeyCode::Backspace => {
-                                                if current_char_pos == 0 {
-                                                    continue;
-                                                };
-                                                let removed = rename.remove(current_char_pos - 1);
-                                                if let Some(to_be_removed) =
-                                                    unicode_width::UnicodeWidthChar::width(removed)
+                                            KeyCode::Char(c) => {
+                                                if let Some(to_be_added) =
+                                                    unicode_width::UnicodeWidthChar::width(c)
                                                 {
-                                                    current_char_pos -= 1;
-                                                    current_pos -= to_be_removed as u16;
+                                                    rename.insert(current_char_pos, c);
+                                                    current_char_pos += 1;
+                                                    current_pos += to_be_added as u16;
 
                                                     go_to_info_line_and_reset();
                                                     print!(
