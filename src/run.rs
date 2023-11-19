@@ -390,7 +390,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         show_cursor();
                                         screen.flush()?;
 
-                                        if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                                        if let Event::Key(KeyEvent { code, kind: KeyEventKind::Press, .. }) = event::read()? {
                                             match code {
                                                 KeyCode::Char('g') => {
                                                     hide_cursor();
@@ -414,7 +414,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     show_cursor();
                                     screen.flush()?;
 
-                                    if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                                    if let Event::Key(KeyEvent { code, kind: KeyEventKind::Press, .. }) = event::read()? {
                                         match code {
                                             KeyCode::Char('g') => {
                                                 hide_cursor();
@@ -629,7 +629,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                 let mut current_pos = 3;
                                 'zoxide: loop {
-                                    if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                                    if let Event::Key(KeyEvent { code, kind: KeyEventKind::Press, .. }) = event::read()? {
                                         match code {
                                             KeyCode::Esc => {
                                                 go_to_info_line_and_reset();
@@ -790,14 +790,15 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 let mut current_char_pos = 0;
                                 'insert: loop {
                                     if let Event::Key(KeyEvent {
-                                        code, modifiers, ..
+                                        code, modifiers,
+                                        kind: KeyEventKind::Press, ..
                                     }) = event::read()?
                                     {
                                         // <C-r> to put the item name(s) from register
                                         if modifiers == KeyModifiers::CONTROL
                                             && code == KeyCode::Char('r')
                                         {
-                                            if let Event::Key(KeyEvent { code, .. }) =
+                                            if let Event::Key(KeyEvent { code, kind:KeyEventKind::Press, .. }) =
                                                 event::read()?
                                             {
                                                 if let Some(reg) = state.registers.check_reg(&code)
@@ -1066,7 +1067,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         show_cursor();
                                         screen.flush()?;
 
-                                        if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                                        if let Event::Key(KeyEvent { code, kind: KeyEventKind::Press, .. }) = event::read()? {
                                             match code {
                                                 KeyCode::Char('d') => {
                                                     if let Err(e) =
@@ -1171,7 +1172,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 let (mut current_pos, _) = cursor_pos()?;
                                 let mut current_char_pos = rename.len();
                                 loop {
-                                    if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                                    if let Event::Key(KeyEvent { code, kind: KeyEventKind::Press, .. }) = event::read()? {
                                         match code {
                                             //rename item
                                             KeyCode::Enter => {
@@ -1305,7 +1306,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 // express position in Vec<Char>
                                 let mut current_char_pos = 0;
                                 loop {
-                                    if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                                    if let Event::Key(KeyEvent { code,kind: KeyEventKind::Press, .. }) = event::read()? {
                                         match code {
                                             KeyCode::Enter => {
                                                 go_to_info_line_and_reset();
@@ -1509,7 +1510,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                 let mut current_pos = INITIAL_POS_COMMAND_LINE;
                                 'reg: loop {
-                                    if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                                    if let Event::Key(KeyEvent { code, kind: KeyEventKind::Press, .. }) = event::read()? {
                                         match code {
                                             KeyCode::Esc => {
                                                 go_to_info_line_and_reset();
@@ -1887,14 +1888,14 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 let mut current_char_pos = 0;
                                 'command: loop {
                                     if let Event::Key(KeyEvent {
-                                        code, modifiers, ..
+                                        code, modifiers, kind: KeyEventKind::Press, ..
                                     }) = event::read()?
                                     {
                                         // <C-r> to put the item name(s) in register
                                         if modifiers == KeyModifiers::CONTROL
                                             && code == KeyCode::Char('r')
                                         {
-                                            if let Event::Key(KeyEvent { code, .. }) =
+                                            if let Event::Key(KeyEvent { code, kind: KeyEventKind::Press, .. }) =
                                                 event::read()?
                                             {
                                                 if let Some(reg) = state.registers.check_reg(&code)
@@ -2230,7 +2231,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 show_cursor();
                                 screen.flush()?;
 
-                                if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                                if let Event::Key(KeyEvent { code, kind: KeyEventKind::Press, .. }) = event::read()? {
                                     match code {
                                         KeyCode::Char('Q') => {
                                             if state.match_vim_exit_behavior
