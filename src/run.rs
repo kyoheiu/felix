@@ -2231,7 +2231,13 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 show_cursor();
                                 screen.flush()?;
 
-                                if let Event::Key(KeyEvent { code, kind: KeyEventKind::Press, .. }) = event::read()? {
+                                let mut next_key:Event = event::read()?;
+                                // ignore exactly one keypress Release after a Z is entered
+                                if let Event::Key(KeyEvent { kind: KeyEventKind::Release, .. }) = next_key {
+                                    next_key = event::read()?;
+                                }
+
+                                if let Event::Key(KeyEvent { code, kind: KeyEventKind::Press, .. }) = next_key {
                                     match code {
                                         KeyCode::Char('Q') => {
                                             if state.match_vim_exit_behavior
