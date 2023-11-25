@@ -4,6 +4,11 @@
 
 ## Unreleased
 
+## v2.10.2 (2023-11-26)
+
+### Fixed
+- Added a filter to every user input to reject `Keyup` events. This is required on the windows platform.
+
 ## v2.10.1 (2023-11-02)
 
 ### Fixed

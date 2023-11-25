@@ -330,7 +330,7 @@ checksum = "5443807d6dff69373d433ab9ef5378ad8df50ca6298caf15de6e52e24aaf54d5"
 
 [[package]]
 name = "felix"
-version = "2.10.1"
+version = "2.10.2"
 dependencies = [
  "bwrap",
  "chrono",

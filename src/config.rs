@@ -117,11 +117,7 @@ impl Default for Config {
 
 fn read_config(p: &Path) -> Result<Config, FxError> {
     let s = read_to_string(p)?;
-    read_config_from_str(&s)
-}
-
-fn read_config_from_str(s: &str) -> Result<Config, FxError> {
-    let deserialized: Config = serde_yaml::from_str(s)?;
+    let deserialized: Config = serde_yaml::from_str(&s)?;
     Ok(deserialized)
 }
 
