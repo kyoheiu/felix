@@ -797,53 +797,54 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         code, modifiers, ..
                                     }) = event::read()?
                                     {
-                                        // <C-r> to put the item name(s) from register
-                                        if modifiers == KeyModifiers::CONTROL
-                                            && code == KeyCode::Char('r')
-                                        {
-                                            if let Event::Key(KeyEvent { code, .. }) =
-                                                event::read()?
-                                            {
-                                                if let Some(reg) = state.registers.check_reg(&code)
+                                        match (code, modifiers) {
+                                            // <C-r> to put the item name(s) from register
+                                            (KeyCode::Char('r'), KeyModifiers::CONTROL) => {
+                                                if let Event::Key(KeyEvent { code, .. }) =
+                                                    event::read()?
                                                 {
-                                                    if !reg.is_empty() {
-                                                        let to_be_inserted = reg
-                                                            .iter()
-                                                            .map(|x| x.file_name.clone())
-                                                            .collect::<Vec<String>>()
-                                                            .join(" ");
-                                                        for c in to_be_inserted.chars() {
-                                                            if let Some(to_be_added) =
-                                                        unicode_width::UnicodeWidthChar::width(c)
+                                                    if let Some(reg) =
+                                                        state.registers.check_reg(&code)
                                                     {
-                                                        if current_pos + to_be_added as u16
-                                                            > state.layout.terminal_column
-                                                        {
+                                                        if !reg.is_empty() {
+                                                            let to_be_inserted = reg
+                                                                .iter()
+                                                                .map(|x| x.file_name.clone())
+                                                                .collect::<Vec<String>>()
+                                                                .join(" ");
+                                                            for c in to_be_inserted.chars() {
+                                                                if let Some(to_be_added) =
+                                                                    unicode_width::UnicodeWidthChar::width(c)
+                                                                {
+                                                                    if current_pos + to_be_added as u16
+                                                                        > state.layout.terminal_column
+                                                                    {
+                                                                        continue;
+                                                                    }
+                                                                    new_name.insert(current_char_pos, c);
+                                                                    current_char_pos += 1;
+                                                                    current_pos += to_be_added as u16;
+                                                                }
+                                                            }
+                                                            go_to_info_line_and_reset();
+                                                            print!(
+                                                                " {}",
+                                                                &new_name
+                                                                    .iter()
+                                                                    .collect::<String>(),
+                                                            );
+                                                            move_to(current_pos, 2);
+                                                            screen.flush()?;
+                                                            continue;
+                                                        } else {
                                                             continue;
                                                         }
-                                                        new_name.insert(current_char_pos, c);
-                                                        current_char_pos += 1;
-                                                        current_pos += to_be_added as u16;
-                                                    }
-                                                        }
-                                                        go_to_info_line_and_reset();
-                                                        print!(
-                                                            " {}",
-                                                            &new_name.iter().collect::<String>(),
-                                                        );
-                                                        move_to(current_pos, 2);
-                                                        screen.flush()?;
-                                                        continue;
                                                     } else {
                                                         continue;
                                                     }
-                                                } else {
-                                                    continue;
                                                 }
                                             }
-                                        }
 
-                                        match (code, modifiers) {
                                             (KeyCode::Esc, KeyModifiers::NONE) => {
                                                 go_to_info_line_and_reset();
                                                 hide_cursor();
