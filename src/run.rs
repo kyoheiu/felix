@@ -633,15 +633,15 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         code, modifiers, ..
                                     }) = event::read()?
                                     {
-                                        match code {
-                                            KeyCode::Esc => {
+                                        match (code, modifiers) {
+                                            (KeyCode::Esc, KeyModifiers::NONE) => {
                                                 go_to_info_line_and_reset();
                                                 hide_cursor();
                                                 state.move_cursor(state.layout.y);
                                                 break 'zoxide;
                                             }
 
-                                            KeyCode::Left => {
+                                            (KeyCode::Left, KeyModifiers::NONE) => {
                                                 if current_pos == INITIAL_POS_Z {
                                                     continue;
                                                 };
@@ -649,7 +649,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 move_left(1);
                                             }
 
-                                            KeyCode::Right => {
+                                            (KeyCode::Right, KeyModifiers::NONE) => {
                                                 if current_pos as usize
                                                     == command.len() + INITIAL_POS_Z as usize
                                                 {
@@ -659,9 +659,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 move_right(1);
                                             }
 
-                                            KeyCode::Backspace | KeyCode::Char('h')
-                                                if modifiers == KeyModifiers::CONTROL =>
-                                            {
+                                            (KeyCode::Backspace, KeyModifiers::NONE)
+                                            | (KeyCode::Char('h'), KeyModifiers::CONTROL) => {
                                                 if current_pos == INITIAL_POS_Z + 1 {
                                                     go_to_info_line_and_reset();
                                                     hide_cursor();
@@ -679,7 +678,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 move_to(current_pos, 2);
                                             }
 
-                                            KeyCode::Enter => {
+                                            (KeyCode::Enter, KeyModifiers::NONE) => {
                                                 hide_cursor();
                                                 let command = command.iter().collect::<String>();
                                                 let commands = command
@@ -754,7 +753,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                             }
 
-                                            KeyCode::Char(c) => {
+                                            (KeyCode::Char(c), KeyModifiers::NONE) => {
                                                 command.insert(
                                                     (current_pos - INITIAL_POS_Z).into(),
                                                     c,
