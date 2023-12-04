@@ -1319,21 +1319,21 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         code, modifiers, ..
                                     }) = event::read()?
                                     {
-                                        match code {
-                                            KeyCode::Enter => {
+                                        match (code, modifiers) {
+                                            (KeyCode::Enter, KeyModifiers::NONE) => {
                                                 go_to_info_line_and_reset();
                                                 state.keyword = Some(keyword.iter().collect());
                                                 state.move_cursor(state.layout.y);
                                                 break;
                                             }
 
-                                            KeyCode::Esc => {
+                                            (KeyCode::Esc, KeyModifiers::NONE) => {
                                                 hide_cursor();
                                                 state.redraw(state.layout.y);
                                                 break;
                                             }
 
-                                            KeyCode::Left => {
+                                            (KeyCode::Left, KeyModifiers::NONE) => {
                                                 if current_char_pos == 0 {
                                                     continue;
                                                 };
@@ -1348,7 +1348,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                             }
 
-                                            KeyCode::Right => {
+                                            (KeyCode::Right, KeyModifiers::NONE) => {
                                                 if current_char_pos == keyword.len() {
                                                     continue;
                                                 };
@@ -1363,9 +1363,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                             }
 
-                                            KeyCode::Backspace | KeyCode::Char('h')
-                                                if modifiers == KeyModifiers::CONTROL =>
-                                            {
+                                            (KeyCode::Backspace, KeyModifiers::NONE)
+                                            | (KeyCode::Char('h'), KeyModifiers::CONTROL) => {
                                                 if current_char_pos == 0 {
                                                     continue;
                                                 };
@@ -1403,7 +1402,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                             }
 
-                                            KeyCode::Char(c) => {
+                                            (KeyCode::Char(c), KeyModifiers::NONE) => {
                                                 if let Some(to_be_added) =
                                                     unicode_width::UnicodeWidthChar::width(c)
                                                 {
