@@ -843,15 +843,15 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
                                         }
 
-                                        match code {
-                                            KeyCode::Esc => {
+                                        match (code, modifiers) {
+                                            (KeyCode::Esc, KeyModifiers::NONE) => {
                                                 go_to_info_line_and_reset();
                                                 hide_cursor();
                                                 state.move_cursor(state.layout.y);
                                                 break 'insert;
                                             }
 
-                                            KeyCode::Left => {
+                                            (KeyCode::Left, KeyModifiers::NONE) => {
                                                 if current_char_pos == 0 {
                                                     continue;
                                                 };
@@ -866,7 +866,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                             }
 
-                                            KeyCode::Right => {
+                                            (KeyCode::Right, KeyModifiers::NONE) => {
                                                 if current_char_pos == new_name.len() {
                                                     continue;
                                                 };
@@ -881,9 +881,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                             }
 
-                                            KeyCode::Backspace | KeyCode::Char('h')
-                                                if modifiers == KeyModifiers::CONTROL =>
-                                            {
+                                            (KeyCode::Backspace, KeyModifiers::NONE)
+                                            | (KeyCode::Char('h'), KeyModifiers::CONTROL) => {
                                                 if current_char_pos == 0 {
                                                     continue;
                                                 };
@@ -903,7 +902,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                             }
 
-                                            KeyCode::Char(c) => {
+                                            (KeyCode::Char(c), KeyModifiers::NONE) => {
                                                 if let Some(to_be_added) =
                                                     unicode_width::UnicodeWidthChar::width(c)
                                                 {
@@ -925,7 +924,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                             }
 
-                                            KeyCode::Enter => {
+                                            (KeyCode::Enter, KeyModifiers::NONE) => {
                                                 hide_cursor();
                                                 //Set the command and argument(s).
                                                 let new_name: String = new_name.iter().collect();
