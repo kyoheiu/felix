@@ -1399,7 +1399,12 @@ impl State {
 
         let mut skip = 0;
         loop {
-            if let Event::Key(KeyEvent { code, kind: KeyEventKind::Press, .. }) = crossterm::event::read()? {
+            if let Event::Key(KeyEvent {
+                code,
+                kind: KeyEventKind::Press,
+                ..
+            }) = crossterm::event::read()?
+            {
                 match code {
                     KeyCode::Char('j') | KeyCode::Down => {
                         clear_all();
@@ -1433,7 +1438,12 @@ impl State {
         print_warning(EMPTY_WARNING, self.layout.y);
         screen.flush()?;
 
-        if let Event::Key(KeyEvent { code, kind: KeyEventKind::Press,.. }) = crossterm::event::read()? {
+        if let Event::Key(KeyEvent {
+            code,
+            kind: KeyEventKind::Press,
+            ..
+        }) = crossterm::event::read()?
+        {
             match code {
                 KeyCode::Char('y') | KeyCode::Char('Y') => {
                     print_info("EMPTY: Processing...", self.layout.y);

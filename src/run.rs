@@ -390,7 +390,12 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         show_cursor();
                                         screen.flush()?;
 
-                                        if let Event::Key(KeyEvent { code, kind: KeyEventKind::Press, .. }) = event::read()? {
+                                        if let Event::Key(KeyEvent {
+                                            code,
+                                            kind: KeyEventKind::Press,
+                                            ..
+                                        }) = event::read()?
+                                        {
                                             match code {
                                                 KeyCode::Char('g') => {
                                                     hide_cursor();
@@ -414,7 +419,12 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     show_cursor();
                                     screen.flush()?;
 
-                                    if let Event::Key(KeyEvent { code, kind: KeyEventKind::Press, .. }) = event::read()? {
+                                    if let Event::Key(KeyEvent {
+                                        code,
+                                        kind: KeyEventKind::Press,
+                                        ..
+                                    }) = event::read()?
+                                    {
                                         match code {
                                             KeyCode::Char('g') => {
                                                 hide_cursor();
@@ -629,16 +639,22 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                 let mut current_pos = 3;
                                 'zoxide: loop {
-                                    if let Event::Key(KeyEvent { code, kind: KeyEventKind::Press, .. }) = event::read()? {
-                                        match code {
-                                            KeyCode::Esc => {
+                                    if let Event::Key(KeyEvent {
+                                        code,
+                                        modifiers,
+                                        kind: KeyEventKind::Press,
+                                        ..
+                                    }) = event::read()?
+                                    {
+                                        match (code, modifiers) {
+                                            (KeyCode::Esc, KeyModifiers::NONE) => {
                                                 go_to_info_line_and_reset();
                                                 hide_cursor();
                                                 state.move_cursor(state.layout.y);
                                                 break 'zoxide;
                                             }
 
-                                            KeyCode::Left => {
+                                            (KeyCode::Left, KeyModifiers::NONE) => {
                                                 if current_pos == INITIAL_POS_Z {
                                                     continue;
                                                 };
@@ -646,7 +662,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 move_left(1);
                                             }
 
-                                            KeyCode::Right => {
+                                            (KeyCode::Right, KeyModifiers::NONE) => {
                                                 if current_pos as usize
                                                     == command.len() + INITIAL_POS_Z as usize
                                                 {
@@ -656,7 +672,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 move_right(1);
                                             }
 
-                                            KeyCode::Backspace => {
+                                            (KeyCode::Backspace, KeyModifiers::NONE)
+                                            | (KeyCode::Char('h'), KeyModifiers::CONTROL) => {
                                                 if current_pos == INITIAL_POS_Z + 1 {
                                                     go_to_info_line_and_reset();
                                                     hide_cursor();
@@ -674,7 +691,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 move_to(current_pos, 2);
                                             }
 
-                                            KeyCode::Enter => {
+                                            (KeyCode::Enter, KeyModifiers::NONE) => {
                                                 hide_cursor();
                                                 let command = command.iter().collect::<String>();
                                                 let commands = command
@@ -749,7 +766,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                             }
 
-                                            KeyCode::Char(c) => {
+                                            (KeyCode::Char(c), KeyModifiers::NONE) => {
                                                 command.insert(
                                                     (current_pos - INITIAL_POS_Z).into(),
                                                     c,
@@ -790,65 +807,71 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 let mut current_char_pos = 0;
                                 'insert: loop {
                                     if let Event::Key(KeyEvent {
-                                        code, modifiers,
-                                        kind: KeyEventKind::Press, ..
+                                        code,
+                                        modifiers,
+                                        kind: KeyEventKind::Press,
+                                        ..
                                     }) = event::read()?
                                     {
-                                        // <C-r> to put the item name(s) from register
-                                        if modifiers == KeyModifiers::CONTROL
-                                            && code == KeyCode::Char('r')
-                                        {
-                                            if let Event::Key(KeyEvent { code, kind:KeyEventKind::Press, .. }) =
-                                                event::read()?
-                                            {
-                                                if let Some(reg) = state.registers.check_reg(&code)
+                                        match (code, modifiers) {
+                                            // <C-r> to put the item name(s) from register
+                                            (KeyCode::Char('r'), KeyModifiers::CONTROL) => {
+                                                if let Event::Key(KeyEvent {
+                                                    code,
+                                                    kind: KeyEventKind::Press,
+                                                    ..
+                                                }) = event::read()?
                                                 {
-                                                    if !reg.is_empty() {
-                                                        let to_be_inserted = reg
-                                                            .iter()
-                                                            .map(|x| x.file_name.clone())
-                                                            .collect::<Vec<String>>()
-                                                            .join(" ");
-                                                        for c in to_be_inserted.chars() {
-                                                            if let Some(to_be_added) =
-                                                        unicode_width::UnicodeWidthChar::width(c)
+                                                    if let Some(reg) =
+                                                        state.registers.check_reg(&code)
                                                     {
-                                                        if current_pos + to_be_added as u16
-                                                            > state.layout.terminal_column
-                                                        {
+                                                        if !reg.is_empty() {
+                                                            let to_be_inserted = reg
+                                                                .iter()
+                                                                .map(|x| x.file_name.clone())
+                                                                .collect::<Vec<String>>()
+                                                                .join(" ");
+                                                            for c in to_be_inserted.chars() {
+                                                                if let Some(to_be_added) =
+                                                                    unicode_width::UnicodeWidthChar::width(c)
+                                                                {
+                                                                    if current_pos + to_be_added as u16
+                                                                        > state.layout.terminal_column
+                                                                    {
+                                                                        continue;
+                                                                    }
+                                                                    new_name.insert(current_char_pos, c);
+                                                                    current_char_pos += 1;
+                                                                    current_pos += to_be_added as u16;
+                                                                }
+                                                            }
+                                                            go_to_info_line_and_reset();
+                                                            print!(
+                                                                " {}",
+                                                                &new_name
+                                                                    .iter()
+                                                                    .collect::<String>(),
+                                                            );
+                                                            move_to(current_pos, 2);
+                                                            screen.flush()?;
+                                                            continue;
+                                                        } else {
                                                             continue;
                                                         }
-                                                        new_name.insert(current_char_pos, c);
-                                                        current_char_pos += 1;
-                                                        current_pos += to_be_added as u16;
-                                                    }
-                                                        }
-                                                        go_to_info_line_and_reset();
-                                                        print!(
-                                                            " {}",
-                                                            &new_name.iter().collect::<String>(),
-                                                        );
-                                                        move_to(current_pos, 2);
-                                                        screen.flush()?;
-                                                        continue;
                                                     } else {
                                                         continue;
                                                     }
-                                                } else {
-                                                    continue;
                                                 }
                                             }
-                                        }
 
-                                        match code {
-                                            KeyCode::Esc => {
+                                            (KeyCode::Esc, KeyModifiers::NONE) => {
                                                 go_to_info_line_and_reset();
                                                 hide_cursor();
                                                 state.move_cursor(state.layout.y);
                                                 break 'insert;
                                             }
 
-                                            KeyCode::Left => {
+                                            (KeyCode::Left, KeyModifiers::NONE) => {
                                                 if current_char_pos == 0 {
                                                     continue;
                                                 };
@@ -863,7 +886,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                             }
 
-                                            KeyCode::Right => {
+                                            (KeyCode::Right, KeyModifiers::NONE) => {
                                                 if current_char_pos == new_name.len() {
                                                     continue;
                                                 };
@@ -878,7 +901,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                             }
 
-                                            KeyCode::Backspace => {
+                                            (KeyCode::Backspace, KeyModifiers::NONE)
+                                            | (KeyCode::Char('h'), KeyModifiers::CONTROL) => {
                                                 if current_char_pos == 0 {
                                                     continue;
                                                 };
@@ -898,7 +922,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                             }
 
-                                            KeyCode::Char(c) => {
+                                            (KeyCode::Char(c), KeyModifiers::NONE) => {
                                                 if let Some(to_be_added) =
                                                     unicode_width::UnicodeWidthChar::width(c)
                                                 {
@@ -920,7 +944,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                             }
 
-                                            KeyCode::Enter => {
+                                            (KeyCode::Enter, KeyModifiers::NONE) => {
                                                 hide_cursor();
                                                 //Set the command and argument(s).
                                                 let new_name: String = new_name.iter().collect();
@@ -1067,7 +1091,12 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         show_cursor();
                                         screen.flush()?;
 
-                                        if let Event::Key(KeyEvent { code, kind: KeyEventKind::Press, .. }) = event::read()? {
+                                        if let Event::Key(KeyEvent {
+                                            code,
+                                            kind: KeyEventKind::Press,
+                                            ..
+                                        }) = event::read()?
+                                        {
                                             match code {
                                                 KeyCode::Char('d') => {
                                                     if let Err(e) =
@@ -1172,10 +1201,16 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 let (mut current_pos, _) = cursor_pos()?;
                                 let mut current_char_pos = rename.len();
                                 loop {
-                                    if let Event::Key(KeyEvent { code, kind: KeyEventKind::Press, .. }) = event::read()? {
-                                        match code {
+                                    if let Event::Key(KeyEvent {
+                                        code,
+                                        modifiers,
+                                        kind: KeyEventKind::Press,
+                                        ..
+                                    }) = event::read()?
+                                    {
+                                        match (code, modifiers) {
                                             //rename item
-                                            KeyCode::Enter => {
+                                            (KeyCode::Enter, KeyModifiers::NONE) => {
                                                 let rename = rename.iter().collect::<String>();
                                                 let mut to = state.current_dir.clone();
                                                 to.push(rename);
@@ -1200,14 +1235,14 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 break;
                                             }
 
-                                            KeyCode::Esc => {
+                                            (KeyCode::Esc, KeyModifiers::NONE) => {
                                                 go_to_info_line_and_reset();
                                                 hide_cursor();
                                                 state.move_cursor(state.layout.y);
                                                 break;
                                             }
 
-                                            KeyCode::Left => {
+                                            (KeyCode::Left, KeyModifiers::NONE) => {
                                                 if current_char_pos == 0 {
                                                     continue;
                                                 };
@@ -1222,7 +1257,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                             }
 
-                                            KeyCode::Right => {
+                                            (KeyCode::Right, KeyModifiers::NONE) => {
                                                 if current_char_pos == rename.len() {
                                                     continue;
                                                 };
@@ -1237,13 +1272,17 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                             }
 
-                                            KeyCode::Char(c) => {
-                                                if let Some(to_be_added) =
-                                                    unicode_width::UnicodeWidthChar::width(c)
+                                            (KeyCode::Backspace, KeyModifiers::NONE)
+                                            | (KeyCode::Char('h'), KeyModifiers::CONTROL) => {
+                                                if current_char_pos == 0 {
+                                                    continue;
+                                                };
+                                                let removed = rename.remove(current_char_pos - 1);
+                                                if let Some(to_be_removed) =
+                                                    unicode_width::UnicodeWidthChar::width(removed)
                                                 {
-                                                    rename.insert(current_char_pos, c);
-                                                    current_char_pos += 1;
-                                                    current_pos += to_be_added as u16;
+                                                    current_char_pos -= 1;
+                                                    current_pos -= to_be_removed as u16;
 
                                                     go_to_info_line_and_reset();
                                                     print!(
@@ -1254,16 +1293,13 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                             }
 
-                                            KeyCode::Backspace => {
-                                                if current_char_pos == 0 {
-                                                    continue;
-                                                };
-                                                let removed = rename.remove(current_char_pos - 1);
-                                                if let Some(to_be_removed) =
-                                                    unicode_width::UnicodeWidthChar::width(removed)
+                                            (KeyCode::Char(c), KeyModifiers::NONE) => {
+                                                if let Some(to_be_added) =
+                                                    unicode_width::UnicodeWidthChar::width(c)
                                                 {
-                                                    current_char_pos -= 1;
-                                                    current_pos -= to_be_removed as u16;
+                                                    rename.insert(current_char_pos, c);
+                                                    current_char_pos += 1;
+                                                    current_pos += to_be_added as u16;
 
                                                     go_to_info_line_and_reset();
                                                     print!(
@@ -1306,22 +1342,28 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 // express position in Vec<Char>
                                 let mut current_char_pos = 0;
                                 loop {
-                                    if let Event::Key(KeyEvent { code,kind: KeyEventKind::Press, .. }) = event::read()? {
-                                        match code {
-                                            KeyCode::Enter => {
+                                    if let Event::Key(KeyEvent {
+                                        code,
+                                        modifiers,
+                                        kind: KeyEventKind::Press,
+                                        ..
+                                    }) = event::read()?
+                                    {
+                                        match (code, modifiers) {
+                                            (KeyCode::Enter, KeyModifiers::NONE) => {
                                                 go_to_info_line_and_reset();
                                                 state.keyword = Some(keyword.iter().collect());
                                                 state.move_cursor(state.layout.y);
                                                 break;
                                             }
 
-                                            KeyCode::Esc => {
+                                            (KeyCode::Esc, KeyModifiers::NONE) => {
                                                 hide_cursor();
                                                 state.redraw(state.layout.y);
                                                 break;
                                             }
 
-                                            KeyCode::Left => {
+                                            (KeyCode::Left, KeyModifiers::NONE) => {
                                                 if current_char_pos == 0 {
                                                     continue;
                                                 };
@@ -1336,7 +1378,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                             }
 
-                                            KeyCode::Right => {
+                                            (KeyCode::Right, KeyModifiers::NONE) => {
                                                 if current_char_pos == keyword.len() {
                                                     continue;
                                                 };
@@ -1351,7 +1393,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                             }
 
-                                            KeyCode::Backspace => {
+                                            (KeyCode::Backspace, KeyModifiers::NONE)
+                                            | (KeyCode::Char('h'), KeyModifiers::CONTROL) => {
                                                 if current_char_pos == 0 {
                                                     continue;
                                                 };
@@ -1389,7 +1432,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                             }
 
-                                            KeyCode::Char(c) => {
+                                            (KeyCode::Char(c), KeyModifiers::NONE) => {
                                                 if let Some(to_be_added) =
                                                     unicode_width::UnicodeWidthChar::width(c)
                                                 {
@@ -1510,7 +1553,12 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                 let mut current_pos = INITIAL_POS_COMMAND_LINE;
                                 'reg: loop {
-                                    if let Event::Key(KeyEvent { code, kind: KeyEventKind::Press, .. }) = event::read()? {
+                                    if let Event::Key(KeyEvent {
+                                        code,
+                                        kind: KeyEventKind::Press,
+                                        ..
+                                    }) = event::read()?
+                                    {
                                         match code {
                                             KeyCode::Esc => {
                                                 go_to_info_line_and_reset();
@@ -1888,15 +1936,21 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 let mut current_char_pos = 0;
                                 'command: loop {
                                     if let Event::Key(KeyEvent {
-                                        code, modifiers, kind: KeyEventKind::Press, ..
+                                        code,
+                                        modifiers,
+                                        kind: KeyEventKind::Press,
+                                        ..
                                     }) = event::read()?
                                     {
                                         // <C-r> to put the item name(s) in register
                                         if modifiers == KeyModifiers::CONTROL
                                             && code == KeyCode::Char('r')
                                         {
-                                            if let Event::Key(KeyEvent { code, kind: KeyEventKind::Press, .. }) =
-                                                event::read()?
+                                            if let Event::Key(KeyEvent {
+                                                code,
+                                                kind: KeyEventKind::Press,
+                                                ..
+                                            }) = event::read()?
                                             {
                                                 if let Some(reg) = state.registers.check_reg(&code)
                                                 {
@@ -2231,13 +2285,22 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 show_cursor();
                                 screen.flush()?;
 
-                                let mut next_key:Event = event::read()?;
+                                let mut next_key: Event = event::read()?;
                                 // ignore exactly one keypress Release after a Z is entered
-                                if let Event::Key(KeyEvent { kind: KeyEventKind::Release, .. }) = next_key {
+                                if let Event::Key(KeyEvent {
+                                    kind: KeyEventKind::Release,
+                                    ..
+                                }) = next_key
+                                {
                                     next_key = event::read()?;
                                 }
 
-                                if let Event::Key(KeyEvent { code, kind: KeyEventKind::Press, .. }) = next_key {
+                                if let Event::Key(KeyEvent {
+                                    code,
+                                    kind: KeyEventKind::Press,
+                                    ..
+                                }) = next_key
+                                {
                                     match code {
                                         KeyCode::Char('Q') => {
                                             if state.match_vim_exit_behavior
