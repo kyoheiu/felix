@@ -74,6 +74,7 @@ N                  :Go backward to the item that matches the keyword.
 :q<CR>             :Exit.
 :{command}         :Execute a command e.g. :zip test *.md
 <Esc>              :Return to the normal mode.
+<C-h>              :Works as Backspace after `i`, `I`, `c`, `/`, `:` and `z`.
 ZZ                 :Exit without cd to last working directory
                     (if `match_vim_exit_behavior` is `false`).
 ZQ                 :cd into the last working directory and exit
