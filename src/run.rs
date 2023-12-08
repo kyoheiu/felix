@@ -1942,26 +1942,25 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         ..
                                     }) = event::read()?
                                     {
-                                        // <C-r> to put the item name(s) in register
-                                        if modifiers == KeyModifiers::CONTROL
-                                            && code == KeyCode::Char('r')
-                                        {
-                                            if let Event::Key(KeyEvent {
-                                                code,
-                                                kind: KeyEventKind::Press,
-                                                ..
-                                            }) = event::read()?
-                                            {
-                                                if let Some(reg) = state.registers.check_reg(&code)
+                                        match (code, modifiers) {
+                                            (KeyCode::Char('r'), KeyModifiers::CONTROL) => {
+                                                if let Event::Key(KeyEvent {
+                                                    code,
+                                                    kind: KeyEventKind::Press,
+                                                    ..
+                                                }) = event::read()?
                                                 {
-                                                    if !reg.is_empty() {
-                                                        let to_be_inserted = reg
-                                                            .iter()
-                                                            .map(|x| x.file_name.clone())
-                                                            .collect::<Vec<String>>()
-                                                            .join(" ");
-                                                        for c in to_be_inserted.chars() {
-                                                            if let Some(to_be_added) =
+                                                    if let Some(reg) =
+                                                        state.registers.check_reg(&code)
+                                                    {
+                                                        if !reg.is_empty() {
+                                                            let to_be_inserted = reg
+                                                                .iter()
+                                                                .map(|x| x.file_name.clone())
+                                                                .collect::<Vec<String>>()
+                                                                .join(" ");
+                                                            for c in to_be_inserted.chars() {
+                                                                if let Some(to_be_added) =
                                                         unicode_width::UnicodeWidthChar::width(c)
                                                     {
                                                         if current_pos + to_be_added as u16
@@ -1973,33 +1972,32 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                         current_char_pos += 1;
                                                         current_pos += to_be_added as u16;
                                                     }
+                                                            }
+                                                            go_to_info_line_and_reset();
+                                                            print!(
+                                                                ":{}",
+                                                                &command.iter().collect::<String>(),
+                                                            );
+                                                            move_to(current_pos, 2);
+                                                            screen.flush()?;
+                                                            continue;
+                                                        } else {
+                                                            continue;
                                                         }
-                                                        go_to_info_line_and_reset();
-                                                        print!(
-                                                            ":{}",
-                                                            &command.iter().collect::<String>(),
-                                                        );
-                                                        move_to(current_pos, 2);
-                                                        screen.flush()?;
-                                                        continue;
                                                     } else {
                                                         continue;
                                                     }
-                                                } else {
-                                                    continue;
                                                 }
                                             }
-                                        }
 
-                                        match code {
-                                            KeyCode::Esc => {
+                                            (KeyCode::Esc, KeyModifiers::NONE) => {
                                                 go_to_info_line_and_reset();
                                                 hide_cursor();
                                                 state.move_cursor(state.layout.y);
                                                 break 'command;
                                             }
 
-                                            KeyCode::Left => {
+                                            (KeyCode::Left, KeyModifiers::NONE) => {
                                                 if current_char_pos == 0 {
                                                     continue;
                                                 };
@@ -2014,7 +2012,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                             }
 
-                                            KeyCode::Right => {
+                                            (KeyCode::Right, KeyModifiers::NONE) => {
                                                 if current_char_pos == command.len() {
                                                     continue;
                                                 };
@@ -2029,7 +2027,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                             }
 
-                                            KeyCode::Backspace => {
+                                            (KeyCode::Backspace, KeyModifiers::NONE)
+                                            | (KeyCode::Char('h'), KeyModifiers::CONTROL) => {
                                                 if current_char_pos == 0 {
                                                     continue;
                                                 };
@@ -2049,7 +2048,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                             }
 
-                                            KeyCode::Char(c) => {
+                                            (KeyCode::Char(c), KeyModifiers::NONE) => {
                                                 if let Some(to_be_added) =
                                                     unicode_width::UnicodeWidthChar::width(c)
                                                 {
@@ -2071,7 +2070,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                             }
 
-                                            KeyCode::Enter => {
+                                            (KeyCode::Enter, KeyModifiers::NONE) => {
                                                 hide_cursor();
                                                 //Set the command and argument(s).
                                                 let commands: String = command.iter().collect();
