@@ -12,6 +12,7 @@ use super::session::*;
 use super::term::*;
 
 use chrono::prelude::*;
+use crossterm::event::KeyEventKind;
 use crossterm::event::{Event, KeyCode, KeyEvent};
 use crossterm::style::Stylize;
 use log::{error, info};
@@ -1398,7 +1399,12 @@ impl State {
 
         let mut skip = 0;
         loop {
-            if let Event::Key(KeyEvent { code, .. }) = crossterm::event::read()? {
+            if let Event::Key(KeyEvent {
+                code,
+                kind: KeyEventKind::Press,
+                ..
+            }) = crossterm::event::read()?
+            {
                 match code {
                     KeyCode::Char('j') | KeyCode::Down => {
                         clear_all();
@@ -1432,7 +1438,12 @@ impl State {
         print_warning(EMPTY_WARNING, self.layout.y);
         screen.flush()?;
 
-        if let Event::Key(KeyEvent { code, .. }) = crossterm::event::read()? {
+        if let Event::Key(KeyEvent {
+            code,
+            kind: KeyEventKind::Press,
+            ..
+        }) = crossterm::event::read()?
+        {
             match code {
                 KeyCode::Char('y') | KeyCode::Char('Y') => {
                     print_info("EMPTY: Processing...", self.layout.y);

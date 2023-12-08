@@ -25,6 +25,12 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 
 ## New release
 
+## v2.10.2 (2023-11-26)
+
+### Fixed
+- Added a filter to every user input to reject `Keyup` events. This is required on the windows platform.
+
+
 ## v2.10.1 (2023-11-02)
 
 ### Fixed
@@ -36,35 +42,6 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 - `bat` integration: If `bat` installed, felix automatically adds syntax highlighting to the text preview.
   - Add `has_bat` field to `State`.
   - Add `FxError::InvalidPath` to handle invalid unicode in file path.
-
-## v2.9.0 (2023-10-22)
-
-### Added
-- Change color of untracked/changed files or directories containing such files. Default color is Red(1). You can change it in the config file.
-  - Add `git2`.
-  
-### Fixed
-- Explicitly ignore the key release events for Windows.
-
-## v2.8.1 (2023-08-25)
-
-### Fixed
-- Fix help text.
-
-## v2.8.0 (2023-08-25)
-
-### Added
-- `i{file name}<CR>` to create new file, and `I{dir name}<CR>` to create new directory.
-- If zoxide is installed, whenever changing directory inside felix, `zoxide add` will be executed to add the directory or increment its rank in the zoxide database.
-  - For this, `State` now has a new field `has_zoxide`, which is checked at startup.
-
-### Changed
-- config's `color` is now optional: By this, all config fields are optional.
-  - Remove warning message when you launch felix without the config file.
-- When opening file by default editor is failed, felix displays more accurate warning: `$EDITOR may not be set, or config file may be invalid.`.
-
-### Removed
-- Remove `syntect` and syntax highlighting in the preview area. This will improve build and start-up times, and resolve the handling of wide chars such as CJK.
 
 For more details, see `CHANGELOG.md`.
 
