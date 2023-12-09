@@ -25,11 +25,18 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 
 ## New release
 
+## v2.11.1 (2023-12-10)
+
+### Fixed
+
+- Allow SHIFT key to enter characters after `i`, `I`, `c`, `/`, `:` and `z`.
+
 ## v2.11.0 (2023-12-09)
 
 ### Added
 
 - `<C-h>` for Backspace functionality after `i`, `I`, `c`, `/`, `:` and `z`.
+
 ## v2.10.2 (2023-11-26)
 
 ### Fixed
