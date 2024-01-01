@@ -29,7 +29,7 @@ const INITIAL_POS_COMMAND_LINE: u16 = 3;
 const INITIAL_POS_Z: u16 = 2;
 
 /// Launch the app. If initialization goes wrong, return error.
-pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
+pub fn run(arg: PathBuf, log: bool, choosefiles_path: Option<PathBuf>) -> Result<(), FxError> {
     //Check if argument path is valid.
     if !&arg.exists() {
         println!();
@@ -123,6 +123,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         Ok(b) => !b,
         Err(_) => false,
     };
+    state.choosefiles_target = choosefiles_path;
 
     //If the main function causes panic, catch it.
     let result = panic::catch_unwind(|| _run(state, session_path));
@@ -485,6 +486,31 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 if let Ok(item) = state.get_item() {
                                     match item.file_type {
                                         FileType::File => {
+                                            // choosefiles mode appends the file path
+                                            // to the target file
+                                            if let Some(target_path) = &state.choosefiles_target {
+                                                match std::fs::File::options()
+                                                    .append(true)
+                                                    .open(target_path)
+                                                {
+                                                    Err(e) => print_warning(e, state.layout.y),
+                                                    Ok(mut f) => {
+                                                        if let Err(e) = writeln!(
+                                                            &mut f,
+                                                            "{}",
+                                                            item.file_path.display()
+                                                        ) {
+                                                            print_warning(e, state.layout.y);
+                                                        } else {
+                                                            print_info(
+                                                                "Path written to the file.",
+                                                                state.layout.y,
+                                                            );
+                                                        }
+                                                    }
+                                                }
+                                                continue;
+                                            }
                                             execute!(screen, EnterAlternateScreen)?;
                                             if let Err(e) = state.open_file(item) {
                                                 print_warning(e, state.layout.y);

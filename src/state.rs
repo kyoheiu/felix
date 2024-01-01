@@ -61,6 +61,7 @@ pub struct State {
     pub layout: Layout,
     pub v_start: Option<usize>,
     pub is_ro: bool,
+    pub choosefiles_target: Option<PathBuf>,
 }
 
 #[derive(Debug)]
@@ -328,6 +329,7 @@ impl State {
             keyword: None,
             v_start: None,
             is_ro: false,
+            choosefiles_target: None,
         })
     }
 
