@@ -49,9 +49,7 @@ fn main() -> Result<(), errors::FxError> {
             _ => {
                 if args[1].starts_with("--choosefiles=") {
                     let target_path = PathBuf::from(args[1].split('=').nth(1).unwrap());
-                    if !target_path.exists() {
-                        eprintln!("Target path does not exists.");
-                    } else if let Err(e) = run::run(
+                     if let Err(e) = run::run(
                         std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
                         false,
                         Some(target_path),
