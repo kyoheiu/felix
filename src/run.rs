@@ -491,7 +491,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             if let Some(target_path) = &state.choosefiles_target {
                                                 match std::fs::File::options()
                                                     .append(true)
-                                                    .create_new(true)
+                                                    .create(true)
                                                     .open(target_path)
                                                 {
                                                     Err(e) => print_warning(e, state.layout.y),
