@@ -9,51 +9,6 @@ pub const FELIX: &str = "felix";
 const CONFIG_FILE: &str = "config.yaml";
 const CONFIG_FILE_ANOTHER_EXT: &str = "config.yml";
 
-#[allow(dead_code)]
-const CONFIG_EXAMPLE: &str = r###"
-# Default exec command when open files.
-# If not set, will default to $EDITOR.
-# default: nvim
-
-# Whether to match the behavior of vim exit keybindings
-# i.e. `ZQ` exits without cd to LWD (Last Working Directory) while `ZZ` cd to LWD
-# match_vim_exit_behavior: false
-
-# key (the command you want to use when opening files): [values] (extensions)
-# In the key, You can use arguments.
-# exec:
-#   zathura:
-#     [pdf]
-#  'feh -.':
-#   [jpg, jpeg, png, gif, svg, hdr]
-
-# The foreground color of directory, file and symlink.
-# Pick one of the following:
-#     Black           // 0
-#     Red             // 1
-#     Green           // 2
-#     Yellow          // 3
-#     Blue            // 4
-#     Magenta         // 5
-#     Cyan            // 6
-#     White           // 7
-#     LightBlack      // 8
-#     LightRed        // 9
-#     LightGreen      // 10
-#     LightYellow     // 11
-#     LightBlue       // 12
-#     LightMagenta    // 13
-#     LightCyan       // 14
-#     LightWhite      // 15
-#     Rgb(u8, u8, u8)
-#     AnsiValue(u8)
-# Default to LightCyan(dir), LightWhite(file), LightYellow(symlink) and Red(changed/untracked files in git repositories).
-# color:
-#   dir_fg: LightCyan
-#   file_fg: LightWhite
-#   symlink_fg: LightYellow
-#   dirty_fg: Red
-"###;
 #[derive(Debug, Clone)]
 pub struct ConfigWithPath {
     pub config_path: Option<PathBuf>,
