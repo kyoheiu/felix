@@ -46,6 +46,7 @@ pub struct State {
     pub list: Vec<ItemInfo>,
     pub current_dir: PathBuf,
     pub trash_dir: PathBuf,
+    pub config_path: Option<PathBuf>,
     pub lwd_file: Option<PathBuf>,
     pub match_vim_exit_behavior: bool,
     pub has_zoxide: bool,
@@ -234,12 +235,12 @@ impl State {
     pub fn new(session_path: &std::path::Path) -> Result<Self, FxError> {
         //Read config file.
         //Use default configuration if the file does not exist or cannot be read.
-        let config = read_config_or_default();
-        let config = match config {
-            Ok(c) => c,
+        let config_with_path = read_config_or_default();
+        let (config_path, config) = match config_with_path {
+            Ok(c) => (c.config_path, c.config),
             Err(e) => {
                 eprintln!("Cannot read the config file properly.\nError: {}\nfelix launches with default configuration.", e);
-                Config::default()
+                (None, Config::default())
             }
         };
 
@@ -281,6 +282,7 @@ impl State {
             },
             current_dir: PathBuf::new(),
             trash_dir: PathBuf::new(),
+            config_path,
             lwd_file: None,
             match_vim_exit_behavior: config.match_vim_exit_behavior.unwrap_or_default(),
             has_zoxide,

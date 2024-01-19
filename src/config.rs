@@ -54,6 +54,11 @@ const CONFIG_EXAMPLE: &str = r###"
 #   symlink_fg: LightYellow
 #   dirty_fg: Red
 "###;
+#[derive(Debug, Clone)]
+pub struct ConfigWithPath {
+    pub config_path: Option<PathBuf>,
+    pub config: Config,
+}
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config {
@@ -115,13 +120,16 @@ impl Default for Config {
     }
 }
 
-fn read_config(p: &Path) -> Result<Config, FxError> {
+fn read_config(p: &Path) -> Result<ConfigWithPath, FxError> {
     let s = read_to_string(p)?;
     let deserialized: Config = serde_yaml::from_str(&s)?;
-    Ok(deserialized)
+    Ok(ConfigWithPath {
+        config_path: Some(p.to_path_buf()),
+        config: deserialized,
+    })
 }
 
-pub fn read_config_or_default() -> Result<Config, FxError> {
+pub fn read_config_or_default() -> Result<ConfigWithPath, FxError> {
     //First, declare default config file path.
     let (config_file_path1, config_file_path2) = {
         let mut config_path = {
@@ -172,6 +180,9 @@ pub fn read_config_or_default() -> Result<Config, FxError> {
     if let Some(config_file) = config_file {
         read_config(&config_file)
     } else {
-        Ok(Config::default())
+        Ok(ConfigWithPath {
+            config_path: None,
+            config: Config::default(),
+        })
     }
 }
