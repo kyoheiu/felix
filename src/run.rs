@@ -2062,73 +2062,82 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 let command = commands[0];
 
                                                 if commands.len() == 1 {
-                                                    if command == "q" {
-                                                        //quit
-                                                        break 'main;
-                                                    } else if command == "cd" || command == "z" {
-                                                        //go to the home directory
-                                                        let home_dir = dirs::home_dir()
-                                                            .ok_or_else(|| {
-                                                                FxError::Dirs(
-                                                                    "Cannot read home dir."
-                                                                        .to_string(),
-                                                                )
-                                                            })?;
-                                                        if let Err(e) =
-                                                            state.chdir(&home_dir, Move::Jump)
-                                                        {
-                                                            print_warning(e, state.layout.y);
+                                                    match command {
+                                                        "q" => {
+                                                            //quit
+                                                            break 'main;
                                                         }
-                                                        break 'command;
-                                                    } else if command == "e" {
-                                                        //reload current dir
-                                                        state.keyword = None;
-                                                        state.layout.nums.reset();
-                                                        state.reload(BEGINNING_ROW)?;
-                                                        break 'command;
-                                                    } else if command == "h" {
-                                                        //show help
-                                                        state.show_help(&screen)?;
-                                                        state.redraw(state.layout.y);
-                                                        break 'command;
-                                                    } else if command == "reg" {
-                                                        //:reg - Show registers
-                                                        if state.layout.is_preview() {
-                                                            state.layout.show_reg();
+                                                        "cd" | "z" => {
+                                                            //go to the home directory
+                                                            let home_dir = dirs::home_dir()
+                                                                .ok_or_else(|| {
+                                                                    FxError::Dirs(
+                                                                        "Cannot read home dir."
+                                                                            .to_string(),
+                                                                    )
+                                                                })?;
+                                                            if let Err(e) =
+                                                                state.chdir(&home_dir, Move::Jump)
+                                                            {
+                                                                print_warning(e, state.layout.y);
+                                                            }
+                                                            break 'command;
+                                                        }
+                                                        "e" => {
+                                                            //reload current dir
+                                                            state.keyword = None;
+                                                            state.layout.nums.reset();
+                                                            state.reload(BEGINNING_ROW)?;
+                                                            break 'command;
+                                                        }
+                                                        "h" => {
+                                                            //show help
+                                                            state.show_help(&screen)?;
                                                             state.redraw(state.layout.y);
-                                                        } else if state.layout.is_reg() {
-                                                            go_to_info_line_and_reset();
-                                                            hide_cursor();
-                                                            state.move_cursor(state.layout.y);
-                                                        } else {
-                                                            state.layout.show_reg();
-                                                            let (new_column, new_row) = state
-                                                                .layout
-                                                                .update_column_and_row()?;
-                                                            state.refresh(
-                                                                new_column,
-                                                                new_row,
-                                                                state.layout.y,
-                                                            )?;
-                                                            go_to_info_line_and_reset();
-                                                            hide_cursor();
-                                                            state.move_cursor(state.layout.y);
+                                                            break 'command;
                                                         }
-                                                        break 'command;
-                                                    } else if command == "trash" {
-                                                        //move to trash dir
-                                                        state.layout.nums.reset();
-                                                        if let Err(e) = state.chdir(
-                                                            &(state.trash_dir.clone()),
-                                                            Move::Jump,
-                                                        ) {
-                                                            print_warning(e, state.layout.y);
+                                                        "reg" => {
+                                                            //:reg - Show registers
+                                                            if state.layout.is_preview() {
+                                                                state.layout.show_reg();
+                                                                state.redraw(state.layout.y);
+                                                            } else if state.layout.is_reg() {
+                                                                go_to_info_line_and_reset();
+                                                                hide_cursor();
+                                                                state.move_cursor(state.layout.y);
+                                                            } else {
+                                                                state.layout.show_reg();
+                                                                let (new_column, new_row) = state
+                                                                    .layout
+                                                                    .update_column_and_row()?;
+                                                                state.refresh(
+                                                                    new_column,
+                                                                    new_row,
+                                                                    state.layout.y,
+                                                                )?;
+                                                                go_to_info_line_and_reset();
+                                                                hide_cursor();
+                                                                state.move_cursor(state.layout.y);
+                                                            }
+                                                            break 'command;
                                                         }
-                                                        break 'command;
-                                                    } else if command == "empty" {
-                                                        //empty the trash dir
-                                                        state.empty_trash(&screen)?;
-                                                        break 'command;
+                                                        "trash" => {
+                                                            //move to trash dir
+                                                            state.layout.nums.reset();
+                                                            if let Err(e) = state.chdir(
+                                                                &(state.trash_dir.clone()),
+                                                                Move::Jump,
+                                                            ) {
+                                                                print_warning(e, state.layout.y);
+                                                            }
+                                                            break 'command;
+                                                        }
+                                                        "empty" => {
+                                                            //empty the trash dir
+                                                            state.empty_trash(&screen)?;
+                                                            break 'command;
+                                                        }
+                                                        _ => {}
                                                     }
                                                 } else if commands.len() == 2 && command == "cd" {
                                                     if let Ok(target) =
