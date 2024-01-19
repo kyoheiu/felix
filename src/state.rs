@@ -40,7 +40,6 @@ use std::os::unix::fs::PermissionsExt;
 
 pub const BEGINNING_ROW: u16 = 3;
 pub const EMPTY_WARNING: &str = "Are you sure to empty the trash directory? (if yes: y)";
-const BASE32: &[u8; 32] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
 #[derive(Debug)]
 pub struct State {
@@ -1358,33 +1357,6 @@ impl State {
         for (i, item) in self.list.iter_mut().enumerate() {
             item.selected = i >= start_pos;
         }
-    }
-
-    /// Creates temp file for directory. Works like touch, but with randomized suffix
-    #[allow(dead_code)]
-    pub fn create_temp(&mut self, is_dir: bool) -> Result<PathBuf, FxError> {
-        let mut new_name = self.current_dir.join(".tmp");
-        if new_name.exists() {
-            let mut nanos = std::time::SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .subsec_nanos();
-            let encoded: &mut [u8] = &mut [0, 0, 0, 0, 0];
-            for i in 0..5 {
-                let v = (nanos & 0x1f) as usize;
-                encoded[4 - i] = BASE32[v];
-                nanos >>= 5;
-            }
-            new_name = self
-                .current_dir
-                .join(format!(".tmp_{}", String::from_utf8(encoded.to_vec())?))
-        }
-        if is_dir {
-            std::fs::create_dir(new_name.clone())?;
-        } else {
-            std::fs::File::create(new_name.clone())?;
-        }
-        Ok(new_name)
     }
 
     /// Show help
