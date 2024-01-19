@@ -48,13 +48,16 @@ fn main() -> Result<(), errors::FxError> {
             }
             _ => {
                 if args[1].starts_with("--choosefiles=") {
-                    let target_path = PathBuf::from(args[1].split('=').nth(1).unwrap());
-                    if let Err(e) = run::run(
-                        std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
-                        false,
-                        Some(target_path),
-                    ) {
-                        eprintln!("{}", e);
+                    if let Some(target_path) = args[1].split('=').nth(1) {
+                        if let Err(e) = run::run(
+                            std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+                            false,
+                            Some(PathBuf::from(target_path)),
+                        ) {
+                            eprintln!("{}", e);
+                        }
+                    } else {
+                        eprintln!("Cannot read target file path.");
                     }
                 } else if let Err(e) = run::run(PathBuf::from(&args[1]), false, None) {
                     eprintln!("{}", e);
