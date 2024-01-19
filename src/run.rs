@@ -2137,6 +2137,33 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                             state.empty_trash(&screen)?;
                                                             break 'command;
                                                         }
+                                                        "config" => {
+                                                            //move to the directory that contains
+                                                            //config path
+                                                            state.layout.nums.reset();
+                                                            if let Some(ref config_path) =
+                                                                state.config_path
+                                                            {
+                                                                if let Err(e) = state.chdir(
+                                                                    config_path
+                                                                        .clone()
+                                                                        .parent()
+                                                                        .unwrap(),
+                                                                    Move::Jump,
+                                                                ) {
+                                                                    print_warning(
+                                                                        e,
+                                                                        state.layout.y,
+                                                                    );
+                                                                }
+                                                            } else {
+                                                                print_warning(
+                                                                    "Cannot find the config path.",
+                                                                    state.layout.y,
+                                                                )
+                                                            }
+                                                            break 'command;
+                                                        }
                                                         _ => {}
                                                     }
                                                 } else if commands.len() == 2 && command == "cd" {
