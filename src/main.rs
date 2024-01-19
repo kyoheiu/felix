@@ -24,6 +24,7 @@ fn main() -> Result<(), errors::FxError> {
             if let Err(e) = run::run(
                 std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
                 false,
+                None,
             ) {
                 eprintln!("{}", e);
             }
@@ -37,6 +38,7 @@ fn main() -> Result<(), errors::FxError> {
                 if let Err(e) = run::run(
                     std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
                     true,
+                    None,
                 ) {
                     eprintln!("{}", e);
                 }
@@ -45,14 +47,23 @@ fn main() -> Result<(), errors::FxError> {
                 print!("{}", shell::INTEGRATION_CODE);
             }
             _ => {
-                if let Err(e) = run::run(PathBuf::from(&args[1]), false) {
+                if args[1].starts_with("--choosefiles=") {
+                    let target_path = PathBuf::from(args[1].split('=').nth(1).unwrap());
+                    if let Err(e) = run::run(
+                        std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+                        false,
+                        Some(target_path),
+                    ) {
+                        eprintln!("{}", e);
+                    }
+                } else if let Err(e) = run::run(PathBuf::from(&args[1]), false, None) {
                     eprintln!("{}", e);
                 }
             }
         },
         3 => {
             if args[1] == "-l" || args[1] == "--log" {
-                if let Err(e) = run::run(PathBuf::from(&args[2]), true) {
+                if let Err(e) = run::run(PathBuf::from(&args[2]), true, None) {
                     eprintln!("{}", e);
                 }
             } else {
