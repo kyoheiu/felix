@@ -478,19 +478,49 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                             //Open file or change directory
                             KeyCode::Char('l') | KeyCode::Enter | KeyCode::Right => {
-                                //In visual mode, this is disabled.
+                                //In visual mode, if not with the choosefiles option, this is disabled.
                                 if state.v_start.is_some() {
-                                    continue;
+                                    if let Some(target_path) = &state.choosefiles_target {
+                                        match std::fs::File::options()
+                                            .write(true)
+                                            .truncate(true)
+                                            .create(true)
+                                            .open(target_path)
+                                        {
+                                            Err(e) => print_warning(e, state.layout.y),
+                                            Ok(mut f) => {
+                                                let items: Vec<&str> = state
+                                                    .list
+                                                    .iter()
+                                                    .filter(|item| item.selected)
+                                                    .filter_map(|item| {
+                                                        item.file_path.as_os_str().to_str()
+                                                    })
+                                                    .collect();
+                                                let file_names = &items.join("\n");
+
+                                                if let Err(e) = writeln!(&mut f, "{}", file_names) {
+                                                    print_warning(e, state.layout.y);
+                                                } else {
+                                                    break 'main;
+                                                }
+                                            }
+                                        }
+                                        continue;
+                                    } else {
+                                        continue;
+                                    }
                                 }
                                 let mut dest: Option<PathBuf> = None;
                                 if let Ok(item) = state.get_item() {
                                     match item.file_type {
                                         FileType::File => {
-                                            // choosefiles mode appends the file path
+                                            // with choosefiles option, writes the file path
                                             // to the target file
                                             if let Some(target_path) = &state.choosefiles_target {
                                                 match std::fs::File::options()
-                                                    .append(true)
+                                                    .write(true)
+                                                    .truncate(true)
                                                     .create(true)
                                                     .open(target_path)
                                                 {
