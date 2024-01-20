@@ -45,14 +45,6 @@ pub fn run(arg: PathBuf, log: bool, choosefiles_path: Option<PathBuf>) -> Result
 
     let shell_pid: Option<String> = env::var("SHELL_PID").ok();
 
-    //Prepare config and data local path.
-    let config_dir_path = {
-        let mut path = dirs::config_dir()
-            .ok_or_else(|| FxError::Dirs("Cannot read the config directory.".to_string()))?;
-        path.push(FELIX);
-        path
-    };
-    //Prepare data local and trash dir path.
     let data_local_path = {
         let mut path = dirs::data_local_dir()
             .ok_or_else(|| FxError::Dirs("Cannot read the data local directory.".to_string()))?;
@@ -74,9 +66,6 @@ pub fn run(arg: PathBuf, log: bool, choosefiles_path: Option<PathBuf>) -> Result
         path.push(FELIX);
         path
     };
-    if !config_dir_path.exists() {
-        std::fs::create_dir_all(&config_dir_path)?;
-    }
     if !data_local_path.exists() {
         std::fs::create_dir_all(&data_local_path)?;
     }
