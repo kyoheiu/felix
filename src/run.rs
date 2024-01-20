@@ -37,14 +37,14 @@ pub fn run(arg: PathBuf, log: bool, choosefiles_path: Option<PathBuf>) -> Result
             "Invalid path: {}\n`fx -h` shows help.",
             &arg.display()
         )));
-    } else if !&arg.is_dir() {
-        return Err(FxError::Arg(
-            "Path should be directory.\n`fx -h` shows help.".to_owned(),
-        ));
-    }
+    } // else if !&arg.is_dir() {
+      //   return Err(FxError::Arg(
+      //       "Path should be directory.\n`fx -h` shows help.".to_owned(),
+      //   ));
+      // }
+      // disabled in favor of file-selection
 
-    let shell_pid: Option<String> = env::var("SHELL_PID").ok();
-
+    //Prepare data local dir path, trash dir path and other paths you need.
     let data_local_path = {
         let mut path = dirs::data_local_dir()
             .ok_or_else(|| FxError::Dirs("Cannot read the data local directory.".to_string()))?;
@@ -74,6 +74,7 @@ pub fn run(arg: PathBuf, log: bool, choosefiles_path: Option<PathBuf>) -> Result
     }
 
     //Path of the file used to store lwd (Last Working Directory) at the end of the session.
+    let shell_pid: Option<String> = env::var("SHELL_PID").ok();
     let lwd_file_path = shell_pid.map(|basename| runtime_path.join(basename));
 
     let trash_dir_path = {
@@ -99,14 +100,35 @@ pub fn run(arg: PathBuf, log: bool, choosefiles_path: Option<PathBuf>) -> Result
 
     //Initialize app state. Inside State::new(), config file is read or created.
     let mut state = State::new(&session_path)?;
+    let mut file_selected = None;
+    let _current_dir = if arg.is_dir() {
+        if cfg!(not(windows)) {
+            // If executed this on windows, "//?" will be inserted at the beginning of the path.
+            arg.canonicalize()?
+        } else {
+            arg
+        }
+    } else if let Some(parent) = arg.clone().parent() {
+        file_selected = {
+            let name = arg.file_name().map(|name| name.to_str());
+            match name {
+                Some(name) => name.map(|name| name.to_string()),
+                None => None,
+            }
+        };
+        if cfg!(not(windows)) {
+            parent.canonicalize()?
+        } else {
+            parent.to_path_buf()
+        }
+    } else {
+        eprintln!("Cannot detect the directory: Will open the current directory.");
+        std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
+    };
+
+    state.current_dir = _current_dir;
     state.trash_dir = trash_dir_path;
     state.lwd_file = lwd_file_path;
-    state.current_dir = if cfg!(not(windows)) {
-        // If executed this on windows, "//?" will be inserted at the beginning of the path.
-        arg.canonicalize()?
-    } else {
-        arg
-    };
     state.jumplist.add(&state.current_dir);
     state.is_ro = match has_write_permission(&state.current_dir) {
         Ok(b) => !b,
@@ -115,7 +137,7 @@ pub fn run(arg: PathBuf, log: bool, choosefiles_path: Option<PathBuf>) -> Result
     state.choosefiles_target = choosefiles_path;
 
     //If the main function causes panic, catch it.
-    let result = panic::catch_unwind(|| _run(state, session_path));
+    let result = panic::catch_unwind(|| _run(state, session_path, file_selected));
     leave_raw_mode();
 
     if let Err(panic) = result {
@@ -136,7 +158,11 @@ pub fn run(arg: PathBuf, log: bool, choosefiles_path: Option<PathBuf>) -> Result
 }
 
 /// Run the app. (Containing the main loop)
-fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
+fn _run(
+    mut state: State,
+    session_path: PathBuf,
+    file_selected: Option<String>,
+) -> Result<(), FxError> {
     //Enter the alternate screen with crossterm
     let mut screen = stdout();
     enter_raw_mode();
@@ -157,6 +183,15 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
     } else {
         state.reload(BEGINNING_ROW)?;
     }
+
+    if let Some(p) = file_selected {
+        if let Some(target) = state.list.iter().position(|x| x.file_name == p) {
+            state.layout.nums.skip = target as u16;
+            state.layout.nums.index = target;
+            state.redraw(BEGINNING_ROW);
+        }
+    }
+
     screen.flush()?;
 
     'main: loop {
