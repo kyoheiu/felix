@@ -110,13 +110,10 @@ pub fn run(arg: PathBuf, log: bool, choosefiles_path: Option<PathBuf>) -> Result
         }
     } else if let Some(parent) = arg.clone().parent() {
         file_selected = {
-            let name = arg.file_name().map(|name| name.to_str());
-            match name {
-                Some(name) => name.map(|name| name.to_string()),
-                None => None,
-            }
+            arg.file_name().map(|name| name.to_str()).unwrap_or_else(|| None)
         };
         if cfg!(not(windows)) {
+            // Same as when is_dir()
             parent.canonicalize()?
         } else {
             parent.to_path_buf()
@@ -161,7 +158,7 @@ pub fn run(arg: PathBuf, log: bool, choosefiles_path: Option<PathBuf>) -> Result
 fn _run(
     mut state: State,
     session_path: PathBuf,
-    file_selected: Option<String>,
+    file_selected: Option<&str>,
 ) -> Result<(), FxError> {
     //Enter the alternate screen with crossterm
     let mut screen = stdout();
@@ -184,6 +181,7 @@ fn _run(
         state.reload(BEGINNING_ROW)?;
     }
 
+    // If file path is set as argument, point to that file.
     if let Some(p) = file_selected {
         if let Some(target) = state.list.iter().position(|x| x.file_name == p) {
             state.layout.nums.skip = target as u16;
