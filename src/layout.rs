@@ -76,9 +76,9 @@ impl Layout {
         };
 
         // Prepare state fields.
-        let session = read_session(session_path);
         let (time_start, name_max) = make_layout(original_column);
-        let split = session.split.unwrap_or(Split::Vertical);
+        let session = read_session(session_path);
+        let split = session.split.unwrap_or_default();
         let has_bat = check_bat();
         let has_chafa = check_chafa();
         let is_kitty = check_kitty_support();
@@ -94,10 +94,9 @@ impl Layout {
             time_start_pos: time_start,
             sort_by: session.sort_by,
             show_hidden: session.show_hidden,
-            side: if session.preview.unwrap_or(false) {
-                Side::Preview
-            } else {
-                Side::None
+            side: match session.preview.unwrap_or(false) {
+                true => Side::Preview,
+                false => Side::None,
             },
             split,
             preview_start: (0, 0),

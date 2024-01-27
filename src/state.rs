@@ -258,13 +258,13 @@ impl State {
 
     /// Set configuration from config file.
     pub fn set_config(&mut self, config: Config) {
-        let color = config.color.unwrap_or_default();
-        self.match_vim_exit_behavior = config.match_vim_exit_behavior.unwrap_or_default();
         self.default = config
             .default
             .unwrap_or_else(|| env::var("EDITOR").unwrap_or_default());
+        self.match_vim_exit_behavior = config.match_vim_exit_behavior.unwrap_or_default();
         self.commands = to_extension_map(&config.exec);
-        self.layout.colors = color;
+        let colors = config.color.unwrap_or_default();
+        self.layout.colors = colors;
     }
 
     /// Select item that the cursor points to.
