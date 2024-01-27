@@ -4,12 +4,21 @@
 
 ## Unreleased
 
+## v2.12.0 (2024-01-28)
+
 ### Added
 
 - `:config` to point to the config file if exists.
-- felix listens to the change of the config file, and re-read the config automatically.
-- Refactor around `State::new()`.
+- felix listens to the change of the config file, and re-read the config automatically (after some key inputs).
+
+### Changed
+
+- Refactor around `_run` and `State::new()`.
   - Add `config_path` field to `State`.
+
+### Fixed
+
+- symlink path and operations with it on Windows.
 
 ## v2.11.1 (2023-12-10)
 

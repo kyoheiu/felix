@@ -25,35 +25,21 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 
 ## New release
 
-## v2.11.1 (2023-12-10)
-
-### Fixed
-
-- Allow SHIFT key to enter characters after `i`, `I`, `c`, `/`, `:` and `z`.
-
-## v2.11.0 (2023-12-09)
+## v2.12.0 (2024-01-28)
 
 ### Added
 
-- `<C-h>` for Backspace functionality after `i`, `I`, `c`, `/`, `:` and `z`.
+- `:config` to point to the config file if exists.
+- felix listens to the change of the config file, and re-read the config automatically (after some key inputs).
 
-## v2.10.2 (2023-11-26)
+### Changed
 
-### Fixed
-- Added a filter to every user input to reject `Keyup` events. This is required on the windows platform.
-
-
-## v2.10.1 (2023-11-02)
+- Refactor around `_run` and `State::new()`.
+  - Add `config_path` field to `State`.
 
 ### Fixed
-- Convert tab to 4 spaces when using bat to preview text files.
 
-## v2.10.0 (2023-11-01)
-
-### Added
-- `bat` integration: If `bat` installed, felix automatically adds syntax highlighting to the text preview.
-  - Add `has_bat` field to `State`.
-  - Add `FxError::InvalidPath` to handle invalid unicode in file path.
+- symlink path and operations with it on Windows.
 
 For more details, see `CHANGELOG.md`.
 
