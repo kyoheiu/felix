@@ -189,7 +189,7 @@ N                  :Go backward to the item that matches the keyword.
 :cd<CR>            :Go to the home directory.
 :cd {path}<CR>     :Go to the path.
 :e<CR>             :Reload the current directory.
-:config            :Go to the dirctory that contains the config file if exists.
+:config<CR>        :Go to the dirctory that contains the config file if exists.
 :trash<CR>         :Go to the trash directory.
 :empty<CR>         :Empty the trash directory.
 :h<CR>             :Show help.
