@@ -16,7 +16,7 @@ pub const PROPER_WIDTH: u16 = 28;
 pub const TIME_WIDTH: u16 = 16;
 const EXTRA_SPACES: u16 = 3;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Layout {
     pub nums: Num,
     pub y: u16,
@@ -46,15 +46,17 @@ pub enum PreviewType {
     Binary,
 }
 
-#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone)]
+#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone, Default)]
 pub enum Side {
+    #[default]
     Preview,
     Reg,
     None,
 }
 
-#[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Clone, Copy, Default)]
 pub enum Split {
+    #[default]
     Vertical,
     Horizontal,
 }

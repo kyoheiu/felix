@@ -3,7 +3,7 @@ use super::state::ItemBuffer;
 use log::info;
 use std::path::PathBuf;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct Operation {
     pub pos: usize,
     pub op_list: Vec<OpKind>,
