@@ -175,22 +175,22 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
         Some(config_path) => config_path.metadata().unwrap().modified().ok(),
         None => None,
     };
-    let config_updated = Arc::new(Mutex::new(false));
-    let config_updated_in_another_tread = config_updated.clone();
-    let config_path_in_another_thread = state.config_path.clone();
+    let wait_update = Arc::new(Mutex::new(false));
+    let wait_update_clone = wait_update.clone();
+    let config_path_clone = state.config_path.clone();
     // if config file does not exist, no watching.
     if modified_time.is_some() {
         // Every 2 secondes, check if the config file is updated.
         thread::spawn(move || loop {
             thread::sleep(std::time::Duration::from_secs(2));
-            if *config_updated_in_another_tread.lock().unwrap() {
+            if *wait_update_clone.lock().unwrap() {
                 continue;
             }
-            let metadata = config_path_in_another_thread.as_ref().unwrap().metadata();
+            let metadata = config_path_clone.as_ref().unwrap().metadata();
             if let Ok(metadata) = metadata {
                 let new_modified = metadata.modified().ok();
                 if modified_time != new_modified {
-                    if let Ok(mut updated) = config_updated_in_another_tread.lock() {
+                    if let Ok(mut updated) = wait_update_clone.lock() {
                         *updated = true;
                         modified_time = new_modified;
                     } else {
@@ -203,16 +203,19 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
     'main: loop {
         // Check if config file is updated
-        if let Ok(mut should_be_updated) = config_updated.lock() {
-            if *should_be_updated {
-                if let Ok(c) = read_config(state.config_path.as_ref().unwrap()) {
-                    state.set_config(c.config);
-                    state.redraw(state.layout.y);
-                    print_info("New config set.", state.layout.y);
-                } else {
-                    print_warning("Something wrong with the config file.", state.layout.y);
+        if state.config_path.is_some() {
+            if let Ok(mut wait_update) = wait_update.lock() {
+                if *wait_update {
+                    if let Ok(c) = read_config(state.config_path.as_ref().unwrap()) {
+                        state.set_config(c.config);
+                        state.redraw(state.layout.y);
+                        print_info("New config set.", state.layout.y);
+                    } else {
+                        // If reading the config file fails, leave the config as is.
+                        print_warning("Something wrong with the config file.", state.layout.y);
+                    }
+                    *wait_update = false;
                 }
-                *should_be_updated = false;
             }
         }
 
