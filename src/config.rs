@@ -75,7 +75,7 @@ impl Default for Config {
     }
 }
 
-fn read_config(p: &Path) -> Result<ConfigWithPath, FxError> {
+pub fn read_config(p: &Path) -> Result<ConfigWithPath, FxError> {
     let s = read_to_string(p)?;
     let deserialized: Config = serde_yaml::from_str(&s)?;
     Ok(ConfigWithPath {

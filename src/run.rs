@@ -1,5 +1,4 @@
-#![allow(unreachable_code)]
-use super::config::FELIX;
+use super::config::{read_config, FELIX};
 use super::errors::FxError;
 use super::functions::*;
 use super::layout::{PreviewType, Split};
@@ -18,6 +17,8 @@ use std::env;
 use std::io::{stdout, Write};
 use std::panic;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+use std::thread;
 use std::time::Instant;
 
 const TRASH: &str = "Trash";
@@ -169,7 +170,52 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
     }
     screen.flush()?;
 
+    // Spawn another thread to watch the config file.
+    let mut modified_time = match &state.config_path {
+        Some(config_path) => config_path.metadata().unwrap().modified().ok(),
+        None => None,
+    };
+    let config_updated = Arc::new(Mutex::new(false));
+    let config_updated_in_another_tread = config_updated.clone();
+    let config_path_in_another_thread = state.config_path.clone();
+    // if config file does not exist, no watching.
+    if modified_time.is_some() {
+        // Every 2 secondes, check if the config file is updated.
+        thread::spawn(move || loop {
+            thread::sleep(std::time::Duration::from_secs(2));
+            if *config_updated_in_another_tread.lock().unwrap() {
+                continue;
+            }
+            let metadata = config_path_in_another_thread.as_ref().unwrap().metadata();
+            if let Ok(metadata) = metadata {
+                let new_modified = metadata.modified().ok();
+                if modified_time != new_modified {
+                    if let Ok(mut updated) = config_updated_in_another_tread.lock() {
+                        *updated = true;
+                        modified_time = new_modified;
+                    } else {
+                        break;
+                    }
+                }
+            }
+        });
+    }
+
     'main: loop {
+        // Check if config file is updated
+        if let Ok(mut should_be_updated) = config_updated.lock() {
+            if *should_be_updated {
+                if let Ok(c) = read_config(state.config_path.as_ref().unwrap()) {
+                    state.set_config(c.config);
+                    state.redraw(state.layout.y);
+                    print_info("New config set.", state.layout.y);
+                } else {
+                    print_warning("Something wrong with the config file.", state.layout.y);
+                }
+                *should_be_updated = false;
+            }
+        }
+
         if state.is_out_of_bounds() {
             state.layout.nums.reset();
             state.redraw(BEGINNING_ROW);
