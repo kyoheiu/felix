@@ -1258,30 +1258,53 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     }) = event::read()?
                                     {
                                         match (code, modifiers) {
-                                            //rename item
-                                            (KeyCode::Enter, KeyModifiers::NONE) => {
-                                                let rename = rename.iter().collect::<String>();
-                                                let mut to = state.current_dir.clone();
-                                                to.push(rename);
-                                                if let Err(e) =
-                                                    std::fs::rename(&item.file_path, &to)
+                                            // <C-r> to put the item name(s) from register
+                                            (KeyCode::Char('r'), KeyModifiers::CONTROL) => {
+                                                if let Event::Key(KeyEvent {
+                                                    code,
+                                                    kind: KeyEventKind::Press,
+                                                    ..
+                                                }) = event::read()?
                                                 {
-                                                    hide_cursor();
-                                                    print_warning(e, state.layout.y);
-                                                    break;
+                                                    if let Some(reg) =
+                                                        state.registers.check_reg(&code)
+                                                    {
+                                                        if !reg.is_empty() {
+                                                            let to_be_inserted = reg
+                                                                .iter()
+                                                                .map(|x| x.file_name.clone())
+                                                                .collect::<Vec<String>>()
+                                                                .join(" ");
+                                                            for c in to_be_inserted.chars() {
+                                                                if let Some(to_be_added) =
+                                                                    unicode_width::UnicodeWidthChar::width(c)
+                                                                {
+                                                                    if current_pos + to_be_added as u16
+                                                                        > state.layout.terminal_column
+                                                                    {
+                                                                        continue;
+                                                                    }
+                                                                    rename.insert(current_char_pos, c);
+                                                                    current_char_pos += 1;
+                                                                    current_pos += to_be_added as u16;
+                                                                }
+                                                            }
+                                                            go_to_info_line_and_reset();
+                                                            print!(
+                                                                "{}{}",
+                                                                PROMPT_RENAME,
+                                                                &rename.iter().collect::<String>()
+                                                            );
+                                                            move_to(current_pos + 1, 2);
+                                                            screen.flush()?;
+                                                            continue;
+                                                        } else {
+                                                            continue;
+                                                        }
+                                                    } else {
+                                                        continue;
+                                                    }
                                                 }
-
-                                                state.operations.branch();
-                                                state.operations.push(OpKind::Rename(
-                                                    RenamedFile {
-                                                        original_name: item.file_path.clone(),
-                                                        new_name: to,
-                                                    },
-                                                ));
-
-                                                hide_cursor();
-                                                state.reload(state.layout.y)?;
-                                                break;
                                             }
 
                                             (KeyCode::Esc, KeyModifiers::NONE) => {
