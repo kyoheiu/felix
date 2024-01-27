@@ -28,6 +28,11 @@ const SCROLL_POINT: u16 = 3;
 const CLRSCR: &str = "\x1B[2J";
 const INITIAL_POS_COMMAND_LINE: u16 = 3;
 const INITIAL_POS_Z: u16 = 2;
+const PROMPT_INSERT_FILE: &str = "New file: ";
+const PROMPT_INSERT_DIR: &str = "New directory: ";
+const PROMPT_RENAME: &str = "New name: ";
+const PROMPT_SEARCH: &str = "/";
+const PROMPT_COMMAND_LINE: &str = ":";
 
 /// Launch the app. If initialization goes wrong, return error.
 pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
@@ -843,15 +848,18 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 let is_dir = code == KeyCode::Char('I');
                                 delete_pointer();
                                 go_to_info_line_and_reset();
-                                // No need to place sign of the insert mode
-                                print!(" ");
+                                if is_dir {
+                                    print!("{}", PROMPT_INSERT_DIR);
+                                } else {
+                                    print!("{}", PROMPT_INSERT_FILE);
+                                }
                                 show_cursor();
                                 screen.flush()?;
 
                                 let mut new_name: Vec<char> = Vec::new();
 
                                 // express position in terminal
-                                let mut current_pos = INITIAL_POS_COMMAND_LINE;
+                                let (mut current_pos, _) = cursor_pos()?;
                                 // express position in Vec<Char>
                                 let mut current_char_pos = 0;
                                 'insert: loop {
@@ -895,13 +903,24 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                 }
                                                             }
                                                             go_to_info_line_and_reset();
-                                                            print!(
-                                                                " {}",
-                                                                &new_name
-                                                                    .iter()
-                                                                    .collect::<String>(),
-                                                            );
-                                                            move_to(current_pos, 2);
+                                                            if is_dir {
+                                                                print!(
+                                                                    "{}{}",
+                                                                    PROMPT_INSERT_DIR,
+                                                                    &new_name
+                                                                        .iter()
+                                                                        .collect::<String>(),
+                                                                );
+                                                            } else {
+                                                                print!(
+                                                                    "{}{}",
+                                                                    PROMPT_INSERT_FILE,
+                                                                    &new_name
+                                                                        .iter()
+                                                                        .collect::<String>(),
+                                                                );
+                                                            }
+                                                            move_to(current_pos + 1, 2);
                                                             screen.flush()?;
                                                             continue;
                                                         } else {
@@ -963,11 +982,51 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     current_pos -= to_be_removed as u16;
 
                                                     go_to_info_line_and_reset();
-                                                    print!(
-                                                        " {}",
-                                                        &new_name.iter().collect::<String>(),
-                                                    );
-                                                    move_to(current_pos, 2);
+                                                    if is_dir {
+                                                        print!(
+                                                            "{}{}",
+                                                            PROMPT_INSERT_DIR,
+                                                            &new_name.iter().collect::<String>(),
+                                                        );
+                                                    } else {
+                                                        print!(
+                                                            "{}{}",
+                                                            PROMPT_INSERT_FILE,
+                                                            &new_name.iter().collect::<String>(),
+                                                        );
+                                                    }
+                                                    move_to(current_pos + 1, 2);
+                                                }
+                                            }
+
+                                            (KeyCode::Char(c), _) => {
+                                                if let Some(to_be_added) =
+                                                    unicode_width::UnicodeWidthChar::width(c)
+                                                {
+                                                    if current_pos + to_be_added as u16
+                                                        > state.layout.terminal_column
+                                                    {
+                                                        continue;
+                                                    }
+                                                    new_name.insert(current_char_pos, c);
+                                                    current_char_pos += 1;
+                                                    current_pos += to_be_added as u16;
+
+                                                    go_to_info_line_and_reset();
+                                                    if is_dir {
+                                                        print!(
+                                                            "{}{}",
+                                                            PROMPT_INSERT_DIR,
+                                                            &new_name.iter().collect::<String>(),
+                                                        );
+                                                    } else {
+                                                        print!(
+                                                            "{}{}",
+                                                            PROMPT_INSERT_FILE,
+                                                            &new_name.iter().collect::<String>(),
+                                                        );
+                                                    }
+                                                    move_to(current_pos + 1, 2);
                                                 }
                                             }
 
@@ -993,28 +1052,6 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
                                                 state.reload(state.layout.y)?;
                                                 break 'insert;
-                                            }
-
-                                            (KeyCode::Char(c), _) => {
-                                                if let Some(to_be_added) =
-                                                    unicode_width::UnicodeWidthChar::width(c)
-                                                {
-                                                    if current_pos + to_be_added as u16
-                                                        > state.layout.terminal_column
-                                                    {
-                                                        continue;
-                                                    }
-                                                    new_name.insert(current_char_pos, c);
-                                                    current_char_pos += 1;
-                                                    current_pos += to_be_added as u16;
-
-                                                    go_to_info_line_and_reset();
-                                                    print!(
-                                                        " {}",
-                                                        &new_name.iter().collect::<String>(),
-                                                    );
-                                                    move_to(current_pos, 2);
-                                                }
                                             }
 
                                             _ => continue,
@@ -1244,7 +1281,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 let mut rename = item.file_name.chars().collect::<Vec<char>>();
                                 to_info_line();
                                 clear_current_line();
-                                print!("New name: {}", &rename.iter().collect::<String>(),);
+                                print!("{}{}", PROMPT_RENAME, &rename.iter().collect::<String>(),);
                                 screen.flush()?;
 
                                 let (mut current_pos, _) = cursor_pos()?;
@@ -1358,7 +1395,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                                     go_to_info_line_and_reset();
                                                     print!(
-                                                        "New name: {}",
+                                                        "{}{}",
+                                                        PROMPT_RENAME,
                                                         &rename.iter().collect::<String>(),
                                                     );
                                                     move_to(current_pos + 1, 2);
@@ -1375,11 +1413,37 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                                     go_to_info_line_and_reset();
                                                     print!(
-                                                        "New name: {}",
+                                                        "{}{}",
+                                                        PROMPT_RENAME,
                                                         &rename.iter().collect::<String>(),
                                                     );
                                                     move_to(current_pos + 1, 2);
                                                 }
+                                            }
+
+                                            (KeyCode::Enter, KeyModifiers::NONE) => {
+                                                let rename = rename.iter().collect::<String>();
+                                                let mut to = state.current_dir.clone();
+                                                to.push(rename);
+                                                if let Err(e) =
+                                                    std::fs::rename(&item.file_path, &to)
+                                                {
+                                                    hide_cursor();
+                                                    print_warning(e, state.layout.y);
+                                                    break;
+                                                }
+
+                                                state.operations.branch();
+                                                state.operations.push(OpKind::Rename(
+                                                    RenamedFile {
+                                                        original_name: item.file_path.clone(),
+                                                        new_name: to,
+                                                    },
+                                                ));
+
+                                                hide_cursor();
+                                                state.reload(state.layout.y)?;
+                                                break;
                                             }
 
                                             _ => continue,
@@ -1402,7 +1466,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 delete_pointer();
                                 show_cursor();
                                 go_to_info_line_and_reset();
-                                print!("/");
+                                print!("{}", PROMPT_SEARCH);
                                 screen.flush()?;
 
                                 let original_nums = state.layout.nums;
@@ -1422,13 +1486,6 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     }) = event::read()?
                                     {
                                         match (code, modifiers) {
-                                            (KeyCode::Enter, KeyModifiers::NONE) => {
-                                                go_to_info_line_and_reset();
-                                                state.keyword = Some(keyword.iter().collect());
-                                                state.move_cursor(state.layout.y);
-                                                break;
-                                            }
-
                                             (KeyCode::Esc, KeyModifiers::NONE) => {
                                                 hide_cursor();
                                                 state.redraw(state.layout.y);
@@ -1499,7 +1556,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                         }
                                                     }
                                                     go_to_info_line_and_reset();
-                                                    print!("/{}", key.clone());
+                                                    print!("{}{}", PROMPT_SEARCH, key);
                                                     move_to(current_pos, 2);
                                                 }
                                             }
@@ -1540,9 +1597,16 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     }
 
                                                     go_to_info_line_and_reset();
-                                                    print!("/{}", key.clone());
+                                                    print!("{}{}", PROMPT_SEARCH, key);
                                                     move_to(current_pos, 2);
                                                 }
+                                            }
+
+                                            (KeyCode::Enter, KeyModifiers::NONE) => {
+                                                go_to_info_line_and_reset();
+                                                state.keyword = Some(keyword.iter().collect());
+                                                state.move_cursor(state.layout.y);
+                                                break;
                                             }
 
                                             _ => continue,
@@ -1996,7 +2060,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                                 delete_pointer();
                                 go_to_info_line_and_reset();
-                                print!(":");
+                                print!("{}", PROMPT_COMMAND_LINE);
                                 show_cursor();
                                 screen.flush()?;
 
@@ -2047,7 +2111,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                             }
                                                             go_to_info_line_and_reset();
                                                             print!(
-                                                                ":{}",
+                                                                "{}{}",
+                                                                PROMPT_COMMAND_LINE,
                                                                 &command.iter().collect::<String>(),
                                                             );
                                                             move_to(current_pos, 2);
@@ -2113,7 +2178,31 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                                     go_to_info_line_and_reset();
                                                     print!(
-                                                        ":{}",
+                                                        "{}{}",
+                                                        PROMPT_COMMAND_LINE,
+                                                        &command.iter().collect::<String>(),
+                                                    );
+                                                    move_to(current_pos, 2);
+                                                }
+                                            }
+
+                                            (KeyCode::Char(c), _) => {
+                                                if let Some(to_be_added) =
+                                                    unicode_width::UnicodeWidthChar::width(c)
+                                                {
+                                                    if current_pos + to_be_added as u16
+                                                        > state.layout.terminal_column
+                                                    {
+                                                        continue;
+                                                    }
+                                                    command.insert(current_char_pos, c);
+                                                    current_char_pos += 1;
+                                                    current_pos += to_be_added as u16;
+
+                                                    go_to_info_line_and_reset();
+                                                    print!(
+                                                        "{}{}",
+                                                        PROMPT_COMMAND_LINE,
                                                         &command.iter().collect::<String>(),
                                                     );
                                                     move_to(current_pos, 2);
@@ -2312,28 +2401,6 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 info!("SHELL: {:?}", commands);
                                                 state.reload(state.layout.y)?;
                                                 break 'command;
-                                            }
-
-                                            (KeyCode::Char(c), _) => {
-                                                if let Some(to_be_added) =
-                                                    unicode_width::UnicodeWidthChar::width(c)
-                                                {
-                                                    if current_pos + to_be_added as u16
-                                                        > state.layout.terminal_column
-                                                    {
-                                                        continue;
-                                                    }
-                                                    command.insert(current_char_pos, c);
-                                                    current_char_pos += 1;
-                                                    current_pos += to_be_added as u16;
-
-                                                    go_to_info_line_and_reset();
-                                                    print!(
-                                                        ":{}",
-                                                        &command.iter().collect::<String>(),
-                                                    );
-                                                    move_to(current_pos, 2);
-                                                }
                                             }
 
                                             _ => continue,
