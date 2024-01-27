@@ -2,10 +2,11 @@ use super::config::*;
 use super::errors::FxError;
 use super::functions::*;
 use super::nums::*;
-use super::session::SortKey;
+use super::session::{read_session, SortKey};
 use super::state::{ItemInfo, BEGINNING_ROW};
 use super::term::*;
 
+use log::error;
 use serde::{Deserialize, Serialize};
 
 pub const MAX_SIZE_TO_PREVIEW: u64 = 1_000_000_000;
@@ -62,6 +63,52 @@ pub enum Split {
 }
 
 impl Layout {
+    pub fn new(session_path: &std::path::Path, config: Config) -> Result<Self, FxError> {
+        let (original_column, original_row) = terminal_size()?;
+        // Return error if terminal size may cause panic
+        if original_column < 4 {
+            error!("Too small terminal size (less than 4 columns).");
+            return Err(FxError::TooSmallWindowSize);
+        };
+        if original_row < 4 {
+            error!("Too small terminal size. (less than 4 rows)");
+            return Err(FxError::TooSmallWindowSize);
+        };
+
+        // Prepare state fields.
+        let session = read_session(session_path);
+        let (time_start, name_max) = make_layout(original_column);
+        let split = session.split.unwrap_or(Split::Vertical);
+        let has_bat = check_bat();
+        let has_chafa = check_chafa();
+        let is_kitty = check_kitty_support();
+
+        let colors = config.color.unwrap_or_default();
+
+        Ok(Layout {
+            nums: Num::new(),
+            y: BEGINNING_ROW,
+            terminal_row: original_row,
+            terminal_column: original_column,
+            name_max_len: name_max,
+            time_start_pos: time_start,
+            sort_by: session.sort_by,
+            show_hidden: session.show_hidden,
+            side: if session.preview.unwrap_or(false) {
+                Side::Preview
+            } else {
+                Side::None
+            },
+            split,
+            preview_start: (0, 0),
+            preview_space: (0, 0),
+            has_bat,
+            has_chafa,
+            is_kitty,
+            colors,
+        })
+    }
+
     pub fn is_preview(&self) -> bool {
         self.side == Side::Preview
     }
@@ -364,5 +411,30 @@ pub fn make_layout(column: u16) -> (u16, usize) {
         }
 
         (time_start, name_max)
+    }
+}
+
+/// Check if bat is installed.
+fn check_bat() -> bool {
+    std::process::Command::new("bat")
+        .arg("--help")
+        .output()
+        .is_ok()
+}
+
+/// Check if chafa is installed.
+fn check_chafa() -> bool {
+    std::process::Command::new("chafa")
+        .arg("--help")
+        .output()
+        .is_ok()
+}
+
+/// Check if the terminal is Kitty or not
+fn check_kitty_support() -> bool {
+    if let Ok(term) = std::env::var("TERM") {
+        term.contains("kitty")
+    } else {
+        false
     }
 }
