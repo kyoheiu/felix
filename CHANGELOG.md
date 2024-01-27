@@ -4,6 +4,22 @@
 
 ## Unreleased
 
+## v2.12.0 (2024-01-28)
+
+### Added
+
+- `:config` to point to the config file if exists.
+- felix listens to the change of the config file, and re-read the config automatically (after some key inputs).
+
+### Changed
+
+- Refactor around `_run` and `State::new()`.
+  - Add `config_path` field to `State`.
+
+### Fixed
+
+- symlink path and operations with it on Windows.
+
 ## v2.11.1 (2023-12-10)
 
 ### Fixed
@@ -34,7 +50,7 @@
   - Add `FxError::InvalidPath` to handle invalid unicode in file path.
 
 ## v2.9.0 (2023-10-22)
-
+ 
 ### Added
 - Change color of untracked/changed files or directories containing such files. Default color is Red(1). You can change it in the config file.
   - Add `git2`.

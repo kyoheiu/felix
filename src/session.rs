@@ -18,8 +18,9 @@ pub struct Session {
     pub split: Option<Split>,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub enum SortKey {
+    #[default]
     Name,
     Time,
 }

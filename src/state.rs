@@ -15,7 +15,7 @@ use chrono::prelude::*;
 use crossterm::event::KeyEventKind;
 use crossterm::event::{Event, KeyCode, KeyEvent};
 use crossterm::style::Stylize;
-use log::{error, info};
+use log::info;
 use std::collections::VecDeque;
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
@@ -40,13 +40,13 @@ use std::os::unix::fs::PermissionsExt;
 
 pub const BEGINNING_ROW: u16 = 3;
 pub const EMPTY_WARNING: &str = "Are you sure to empty the trash directory? (if yes: y)";
-const BASE32: &[u8; 32] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct State {
     pub list: Vec<ItemInfo>,
     pub current_dir: PathBuf,
     pub trash_dir: PathBuf,
+    pub config_path: Option<PathBuf>,
     pub lwd_file: Option<PathBuf>,
     pub match_vim_exit_behavior: bool,
     pub has_zoxide: bool,
@@ -63,7 +63,7 @@ pub struct State {
     pub is_ro: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Registers {
     pub unnamed: Vec<ItemBuffer>,
     pub zero: Vec<ItemBuffer>,
@@ -235,100 +235,36 @@ impl State {
     pub fn new(session_path: &std::path::Path) -> Result<Self, FxError> {
         //Read config file.
         //Use default configuration if the file does not exist or cannot be read.
-        let config = read_config_or_default();
-        let config = match config {
-            Ok(c) => c,
+        let config_with_path = read_config_or_default();
+        let (config_path, config) = match config_with_path {
+            Ok(c) => (c.config_path, c.config),
             Err(e) => {
                 eprintln!("Cannot read the config file properly.\nError: {}\nfelix launches with default configuration.", e);
-                Config::default()
+                (None, Config::default())
             }
         };
+        let mut state = State::default();
+        state.set_config(config.clone());
 
-        let session = read_session(session_path);
-        let (original_column, original_row) = terminal_size()?;
-
-        // Return error if terminal size may cause panic
-        if original_column < 4 {
-            error!("Too small terminal size (less than 4 columns).");
-            return Err(FxError::TooSmallWindowSize);
-        };
-        if original_row < 4 {
-            error!("Too small terminal size. (less than 4 rows)");
-            return Err(FxError::TooSmallWindowSize);
-        };
-
-        let (time_start, name_max) = make_layout(original_column);
-
-        let color = config.color.unwrap_or_default();
-
-        let split = session.split.unwrap_or(Split::Vertical);
-
-        let has_bat = check_bat();
-        let has_chafa = check_chafa();
         let has_zoxide = check_zoxide();
-        let is_kitty = check_kitty_support();
 
         Ok(State {
-            list: Vec::new(),
-            registers: Registers {
-                unnamed: vec![],
-                zero: vec![],
-                numbered: VecDeque::new(),
-                named: BTreeMap::new(),
-            },
-            operations: Operation {
-                pos: 0,
-                op_list: Vec::new(),
-            },
-            current_dir: PathBuf::new(),
-            trash_dir: PathBuf::new(),
-            lwd_file: None,
-            match_vim_exit_behavior: config.match_vim_exit_behavior.unwrap_or_default(),
+            config_path,
             has_zoxide,
-            default: config
-                .default
-                .unwrap_or_else(|| env::var("EDITOR").unwrap_or_default()),
-            commands: to_extension_map(&config.exec),
-            layout: Layout {
-                nums: Num::new(),
-                y: BEGINNING_ROW,
-                terminal_row: original_row,
-                terminal_column: original_column,
-                name_max_len: name_max,
-                time_start_pos: time_start,
-                colors: ConfigColor {
-                    dir_fg: color.dir_fg,
-                    file_fg: color.file_fg,
-                    symlink_fg: color.symlink_fg,
-                    dirty_fg: color.dirty_fg,
-                },
-                sort_by: session.sort_by,
-                show_hidden: session.show_hidden,
-                side: if session.preview.unwrap_or(false) {
-                    Side::Preview
-                } else {
-                    Side::None
-                },
-                split,
-                preview_start: match split {
-                    Split::Vertical => (0, 0),
-                    Split::Horizontal => (0, 0),
-                },
-                preview_space: match split {
-                    Split::Vertical => (0, 0),
-                    Split::Horizontal => (0, 0),
-                },
-                has_bat,
-                has_chafa,
-                is_kitty,
-            },
-            jumplist: JumpList::default(),
-            c_memo: Vec::new(),
-            p_memo: Vec::new(),
-            keyword: None,
-            v_start: None,
-            is_ro: false,
+            layout: Layout::new(session_path, config)?,
+            ..state
         })
+    }
+
+    /// Set configuration from config file.
+    pub fn set_config(&mut self, config: Config) {
+        self.default = config
+            .default
+            .unwrap_or_else(|| env::var("EDITOR").unwrap_or_default());
+        self.match_vim_exit_behavior = config.match_vim_exit_behavior.unwrap_or_default();
+        self.commands = to_extension_map(&config.exec);
+        let colors = config.color.unwrap_or_default();
+        self.layout.colors = colors;
     }
 
     /// Select item that the cursor points to.
@@ -1140,6 +1076,13 @@ impl State {
         }
     }
 
+    /// Escape to normal mode.
+    pub fn escape(&mut self) {
+        go_to_info_line_and_reset();
+        hide_cursor();
+        self.move_cursor(self.layout.y);
+    }
+
     /// Print an item in the directory.
     fn print_item(&self, item: &ItemInfo) {
         let name = if item.file_name.bytes().len() <= self.layout.name_max_len {
@@ -1358,33 +1301,6 @@ impl State {
         for (i, item) in self.list.iter_mut().enumerate() {
             item.selected = i >= start_pos;
         }
-    }
-
-    /// Creates temp file for directory. Works like touch, but with randomized suffix
-    #[allow(dead_code)]
-    pub fn create_temp(&mut self, is_dir: bool) -> Result<PathBuf, FxError> {
-        let mut new_name = self.current_dir.join(".tmp");
-        if new_name.exists() {
-            let mut nanos = std::time::SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .subsec_nanos();
-            let encoded: &mut [u8] = &mut [0, 0, 0, 0, 0];
-            for i in 0..5 {
-                let v = (nanos & 0x1f) as usize;
-                encoded[4 - i] = BASE32[v];
-                nanos >>= 5;
-            }
-            new_name = self
-                .current_dir
-                .join(format!(".tmp_{}", String::from_utf8(encoded.to_vec())?))
-        }
-        if is_dir {
-            std::fs::create_dir(new_name.clone())?;
-        } else {
-            std::fs::File::create(new_name.clone())?;
-        }
-        Ok(new_name)
     }
 
     /// Show help
@@ -1872,7 +1788,12 @@ fn read_item(entry: fs::DirEntry) -> ItemInfo {
                 if filetype == FileType::Symlink {
                     if let Ok(sym_meta) = fs::metadata(&path) {
                         if sym_meta.is_dir() {
-                            fs::canonicalize(path.clone()).ok()
+                            if cfg!(not(windows)) {
+                                // Avoid error on Windows
+                                path.canonicalize().ok()
+                            } else {
+                                Some(path.clone())
+                            }
                         } else {
                             None
                         }
@@ -1954,37 +1875,12 @@ fn read_item(entry: fs::DirEntry) -> ItemInfo {
 //     Ok(result)
 // }
 
-/// Check if bat is installed.
-fn check_bat() -> bool {
-    std::process::Command::new("bat")
-        .arg("--help")
-        .output()
-        .is_ok()
-}
-
-/// Check if chafa is installed.
-fn check_chafa() -> bool {
-    std::process::Command::new("chafa")
-        .arg("--help")
-        .output()
-        .is_ok()
-}
-
 /// Check if zoxide is installed.
 fn check_zoxide() -> bool {
     std::process::Command::new("zoxide")
         .arg("--help")
         .output()
         .is_ok()
-}
-
-/// Check if the terminal is Kitty or not
-fn check_kitty_support() -> bool {
-    if let Ok(term) = std::env::var("TERM") {
-        term.contains("kitty")
-    } else {
-        false
-    }
 }
 
 /// Set content type from ItemInfo.

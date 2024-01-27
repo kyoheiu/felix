@@ -65,8 +65,40 @@ pub fn move_left(x: u16) {
     print!("{}", MoveLeft(x));
 }
 
+pub fn move_left_command_line(
+    input: &mut [char],
+    current_char_pos: &mut usize,
+    current_pos: &mut u16,
+) {
+    if current_char_pos == &0 {
+        return;
+    };
+    if let Some(to_be_skipped) =
+        unicode_width::UnicodeWidthChar::width(input[*current_char_pos - 1])
+    {
+        *current_char_pos -= 1;
+        *current_pos -= to_be_skipped as u16;
+        move_left(to_be_skipped as u16);
+    }
+}
+
 pub fn move_right(x: u16) {
     print!("{}", MoveRight(x));
+}
+
+pub fn move_right_command_line(
+    input: &mut [char],
+    current_char_pos: &mut usize,
+    current_pos: &mut u16,
+) {
+    if *current_char_pos == input.len() {
+        return;
+    };
+    if let Some(to_be_skipped) = unicode_width::UnicodeWidthChar::width(input[*current_char_pos]) {
+        *current_char_pos += 1;
+        *current_pos += to_be_skipped as u16;
+        move_right(to_be_skipped as u16);
+    }
 }
 
 pub fn hide_cursor() {
