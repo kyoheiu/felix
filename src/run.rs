@@ -109,7 +109,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
         path
     };
 
-    //Initialize app state. Inside State::new(), config file is read or created.
+    //Initialize app state. Inside `State::new()`, config file is read.
     let mut state = State::new(&session_path)?;
     state.trash_dir = trash_dir_path;
     state.lwd_file = lwd_file_path;
