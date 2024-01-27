@@ -932,33 +932,19 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
 
                                             (KeyCode::Left, KeyModifiers::NONE) => {
-                                                if current_char_pos == 0 {
-                                                    continue;
-                                                };
-                                                if let Some(to_be_skipped) =
-                                                    unicode_width::UnicodeWidthChar::width(
-                                                        new_name[current_char_pos - 1],
-                                                    )
-                                                {
-                                                    current_char_pos -= 1;
-                                                    current_pos -= to_be_skipped as u16;
-                                                    move_left(to_be_skipped as u16);
-                                                }
+                                                move_left_command_line(
+                                                    &mut new_name,
+                                                    &mut current_char_pos,
+                                                    &mut current_pos,
+                                                )
                                             }
 
                                             (KeyCode::Right, KeyModifiers::NONE) => {
-                                                if current_char_pos == new_name.len() {
-                                                    continue;
-                                                };
-                                                if let Some(to_be_skipped) =
-                                                    unicode_width::UnicodeWidthChar::width(
-                                                        new_name[current_char_pos],
-                                                    )
-                                                {
-                                                    current_char_pos += 1;
-                                                    current_pos += to_be_skipped as u16;
-                                                    move_right(to_be_skipped as u16);
-                                                }
+                                                move_right_command_line(
+                                                    &mut new_name,
+                                                    &mut current_char_pos,
+                                                    &mut current_pos,
+                                                )
                                             }
 
                                             (KeyCode::Backspace, KeyModifiers::NONE)
@@ -1337,33 +1323,19 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
 
                                             (KeyCode::Left, KeyModifiers::NONE) => {
-                                                if current_char_pos == 0 {
-                                                    continue;
-                                                };
-                                                if let Some(to_be_skipped) =
-                                                    unicode_width::UnicodeWidthChar::width(
-                                                        rename[current_char_pos - 1],
-                                                    )
-                                                {
-                                                    current_char_pos -= 1;
-                                                    current_pos -= to_be_skipped as u16;
-                                                    move_left(to_be_skipped as u16);
-                                                }
+                                                move_left_command_line(
+                                                    &mut rename,
+                                                    &mut current_char_pos,
+                                                    &mut current_pos,
+                                                )
                                             }
 
                                             (KeyCode::Right, KeyModifiers::NONE) => {
-                                                if current_char_pos == rename.len() {
-                                                    continue;
-                                                };
-                                                if let Some(to_be_skipped) =
-                                                    unicode_width::UnicodeWidthChar::width(
-                                                        rename[current_char_pos],
-                                                    )
-                                                {
-                                                    current_char_pos += 1;
-                                                    current_pos += to_be_skipped as u16;
-                                                    move_right(to_be_skipped as u16);
-                                                }
+                                                move_right_command_line(
+                                                    &mut rename,
+                                                    &mut current_char_pos,
+                                                    &mut current_pos,
+                                                )
                                             }
 
                                             (KeyCode::Backspace, KeyModifiers::NONE)
@@ -1478,33 +1450,19 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
 
                                             (KeyCode::Left, KeyModifiers::NONE) => {
-                                                if current_char_pos == 0 {
-                                                    continue;
-                                                };
-                                                if let Some(to_be_skipped) =
-                                                    unicode_width::UnicodeWidthChar::width(
-                                                        keyword[current_char_pos - 1],
-                                                    )
-                                                {
-                                                    current_char_pos -= 1;
-                                                    current_pos -= to_be_skipped as u16;
-                                                    move_left(to_be_skipped as u16);
-                                                }
+                                                move_left_command_line(
+                                                    &mut keyword,
+                                                    &mut current_char_pos,
+                                                    &mut current_pos,
+                                                );
                                             }
 
                                             (KeyCode::Right, KeyModifiers::NONE) => {
-                                                if current_char_pos == keyword.len() {
-                                                    continue;
-                                                };
-                                                if let Some(to_be_skipped) =
-                                                    unicode_width::UnicodeWidthChar::width(
-                                                        keyword[current_char_pos],
-                                                    )
-                                                {
-                                                    current_char_pos += 1;
-                                                    current_pos += to_be_skipped as u16;
-                                                    move_right(to_be_skipped as u16);
-                                                }
+                                                move_right_command_line(
+                                                    &mut keyword,
+                                                    &mut current_char_pos,
+                                                    &mut current_pos,
+                                                );
                                             }
 
                                             (KeyCode::Backspace, KeyModifiers::NONE)
@@ -2106,33 +2064,19 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
 
                                             (KeyCode::Left, KeyModifiers::NONE) => {
-                                                if current_char_pos == 0 {
-                                                    continue;
-                                                };
-                                                if let Some(to_be_skipped) =
-                                                    unicode_width::UnicodeWidthChar::width(
-                                                        command[current_char_pos - 1],
-                                                    )
-                                                {
-                                                    current_char_pos -= 1;
-                                                    current_pos -= to_be_skipped as u16;
-                                                    move_left(to_be_skipped as u16);
-                                                }
+                                                move_left_command_line(
+                                                    &mut command,
+                                                    &mut current_char_pos,
+                                                    &mut current_pos,
+                                                );
                                             }
 
                                             (KeyCode::Right, KeyModifiers::NONE) => {
-                                                if current_char_pos == command.len() {
-                                                    continue;
-                                                };
-                                                if let Some(to_be_skipped) =
-                                                    unicode_width::UnicodeWidthChar::width(
-                                                        command[current_char_pos],
-                                                    )
-                                                {
-                                                    current_char_pos += 1;
-                                                    current_pos += to_be_skipped as u16;
-                                                    move_right(to_be_skipped as u16);
-                                                }
+                                                move_right_command_line(
+                                                    &mut command,
+                                                    &mut current_char_pos,
+                                                    &mut current_pos,
+                                                );
                                             }
 
                                             (KeyCode::Backspace, KeyModifiers::NONE)
