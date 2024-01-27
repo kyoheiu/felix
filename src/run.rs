@@ -459,9 +459,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
 
                                                 _ => {
-                                                    go_to_info_line_and_reset();
-                                                    hide_cursor();
-                                                    state.move_cursor(state.layout.y);
+                                                    state.escape();
                                                 }
                                             }
                                         }
@@ -702,9 +700,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     {
                                         match (code, modifiers) {
                                             (KeyCode::Esc, KeyModifiers::NONE) => {
-                                                go_to_info_line_and_reset();
-                                                hide_cursor();
-                                                state.move_cursor(state.layout.y);
+                                                state.escape();
                                                 break 'zoxide;
                                             }
 
@@ -729,9 +725,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             (KeyCode::Backspace, KeyModifiers::NONE)
                                             | (KeyCode::Char('h'), KeyModifiers::CONTROL) => {
                                                 if current_pos == INITIAL_POS_Z + 1 {
-                                                    go_to_info_line_and_reset();
-                                                    hide_cursor();
-                                                    state.move_cursor(state.layout.y);
+                                                    state.escape();
                                                     break 'zoxide;
                                                 };
                                                 command.remove(
@@ -933,9 +927,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
 
                                             (KeyCode::Esc, KeyModifiers::NONE) => {
-                                                go_to_info_line_and_reset();
-                                                hide_cursor();
-                                                state.move_cursor(state.layout.y);
+                                                state.escape();
                                                 break 'insert;
                                             }
 
@@ -1193,9 +1185,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     }
                                                 }
                                                 _ => {
-                                                    go_to_info_line_and_reset();
-                                                    hide_cursor();
-                                                    state.move_cursor(state.layout.y);
+                                                    state.escape();
                                                 }
                                             }
                                         }
@@ -1238,20 +1228,17 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                         None,
                                                         false,
                                                     );
-                                                    go_to_info_line_and_reset();
-                                                    hide_cursor();
+                                                    state.escape();
                                                     print_info("1 item yanked.", state.layout.y);
                                                 }
                                             }
 
                                             _ => {
-                                                go_to_info_line_and_reset();
-                                                hide_cursor();
+                                                state.escape();
                                             }
                                         }
                                     }
                                 }
-                                state.move_cursor(state.layout.y);
                             }
 
                             //put
@@ -1345,9 +1332,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
 
                                             (KeyCode::Esc, KeyModifiers::NONE) => {
-                                                go_to_info_line_and_reset();
-                                                hide_cursor();
-                                                state.move_cursor(state.layout.y);
+                                                state.escape();
                                                 break;
                                             }
 
@@ -1697,9 +1682,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                     {
                                         match code {
                                             KeyCode::Esc => {
-                                                go_to_info_line_and_reset();
-                                                hide_cursor();
-                                                state.move_cursor(state.layout.y);
+                                                state.escape();
                                                 break 'reg;
                                             }
 
@@ -1724,9 +1707,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                             KeyCode::Backspace => {
                                                 if current_pos == INITIAL_POS_COMMAND_LINE {
-                                                    go_to_info_line_and_reset();
-                                                    hide_cursor();
-                                                    state.move_cursor(state.layout.y);
+                                                    state.escape();
                                                     break 'reg;
                                                 } else {
                                                     command.remove(
@@ -1771,13 +1752,11 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                         "p" => {
                                                             //In read-only directory, put disabled
                                                             if state.is_ro {
-                                                                go_to_info_line_and_reset();
+                                                                state.escape();
                                                                 print_warning(
                                         "Cannot put item in this directory.",
                                         state.layout.y,
                                     );
-                                                                hide_cursor();
-                                                                state.move_cursor(state.layout.y);
                                                                 break 'reg;
                                                             }
                                                             if state.v_start.is_some() {
@@ -1856,13 +1835,11 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                 state.move_cursor(state.layout.y);
                                                                 break 'reg;
                                                             }
-                                                            go_to_info_line_and_reset();
-                                                            hide_cursor();
+                                                            state.escape();
                                                             print_info(
                                                                 "1 item yanked.",
                                                                 state.layout.y,
                                                             );
-                                                            state.move_cursor(state.layout.y);
                                                             break 'reg;
                                                         }
                                                         //yank (visual mode)
@@ -1920,13 +1897,11 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                             //In read-only directory, delete
                                                             //disabled
                                                             if state.is_ro {
-                                                                go_to_info_line_and_reset();
+                                                                state.escape();
                                                                 print_warning(
                                         "Cannot delete item in this directory.",
                                         state.layout.y,
                                     );
-                                                                hide_cursor();
-                                                                state.move_cursor(state.layout.y);
                                                                 break 'reg;
                                                             }
                                                             if state.v_start.is_some() {
@@ -1971,13 +1946,11 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                             //In read-only directory, delete
                                                             //disabled
                                                             if state.is_ro {
-                                                                go_to_info_line_and_reset();
+                                                                state.escape();
                                                                 print_warning(
                                         "Cannot delete item in this directory.",
                                         state.layout.y,
                                     );
-                                                                hide_cursor();
-                                                                state.move_cursor(state.layout.y);
                                                                 break 'reg;
                                                             }
                                                             if state.v_start.is_none() {
@@ -2128,9 +2101,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             }
 
                                             (KeyCode::Esc, KeyModifiers::NONE) => {
-                                                go_to_info_line_and_reset();
-                                                hide_cursor();
-                                                state.move_cursor(state.layout.y);
+                                                state.escape();
                                                 break 'command;
                                             }
 
@@ -2216,8 +2187,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 let commands: Vec<&str> =
                                                     commands.split_whitespace().collect();
                                                 if commands.is_empty() {
-                                                    go_to_info_line_and_reset();
-                                                    state.move_cursor(state.layout.y);
+                                                    state.escape();
                                                     break;
                                                 }
                                                 let command = commands[0];
@@ -2263,9 +2233,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                 state.layout.show_reg();
                                                                 state.redraw(state.layout.y);
                                                             } else if state.layout.is_reg() {
-                                                                go_to_info_line_and_reset();
-                                                                hide_cursor();
-                                                                state.move_cursor(state.layout.y);
+                                                                state.escape();
                                                             } else {
                                                                 state.layout.show_reg();
                                                                 let (new_column, new_row) = state
@@ -2276,9 +2244,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                                     new_row,
                                                                     state.layout.y,
                                                                 )?;
-                                                                go_to_info_line_and_reset();
-                                                                hide_cursor();
-                                                                state.move_cursor(state.layout.y);
+                                                                state.escape();
                                                             }
                                                             break 'command;
                                                         }
@@ -2493,9 +2459,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         }
 
                                         _ => {
-                                            go_to_info_line_and_reset();
-                                            hide_cursor();
-                                            state.move_cursor(state.layout.y);
+                                            state.escape();
                                         }
                                     }
                                 }

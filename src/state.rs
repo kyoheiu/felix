@@ -1076,6 +1076,13 @@ impl State {
         }
     }
 
+    /// Escape to normal mode.
+    pub fn escape(&mut self) {
+        go_to_info_line_and_reset();
+        hide_cursor();
+        self.move_cursor(self.layout.y);
+    }
+
     /// Print an item in the directory.
     fn print_item(&self, item: &ItemInfo) {
         let name = if item.file_name.bytes().len() <= self.layout.name_max_len {
