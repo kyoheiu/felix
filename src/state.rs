@@ -1788,7 +1788,12 @@ fn read_item(entry: fs::DirEntry) -> ItemInfo {
                 if filetype == FileType::Symlink {
                     if let Ok(sym_meta) = fs::metadata(&path) {
                         if sym_meta.is_dir() {
-                            fs::canonicalize(path.clone()).ok()
+                            if cfg!(not(windows)) {
+                                // Avoid error on Windows
+                                path.canonicalize().ok()
+                            } else {
+                                Some(path.clone())
+                            }
                         } else {
                             None
                         }
