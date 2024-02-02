@@ -153,7 +153,7 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
 /// Run the app. (Containing the main loop)
 fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
-    //Enter the alternate screen with crossterm
+    //Save the current cursor position and enter the alternate screen with crossterm
     let mut screen = stdout();
     write!(screen, "{}", SavePosition)?;
     enter_raw_mode();
