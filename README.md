@@ -25,6 +25,12 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 
 ## New release
 
+## v2.12.1 (2024-02-04)
+
+### Fixed
+
+- Restore the cursor position properly after exit in a tmux (and possibly in other multiplexers) session.
+
 ## v2.12.0 (2024-01-28)
 
 ### Added

@@ -8,7 +8,7 @@ use super::session::*;
 use super::state::*;
 use super::term::*;
 
-use crossterm::cursor::RestorePosition;
+use crossterm::cursor::{RestorePosition, SavePosition};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use crossterm::execute;
 use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
@@ -153,8 +153,9 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
 
 /// Run the app. (Containing the main loop)
 fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
-    //Enter the alternate screen with crossterm
+    //Save the current cursor position and enter the alternate screen with crossterm
     let mut screen = stdout();
+    write!(screen, "{}", SavePosition)?;
     enter_raw_mode();
     execute!(screen, EnterAlternateScreen)?;
 
