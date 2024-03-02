@@ -1512,11 +1512,18 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                                     let key = &keyword.iter().collect::<String>();
 
-                                                    let target = state
-                                                        .list
-                                                        .iter()
-                                                        .position(|x| x.file_name.contains(key));
-
+                                                    let target = match state.ignore_case {
+                                                        Some(true) => {
+                                                            state.list.iter().position(|x| {
+                                                                x.file_name
+                                                                    .to_lowercase()
+                                                                    .contains(&key.to_lowercase())
+                                                            })
+                                                        }
+                                                        _ => state.list.iter().position(|x| {
+                                                            x.file_name.contains(key)
+                                                        }),
+                                                    };
                                                     match target {
                                                         Some(i) => {
                                                             state.layout.nums.skip = i as u16;

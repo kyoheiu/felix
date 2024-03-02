@@ -20,6 +20,7 @@ pub struct Config {
     pub default: Option<String>,
     pub match_vim_exit_behavior: Option<bool>,
     pub exec: Option<BTreeMap<String, Vec<String>>>,
+    pub ignore_case: Option<bool>,
     pub color: Option<ConfigColor>,
 }
 
@@ -70,6 +71,7 @@ impl Default for Config {
             default: Default::default(),
             match_vim_exit_behavior: Default::default(),
             exec: Default::default(),
+            ignore_case: Some(false),
             color: Some(Default::default()),
         }
     }
