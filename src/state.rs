@@ -1205,7 +1205,14 @@ impl State {
             }
             match entry.file_type {
                 FileType::Directory => dir_v.push(entry),
-                FileType::File | FileType::Symlink => file_v.push(entry),
+                FileType::File => file_v.push(entry),
+                FileType::Symlink => {
+                    if entry.symlink_dir_path.is_some() {
+                        dir_v.push(entry);
+                    } else {
+                        file_v.push(entry);
+                    }
+                }
             }
         }
 
