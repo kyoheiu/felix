@@ -746,15 +746,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 let commands = command
                                                     .split_whitespace()
                                                     .collect::<Vec<&str>>();
-                                                if commands.len() > 2 {
-                                                    //Invalid argument.
-                                                    print_warning(
-                                                        "Invalid argument for zoxide.",
-                                                        state.layout.y,
-                                                    );
-                                                    state.move_cursor(state.layout.y);
-                                                    break 'zoxide;
-                                                } else if commands.len() == 1 {
+                                                if commands.len() == 1 {
                                                     //go to the home directory
                                                     let home_dir =
                                                         dirs::home_dir().ok_or_else(|| {
