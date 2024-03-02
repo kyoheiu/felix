@@ -52,6 +52,7 @@ pub struct State {
     pub has_zoxide: bool,
     pub default: String,
     pub commands: Option<BTreeMap<String, String>>,
+    pub ignore_case: Option<bool>,
     pub registers: Registers,
     pub operations: Operation,
     pub jumplist: JumpList,
@@ -263,6 +264,7 @@ impl State {
             .unwrap_or_else(|| env::var("EDITOR").unwrap_or_default());
         self.match_vim_exit_behavior = config.match_vim_exit_behavior.unwrap_or_default();
         self.commands = to_extension_map(&config.exec);
+        self.ignore_case = config.ignore_case;
         let colors = config.color.unwrap_or_default();
         self.layout.colors = colors;
     }
@@ -1285,7 +1287,13 @@ impl State {
     /// Highlight matched items.
     pub fn highlight_matches(&mut self, keyword: &str) {
         for item in self.list.iter_mut() {
-            item.matches = item.file_name.contains(keyword);
+            item.matches = match self.ignore_case {
+                Some(true) => item
+                    .file_name
+                    .to_lowercase()
+                    .contains(&keyword.to_lowercase()),
+                _ => item.file_name.contains(keyword),
+            }
         }
     }
 
@@ -1599,7 +1607,10 @@ impl State {
             let count = self
                 .list
                 .iter()
-                .filter(|x| x.file_name.contains(keyword))
+                .filter(|x| match self.ignore_case {
+                    Some(true) => x.file_name.to_lowercase().contains(&keyword.to_lowercase()),
+                    _ => x.file_name.contains(keyword),
+                })
                 .count();
             let count = if count <= 1 {
                 format!("{} match", count)
