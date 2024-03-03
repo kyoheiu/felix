@@ -1647,56 +1647,68 @@ impl State {
 
     /// Return footer string.
     fn make_footer(&self, item: &ItemInfo) -> String {
-        match &item.file_ext {
-            Some(ext) => {
-                let footer = match item.permissions {
-                    Some(permissions) => {
-                        format!(
-                            " {}/{} {} {} {}",
+        let mut footer = String::new();
+        if item.file_type == FileType::Symlink {
+            footer = " linked to: ".to_owned();
+            match &item.symlink_dir_path {
+                Some(true_path) => {
+                    footer.push_str(true_path.to_str().unwrap_or("(invalid unicode path)"))
+                }
+                None => match fs::read_link(&item.file_path) {
+                    Ok(true_path) => {
+                        footer.push_str(true_path.to_str().unwrap_or("(invalid unicode path)"))
+                    }
+                    Err(_) => footer.push_str("Broken link"),
+                },
+            }
+        } else {
+            match &item.file_ext {
+                Some(ext) => {
+                    footer = match item.permissions {
+                        Some(permissions) => {
+                            format!(
+                                " {}/{} {} {} {}",
+                                self.layout.nums.index + 1,
+                                self.list.len(),
+                                ext.clone(),
+                                to_proper_size(item.file_size),
+                                convert_to_permissions(permissions)
+                            )
+                        }
+                        None => format!(
+                            " {}/{} {} {}",
                             self.layout.nums.index + 1,
                             self.list.len(),
                             ext.clone(),
                             to_proper_size(item.file_size),
-                            convert_to_permissions(permissions)
-                        )
-                    }
-                    None => format!(
-                        " {}/{} {} {}",
-                        self.layout.nums.index + 1,
-                        self.list.len(),
-                        ext.clone(),
-                        to_proper_size(item.file_size),
-                    ),
-                };
-                footer
-                    .chars()
-                    .take(self.layout.terminal_column.into())
-                    .collect()
-            }
-            None => {
-                let footer = match item.permissions {
-                    Some(permissions) => {
-                        format!(
-                            " {}/{} {} {}",
+                        ),
+                    };
+                }
+                None => {
+                    footer = match item.permissions {
+                        Some(permissions) => {
+                            format!(
+                                " {}/{} {} {}",
+                                self.layout.nums.index + 1,
+                                self.list.len(),
+                                to_proper_size(item.file_size),
+                                convert_to_permissions(permissions)
+                            )
+                        }
+                        None => format!(
+                            " {}/{} {}",
                             self.layout.nums.index + 1,
                             self.list.len(),
                             to_proper_size(item.file_size),
-                            convert_to_permissions(permissions)
-                        )
-                    }
-                    None => format!(
-                        " {}/{} {}",
-                        self.layout.nums.index + 1,
-                        self.list.len(),
-                        to_proper_size(item.file_size),
-                    ),
-                };
-                footer
-                    .chars()
-                    .take(self.layout.terminal_column.into())
-                    .collect()
+                        ),
+                    };
+                }
             }
         }
+        footer
+            .chars()
+            .take(self.layout.terminal_column.into())
+            .collect()
     }
 
     /// Scroll down previewed text.
