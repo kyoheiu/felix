@@ -346,6 +346,7 @@ dependencies = [
  "lzma-rs",
  "natord",
  "nix",
+ "normpath",
  "rayon",
  "serde",
  "serde_yaml",
@@ -639,6 +640,15 @@ dependencies = [
  "libc",
  "memoffset",
  "pin-utils",
+]
+
+[[package]]
+name = "normpath"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5831952a9476f2fed74b77d74182fa5ddc4d21c72ec45a333b250e3ed0272804"
+dependencies = [
+ "windows-sys 0.52.0",
 ]
 
 [[package]]

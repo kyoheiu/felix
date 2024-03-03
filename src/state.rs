@@ -16,6 +16,7 @@ use crossterm::event::KeyEventKind;
 use crossterm::event::{Event, KeyCode, KeyEvent};
 use crossterm::style::Stylize;
 use log::info;
+use normpath::PathExt;
 use std::collections::VecDeque;
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
@@ -1647,56 +1648,70 @@ impl State {
 
     /// Return footer string.
     fn make_footer(&self, item: &ItemInfo) -> String {
-        match &item.file_ext {
-            Some(ext) => {
-                let footer = match item.permissions {
-                    Some(permissions) => {
-                        format!(
-                            " {}/{} {} {} {}",
+        let mut footer = String::new();
+        if item.file_type == FileType::Symlink {
+            footer = " linked to: ".to_owned();
+            match &item.symlink_dir_path {
+                Some(true_path) => {
+                    footer.push_str(true_path.to_str().unwrap_or("(invalid unicode path)"))
+                }
+                None => match fs::read_link(&item.file_path) {
+                    Ok(true_path) => match true_path.normalize() {
+                        Ok(p) => footer
+                            .push_str(p.as_path().to_str().unwrap_or("(invalid univode path)")),
+                        Err(_) => footer.push_str("(invalid path)"),
+                    },
+                    Err(_) => footer.push_str("(broken link)"),
+                },
+            }
+        } else {
+            match &item.file_ext {
+                Some(ext) => {
+                    footer = match item.permissions {
+                        Some(permissions) => {
+                            format!(
+                                " {}/{} {} {} {}",
+                                self.layout.nums.index + 1,
+                                self.list.len(),
+                                ext.clone(),
+                                to_proper_size(item.file_size),
+                                convert_to_permissions(permissions)
+                            )
+                        }
+                        None => format!(
+                            " {}/{} {} {}",
                             self.layout.nums.index + 1,
                             self.list.len(),
                             ext.clone(),
                             to_proper_size(item.file_size),
-                            convert_to_permissions(permissions)
-                        )
-                    }
-                    None => format!(
-                        " {}/{} {} {}",
-                        self.layout.nums.index + 1,
-                        self.list.len(),
-                        ext.clone(),
-                        to_proper_size(item.file_size),
-                    ),
-                };
-                footer
-                    .chars()
-                    .take(self.layout.terminal_column.into())
-                    .collect()
-            }
-            None => {
-                let footer = match item.permissions {
-                    Some(permissions) => {
-                        format!(
-                            " {}/{} {} {}",
+                        ),
+                    };
+                }
+                None => {
+                    footer = match item.permissions {
+                        Some(permissions) => {
+                            format!(
+                                " {}/{} {} {}",
+                                self.layout.nums.index + 1,
+                                self.list.len(),
+                                to_proper_size(item.file_size),
+                                convert_to_permissions(permissions)
+                            )
+                        }
+                        None => format!(
+                            " {}/{} {}",
                             self.layout.nums.index + 1,
                             self.list.len(),
                             to_proper_size(item.file_size),
-                            convert_to_permissions(permissions)
-                        )
-                    }
-                    None => format!(
-                        " {}/{} {}",
-                        self.layout.nums.index + 1,
-                        self.list.len(),
-                        to_proper_size(item.file_size),
-                    ),
-                };
-                footer
-                    .chars()
-                    .take(self.layout.terminal_column.into())
-                    .collect()
+                        ),
+                    };
+                }
             }
         }
+        footer
+            .chars()
+            .take(self.layout.terminal_column.into())
+            .collect()
     }
 
     /// Scroll down previewed text.
@@ -1806,12 +1821,7 @@ fn read_item(entry: fs::DirEntry) -> ItemInfo {
                 if filetype == FileType::Symlink {
                     if let Ok(sym_meta) = fs::metadata(&path) {
                         if sym_meta.is_dir() {
-                            if cfg!(not(windows)) {
-                                // Avoid error on Windows
-                                path.canonicalize().ok()
-                            } else {
-                                Some(path.clone())
-                            }
+                            path.normalize().map(|p| p.into_path_buf()).ok()
                         } else {
                             None
                         }

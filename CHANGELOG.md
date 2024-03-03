@@ -4,6 +4,15 @@
 
 ## Unreleased
 
+### Added
+- `ignore_case` option to do case-insensitie search by `/`.
+
+### Changed
+- Symlink items linked to directory now appears in the directory section, not the file section.
+
+### fixed
+- `z` command can now receive multiple arguments: `z dot files<CR>` works as in your terminal.
+
 ## v2.12.1 (2024-02-04)
 
 ### Fixed

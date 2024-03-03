@@ -13,6 +13,7 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifier
 use crossterm::execute;
 use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
 use log::{error, info};
+use normpath::PathExt;
 use std::env;
 use std::io::{stdout, Write};
 use std::panic;
@@ -118,12 +119,14 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     let mut state = State::new(&session_path)?;
     state.trash_dir = trash_dir_path;
     state.lwd_file = lwd_file_path;
-    state.current_dir = if cfg!(not(windows)) {
-        // If executed this on windows, "//?" will be inserted at the beginning of the path.
-        arg.canonicalize()?
-    } else {
-        arg
-    };
+    let normalized_arg = arg.normalize();
+    if normalized_arg.is_err() {
+        return Err(FxError::Arg(format!(
+            "Invalid path: {}\n`fx -h` shows help.",
+            &arg.display()
+        )));
+    }
+    state.current_dir = normalized_arg.unwrap().into_path_buf();
     state.jumplist.add(&state.current_dir);
     state.is_ro = match has_write_permission(&state.current_dir) {
         Ok(b) => !b,
@@ -2241,12 +2244,13 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 } else if commands.len() == 2 && command == "cd" {
                                                     if let Ok(target) =
                                                         std::path::Path::new(commands[1])
-                                                            .canonicalize()
+                                                            .normalize()
                                                     {
                                                         if target.exists() {
-                                                            if let Err(e) =
-                                                                state.chdir(&target, Move::Jump)
-                                                            {
+                                                            if let Err(e) = state.chdir(
+                                                                &target.into_path_buf(),
+                                                                Move::Jump,
+                                                            ) {
                                                                 print_warning(e, state.layout.y);
                                                             }
                                                             break 'command;
