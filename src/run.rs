@@ -762,7 +762,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     break 'zoxide;
                                                 } else if let Ok(output) =
                                                     std::process::Command::new("zoxide")
-                                                        .args(["query", commands[1]])
+                                                        .arg("query")
+                                                        .args(&commands[1..])
                                                         .output()
                                                 {
                                                     let output = output.stdout;
