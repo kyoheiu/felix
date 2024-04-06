@@ -16,6 +16,9 @@
 #  'feh -.':
 #   [jpg, jpeg, png, gif, svg, hdr]
 
+# Whether to do the case-insensitive search by `/`.
+# ignore_case: true
+
 # The foreground color of directory, file and symlink.
 # Pick one of the following:
 #     Black            // 0

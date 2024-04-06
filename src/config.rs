@@ -24,7 +24,7 @@ pub struct Config {
     pub color: Option<ConfigColor>,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, PartialEq)]
 pub struct ConfigColor {
     pub dir_fg: Colorname,
     pub file_fg: Colorname,
@@ -43,7 +43,7 @@ impl Default for ConfigColor {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, PartialEq)]
 pub enum Colorname {
     Black,        // 0
     Red,          // 1
@@ -141,5 +141,73 @@ pub fn read_config_or_default() -> Result<ConfigWithPath, FxError> {
             config_path: None,
             config: Config::default(),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_read_default_config() {
+        let default_config: Config = serde_yaml::from_str("").unwrap();
+        assert_eq!(default_config.default, None);
+        assert_eq!(default_config.match_vim_exit_behavior, None);
+        assert_eq!(default_config.exec, None);
+        assert_eq!(default_config.ignore_case, None);
+        assert_eq!(default_config.color, None);
+    }
+
+    #[test]
+    fn test_read_full_config() {
+        let full_config: Config = serde_yaml::from_str(
+            r#"
+default: nvim
+match_vim_exit_behavior: true
+exec:
+  zathura:
+    [pdf]
+  'feh -.':
+    [jpg, jpeg, png, gif, svg, hdr]
+ignore_case: true
+color:
+  dir_fg: LightCyan
+  file_fg: LightWhite
+  symlink_fg: LightYellow
+  dirty_fg: Red
+"#,
+        )
+        .unwrap();
+        assert_eq!(full_config.default, Some("nvim".to_string()));
+        assert_eq!(full_config.match_vim_exit_behavior, Some(true));
+        assert_eq!(
+            full_config.exec.clone().unwrap().get("zathura"),
+            Some(&vec!["pdf".to_string()])
+        );
+        assert_eq!(
+            full_config.exec.unwrap().get("feh -."),
+            Some(&vec![
+                "jpg".to_string(),
+                "jpeg".to_string(),
+                "png".to_string(),
+                "gif".to_string(),
+                "svg".to_string(),
+                "hdr".to_string()
+            ])
+        );
+        assert_eq!(full_config.ignore_case, Some(true));
+        assert_eq!(
+            full_config.color.clone().unwrap().dir_fg,
+            Colorname::LightCyan
+        );
+        assert_eq!(
+            full_config.color.clone().unwrap().file_fg,
+            Colorname::LightWhite
+        );
+        assert_eq!(
+            full_config.color.clone().unwrap().symlink_fg,
+            Colorname::LightYellow
+        );
+        assert_eq!(full_config.color.unwrap().dirty_fg, Colorname::Red);
     }
 }
