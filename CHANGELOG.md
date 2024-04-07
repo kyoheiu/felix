@@ -4,6 +4,19 @@
 
 ## Unreleased
 
+## v2.13.0 (2024-04-07)
+
+### Added
+- `ignore_case` option to the do case-insensitie search by `/`.
+- Symbolic link destinations are now displayed when the cursor is hovered over them.
+
+### Changed
+- Symlink items linked to directory now appears in the directory section, not the file section.
+- MSRV is now v1.74.1
+
+### fixed
+- `z` command can now receive multiple arguments: `z dot files<CR>` works as in your terminal.
+
 ## v2.12.1 (2024-02-04)
 
 ### Fixed

@@ -16,6 +16,7 @@ use crossterm::event::KeyEventKind;
 use crossterm::event::{Event, KeyCode, KeyEvent};
 use crossterm::style::Stylize;
 use log::info;
+use normpath::PathExt;
 use std::collections::VecDeque;
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
@@ -52,6 +53,7 @@ pub struct State {
     pub has_zoxide: bool,
     pub default: String,
     pub commands: Option<BTreeMap<String, String>>,
+    pub ignore_case: Option<bool>,
     pub registers: Registers,
     pub operations: Operation,
     pub jumplist: JumpList,
@@ -263,6 +265,7 @@ impl State {
             .unwrap_or_else(|| env::var("EDITOR").unwrap_or_default());
         self.match_vim_exit_behavior = config.match_vim_exit_behavior.unwrap_or_default();
         self.commands = to_extension_map(&config.exec);
+        self.ignore_case = config.ignore_case;
         let colors = config.color.unwrap_or_default();
         self.layout.colors = colors;
     }
@@ -1205,7 +1208,14 @@ impl State {
             }
             match entry.file_type {
                 FileType::Directory => dir_v.push(entry),
-                FileType::File | FileType::Symlink => file_v.push(entry),
+                FileType::File => file_v.push(entry),
+                FileType::Symlink => {
+                    if entry.symlink_dir_path.is_some() {
+                        dir_v.push(entry);
+                    } else {
+                        file_v.push(entry);
+                    }
+                }
             }
         }
 
@@ -1285,7 +1295,13 @@ impl State {
     /// Highlight matched items.
     pub fn highlight_matches(&mut self, keyword: &str) {
         for item in self.list.iter_mut() {
-            item.matches = item.file_name.contains(keyword);
+            item.matches = match self.ignore_case {
+                Some(true) => item
+                    .file_name
+                    .to_lowercase()
+                    .contains(&keyword.to_lowercase()),
+                _ => item.file_name.contains(keyword),
+            }
         }
     }
 
@@ -1599,7 +1615,10 @@ impl State {
             let count = self
                 .list
                 .iter()
-                .filter(|x| x.file_name.contains(keyword))
+                .filter(|x| match self.ignore_case {
+                    Some(true) => x.file_name.to_lowercase().contains(&keyword.to_lowercase()),
+                    _ => x.file_name.contains(keyword),
+                })
                 .count();
             let count = if count <= 1 {
                 format!("{} match", count)
@@ -1629,56 +1648,70 @@ impl State {
 
     /// Return footer string.
     fn make_footer(&self, item: &ItemInfo) -> String {
-        match &item.file_ext {
-            Some(ext) => {
-                let footer = match item.permissions {
-                    Some(permissions) => {
-                        format!(
-                            " {}/{} {} {} {}",
+        let mut footer = String::new();
+        if item.file_type == FileType::Symlink {
+            footer = " linked to: ".to_owned();
+            match &item.symlink_dir_path {
+                Some(true_path) => {
+                    footer.push_str(true_path.to_str().unwrap_or("(invalid unicode path)"))
+                }
+                None => match fs::read_link(&item.file_path) {
+                    Ok(true_path) => match true_path.normalize() {
+                        Ok(p) => footer
+                            .push_str(p.as_path().to_str().unwrap_or("(invalid univode path)")),
+                        Err(_) => footer.push_str("(invalid path)"),
+                    },
+                    Err(_) => footer.push_str("(broken link)"),
+                },
+            }
+        } else {
+            match &item.file_ext {
+                Some(ext) => {
+                    footer = match item.permissions {
+                        Some(permissions) => {
+                            format!(
+                                " {}/{} {} {} {}",
+                                self.layout.nums.index + 1,
+                                self.list.len(),
+                                ext.clone(),
+                                to_proper_size(item.file_size),
+                                convert_to_permissions(permissions)
+                            )
+                        }
+                        None => format!(
+                            " {}/{} {} {}",
                             self.layout.nums.index + 1,
                             self.list.len(),
                             ext.clone(),
                             to_proper_size(item.file_size),
-                            convert_to_permissions(permissions)
-                        )
-                    }
-                    None => format!(
-                        " {}/{} {} {}",
-                        self.layout.nums.index + 1,
-                        self.list.len(),
-                        ext.clone(),
-                        to_proper_size(item.file_size),
-                    ),
-                };
-                footer
-                    .chars()
-                    .take(self.layout.terminal_column.into())
-                    .collect()
-            }
-            None => {
-                let footer = match item.permissions {
-                    Some(permissions) => {
-                        format!(
-                            " {}/{} {} {}",
+                        ),
+                    };
+                }
+                None => {
+                    footer = match item.permissions {
+                        Some(permissions) => {
+                            format!(
+                                " {}/{} {} {}",
+                                self.layout.nums.index + 1,
+                                self.list.len(),
+                                to_proper_size(item.file_size),
+                                convert_to_permissions(permissions)
+                            )
+                        }
+                        None => format!(
+                            " {}/{} {}",
                             self.layout.nums.index + 1,
                             self.list.len(),
                             to_proper_size(item.file_size),
-                            convert_to_permissions(permissions)
-                        )
-                    }
-                    None => format!(
-                        " {}/{} {}",
-                        self.layout.nums.index + 1,
-                        self.list.len(),
-                        to_proper_size(item.file_size),
-                    ),
-                };
-                footer
-                    .chars()
-                    .take(self.layout.terminal_column.into())
-                    .collect()
+                        ),
+                    };
+                }
             }
         }
+        footer
+            .chars()
+            .take(self.layout.terminal_column.into())
+            .collect()
     }
 
     /// Scroll down previewed text.
@@ -1788,12 +1821,7 @@ fn read_item(entry: fs::DirEntry) -> ItemInfo {
                 if filetype == FileType::Symlink {
                     if let Ok(sym_meta) = fs::metadata(&path) {
                         if sym_meta.is_dir() {
-                            if cfg!(not(windows)) {
-                                // Avoid error on Windows
-                                path.canonicalize().ok()
-                            } else {
-                                Some(path.clone())
-                            }
+                            path.normalize().map(|p| p.into_path_buf()).ok()
                         } else {
                             None
                         }

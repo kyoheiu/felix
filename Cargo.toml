@@ -1,6 +1,6 @@
 [package]
 name = "felix"
-version = "2.12.1"
+version = "2.13.0"
 authors = ["Kyohei Uto <im@kyoheiu.dev>"]
 edition = "2021"
 description = "tui file manager with vim-like key mapping"
@@ -35,6 +35,7 @@ lzma-rs = "0.3.0"
 zstd = "0.12.4"
 unicode-width = "0.1.10"
 git2 = {version = "0.18.0", default-features = false }
+normpath = "1.2.0"
 
 [dev-dependencies]
 bwrap = { version = "1.3.0", features = ["use_std"] }

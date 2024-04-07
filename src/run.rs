@@ -13,6 +13,7 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifier
 use crossterm::execute;
 use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
 use log::{error, info};
+use normpath::PathExt;
 use std::env;
 use std::io::{stdout, Write};
 use std::panic;
@@ -118,12 +119,14 @@ pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
     let mut state = State::new(&session_path)?;
     state.trash_dir = trash_dir_path;
     state.lwd_file = lwd_file_path;
-    state.current_dir = if cfg!(not(windows)) {
-        // If executed this on windows, "//?" will be inserted at the beginning of the path.
-        arg.canonicalize()?
-    } else {
-        arg
-    };
+    let normalized_arg = arg.normalize();
+    if normalized_arg.is_err() {
+        return Err(FxError::Arg(format!(
+            "Invalid path: {}\n`fx -h` shows help.",
+            &arg.display()
+        )));
+    }
+    state.current_dir = normalized_arg.unwrap().into_path_buf();
     state.jumplist.add(&state.current_dir);
     state.is_ro = match has_write_permission(&state.current_dir) {
         Ok(b) => !b,
@@ -746,15 +749,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 let commands = command
                                                     .split_whitespace()
                                                     .collect::<Vec<&str>>();
-                                                if commands.len() > 2 {
-                                                    //Invalid argument.
-                                                    print_warning(
-                                                        "Invalid argument for zoxide.",
-                                                        state.layout.y,
-                                                    );
-                                                    state.move_cursor(state.layout.y);
-                                                    break 'zoxide;
-                                                } else if commands.len() == 1 {
+                                                if commands.len() == 1 {
                                                     //go to the home directory
                                                     let home_dir =
                                                         dirs::home_dir().ok_or_else(|| {
@@ -770,7 +765,8 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                     break 'zoxide;
                                                 } else if let Ok(output) =
                                                     std::process::Command::new("zoxide")
-                                                        .args(["query", commands[1]])
+                                                        .arg("query")
+                                                        .args(&commands[1..])
                                                         .output()
                                                 {
                                                     let output = output.stdout;
@@ -1520,11 +1516,18 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                                                     let key = &keyword.iter().collect::<String>();
 
-                                                    let target = state
-                                                        .list
-                                                        .iter()
-                                                        .position(|x| x.file_name.contains(key));
-
+                                                    let target = match state.ignore_case {
+                                                        Some(true) => {
+                                                            state.list.iter().position(|x| {
+                                                                x.file_name
+                                                                    .to_lowercase()
+                                                                    .contains(&key.to_lowercase())
+                                                            })
+                                                        }
+                                                        _ => state.list.iter().position(|x| {
+                                                            x.file_name.contains(key)
+                                                        }),
+                                                    };
                                                     match target {
                                                         Some(i) => {
                                                             state.layout.nums.skip = i as u16;
@@ -2241,12 +2244,13 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 } else if commands.len() == 2 && command == "cd" {
                                                     if let Ok(target) =
                                                         std::path::Path::new(commands[1])
-                                                            .canonicalize()
+                                                            .normalize()
                                                     {
                                                         if target.exists() {
-                                                            if let Err(e) =
-                                                                state.chdir(&target, Move::Jump)
-                                                            {
+                                                            if let Err(e) = state.chdir(
+                                                                &target.into_path_buf(),
+                                                                Move::Jump,
+                                                            ) {
                                                                 print_warning(e, state.layout.y);
                                                             }
                                                             break 'command;

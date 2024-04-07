@@ -25,6 +25,22 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 
 ## New release
 
+## v2.13.0 (2024-04-07)
+
+### Added
+
+- `ignore_case` option to the do case-insensitie search by `/`.
+- Symbolic link destinations are now displayed when the cursor is hovered over them.
+
+### Changed
+
+- Symlink items linked to directory now appears in the directory section, not the file section.
+- MSRV is now v1.74.1
+
+### fixed
+
+- `z` command can now receive multiple arguments: `z dot files<CR>` works as in your terminal.
+
 ## v2.12.1 (2024-02-04)
 
 ### Fixed
@@ -70,16 +86,16 @@ report any problems._
 
 | package    | installation command  | notes                                                                                                                                       |
 | ---------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| crates.io  | `cargo install felix` | Minimum Supported rustc Version: **1.67.1**                                                                                                 |
+| crates.io  | `cargo install felix` | Minimum Supported rustc Version: **1.74.1**                                                                                                 |
 | Arch Linux | `pacman -S felix-rs`  | The binary name is `felix` if you install via pacman. Alias `fx='felix'` if you want, as this document (and other installations) uses `fx`. |
 | NetBSD     | `pkgin install felix` |                                                                                                                                             |
 
 ### From this repository
 
 - Make sure that `gcc` is installed.
-- MSRV(Minimum Supported rustc Version): **1.67.1**
+- MSRV(Minimum Supported rustc Version): **1.74.1**
 
-Update Rust if rustc < 1.67.1:
+Update Rust if rustc < 1.74.1:
 
 ```
 rustup update
