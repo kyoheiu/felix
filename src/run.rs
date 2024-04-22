@@ -331,6 +331,16 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 continue;
                             }
 
+                            //select-unselect, only in visual mode
+                            KeyCode::Char(' ') => {
+                                if state.v_start.is_some() {
+                                    let item = state.get_item_mut()?;
+                                    item.selected = !item.selected;
+                                    
+                                    state.redraw(state.layout.y);
+                                }
+                            }
+
                             //Go up. If lists exceed max-row, lists "scrolls" before the top of the list
                             KeyCode::Char('j') | KeyCode::Down => {
                                 if let Some(start_pos) = state.v_start {
