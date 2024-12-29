@@ -9,7 +9,6 @@ use super::term::*;
 use log::error;
 use serde::{Deserialize, Serialize};
 
-pub const MAX_SIZE_TO_PREVIEW: u64 = 1_000_000_000;
 pub const CHAFA_WARNING: &str =
     "From v1.1.0, the image preview needs chafa (>= v1.10.0). For more details, please see help by `:h` ";
 
@@ -40,7 +39,8 @@ pub struct Layout {
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone)]
 pub enum PreviewType {
     NotReadable,
-    TooBigSize,
+    TooBigImage,
+    TooBigText,
     Directory,
     Image,
     Text,
@@ -186,8 +186,11 @@ impl Layout {
                 Some(PreviewType::NotReadable) => {
                     print!("(file not readable)");
                 }
-                Some(PreviewType::TooBigSize) => {
-                    print!("(file too big for preview)");
+                Some(PreviewType::TooBigImage) => {
+                    print!("(image too big for preview: over 100MB)");
+                }
+                Some(PreviewType::TooBigText) => {
+                    print!("(text too big for preview: over 1MB)");
                 }
                 Some(PreviewType::Directory) => {
                     self.preview_directory(item);
@@ -214,10 +217,10 @@ impl Layout {
                     }
                 }
                 Some(PreviewType::Binary) => {
-                    print!("(Binary file)");
+                    print!("(binary file)");
                 }
                 _ => {
-                    print!("(Not Available)");
+                    print!("(not available)");
                 }
             }
         }
