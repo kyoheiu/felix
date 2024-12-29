@@ -33,7 +33,7 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 
 ### Changed
 
-- Avoid displaying big text in preview area by adding PreviewType::TooBigText (over 1MB).
+- Avoid displaying big text in preview area by adding `PreviewType::TooBigText` (over 1MB).
 
 ### Fixed
 
