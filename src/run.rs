@@ -331,7 +331,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 continue;
                             }
 
-                            //Go up. If lists exceed max-row, lists "scrolls" before the top of the list
+                            //Go down. If lists exceed max-row, lists "scrolls" before the bottom of the list
                             KeyCode::Char('j') | KeyCode::Down => {
                                 if let Some(start_pos) = state.v_start {
                                     //In visual mode
@@ -386,7 +386,7 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                             }
 
-                            //Go down. If lists exceed max-row, lists "scrolls" before the bottom of the list
+                            //Go up. If lists exceed max-row, lists "scrolls" before the top of the list
                             KeyCode::Char('k') | KeyCode::Up => {
                                 if let Some(start_pos) = state.v_start {
                                     //visual mode
