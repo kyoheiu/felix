@@ -2050,21 +2050,22 @@ mod tests {
 
     #[test]
     fn test_has_write_permission() {
-        // chmod to 444 and check if it's read-only
         let p = std::path::PathBuf::from("./testfiles/permission_test");
-        let _status = std::process::Command::new("chmod")
-            .args(["444", "./testfiles/permission_test"])
-            .status()
-            .unwrap();
-        assert!(!has_write_permission(p.as_path()).unwrap());
-        let _status = std::process::Command::new("chmod")
-            .args(["755", "./testfiles/permission_test"])
-            .status()
-            .unwrap();
+        assert!(has_write_permission(&p).unwrap());
 
-        // Test the home directory, which should pass
+        // chmod to 444 and check if it's read-only
+        let mut perms = std::fs::metadata(&p).unwrap().permissions();
+        perms.set_readonly(true);
+        std::fs::set_permissions(&p, perms.clone()).unwrap();
+        assert!(!has_write_permission(&p).unwrap());
+
+        // HOME_DIR should pass as writable
         let home_dir = dirs::home_dir().unwrap();
         assert!(has_write_permission(&home_dir).unwrap());
+
+        // Set the file writable
+        perms.set_readonly(false);
+        std::fs::set_permissions(&p, perms).unwrap();
     }
 
     #[test]
