@@ -4,6 +4,20 @@
 
 ## Unreleased
 
+## v2.15.0 (2024-12-30)
+
+### Added
+
+- `<C-d>` and `<C-u>` to go up/down 1/2 page in both normal mode and visual mode.
+
+### Changed
+
+- Avoid displaying big text in preview area by adding PreviewType::TooBigText (over 1MB).
+
+### Fixed
+
+- Rewrite test_has_write_permission by set_readonly.
+
 ## v2.14.0 (2024-09-29)
 
 ### Changed

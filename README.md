@@ -25,6 +25,20 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 
 ## New release
 
+## v2.15.0 (2024-12-30)
+
+### Added
+
+- `<C-d>` and `<C-u>` to go up/down 1/2 page in both normal mode and visual mode.
+
+### Changed
+
+- Avoid displaying big text in preview area by adding PreviewType::TooBigText (over 1MB).
+
+### Fixed
+
+- Rewrite test_has_write_permission by set_readonly.
+
 ## v2.14.0 (2024-09-29)
 
 ### Changed
@@ -46,28 +60,6 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 ### fixed
 
 - `z` command can now receive multiple arguments: `z dot files<CR>` works as in your terminal.
-
-## v2.12.1 (2024-02-04)
-
-### Fixed
-
-- Restore the cursor position properly after exit in a tmux (and possibly in other multiplexers) session.
-
-## v2.12.0 (2024-01-28)
-
-### Added
-
-- `:config` to point to the config file if exists.
-- felix listens to the change of the config file, and re-read the config automatically (after some key inputs).
-
-### Changed
-
-- Refactor around `_run` and `State::new()`.
-  - Add `config_path` field to `State`.
-
-### Fixed
-
-- symlink path and operations with it on Windows.
 
 For more details, see `CHANGELOG.md`.
 
@@ -168,6 +160,8 @@ Both relative and absolute path available.
 ```
 j / <Down>         :Go down.
 k / <Up>           :Go up.
+<C-d>              :Go down 1/2 page.
+<C-u>>             :Go up 1/2 page.
 h / <Left>         :Go to the parent directory if exists.
 l / <Right> / <CR> :Open item or change directory.
 gg                 :Go to the top.
