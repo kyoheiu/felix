@@ -42,6 +42,9 @@ use std::os::unix::fs::PermissionsExt;
 pub const BEGINNING_ROW: u16 = 3;
 pub const EMPTY_WARNING: &str = "Are you sure to empty the trash directory? (if yes: y)";
 
+const MAX_SIZE_TO_PREVIEW: u64 = 1_000_000_000;
+const MAX_SIZE_TO_PREVIEW_TEXT: u64 = 1_000_000;
+
 #[derive(Debug, Default)]
 pub struct State {
     pub list: Vec<ItemInfo>,
@@ -1914,11 +1917,15 @@ fn check_zoxide() -> bool {
 /// Set content type from ItemInfo.
 fn set_preview_content_type(item: &mut ItemInfo) {
     if item.file_size > MAX_SIZE_TO_PREVIEW {
-        item.preview_type = Some(PreviewType::TooBigSize);
+        item.preview_type = Some(PreviewType::TooBigImage);
     } else if is_supported_image(item) {
         item.preview_type = Some(PreviewType::Image);
     } else if let Ok(content) = &std::fs::read(&item.file_path) {
         if content_inspector::inspect(content).is_text() {
+            if item.file_size > MAX_SIZE_TO_PREVIEW_TEXT {
+                item.preview_type = Some(PreviewType::TooBigText);
+                return;
+            }
             if let Ok(content) = String::from_utf8(content.to_vec()) {
                 let content = content.replace('\t', "    ");
                 item.content = Some(content);
@@ -2050,21 +2057,22 @@ mod tests {
 
     #[test]
     fn test_has_write_permission() {
-        // chmod to 444 and check if it's read-only
         let p = std::path::PathBuf::from("./testfiles/permission_test");
-        let _status = std::process::Command::new("chmod")
-            .args(["444", "./testfiles/permission_test"])
-            .status()
-            .unwrap();
-        assert!(!has_write_permission(p.as_path()).unwrap());
-        let _status = std::process::Command::new("chmod")
-            .args(["755", "./testfiles/permission_test"])
-            .status()
-            .unwrap();
+        assert!(has_write_permission(&p).unwrap());
 
-        // Test the home directory, which should pass
+        // chmod to 444 and check if it's read-only
+        let mut perms = std::fs::metadata(&p).unwrap().permissions();
+        perms.set_readonly(true);
+        std::fs::set_permissions(&p, perms.clone()).unwrap();
+        assert!(!has_write_permission(&p).unwrap());
+
+        // HOME_DIR should pass as writable
         let home_dir = dirs::home_dir().unwrap();
         assert!(has_write_permission(&home_dir).unwrap());
+
+        // Set the file writable
+        perms.set_readonly(false);
+        std::fs::set_permissions(&p, perms).unwrap();
     }
 
     #[test]

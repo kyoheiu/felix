@@ -1,0 +1,27 @@
+name: cargo test
+
+on:
+  push:
+    branches-ignore: 'main' 
+    paths-ignore:
+      - '*.md'
+  pull_request:
+    types: [opened, edited, reopened]
+
+env: 
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build_and_test:
+    name: Rust project - latest
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        toolchain:
+          - stable
+          - beta
+          - nightly
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+      - run: cargo test --verbose
