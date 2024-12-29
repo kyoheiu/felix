@@ -4,6 +4,12 @@
 
 ## Unreleased
 
+## v2.14.0 (2024-09-29)
+
+### Changed
+
+- Update dependencies for Rust 1.81.0. MSRV is the same as before (1.74.1).
+
 ## v2.13.0 (2024-04-07)
 
 ### Added
