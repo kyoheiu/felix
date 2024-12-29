@@ -37,7 +37,7 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 
 ### Fixed
 
-- Rewrite test_has_write_permission by set_readonly.
+- Rewrite `test_has_write_permission` test by `set_readonly`.
 
 ## v2.14.0 (2024-09-29)
 
