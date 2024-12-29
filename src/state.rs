@@ -42,6 +42,9 @@ use std::os::unix::fs::PermissionsExt;
 pub const BEGINNING_ROW: u16 = 3;
 pub const EMPTY_WARNING: &str = "Are you sure to empty the trash directory? (if yes: y)";
 
+const MAX_SIZE_TO_PREVIEW: u64 = 1_000_000_000;
+const MAX_SIZE_TO_PREVIEW_TEXT: u64 = 1_000_000;
+
 #[derive(Debug, Default)]
 pub struct State {
     pub list: Vec<ItemInfo>,
@@ -1914,11 +1917,15 @@ fn check_zoxide() -> bool {
 /// Set content type from ItemInfo.
 fn set_preview_content_type(item: &mut ItemInfo) {
     if item.file_size > MAX_SIZE_TO_PREVIEW {
-        item.preview_type = Some(PreviewType::TooBigSize);
+        item.preview_type = Some(PreviewType::TooBigImage);
     } else if is_supported_image(item) {
         item.preview_type = Some(PreviewType::Image);
     } else if let Ok(content) = &std::fs::read(&item.file_path) {
         if content_inspector::inspect(content).is_text() {
+            if item.file_size > MAX_SIZE_TO_PREVIEW_TEXT {
+                item.preview_type = Some(PreviewType::TooBigText);
+                return;
+            }
             if let Ok(content) = String::from_utf8(content.to_vec()) {
                 let content = content.replace('\t', "    ");
                 item.content = Some(content);
