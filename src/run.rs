@@ -245,6 +245,124 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
             }) => {
                 match modifiers {
                     KeyModifiers::CONTROL => match code {
+                        // go down 1/2 page
+                        KeyCode::Char('d') => {
+                            let half = state.layout.terminal_row.div_ceil(2);
+                            let mut cursor_move_count = 0;
+                            if let Some(start_pos) = state.v_start {
+                                // visual mode
+                                for _n in 0..half {
+                                    if len == 0 || state.layout.nums.index == len - 1 {
+                                        break;
+                                    } else if state.layout.y + cursor_move_count
+                                        >= state.layout.terminal_row - 4
+                                        && len
+                                            > (state.layout.terminal_row - BEGINNING_ROW) as usize
+                                                - 1
+                                    {
+                                        if state.layout.nums.index >= start_pos {
+                                            state.layout.nums.go_down();
+                                            state.layout.nums.inc_skip();
+                                            let item = state.get_item_mut()?;
+                                            item.selected = true;
+                                        } else {
+                                            let item = state.get_item_mut()?;
+                                            item.selected = false;
+                                            state.layout.nums.go_down();
+                                            state.layout.nums.inc_skip();
+                                        }
+                                    } else if state.layout.nums.index >= start_pos {
+                                        state.layout.nums.go_down();
+                                        let item = state.get_item_mut()?;
+                                        item.selected = true;
+                                        cursor_move_count += 1;
+                                    } else {
+                                        let item = state.get_item_mut()?;
+                                        item.selected = false;
+                                        state.layout.nums.go_down();
+                                        cursor_move_count += 1;
+                                    }
+                                }
+                                state.redraw(state.layout.y + cursor_move_count);
+                            } else {
+                                // normal mode
+                                for _n in 0..half {
+                                    if len == 0 || state.layout.nums.index == len - 1 {
+                                        break;
+                                    } else if state.layout.y + cursor_move_count
+                                        >= state.layout.terminal_row - 1 - SCROLL_POINT
+                                        && len
+                                            > (state.layout.terminal_row - BEGINNING_ROW) as usize
+                                                - 1
+                                    {
+                                        state.layout.nums.go_down();
+                                        state.layout.nums.inc_skip();
+                                    } else {
+                                        state.layout.nums.go_down();
+                                        cursor_move_count += 1;
+                                    }
+                                }
+                                state.redraw(state.layout.y + cursor_move_count);
+                            }
+                        }
+
+                        // go up 1/2 page
+                        KeyCode::Char('u') => {
+                            let half = state.layout.terminal_row.div_ceil(2);
+                            let mut cursor_move_count = 0;
+                            if let Some(start_pos) = state.v_start {
+                                // visual mode
+                                for _n in 0..half {
+                                    if state.layout.nums.index == 0 {
+                                        break;
+                                    } else if state.layout.y - cursor_move_count
+                                        <= BEGINNING_ROW + 3
+                                        && state.layout.nums.skip != 0
+                                    {
+                                        if state.layout.nums.index > start_pos {
+                                            let item = state.get_item_mut()?;
+                                            item.selected = false;
+                                            state.layout.nums.go_up();
+                                            state.layout.nums.dec_skip();
+                                        } else {
+                                            state.layout.nums.go_up();
+                                            state.layout.nums.dec_skip();
+                                            let item = state.get_item_mut()?;
+                                            item.selected = true;
+                                        }
+                                    } else if state.layout.nums.index > start_pos {
+                                        let item = state.get_item_mut()?;
+                                        item.selected = false;
+                                        state.layout.nums.go_up();
+                                        cursor_move_count += 1;
+                                    } else {
+                                        state.layout.nums.go_up();
+                                        let item = state.get_item_mut()?;
+                                        item.selected = true;
+                                        cursor_move_count += 1;
+                                    }
+                                }
+                                state.redraw(state.layout.y - cursor_move_count);
+                            } else {
+                                //normal mode
+                                for _n in 0..half {
+                                    if state.layout.nums.index == 0 {
+                                        break;
+                                    } else if state.layout.y - cursor_move_count
+                                        <= BEGINNING_ROW + SCROLL_POINT
+                                        && state.layout.nums.skip != 0
+                                    {
+                                        state.layout.nums.go_up();
+                                        state.layout.nums.dec_skip();
+                                    } else {
+                                        state.layout.nums.go_up();
+                                        cursor_move_count += 1;
+                                    }
+                                }
+                                state.redraw(state.layout.y - cursor_move_count);
+                            }
+                        }
+
                         //redo
                         KeyCode::Char('r') => {
                             if state.v_start.is_some() {
