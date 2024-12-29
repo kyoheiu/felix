@@ -19,6 +19,8 @@ Both relative and absolute path available.
 ## Manual
 j / <Down>         :Go down.
 k / <Up>           :Go up.
+<C-d>              :Go down 1/2 page.
+<C-u>>             :Go up 1/2 page.
 h / <Left>         :Go to the parent directory if exists.
 l / <Right> / <CR> :Open item or change directory.
 gg                 :Go to the top.
