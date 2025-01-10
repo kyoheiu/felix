@@ -190,7 +190,8 @@ impl Registers {
     }
 }
 
-/// To avoid cost copying ItemInfo, use ItemBuffer when tinkering with register.
+/// To avoid cost copying ItemInfo, use ItemBuffer
+/// when tinkering with register or multiple renaming.
 #[derive(Debug, Clone)]
 pub struct ItemBuffer {
     pub file_type: FileType,
@@ -921,7 +922,9 @@ impl State {
     pub fn undo(&mut self, op: &OpKind) -> Result<(), FxError> {
         match op {
             OpKind::Rename(op) => {
-                std::fs::rename(&op.new_name, &op.original_name)?;
+                for (original, new) in op {
+                    std::fs::rename(new, original)?;
+                }
                 self.operations.pos += 1;
                 self.update_list()?;
                 self.clear_and_show_headline();
@@ -959,7 +962,9 @@ impl State {
     pub fn redo(&mut self, op: &OpKind) -> Result<(), FxError> {
         match op {
             OpKind::Rename(op) => {
-                std::fs::rename(&op.original_name, &op.new_name)?;
+                for (original, new) in op {
+                    std::fs::rename(original, new)?;
+                }
                 self.operations.pos -= 1;
                 self.update_list()?;
                 self.clear_and_show_headline();
@@ -1285,6 +1290,51 @@ impl State {
         }
 
         self.list = result;
+    }
+
+    /// Rename selected items at once.
+    pub fn rename_multiple_items(&mut self, items: &[ItemBuffer]) -> Result<(), FxError> {
+        let names: Vec<&str> = items.iter().map(|item| item.file_name.as_str()).collect();
+        let mut file = tempfile::NamedTempFile::new()?;
+        writeln!(file, "{}", names.join("\n"))?;
+
+        let mut default = Command::new(&self.default);
+        let path = file.into_temp_path();
+        if let Err(e) = default
+            .arg(&path)
+            .status()
+            .map_err(|_| FxError::DefaultEditor)
+        {
+            Err(e)
+        } else {
+            let new_names = fs::read_to_string(&path)?;
+            let new_names: Vec<&str> = new_names
+                .split('\n')
+                .filter(|name| !name.is_empty())
+                .collect();
+            if new_names.len() != items.len() {
+                Err(FxError::Io(
+                    format!(
+                        "Rename failed: Expected {} names, but received {} names",
+                        items.len(),
+                        new_names.len()
+                    )
+                    .to_string(),
+                ))
+            } else {
+                let mut result: Vec<(PathBuf, PathBuf)> = vec![];
+                for (i, new_name) in new_names.iter().enumerate() {
+                    let mut to = self.current_dir.clone();
+                    to.push(new_name);
+                    std::fs::rename(&items[i].file_path, &to)?;
+                    result.push((items[i].file_path.clone(), to))
+                }
+                self.operations.branch();
+                self.operations.push(OpKind::Rename(result));
+
+                Ok(())
+            }
+        }
     }
 
     /// Reset all item's selected state and exit the select mode.

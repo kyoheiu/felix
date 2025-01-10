@@ -13,7 +13,7 @@ pub struct Operation {
 pub enum OpKind {
     Delete(DeletedFiles),
     Put(PutFiles),
-    Rename(RenamedFile),
+    Rename(Vec<(PathBuf, PathBuf)>),
 }
 
 #[derive(Debug, Clone)]
@@ -28,12 +28,6 @@ pub struct PutFiles {
     pub original: Vec<ItemBuffer>,
     pub put: Vec<PathBuf>,
     pub dir: PathBuf,
-}
-
-#[derive(Debug, Clone)]
-pub struct RenamedFile {
-    pub original_name: PathBuf,
-    pub new_name: PathBuf,
 }
 
 impl Operation {
@@ -63,7 +57,12 @@ fn log(op: &OpKind) {
             info!("DELETE: {:?}", item_to_pathvec(&op.original));
         }
         OpKind::Rename(op) => {
-            info!("RENAME: {:?} -> {:?}", op.original_name, op.new_name);
+            info!(
+                "RENAME: {:?}",
+                op.iter()
+                    .map(|v| format!("{:?} -> {:?}", v.0, v.1))
+                    .collect::<Vec<String>>()
+            );
         }
     }
 }
@@ -85,7 +84,13 @@ pub fn relog(op: &OpKind, undo: bool) {
         }
         OpKind::Rename(op) => {
             result.push_str("RENAME");
-            info!("{} {:?} -> {:?}", result, op.original_name, op.new_name);
+            info!(
+                "{} {:?}",
+                result,
+                op.iter()
+                    .map(|v| format!("{:?} -> {:?}", v.0, v.1))
+                    .collect::<Vec<String>>()
+            );
         }
     }
 }

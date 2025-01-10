@@ -1362,8 +1362,31 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
 
                             //rename
                             KeyCode::Char('c') => {
-                                //In visual mode, this is disabled.
+                                //In visual mode, you can rename multiple items in default editor.
                                 if state.v_start.is_some() {
+                                    let items: Vec<ItemBuffer> = state
+                                        .list
+                                        .iter()
+                                        .filter(|item| item.selected)
+                                        .map(ItemBuffer::new)
+                                        .collect();
+                                    execute!(screen, EnterAlternateScreen)?;
+                                    let mut err: Option<FxError> = None;
+                                    if let Err(e) = state.rename_multiple_items(&items) {
+                                        err = Some(e);
+                                    }
+                                    execute!(screen, EnterAlternateScreen)?;
+                                    hide_cursor();
+                                    state.reset_selection();
+                                    state.reload(state.layout.y)?;
+                                    if let Some(e) = err {
+                                        print_warning(e, state.layout.y);
+                                    } else {
+                                        print_info(
+                                            format!("Renamed {} items.", items.len()),
+                                            state.layout.y,
+                                        );
+                                    }
                                     continue;
                                 }
                                 if len == 0 {
@@ -1511,12 +1534,10 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
 
                                                 state.operations.branch();
-                                                state.operations.push(OpKind::Rename(
-                                                    RenamedFile {
-                                                        original_name: item.file_path.clone(),
-                                                        new_name: to,
-                                                    },
-                                                ));
+                                                state.operations.push(OpKind::Rename(vec![(
+                                                    item.file_path.clone(),
+                                                    to,
+                                                )]));
 
                                                 hide_cursor();
                                                 state.reload(state.layout.y)?;
