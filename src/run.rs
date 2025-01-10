@@ -657,16 +657,19 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                 }
                                 let mut dest: Option<PathBuf> = None;
                                 if let Ok(item) = state.get_item() {
+                                    let mut err: Option<FxError> = None;
                                     match item.file_type {
                                         FileType::File => {
                                             execute!(screen, EnterAlternateScreen)?;
                                             if let Err(e) = state.open_file(item) {
-                                                print_warning(e, state.layout.y);
-                                                continue;
+                                                err = Some(e);
                                             }
                                             execute!(screen, EnterAlternateScreen)?;
                                             hide_cursor();
                                             state.reload(state.layout.y)?;
+                                            if let Some(e) = err {
+                                                print_warning(e, state.layout.y);
+                                            }
                                             continue;
                                         }
                                         FileType::Symlink => match &item.symlink_dir_path {
@@ -681,12 +684,14 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                             None => {
                                                 execute!(screen, EnterAlternateScreen)?;
                                                 if let Err(e) = state.open_file(item) {
-                                                    print_warning(e, state.layout.y);
-                                                    continue;
+                                                    err = Some(e);
                                                 }
                                                 execute!(screen, EnterAlternateScreen)?;
                                                 hide_cursor();
-                                                state.redraw(state.layout.y);
+                                                state.reload(state.layout.y)?;
+                                                if let Some(e) = err {
+                                                    print_warning(e, state.layout.y);
+                                                }
                                                 continue;
                                             }
                                         },
@@ -2389,50 +2394,37 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 }
 
                                                 //Execute command as is
+                                                let mut err: Option<&str> = None;
                                                 execute!(screen, EnterAlternateScreen)?;
                                                 if std::env::set_current_dir(&state.current_dir)
                                                     .is_err()
                                                 {
-                                                    execute!(screen, EnterAlternateScreen)?;
-                                                    print_warning(
-                                                        "Cannot execute command",
-                                                        state.layout.y,
-                                                    );
-                                                    break 'command;
-                                                }
-                                                if let Ok(sh) = std::env::var("SHELL") {
+                                                    err =
+                                                        Some("Changing current directory failed.");
+                                                } else if let Ok(sh) = std::env::var("SHELL") {
                                                     if std::process::Command::new(&sh)
                                                         .arg("-c")
-                                                        .arg(&commands.join(" "))
+                                                        .arg(commands.join(" "))
                                                         .status()
                                                         .is_err()
                                                     {
-                                                        execute!(screen, EnterAlternateScreen)?;
-                                                        state.redraw(state.layout.y);
-                                                        print_warning(
-                                                            "Cannot execute command",
-                                                            state.layout.y,
-                                                        );
-                                                        break 'command;
+                                                        err = Some("Command execution failed.");
                                                     }
                                                 } else if std::process::Command::new(command)
                                                     .args(&commands[1..])
                                                     .status()
                                                     .is_err()
                                                 {
-                                                    execute!(screen, EnterAlternateScreen)?;
-                                                    state.redraw(state.layout.y);
-                                                    print_warning(
-                                                        "Cannot execute command",
-                                                        state.layout.y,
-                                                    );
-                                                    break 'command;
+                                                    err = Some("Command execution failed.");
                                                 }
 
                                                 execute!(screen, EnterAlternateScreen)?;
                                                 hide_cursor();
                                                 info!("SHELL: {:?}", commands);
                                                 state.reload(state.layout.y)?;
+                                                if let Some(e) = err {
+                                                    print_warning(e, state.layout.y);
+                                                }
                                                 break 'command;
                                             }
 
