@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub enum FxError {
     Arg(String),
     TerminalSizeDetection,
@@ -22,6 +22,8 @@ pub enum FxError {
     Panic,
     #[cfg(any(target_os = "linux", target_os = "netbsd"))]
     Nix(String),
+    #[default]
+    Unknown,
 }
 
 impl std::error::Error for FxError {}
@@ -51,6 +53,7 @@ impl std::fmt::Display for FxError {
             FxError::Panic => "Error: felix panicked".to_owned(),
             #[cfg(any(target_os = "linux", target_os = "netbsd"))]
             FxError::Nix(s) => s.to_owned(),
+            FxError::Unknown => "Unknown error.".to_owned(),
         };
         write!(f, "{}", printable)
     }
