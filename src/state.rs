@@ -506,7 +506,7 @@ impl State {
         let duration = duration_to_string(start.elapsed());
         let delete_message: String = {
             if total == 1 {
-                format!("1 item deleted [{}]", duration)
+                format!("1 item deleted. [{}]", duration)
             } else {
                 let mut count = total.to_string();
                 let _ = write!(count, " items deleted [{}]", duration);
