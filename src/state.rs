@@ -1293,7 +1293,7 @@ impl State {
     }
 
     /// Rename selected items at once.
-    pub fn rename_multiple_items(&mut self, items: &[ItemBuffer]) -> Result<(), FxError> {
+    pub fn rename_multiple_items(&mut self, items: &[ItemBuffer]) -> Result<usize, FxError> {
         let names: Vec<&str> = items.iter().map(|item| item.file_name.as_str()).collect();
         let mut file = tempfile::NamedTempFile::new()?;
         writeln!(file, "{}", names.join("\n"))?;
@@ -1328,13 +1328,16 @@ impl State {
                 for (i, new_name) in new_names.iter().enumerate() {
                     let mut to = self.current_dir.clone();
                     to.push(new_name);
-                    std::fs::rename(&items[i].file_path, &to)?;
-                    result.push((items[i].file_path.clone(), to))
+                    if &items[i].file_name != new_name {
+                        std::fs::rename(&items[i].file_path, &to)?;
+                        result.push((items[i].file_path.clone(), to))
+                    }
                 }
+                let len = result.len();
                 self.operations.branch();
                 self.operations.push(OpKind::Rename(result));
 
-                Ok(())
+                Ok(len)
             }
         }
     }

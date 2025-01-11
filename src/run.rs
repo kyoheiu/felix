@@ -1371,21 +1371,27 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                         .map(ItemBuffer::new)
                                         .collect();
                                     execute!(screen, EnterAlternateScreen)?;
-                                    let mut err: Option<FxError> = None;
-                                    if let Err(e) = state.rename_multiple_items(&items) {
-                                        err = Some(e);
-                                    }
+                                    let result = state.rename_multiple_items(&items);
                                     execute!(screen, EnterAlternateScreen)?;
                                     hide_cursor();
                                     state.reset_selection();
                                     state.reload(state.layout.y)?;
-                                    if let Some(e) = err {
-                                        print_warning(e, state.layout.y);
-                                    } else {
-                                        print_info(
-                                            format!("Renamed {} items.", items.len()),
-                                            state.layout.y,
-                                        );
+                                    match result {
+                                        Err(e) => {
+                                            print_warning(e, state.layout.y);
+                                        }
+                                        Ok(result_len) => {
+                                            let message = {
+                                                match result_len {
+                                                    0 => "No item renamed.".to_owned(),
+                                                    1 => "1 item renamed.".to_owned(),
+                                                    count => {
+                                                        format!("{} items renamed.", count)
+                                                    }
+                                                }
+                                            };
+                                            print_info(message, state.layout.y);
+                                        }
                                     }
                                     continue;
                                 }

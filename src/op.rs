@@ -57,12 +57,14 @@ fn log(op: &OpKind) {
             info!("DELETE: {:?}", item_to_pathvec(&op.original));
         }
         OpKind::Rename(op) => {
-            info!(
-                "RENAME: {:?}",
-                op.iter()
-                    .map(|v| format!("{:?} -> {:?}", v.0, v.1))
-                    .collect::<Vec<String>>()
-            );
+            if !op.is_empty() {
+                info!(
+                    "RENAME: {:?}",
+                    op.iter()
+                        .map(|v| format!("{:?} -> {:?}", v.0, v.1))
+                        .collect::<Vec<String>>()
+                );
+            }
         }
     }
 }
@@ -83,14 +85,16 @@ pub fn relog(op: &OpKind, undo: bool) {
             info!("{} {:?}", result, item_to_pathvec(&op.original));
         }
         OpKind::Rename(op) => {
-            result.push_str("RENAME");
-            info!(
-                "{} {:?}",
-                result,
-                op.iter()
-                    .map(|v| format!("{:?} -> {:?}", v.0, v.1))
-                    .collect::<Vec<String>>()
-            );
+            if !op.is_empty() {
+                result.push_str("RENAME");
+                info!(
+                    "{} {:?}",
+                    result,
+                    op.iter()
+                        .map(|v| format!("{:?} -> {:?}", v.0, v.1))
+                        .collect::<Vec<String>>()
+                );
+            }
         }
     }
 }
