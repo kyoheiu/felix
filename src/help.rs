@@ -51,6 +51,7 @@ V                  :Switch to the linewise visual mode.
   - "ad            :In the visual mode, delete and yank items to register a.
   - "Ay            :In the visual mode, append items to register a.
   - "Ad            :In the visual mode, delete and append items to register a.
+  - c              :Rename selected items in default editor.
 u                  :Undo put/delete/rename.
 <C-r>              :Redo put/delete/rename.
 v                  :Toggle whether to show the preview.

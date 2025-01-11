@@ -25,6 +25,17 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 
 ## New release
 
+## v2.16.0 (2025-01-12)
+
+### Added
+
+- `c` in visual mode to rename selected items by your default editor at once.
+- Add `ImageSignature::Bigtiff` to recognize BigTIFF.
+
+### Changed
+
+- MSRV is now v1.78.0
+
 ## v2.15.0 (2024-12-30)
 
 ### Added
@@ -33,33 +44,11 @@ For more detailed document, visit https://kyoheiu.dev/felix.
 
 ### Changed
 
-- Avoid displaying big text in preview area by adding `PreviewType::TooBigText` (over 1MB).
+- Avoid displaying big text in preview area by adding `PreviewType::TooLargeText` (over 1MB).
 
 ### Fixed
 
 - Rewrite `test_has_write_permission` test by `set_readonly`.
-
-## v2.14.0 (2024-09-29)
-
-### Changed
-
-- Update dependencies for Rust 1.81.0. MSRV is the same as before (1.74.1).
-
-## v2.13.0 (2024-04-07)
-
-### Added
-
-- `ignore_case` option to the do case-insensitie search by `/`.
-- Symbolic link destinations are now displayed when the cursor is hovered over them.
-
-### Changed
-
-- Symlink items linked to directory now appears in the directory section, not the file section.
-- MSRV is now v1.74.1
-
-### fixed
-
-- `z` command can now receive multiple arguments: `z dot files<CR>` works as in your terminal.
 
 For more details, see `CHANGELOG.md`.
 
@@ -84,16 +73,16 @@ report any problems._
 
 | package    | installation command  | notes                                                                                                                                       |
 | ---------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| crates.io  | `cargo install felix` | Minimum Supported rustc Version: **1.74.1**                                                                                                 |
+| crates.io  | `cargo install felix` | Minimum Supported rustc Version: **1.78.0**                                                                                                 |
 | Arch Linux | `pacman -S felix-rs`  | The binary name is `felix` if you install via pacman. Alias `fx='felix'` if you want, as this document (and other installations) uses `fx`. |
 | NetBSD     | `pkgin install felix` |                                                                                                                                             |
 
 ### From this repository
 
 - Make sure that `gcc` is installed.
-- MSRV(Minimum Supported rustc Version): **1.74.1**
+- MSRV(Minimum Supported rustc Version): **1.78.0**
 
-Update Rust if rustc < 1.74.1:
+Update Rust if rustc < 1.78.0:
 
 ```
 rustup update
@@ -192,6 +181,7 @@ V (uppercase)      :Switch to the linewise visual mode.
   - "ad            :In the visual mode, delete and yank items to register a.
   - "Ay            :In the visual mode, append items to register a.
   - "Ad            :In the visual mode, delete and append items to register a.
+  - c              :Rename multiple items in default editor.
 u                  :Undo put/delete/rename.
 <C-r>              :Redo put/delete/rename.
 v (lowercase)      :Toggle whether to show the preview.
