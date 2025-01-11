@@ -1308,6 +1308,8 @@ impl State {
             Err(e)
         } else {
             let new_names = fs::read_to_string(&path)?;
+            // clean up temp file
+            path.close()?;
             let new_names: Vec<&str> = new_names
                 .split('\n')
                 .filter(|name| !name.is_empty())
