@@ -1972,13 +1972,13 @@ fn check_zoxide() -> bool {
 /// Set content type from ItemInfo.
 fn set_preview_content_type(item: &mut ItemInfo) {
     if item.file_size > MAX_SIZE_TO_PREVIEW {
-        item.preview_type = Some(PreviewType::TooBigImage);
+        item.preview_type = Some(PreviewType::TooLargeImage);
     } else if is_supported_image(item) {
         item.preview_type = Some(PreviewType::Image);
     } else if let Ok(content) = &std::fs::read(&item.file_path) {
         if content_inspector::inspect(content).is_text() {
             if item.file_size > MAX_SIZE_TO_PREVIEW_TEXT {
-                item.preview_type = Some(PreviewType::TooBigText);
+                item.preview_type = Some(PreviewType::TooLargeText);
                 return;
             }
             if let Ok(content) = String::from_utf8(content.to_vec()) {

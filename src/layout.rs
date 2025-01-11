@@ -39,8 +39,8 @@ pub struct Layout {
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone)]
 pub enum PreviewType {
     NotReadable,
-    TooBigImage,
-    TooBigText,
+    TooLargeImage,
+    TooLargeText,
     Directory,
     Image,
     Text,
@@ -186,10 +186,10 @@ impl Layout {
                 Some(PreviewType::NotReadable) => {
                     print!("(file not readable)");
                 }
-                Some(PreviewType::TooBigImage) => {
+                Some(PreviewType::TooLargeImage) => {
                     print!("(image too big for preview: over 100MB)");
                 }
-                Some(PreviewType::TooBigText) => {
+                Some(PreviewType::TooLargeText) => {
                     print!("(text too big for preview: over 1MB)");
                 }
                 Some(PreviewType::Directory) => {
