@@ -14,6 +14,8 @@ const HEADER_WEBP: [u8; 4] = [0x52, 0x49, 0x46, 0x46];
 const HEADER_WEBP_AFTER: [u8; 4] = [0x57, 0x45, 0x42, 0x50];
 const HEADER_TIF_LITTLE: [u8; 4] = [0x49, 0x49, 0x2A, 0x00];
 const HEADER_TIF_BIG: [u8; 4] = [0x4D, 0x4D, 0x00, 0x2A];
+const HEADER_BIGTIFF_LITTLE: [u8; 4] = [0x49, 0x49, 0x2B, 0x00];
+const HEADER_BIGTIFF_BIG: [u8; 4] = [0x4D, 0x4D, 0x00, 0x2B];
 const HEADER_BMP: [u8; 2] = [0x42, 0x4D];
 const HEADER_ICO: [u8; 4] = [0x00, 0x00, 0x01, 0x00];
 const HEADER_HDR: [u8; 11] = [
@@ -34,6 +36,7 @@ enum ImageSignature {
     Gif,
     Webp,
     Tif,
+    Bigtiff,
     Bmp,
     Ico,
     Hdr,
@@ -63,6 +66,8 @@ fn inspect_image(p: &Path) -> Result<ImageSignature, FxError> {
         ImageSignature::Webp
     } else if buffer[..4] == HEADER_TIF_LITTLE || buffer[..4] == HEADER_TIF_BIG {
         ImageSignature::Tif
+    } else if buffer[..4] == HEADER_BIGTIFF_LITTLE || buffer[..4] == HEADER_BIGTIFF_BIG {
+        ImageSignature::Bigtiff
     } else if buffer[..2] == HEADER_BMP {
         ImageSignature::Bmp
     } else if buffer[..4] == HEADER_ICO {
