@@ -4,6 +4,17 @@
 
 ## Unreleased
 
+## v2.16.0 (2025-01-12)
+
+### Added
+
+- `c` in visual mode to rename selected items by your default editor at once.
+- Add `ImageSignature::Bigtiff` to recognize BigTIFF.
+
+### Changed
+
+- MSRV is now v1.78.0
+
 ## v2.15.0 (2024-12-30)
 
 ### Added

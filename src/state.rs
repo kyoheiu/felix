@@ -190,7 +190,8 @@ impl Registers {
     }
 }
 
-/// To avoid cost copying ItemInfo, use ItemBuffer when tinkering with register.
+/// To avoid cost copying ItemInfo, use ItemBuffer
+/// when tinkering with register or multiple renaming.
 #[derive(Debug, Clone)]
 pub struct ItemBuffer {
     pub file_type: FileType,
@@ -505,7 +506,7 @@ impl State {
         let duration = duration_to_string(start.elapsed());
         let delete_message: String = {
             if total == 1 {
-                format!("1 item deleted [{}]", duration)
+                format!("1 item deleted. [{}]", duration)
             } else {
                 let mut count = total.to_string();
                 let _ = write!(count, " items deleted [{}]", duration);
@@ -921,7 +922,9 @@ impl State {
     pub fn undo(&mut self, op: &OpKind) -> Result<(), FxError> {
         match op {
             OpKind::Rename(op) => {
-                std::fs::rename(&op.new_name, &op.original_name)?;
+                for (original, new) in op {
+                    std::fs::rename(new, original)?;
+                }
                 self.operations.pos += 1;
                 self.update_list()?;
                 self.clear_and_show_headline();
@@ -959,7 +962,9 @@ impl State {
     pub fn redo(&mut self, op: &OpKind) -> Result<(), FxError> {
         match op {
             OpKind::Rename(op) => {
-                std::fs::rename(&op.original_name, &op.new_name)?;
+                for (original, new) in op {
+                    std::fs::rename(original, new)?;
+                }
                 self.operations.pos -= 1;
                 self.update_list()?;
                 self.clear_and_show_headline();
@@ -1285,6 +1290,56 @@ impl State {
         }
 
         self.list = result;
+    }
+
+    /// Rename selected items at once.
+    pub fn rename_multiple_items(&mut self, items: &[ItemBuffer]) -> Result<usize, FxError> {
+        let names: Vec<&str> = items.iter().map(|item| item.file_name.as_str()).collect();
+        let mut file = tempfile::NamedTempFile::new()?;
+        writeln!(file, "{}", names.join("\n"))?;
+
+        let mut default = Command::new(&self.default);
+        let path = file.into_temp_path();
+        if let Err(e) = default
+            .arg(&path)
+            .status()
+            .map_err(|_| FxError::DefaultEditor)
+        {
+            Err(e)
+        } else {
+            let new_names = fs::read_to_string(&path)?;
+            // clean up temp file
+            path.close()?;
+            let new_names: Vec<&str> = new_names
+                .split('\n')
+                .filter(|name| !name.is_empty())
+                .collect();
+            if new_names.len() != items.len() {
+                Err(FxError::Io(
+                    format!(
+                        "Rename failed: Expected {} names, but received {} names",
+                        items.len(),
+                        new_names.len()
+                    )
+                    .to_string(),
+                ))
+            } else {
+                let mut result: Vec<(PathBuf, PathBuf)> = vec![];
+                for (i, new_name) in new_names.iter().enumerate() {
+                    let mut to = self.current_dir.clone();
+                    to.push(new_name);
+                    if &items[i].file_name != new_name {
+                        std::fs::rename(&items[i].file_path, &to)?;
+                        result.push((items[i].file_path.clone(), to))
+                    }
+                }
+                let len = result.len();
+                self.operations.branch();
+                self.operations.push(OpKind::Rename(result));
+
+                Ok(len)
+            }
+        }
     }
 
     /// Reset all item's selected state and exit the select mode.
@@ -1883,29 +1938,6 @@ fn read_item(entry: fs::DirEntry) -> ItemInfo {
     }
 }
 
-/// Generate item information from trash directory, in order to use when redoing.
-// pub fn sellect_buffer(trash_dir: &PathBuf, vec: &[ItemBuffer]) -> Result<Vec<ItemBuffer>, FxError> {
-//     let total = vec.len();
-//     let mut count = 0;
-//     let mut result = Vec::new();
-//     for entry in fs::read_dir(trash_dir)? {
-//         let entry = entry?;
-//         if vec
-//             .iter()
-//             .map(|x| x.file_path.clone())
-//             .collect::<Vec<PathBuf>>()
-//             .contains(&entry.path())
-//         {
-//             result.push(ItemBuffer::new(&read_item(entry)));
-//             count += 1;
-//             if count == total {
-//                 break;
-//             }
-//         }
-//     }
-//     Ok(result)
-// }
-
 /// Check if zoxide is installed.
 fn check_zoxide() -> bool {
     std::process::Command::new("zoxide")
@@ -1917,13 +1949,13 @@ fn check_zoxide() -> bool {
 /// Set content type from ItemInfo.
 fn set_preview_content_type(item: &mut ItemInfo) {
     if item.file_size > MAX_SIZE_TO_PREVIEW {
-        item.preview_type = Some(PreviewType::TooBigImage);
+        item.preview_type = Some(PreviewType::TooLargeImage);
     } else if is_supported_image(item) {
         item.preview_type = Some(PreviewType::Image);
     } else if let Ok(content) = &std::fs::read(&item.file_path) {
         if content_inspector::inspect(content).is_text() {
             if item.file_size > MAX_SIZE_TO_PREVIEW_TEXT {
-                item.preview_type = Some(PreviewType::TooBigText);
+                item.preview_type = Some(PreviewType::TooLargeText);
                 return;
             }
             if let Ok(content) = String::from_utf8(content.to_vec()) {
