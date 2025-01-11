@@ -1938,29 +1938,6 @@ fn read_item(entry: fs::DirEntry) -> ItemInfo {
     }
 }
 
-/// Generate item information from trash directory, in order to use when redoing.
-// pub fn sellect_buffer(trash_dir: &PathBuf, vec: &[ItemBuffer]) -> Result<Vec<ItemBuffer>, FxError> {
-//     let total = vec.len();
-//     let mut count = 0;
-//     let mut result = Vec::new();
-//     for entry in fs::read_dir(trash_dir)? {
-//         let entry = entry?;
-//         if vec
-//             .iter()
-//             .map(|x| x.file_path.clone())
-//             .collect::<Vec<PathBuf>>()
-//             .contains(&entry.path())
-//         {
-//             result.push(ItemBuffer::new(&read_item(entry)));
-//             count += 1;
-//             if count == total {
-//                 break;
-//             }
-//         }
-//     }
-//     Ok(result)
-// }
-
 /// Check if zoxide is installed.
 fn check_zoxide() -> bool {
     std::process::Command::new("zoxide")
