@@ -1,5 +1,6 @@
 [![crates.io](https://img.shields.io/crates/v/felix)](https://crates.io/crates/felix)
 ![arch linux](https://img.shields.io/archlinux/v/extra/x86_64/felix-rs)
+[![nixpkgs 25.05](https://img.shields.io/badge/nixpkgs-25.05-blue?logo=nixos&logoColor=white)](https://search.nixos.org/packages?channel=25.05&show=felix-fm&query=felix-fm)
 
 # _felix_
 
@@ -77,11 +78,12 @@ report any problems._
 
 ## Installation
 
-| package    | installation command  | notes                                                                                                                                       |
-| ---------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| crates.io  | `cargo install felix` | Minimum Supported rustc Version: **1.78.0**                                                                                                 |
-| Arch Linux | `pacman -S felix-rs`  | The binary name is `felix` if you install via pacman. Alias `fx='felix'` if you want, as this document (and other installations) uses `fx`. |
-| NetBSD     | `pkgin install felix` |                                                                                                                                             |
+| package    | installation command    | notes                                                                                                                                       |
+| ---------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| crates.io  | `cargo install felix`   | Minimum Supported rustc Version: **1.78.0**                                                                                                 |
+| Arch Linux | `pacman -S felix-rs`    | The binary name is `felix` if you install via pacman. Alias `fx='felix'` if you want, as this document (and other installations) uses `fx`. |
+| nixpkgs    | `nix-shell -p felix-fm` | To permanently install, add `pkgs.felix-fm` to `environment.systemPackages` in your configuration file.                                     |
+| NetBSD     | `pkgin install felix`   |                                                                                                                                             |
 
 ### From this repository
 
