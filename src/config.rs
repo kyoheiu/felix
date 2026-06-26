@@ -22,6 +22,8 @@ pub struct Config {
     pub exec: Option<BTreeMap<String, Vec<String>>>,
     pub ignore_case: Option<bool>,
     pub color: Option<ConfigColor>,
+    pub disable_icons: Option<bool>,
+    pub icon_map: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Clone, PartialEq)]
@@ -73,6 +75,8 @@ impl Default for Config {
             exec: Default::default(),
             ignore_case: Some(false),
             color: Some(Default::default()),
+            disable_icons: Some(false),
+            icon_map: None,
         }
     }
 }
@@ -156,6 +160,8 @@ mod tests {
         assert_eq!(default_config.exec, None);
         assert_eq!(default_config.ignore_case, None);
         assert_eq!(default_config.color, None);
+        assert_eq!(default_config.disable_icons, None);
+        assert_eq!(default_config.icon_map, None);
     }
 
     #[test]
@@ -175,6 +181,8 @@ color:
   file_fg: LightWhite
   symlink_fg: LightYellow
   dirty_fg: Red
+disable_icons: true
+icon_map: /test/icons.json
 "#,
         )
         .unwrap();
@@ -209,5 +217,7 @@ color:
             Colorname::LightYellow
         );
         assert_eq!(full_config.color.unwrap().dirty_fg, Colorname::Red);
+        assert_eq!(full_config.disable_icons, Some(true));
+        assert_eq!(full_config.icon_map, Some("/test/icons.json".to_string()));
     }
 }

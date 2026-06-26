@@ -17,6 +17,8 @@ use crossterm::event::{Event, KeyCode, KeyEvent};
 use crossterm::style::Stylize;
 use log::info;
 use normpath::PathExt;
+use serde::Deserialize;
+use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
@@ -45,6 +47,24 @@ pub const EMPTY_WARNING: &str = "Are you sure to empty the trash directory? (if 
 const MAX_SIZE_TO_PREVIEW: u64 = 1_000_000_000;
 const MAX_SIZE_TO_PREVIEW_TEXT: u64 = 1_000_000;
 
+const DEFAULT_ICON_MAP_JSON: &str = include_str!("../iconmap.json");
+
+#[derive(Deserialize, Debug, Default)]
+pub struct IconMap {
+    types: TypeIcons,
+
+    #[serde(default)]
+    extensions: HashMap<String, String>,
+}
+
+#[derive(Deserialize, Debug, Default)]
+struct TypeIcons {
+    folder: String,
+    symlink: String,
+    file: String,
+    error: String,
+}
+
 #[derive(Debug, Default)]
 pub struct State {
     pub list: Vec<ItemInfo>,
@@ -66,6 +86,8 @@ pub struct State {
     pub layout: Layout,
     pub v_start: Option<usize>,
     pub is_ro: bool,
+    pub render_icons: bool,
+    pub icon_map: IconMap,
 }
 
 #[derive(Debug, Default)]
@@ -213,6 +235,7 @@ impl ItemBuffer {
 pub struct ItemInfo {
     pub file_type: FileType,
     pub file_name: String,
+    pub file_icon: String,
     pub file_path: std::path::PathBuf,
     pub symlink_dir_path: Option<PathBuf>,
     pub file_size: u64,
@@ -272,6 +295,57 @@ impl State {
         self.ignore_case = config.ignore_case;
         let colors = config.color.unwrap_or_default();
         self.layout.colors = colors;
+
+        // Decide if icons are disabled (requires a Nerd Font)
+        let disable_icons = config.disable_icons.unwrap_or(false);
+        self.render_icons = !disable_icons;
+        self.icon_map = if disable_icons {
+            IconMap::default()
+        } else {
+            config
+                .icon_map
+                .as_deref()
+                .map(Self::load_icon_map)
+                .unwrap_or_else(Self::load_default_icon_map)
+        };
+    }
+
+    fn load_icon_map(path: &str) -> IconMap {
+        let data = match std::fs::read_to_string(path) {
+            Ok(s) => s,
+            Err(e) => {
+                log::warn!("Failed to read icon map at {path}: {e}");
+                return Self::load_default_icon_map();
+            }
+        };
+        let parse_json = |s: &str| serde_json::from_str::<IconMap>(s).map_err(|e| e.to_string());
+        let parse_toml = |s: &str| toml::from_str::<IconMap>(s).map_err(|e| e.to_string());
+
+        let map = match std::path::Path::new(path)
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e.to_ascii_lowercase())
+            .as_deref()
+        {
+            Some("json") => parse_json(&data),
+            Some("toml") => parse_toml(&data),
+            _ => parse_json(&data).or_else(|json_err| {
+                parse_toml(&data).map_err(|toml_err| format!("JSON: {json_err}, TOML: {toml_err}"))
+            }),
+        };
+
+        match map {
+            Ok(m) => m,
+            Err(e) => {
+                log::warn!("Failed to parse icon map at {path}: {e}");
+                Self::load_default_icon_map()
+            }
+        }
+    }
+
+    fn load_default_icon_map() -> IconMap {
+        // Safe: covered by 'default_icon_map_is_valid()'.
+        serde_json::from_str(DEFAULT_ICON_MAP_JSON).expect("embedded iconmap.json is invalid")
     }
 
     /// Select item that the cursor points to.
@@ -1096,6 +1170,15 @@ impl State {
 
     /// Print an item in the directory.
     fn print_item(&self, item: &ItemInfo) {
+        // If icons are loaded use them else don't
+        let print_name = |name| {
+            if self.render_icons {
+                print!("{} {}", item.file_icon, name);
+            } else {
+                print!("{}", name);
+            }
+        };
+
         let name = if item.file_name.bytes().len() <= self.layout.name_max_len {
             item.file_name.clone()
         } else {
@@ -1117,15 +1200,15 @@ impl State {
         if self.layout.terminal_column < PROPER_WIDTH {
             if item.selected {
                 set_color(&TermColor::ForeGround(color));
-                print!("{}", name.negative(),);
+                print_name(name.negative());
                 reset_color();
             } else if item.matches {
                 set_color(&TermColor::ForeGround(color));
-                print!("{}", name.bold(),);
+                print_name(name.bold());
                 reset_color();
             } else {
                 set_color(&TermColor::ForeGround(color));
-                print!("{}", name);
+                print_name(name.stylize());
                 reset_color();
             }
             if self.layout.terminal_column > self.layout.time_start_pos + TIME_WIDTH {
@@ -1133,14 +1216,14 @@ impl State {
             }
         } else if item.selected {
             set_color(&TermColor::ForeGround(color));
-            print!("{}", name.negative(),);
+            print_name(name.negative());
             move_left(1000);
             move_right(self.layout.time_start_pos - 1);
             print!(" {}", time.negative());
             reset_color();
         } else if item.matches {
             set_color(&TermColor::ForeGround(color));
-            print!("{}", name.bold(),);
+            print_name(name.bold());
             move_left(1000);
             move_right(self.layout.time_start_pos - 1);
             set_color(&TermColor::ForeGround(color));
@@ -1148,7 +1231,7 @@ impl State {
             reset_color();
         } else {
             set_color(&TermColor::ForeGround(color));
-            print!("{}", name);
+            print_name(name.stylize());
             move_left(1000);
             move_right(self.layout.time_start_pos - 1);
             print!(" {}", time);
@@ -1211,7 +1294,7 @@ impl State {
 
         for entry in fs::read_dir(&self.current_dir)? {
             let e = entry?;
-            let mut entry = read_item(e);
+            let mut entry = read_item(&self.icon_map, e);
             if dirty_paths.contains(&entry.file_path) {
                 entry.is_dirty = true;
             }
@@ -1836,8 +1919,19 @@ impl State {
     }
 }
 
+fn get_icon(map: &IconMap, file_type: FileType, ext: Option<&str>) -> String {
+    match file_type {
+        FileType::Directory => map.types.folder.clone(),
+        FileType::Symlink => map.types.symlink.clone(),
+        FileType::File => ext
+            .and_then(|e| map.extensions.get(e))
+            .cloned()
+            .unwrap_or_else(|| map.types.file.clone()),
+    }
+}
+
 /// Read item information from `std::fs::DirEntry`.
-fn read_item(entry: fs::DirEntry) -> ItemInfo {
+fn read_item(map: &IconMap, entry: fs::DirEntry) -> ItemInfo {
     let path = entry.path();
     let metadata = fs::symlink_metadata(&path);
 
@@ -1876,6 +1970,8 @@ fn read_item(entry: fs::DirEntry) -> ItemInfo {
                 }
             };
 
+            let icon = get_icon(map, filetype, ext.as_deref());
+
             let sym_dir_path = {
                 if filetype == FileType::Symlink {
                     if let Ok(sym_meta) = fs::metadata(&path) {
@@ -1901,6 +1997,7 @@ fn read_item(entry: fs::DirEntry) -> ItemInfo {
             ItemInfo {
                 file_type: filetype,
                 file_name: name,
+                file_icon: icon,
                 file_path: path,
                 symlink_dir_path: sym_dir_path,
                 file_size: size,
@@ -1922,6 +2019,7 @@ fn read_item(entry: fs::DirEntry) -> ItemInfo {
         Err(_) => ItemInfo {
             file_type: FileType::File,
             file_name: name,
+            file_icon: map.types.error.clone(),
             file_path: path,
             symlink_dir_path: None,
             file_size: 0,
@@ -2058,7 +2156,7 @@ mod tests {
         let mut file_v = Vec::new();
         for entry in fs::read_dir("src")? {
             let e = entry?;
-            let entry = read_item(e);
+            let entry = read_item(&IconMap::default(), e);
             match entry.file_type {
                 FileType::Directory => dir_v.push(entry),
                 FileType::File | FileType::Symlink => file_v.push(entry),
@@ -2075,8 +2173,8 @@ mod tests {
             let e = entry?;
             temp.push(e);
         }
-
-        let temp: Vec<ItemInfo> = temp.into_par_iter().map(read_item).collect();
+        let icons = IconMap::default();
+        let temp: Vec<ItemInfo> = temp.into_par_iter().map(|e| read_item(&icons, e)).collect();
 
         for entry in temp {
             match entry.file_type {
@@ -2124,5 +2222,11 @@ mod tests {
             bench_update2().unwrap();
         });
         bench_result.print_stats();
+    }
+
+    #[test]
+    fn default_icon_map_is_valid() {
+        // Ensure the embedded icon map (DEFAULT_ICON_MAP_JSON) is valid
+        let _: IconMap = serde_json::from_str(DEFAULT_ICON_MAP_JSON).unwrap();
     }
 }
