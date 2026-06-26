@@ -45,3 +45,16 @@
 #   file_fg: LightWhite
 #   symlink_fg: LightYellow
 #   dirty_fg: Red
+
+# Whether to disable icons (Nerd Font expected for them to work as intended)
+# disable_icons: true
+
+# Path to an icon map in JSON/TOML format
+# File must have the following structure:
+# { types: {folder, symlink, file, error}, extensions: {ext -> icon} }
+# "ext" is case-insensitive and can either be in ".ext" or "ext" format.
+# Duplicate ext entries will result in last-write-wins (order is undefined)
+# Example path: "~/.config/felix/map.json"
+# If this field is left undefined, but icons aren't disabled felix will use an
+# embedded default mapping (type icons only with no extension icons).
+# icon_map: ~/.config/felix/map.json
