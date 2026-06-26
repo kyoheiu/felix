@@ -1,0 +1,9 @@
+{
+  "types": {
+    "folder": "\uf4d3",
+    "symlink": "\uf504",
+    "file": "\uf15b",
+    "error": "\ue654"
+  },
+  "extensions": {}
+}
