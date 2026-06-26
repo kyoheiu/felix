@@ -65,6 +65,26 @@ struct TypeIcons {
     error: String,
 }
 
+impl IconMap {
+    /// Normalizes extension mapping to lowercase and ext dots (so .rs = rs)
+    fn normalize_extensions(&mut self) {
+        let mut normalized = HashMap::new();
+
+        for (k, v) in std::mem::take(&mut self.extensions) {
+            let key = Self::normalize_ext(&k);
+
+            if normalized.insert(key.clone(), v).is_some() {
+                log::warn!("Duplicate icon mapping for extension '{key}'");
+            }
+        }
+        self.extensions = normalized;
+    }
+
+    fn normalize_ext(ext: &str) -> String {
+        ext.trim_start_matches(".").to_ascii_lowercase()
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct State {
     pub list: Vec<ItemInfo>,
@@ -308,6 +328,8 @@ impl State {
                 .map(Self::load_icon_map)
                 .unwrap_or_else(Self::load_default_icon_map)
         };
+        // Must call after setting self.icon_map to ensure normalization
+        self.icon_map.normalize_extensions();
     }
 
     fn load_icon_map(path: &str) -> IconMap {
@@ -1924,7 +1946,8 @@ fn get_icon(map: &IconMap, file_type: FileType, ext: Option<&str>) -> String {
         FileType::Directory => map.types.folder.clone(),
         FileType::Symlink => map.types.symlink.clone(),
         FileType::File => ext
-            .and_then(|e| map.extensions.get(e))
+            .map(IconMap::normalize_ext)
+            .and_then(|e| map.extensions.get(&e))
             .cloned()
             .unwrap_or_else(|| map.types.file.clone()),
     }
