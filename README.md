@@ -239,6 +239,41 @@ You can find default config file (`config.yaml`) in this repository.
 
 *Both `config.yaml` and `config.yml` work from v2.7.0*
 
+### Custom keybindings
+
+You can override the built-in keybindings via the `keybindings` field in the config file.
+Each entry maps a key chord to an action name; your bindings are overlaid on top of the
+defaults, so you only list what you want to change or add. Invalid entries are ignored
+with a warning rather than crashing felix.
+
+```yaml
+keybindings:
+  ge: go_to_bottom      # Helix-style "go to end"
+  gg: go_to_top
+  'C-d': half_page_down
+```
+
+**Chord syntax**
+
+| Form | Meaning |
+| --- | --- |
+| `j` | a single key |
+| `ge`, `gg`, `dd` | a sequence of keys (chord) |
+| `C-d`, `A-j`, `S-x` | Ctrl / Alt / Shift + key |
+| `Enter`, `Tab`, `Backspace`, `Esc`, `Space`, `Up`, `Down`, `Left`, `Right` | named keys |
+
+**Action names** (`snake_case`): `move_down`, `move_up`, `half_page_down`, `half_page_up`,
+`go_to_top`, `go_to_bottom`, `open`, `open_new_window`, `go_to_parent`, `jump_forward`,
+`jump_backward`, `unpack`, `delete`, `yank`, `put`, `undo`, `redo`, `toggle_sort`,
+`toggle_hidden`, `toggle_preview`, `toggle_split`, `toggle_visual`, `reset_selection`,
+`search_next`, `search_prev`, `scroll_preview_down`, `scroll_preview_up`, `enter_insert`,
+`enter_insert_dir`, `rename`, `enter_search`, `enter_command_line`, `enter_register`,
+`zoxide_jump`, `quit`, `quit_without_save`.
+
+Text editing *inside* an input mode (insert / rename / search / command line) is not
+remappable. Note that `delete` and `yank` act on the selection immediately in visual mode
+but are the `dd`/`yy` chords in normal mode.
+
 ### Trash directory and log file
 
 Contrary to the config file, these directory and file will be automatically created.
