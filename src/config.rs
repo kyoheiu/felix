@@ -22,6 +22,9 @@ pub struct Config {
     pub exec: Option<BTreeMap<String, Vec<String>>>,
     pub ignore_case: Option<bool>,
     pub color: Option<ConfigColor>,
+    /// User keybinding overrides: chord string (e.g. `ge`, `C-d`) -> action
+    /// name (e.g. `go_to_bottom`). Overlaid on the built-in keymap.
+    pub keybindings: Option<BTreeMap<String, String>>,
 }
 
 #[derive(Deserialize, Debug, Clone, PartialEq)]
@@ -73,6 +76,7 @@ impl Default for Config {
             exec: Default::default(),
             ignore_case: Some(false),
             color: Some(Default::default()),
+            keybindings: Default::default(),
         }
     }
 }
@@ -156,6 +160,7 @@ mod tests {
         assert_eq!(default_config.exec, None);
         assert_eq!(default_config.ignore_case, None);
         assert_eq!(default_config.color, None);
+        assert_eq!(default_config.keybindings, None);
     }
 
     #[test]
@@ -175,6 +180,9 @@ color:
   file_fg: LightWhite
   symlink_fg: LightYellow
   dirty_fg: Red
+keybindings:
+  ge: go_to_bottom
+  'C-d': half_page_down
 "#,
         )
         .unwrap();
@@ -196,6 +204,9 @@ color:
             ])
         );
         assert_eq!(full_config.ignore_case, Some(true));
+        let keybindings = full_config.keybindings.clone().unwrap();
+        assert_eq!(keybindings.get("ge"), Some(&"go_to_bottom".to_string()));
+        assert_eq!(keybindings.get("C-d"), Some(&"half_page_down".to_string()));
         assert_eq!(
             full_config.color.clone().unwrap().dir_fg,
             Colorname::LightCyan

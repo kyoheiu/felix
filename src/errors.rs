@@ -18,6 +18,7 @@ pub enum FxError {
     TooSmallWindowSize,
     Log(String),
     Unpack(String),
+    Config(String),
     InvalidPath,
     Panic,
     #[cfg(any(target_os = "linux", target_os = "netbsd"))]
@@ -49,6 +50,7 @@ impl std::fmt::Display for FxError {
             FxError::TooSmallWindowSize => "Error: Too small window size".to_owned(),
             FxError::Log(s) => s.to_owned(),
             FxError::Unpack(s) => s.to_owned(),
+            FxError::Config(s) => s.to_owned(),
             FxError::InvalidPath => "Error: Path may contain invalid unicode".to_owned(),
             FxError::Panic => "Error: felix panicked".to_owned(),
             #[cfg(any(target_os = "linux", target_os = "netbsd"))]

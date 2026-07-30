@@ -3,7 +3,9 @@ use super::errors::FxError;
 use super::functions::*;
 use super::help::HELP;
 use super::jumplist::*;
+use super::keymap::Keymap;
 use super::layout::*;
+
 use super::magic_image;
 use super::magic_packed;
 use super::nums::*;
@@ -66,6 +68,7 @@ pub struct State {
     pub layout: Layout,
     pub v_start: Option<usize>,
     pub is_ro: bool,
+    pub keymap: Keymap,
 }
 
 #[derive(Debug, Default)]
@@ -272,6 +275,10 @@ impl State {
         self.ignore_case = config.ignore_case;
         let colors = config.color.unwrap_or_default();
         self.layout.colors = colors;
+        self.keymap = match &config.keybindings {
+            Some(bindings) => Keymap::from_config(bindings),
+            None => Keymap::default(),
+        };
     }
 
     /// Select item that the cursor points to.
@@ -420,7 +427,7 @@ impl State {
                             .stdin(Stdio::null())
                             .spawn()
                             .and(Ok(()))
-                            .map_err(|e| (FxError::OpenItem(e.to_string())))
+                            .map_err(|e| FxError::OpenItem(e.to_string()))
                     }
                     None => Err(FxError::OpenNewWindow(
                         "Cannot open this type of item in new window".to_owned(),

@@ -45,3 +45,27 @@
 #   file_fg: LightWhite
 #   symlink_fg: LightYellow
 #   dirty_fg: Red
+
+# Override the built-in keybindings.
+# Each entry maps a key chord to an action name. Your bindings are overlaid on
+# top of the defaults, so you only need to list what you want to change or add.
+#
+# Chord syntax:
+#   j                 a single key
+#   ge / gg / dd      a sequence of keys (chord)
+#   C-d / A-j / S-x   Ctrl / Alt / Shift + key
+#   Enter Tab Backspace Esc Space Up Down Left Right   named keys
+#
+# Action names (snake_case):
+#   move_down move_up half_page_down half_page_up go_to_top go_to_bottom
+#   open open_new_window go_to_parent jump_forward jump_backward
+#   unpack delete yank put undo redo
+#   toggle_sort toggle_hidden toggle_preview toggle_split toggle_visual reset_selection
+#   search_next search_prev scroll_preview_down scroll_preview_up
+#   enter_insert enter_insert_dir rename enter_search enter_command_line
+#   enter_register zoxide_jump quit quit_without_save
+#
+# Example (Helix-style `ge` to jump to the bottom of the list):
+# keybindings:
+#   ge: go_to_bottom
+#   'C-d': half_page_down
