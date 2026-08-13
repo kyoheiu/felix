@@ -66,6 +66,7 @@ pub struct State {
     pub layout: Layout,
     pub v_start: Option<usize>,
     pub is_ro: bool,
+    pub active_filter: Option<glob::Pattern>,
 }
 
 #[derive(Debug, Default)]
@@ -1072,6 +1073,15 @@ impl State {
             header_space -= 5;
         }
 
+        if let Some(ref filter) = self.active_filter {
+            let filter_str = format!(" [Filter: {}]", filter.as_str());
+            let len = filter_str.len();
+            if header_space >= len {
+                print!("{}", filter_str.bold());
+                header_space -= len;
+            }
+        }
+
         //If git repository exists, get the branch information and print it.
         if let Ok(repo) = git2::Repository::open(&self.current_dir) {
             if let Ok(head) = repo.head() {
@@ -1246,6 +1256,10 @@ impl State {
             result.retain(|x| !x.is_hidden);
         }
 
+        if let Some(ref pattern) = self.active_filter {
+            result.retain(|x| pattern.matches(&x.file_name));
+        }
+
         self.list = result;
         Ok(())
     }
@@ -1288,6 +1302,10 @@ impl State {
 
         if !self.layout.show_hidden {
             result.retain(|x| !x.is_hidden);
+        }
+
+        if let Some(ref pattern) = self.active_filter {
+            result.retain(|x| pattern.matches(&x.file_name));
         }
 
         self.list = result;

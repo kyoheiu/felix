@@ -66,6 +66,7 @@ c                  :Switch to the rename mode.
 /{keyword}         :Search items by a keyword.
 n                  :Go forward to the item that matches the keyword.
 N                  :Go backward to the item that matches the keyword.
+f{pattern}<CR>     :Filter the view using a glob pattern.
 :                  :Switch to the command line.
   - <C-r>a         :In the command line, paste item name in register a.
 :cd<CR>            :Go to the home directory.
@@ -77,8 +78,8 @@ N                  :Go backward to the item that matches the keyword.
 :h<CR>             :Show help.
 :q<CR>             :Exit.
 :{command}         :Execute a command e.g. :zip test *.md
-<Esc>              :Return to the normal mode.
-<C-h>              :Works as Backspace after `i`, `I`, `c`, `/`, `:` and `z`.
+<Esc>              :Return to the normal mode and clear the filter.
+<C-h>              :Works as Backspace after `i`, `I`, `c`, `/`, `:`, `f` and `z`.
 ZZ                 :Exit without cd to last working directory
                     (if `match_vim_exit_behavior` is `false`).
 ZQ                 :cd into the last working directory and exit
