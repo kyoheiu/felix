@@ -34,6 +34,7 @@ const PROMPT_INSERT_DIR: &str = "New directory: ";
 const PROMPT_RENAME: &str = "New name: ";
 const PROMPT_SEARCH: &str = "/";
 const PROMPT_COMMAND_LINE: &str = ":";
+const PROMPT_FILTER: &str = "Filter: ";
 
 /// Launch the app. If initialization goes wrong, return error.
 pub fn run(arg: PathBuf, log: bool) -> Result<(), FxError> {
@@ -442,10 +443,17 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                     },
                     KeyModifiers::NONE | KeyModifiers::SHIFT => {
                         match code {
-                            //Reset visual selection and return to normal mode
+                            //Reset visual selection, clear filter, and return to normal mode
                             KeyCode::Esc => {
                                 state.reset_selection();
-                                state.redraw(state.layout.y);
+                                if state.active_filter.is_some() {
+                                    state.active_filter = None;
+                                    state.layout.nums.reset();
+                                    state.update_list()?;
+                                    state.redraw(BEGINNING_ROW);
+                                } else {
+                                    state.redraw(state.layout.y);
+                                }
                                 continue;
                             }
 
@@ -1703,6 +1711,136 @@ fn _run(mut state: State, session_path: PathBuf) -> Result<(), FxError> {
                                                 go_to_info_line_and_reset();
                                                 state.keyword = Some(keyword.iter().collect());
                                                 state.move_cursor(state.layout.y);
+                                                break;
+                                            }
+
+                                            _ => continue,
+                                        }
+                                        screen.flush()?;
+                                    }
+                                }
+                                hide_cursor();
+                            }
+
+                            KeyCode::Char('f') => {
+                                if state.v_start.is_some() {
+                                    continue;
+                                }
+                                if len == 0 {
+                                    continue;
+                                }
+                                delete_pointer();
+                                show_cursor();
+                                go_to_info_line_and_reset();
+                                print!("{}", PROMPT_FILTER);
+                                screen.flush()?;
+
+                                let mut keyword: Vec<char> = Vec::new();
+
+                                // express position in terminal
+                                let (mut current_pos, _) = cursor_pos()?;
+                                // express position in Vec<Char>
+                                let mut current_char_pos = 0;
+                                loop {
+                                    if let Event::Key(KeyEvent {
+                                        code,
+                                        modifiers,
+                                        kind: KeyEventKind::Press,
+                                        ..
+                                    }) = event::read()?
+                                    {
+                                        match (code, modifiers) {
+                                            (KeyCode::Esc, KeyModifiers::NONE) => {
+                                                hide_cursor();
+                                                state.active_filter = None;
+                                                state.update_list()?;
+                                                state.redraw(state.layout.y);
+                                                break;
+                                            }
+
+                                            (KeyCode::Left, KeyModifiers::NONE) => {
+                                                move_left_command_line(
+                                                    &mut keyword,
+                                                    &mut current_char_pos,
+                                                    &mut current_pos,
+                                                );
+                                            }
+
+                                            (KeyCode::Right, KeyModifiers::NONE) => {
+                                                move_right_command_line(
+                                                    &mut keyword,
+                                                    &mut current_char_pos,
+                                                    &mut current_pos,
+                                                );
+                                            }
+
+                                            (KeyCode::Backspace, KeyModifiers::NONE)
+                                            | (KeyCode::Char('h'), KeyModifiers::CONTROL) => {
+                                                if current_char_pos == 0 {
+                                                    continue;
+                                                };
+                                                let removed = keyword.remove(current_char_pos - 1);
+                                                if let Some(to_be_removed) =
+                                                    unicode_width::UnicodeWidthChar::width(removed)
+                                                {
+                                                    current_char_pos -= 1;
+                                                    current_pos -= to_be_removed as u16;
+
+                                                    let key = &keyword.iter().collect::<String>();
+
+                                                    go_to_info_line_and_reset();
+                                                    print!("{}{}", PROMPT_FILTER, key);
+                                                    move_to(current_pos + 1, 2);
+                                                }
+                                            }
+
+                                            (KeyCode::Char(c), _) => {
+                                                if let Some(to_be_added) =
+                                                    unicode_width::UnicodeWidthChar::width(c)
+                                                {
+                                                    if current_pos + to_be_added as u16
+                                                        > state.layout.terminal_column
+                                                    {
+                                                        continue;
+                                                    }
+                                                    keyword.insert(current_char_pos, c);
+                                                    current_char_pos += 1;
+                                                    current_pos += to_be_added as u16;
+
+                                                    let key = &keyword.iter().collect::<String>();
+
+                                                    go_to_info_line_and_reset();
+                                                    print!("{}{}", PROMPT_FILTER, key);
+                                                    move_to(current_pos + 1, 2);
+                                                }
+                                            }
+
+                                            (KeyCode::Enter, KeyModifiers::NONE) => {
+                                                let input: String = keyword.into_iter().collect();
+                                                if input.is_empty() {
+                                                    state.active_filter = None;
+                                                    state.layout.nums.reset();
+                                                    state.update_list()?;
+                                                    state.redraw(BEGINNING_ROW);
+                                                    break;
+                                                }
+
+                                                match glob::Pattern::new(&input) {
+                                                    Ok(pattern) => {
+                                                        state.active_filter = Some(pattern);
+                                                        state.layout.nums.reset();
+                                                        state.update_list()?;
+                                                        state.redraw(BEGINNING_ROW);
+                                                    }
+                                                    Err(_) => {
+                                                        hide_cursor();
+                                                        state.redraw(state.layout.y);
+                                                        print_warning(
+                                                            "Invalid Glob Pattern",
+                                                            state.layout.y,
+                                                        );
+                                                    }
+                                                }
                                                 break;
                                             }
 
